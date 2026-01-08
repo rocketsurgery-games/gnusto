@@ -63,6 +63,9 @@ def get_pipeline(
     sequential_offload: bool = False,
     dtype: str = "bf16",
     force_mps: bool = False,
+    enable_taylorseer: bool = False,
+    enable_teacache: bool = False,
+    teacache_thresh: float = 0.05,
 ):
     """Load the OmniGen2 pipeline."""
     # Determine device - MPS has issues with scaled_dot_product_attention
@@ -115,6 +118,16 @@ def get_pipeline(
         torch_dtype=weight_dtype,
     )
 
+    # Apply optimizations
+    if enable_taylorseer:
+        pipeline.enable_taylorseer = True
+        print("TaylorSeer optimization enabled")
+
+    if enable_teacache:
+        pipeline.transformer.enable_teacache = True
+        pipeline.transformer.teacache_rel_l1_thresh = teacache_thresh
+        print(f"TeaCache optimization enabled (threshold: {teacache_thresh})")
+
     # Handle memory optimization
     if sequential_offload:
         print("Enabling sequential CPU offload (< 3GB VRAM, slower)...")
@@ -140,6 +153,7 @@ def generate_image(
     image_guidance_scale: float = 2.0,
     negative_prompt: str = "(((deformed))), blurry, over saturation, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra_limb, ugly, poorly drawn hands, fused fingers, messy drawing, broken legs",
     seed: int = 0,
+    cfg_range_end: float = 1.0,
 ) -> list[Image.Image]:
     """Generate an image from a prompt."""
     generator = torch.Generator(device=device).manual_seed(seed)
@@ -153,7 +167,7 @@ def generate_image(
         max_sequence_length=1024,
         text_guidance_scale=text_guidance_scale,
         image_guidance_scale=image_guidance_scale,
-        cfg_range=(0.0, 1.0),
+        cfg_range=(0.0, cfg_range_end),
         negative_prompt=negative_prompt,
         num_images_per_prompt=1,
         generator=generator,
@@ -335,7 +349,39 @@ For low VRAM systems:
         help="Image guidance scale for reference images (higher = more adherence to references)",
     )
 
+    # Optimization flags
+    parser.add_argument(
+        "--taylorseer",
+        action="store_true",
+        help="Enable TaylorSeer optimization (~2x speedup, may affect quality)",
+    )
+    parser.add_argument(
+        "--teacache",
+        action="store_true",
+        help="Enable TeaCache optimization (~30%% speedup, may affect quality)",
+    )
+    parser.add_argument(
+        "--teacache-thresh",
+        type=float,
+        default=0.05,
+        help="TeaCache L1 threshold (lower = higher quality, slower). Default: 0.05",
+    )
+    # Note: Other schedulers (heun, DPMSolver++) are not compatible with OmniGen2's pipeline
+    # which passes custom kwargs like num_tokens. Keeping euler only for now.
+    parser.add_argument(
+        "--cfg-range-end",
+        type=float,
+        default=1.0,
+        help="CFG range end (0.0-1.0). Lower values skip CFG in later steps. Default: 1.0",
+    )
+
     args = parser.parse_args()
+
+    # Validate mutually exclusive options
+    if args.taylorseer and args.teacache:
+        print("Error: --taylorseer and --teacache are mutually exclusive")
+        print("       The pipeline only supports one caching strategy at a time.")
+        sys.exit(1)
 
     if args.list_scenes:
         print("Available scenes:\n")
@@ -379,6 +425,16 @@ For low VRAM systems:
     if input_images:
         print(f"Reference images: {len(input_images)}")
         print(f"Image guidance: {args.image_guidance}")
+    # Show optimization settings
+    optimizations = []
+    if args.taylorseer:
+        optimizations.append("TaylorSeer")
+    if args.teacache:
+        optimizations.append(f"TeaCache(thresh={args.teacache_thresh})")
+    if args.cfg_range_end < 1.0:
+        optimizations.append(f"cfg_range_end={args.cfg_range_end}")
+    if optimizations:
+        print(f"Optimizations: {', '.join(optimizations)}")
     print("=" * 60)
     print(f"\nPrompt:\n{prompt[:200]}{'...' if len(prompt) > 200 else ''}\n")
     print("=" * 60)
@@ -390,6 +446,9 @@ For low VRAM systems:
         sequential_offload=args.sequential_offload,
         dtype=args.dtype,
         force_mps=args.force_mps,
+        enable_taylorseer=args.taylorseer,
+        enable_teacache=args.teacache,
+        teacache_thresh=args.teacache_thresh,
     )
 
     # Generate image
@@ -405,6 +464,7 @@ For low VRAM systems:
         text_guidance_scale=args.text_guidance,
         image_guidance_scale=args.image_guidance,
         seed=args.seed,
+        cfg_range_end=args.cfg_range_end,
     )
 
     # Save output
