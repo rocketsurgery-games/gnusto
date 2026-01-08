@@ -62,6 +62,21 @@ This achieves **2.2x speedup** with minimal quality impact.
 - **512×512**: 3.4x faster than 1024×1024
 - **Use case**: Lower resolution for rapid iteration, full resolution for final output
 
+**Prompt sensitivity at small resolutions**: Certain prompts produce blank/white outputs at smaller sizes:
+
+| Prompt Style | 1024² | 512² | 256² |
+|--------------|-------|------|------|
+| "detailed illustration of X" | ✅ | ✅ | ✅ |
+| "pencil sketch of X" | ✅ | faint | very faint |
+| "X on a blank background" | ✅ | ❌ blank | ❌ blank |
+
+**Root cause**: The model interprets "blank/white/empty background" too literally at smaller resolutions where the latent space (32×32 at 256²) leaves less room for both subject and background interpretation.
+
+**Workarounds**:
+- Avoid "blank background", "white background", "empty background" at <1024²
+- Use vivid prompts ("detailed illustration" vs "pencil sketch")
+- Generate at 1024² and downscale if specific style needed
+
 ### Scheduler Alternatives (Not Compatible)
 
 DPMSolver++ and Heun schedulers were tested but are incompatible with OmniGen2's pipeline, which passes custom kwargs (`num_tokens`) that other schedulers don't accept.
