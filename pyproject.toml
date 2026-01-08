@@ -1,5 +1,5 @@
 [project]
-name = "frotzlm"
+name = "frotz-lm"
 version = "0.1.0"
 description = "Text adventure illustration using OmniGen2"
 readme = "README.md"
