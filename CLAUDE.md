@@ -40,6 +40,7 @@ python test_omnigen2.py --scene hades_entrance --steps 10
 - **CUDA GPU (17GB+ VRAM)**: Full speed, use `--dtype bf16`
 - **Apple Silicon (MPS)**: Has compatibility issues with OmniGen2's attention implementation. Script defaults to CPU. Use `--force-mps` to try MPS anyway (may crash).
 - **CPU**: Works but slow (~28s/step). Uses float32 automatically.
+- **NVIDIA GB10**: Works with CUDA but requires uninstalling triton (incompatible with sm_121a architecture). Run image generation tests **serially, not in parallel** - parallel runs show sublinear performance on this hardware.
 
 ## Issue Tracking
 
