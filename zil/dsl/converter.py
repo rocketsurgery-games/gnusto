@@ -178,15 +178,14 @@ class ZILtoDSLConverter:
             # Exit with condition: (NORTH PER ROUTINE)
             elif first_val == "PER":
                 # This is a conditional exit handled by a routine
-                # We note it but can't extract the condition without analyzing the routine
+                # We skip these - they need manual analysis of the routine
                 if len(prop.values) >= 2:
                     routine_name = prop.values[1]
                     self.warnings.append(
                         f"Room {zil_room.name}: {direction} exit uses PER {routine_name}, "
-                        "condition needs manual conversion"
+                        "requires manual conversion (skipped)"
                     )
-                    # Create a placeholder exit
-                    exits[direction_lower] = Exit(to="UNKNOWN")
+                    # Don't create exit - destination unknown
 
             # Blocked exit with message: (NORTH "You can't go that way.")
             elif isinstance(first_val, str) and first_val.startswith('"'):
@@ -338,10 +337,21 @@ class ZILtoDSLConverter:
         result: dict[str, Any] = {}
 
         for name, glob in self.data.globals.items():
+            value = glob.value
+
             # Skip globals that are tables or complex structures
-            if isinstance(glob.value, dict) and "_form" in glob.value:
+            if isinstance(value, dict) and "_form" in value:
                 continue
-            result[name] = glob.value
+
+            # Convert ZIL empty list (<>) to false
+            if value == []:
+                value = False
+
+            # Skip None values
+            if value is None:
+                continue
+
+            result[name] = value
 
         return result
 

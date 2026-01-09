@@ -192,7 +192,7 @@ class TestExitConversion:
         assert result.world.rooms["TEST"].exits["north"].to == "DEST"
 
     def test_per_exit_generates_warning(self):
-        """Test (NORTH PER ROUTINE) generates warning."""
+        """Test (NORTH PER ROUTINE) generates warning and skips exit."""
         data = GameData()
         room = ZILObject(name="TEST", kind="ROOM")
         room.properties["NORTH"] = Property("NORTH", ["PER", "CHECK-EXIT"])
@@ -202,8 +202,8 @@ class TestExitConversion:
 
         # Should have warning about conditional exit
         assert any("PER" in w for w in result.warnings)
-        # Should still create placeholder exit
-        assert "north" in result.world.rooms["TEST"].exits
+        # PER exits are skipped (destination unknown without routine analysis)
+        assert "north" not in result.world.rooms["TEST"].exits
 
     def test_blocked_exit_generates_warning(self):
         """Test blocked exit with message generates warning."""
