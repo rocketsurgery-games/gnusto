@@ -46,6 +46,15 @@ from .world import (
     parse_world,
 )
 
+from .runtime import (
+    GameState,
+    ObjectState,
+    GameStateAdapter,
+    ActionResult,
+    MoveResult,
+    Runtime,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -79,4 +88,11 @@ __all__ = [
     "WorldParser",
     "load_world",
     "parse_world",
+    # Runtime
+    "GameState",
+    "ObjectState",
+    "GameStateAdapter",
+    "ActionResult",
+    "MoveResult",
+    "Runtime",
 ]

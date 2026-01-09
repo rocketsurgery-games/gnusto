@@ -241,7 +241,7 @@ class TestLurkingHorrorTerminalRoom:
         assert terminal.description == "Terminal Room"
         assert "south" in terminal.exits
         assert terminal.exits["south"].to == "CS-2ND"
-        assert terminal.exits["south"].when is not None  # Has condition
+        # Note: Exit condition was moved to a transition for proper hacker blocking message
 
         # Check objects
         assert "HACKER" in world.objects
