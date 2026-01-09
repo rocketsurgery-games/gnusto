@@ -2,7 +2,6 @@
 name = "frotz-lm"
 version = "0.1.0"
 description = "Text adventure illustration using OmniGen2"
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.6.0",
@@ -20,3 +19,14 @@ dependencies = [
 dev = [
     "ipython",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.setuptools.packages.find]
+include = ["zil*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
