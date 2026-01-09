@@ -1,7 +1,7 @@
 """Tests for S-expression parser."""
 
 import pytest
-from zil.dsl.sexpr import (
+from grue.sexpr import (
     parse, parse_all, to_string,
     Symbol, Keyword, SList,
     SExprError, Tokenizer, TokenType

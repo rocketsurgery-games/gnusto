@@ -7,7 +7,7 @@ against real game state loaded from the ZIL parser.
 
 import pytest
 from zil import load_game
-from zil.dsl import parse, ExprEvaluator, EffectExecutor, eval_predicate
+from grue import parse, ExprEvaluator, EffectExecutor, eval_predicate
 
 
 class GameWorldStateAdapter:

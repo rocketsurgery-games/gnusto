@@ -1,14 +1,14 @@
 """Tests for DSL expression evaluator."""
 
 import pytest
-from zil.dsl.expr import (
+from grue.expr import (
     ExprEvaluator,
     EffectExecutor,
     EvalError,
     eval_predicate,
     execute_effect,
 )
-from zil.dsl.sexpr import parse
+from grue.sexpr import parse
 
 
 class MockWorldState:
