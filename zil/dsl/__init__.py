@@ -29,6 +29,23 @@ from .expr import (
     execute_effect,
 )
 
+from .world import (
+    WorldDefinition,
+    Room,
+    Exit,
+    Object,
+    Action,
+    ActionMessages,
+    Transition,
+    Invariant,
+    WinCondition,
+    LoseCondition,
+    GameMeta,
+    WorldParser,
+    load_world,
+    parse_world,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -47,4 +64,19 @@ __all__ = [
     "MutableWorldState",
     "eval_predicate",
     "execute_effect",
+    # World definitions
+    "WorldDefinition",
+    "Room",
+    "Exit",
+    "Object",
+    "Action",
+    "ActionMessages",
+    "Transition",
+    "Invariant",
+    "WinCondition",
+    "LoseCondition",
+    "GameMeta",
+    "WorldParser",
+    "load_world",
+    "parse_world",
 ]

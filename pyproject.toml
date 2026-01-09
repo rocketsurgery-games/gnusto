@@ -13,6 +13,7 @@ dependencies = [
     "protobuf",
     "pillow",
     "anthropic>=0.75.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
