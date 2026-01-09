@@ -13,6 +13,7 @@ dependencies = [
     "sentencepiece",
     "protobuf",
     "pillow",
+    "anthropic>=0.75.0",
 ]
 
 [project.optional-dependencies]
