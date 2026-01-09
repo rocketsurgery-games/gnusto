@@ -31,6 +31,21 @@ from .expr import (
     execute_effect,
 )
 
+from .parser import (
+    GrueParser,
+    GrueParseError,
+    GrueWorld,
+    GrueRoom,
+    GrueObject,
+    GrueExit,
+    GrueBehavior,
+    GrueCase,
+    GrueVictory,
+    GrueDefeat,
+    load_grue,
+    parse_grue,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -49,4 +64,17 @@ __all__ = [
     "MutableWorldState",
     "eval_predicate",
     "execute_effect",
+    # World parser
+    "GrueParser",
+    "GrueParseError",
+    "GrueWorld",
+    "GrueRoom",
+    "GrueObject",
+    "GrueExit",
+    "GrueBehavior",
+    "GrueCase",
+    "GrueVictory",
+    "GrueDefeat",
+    "load_grue",
+    "parse_grue",
 ]
