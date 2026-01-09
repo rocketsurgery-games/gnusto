@@ -44,6 +44,9 @@ from .world import (
     WorldParser,
     load_world,
     parse_world,
+    # Behavioral DSL
+    Behavior,
+    BehaviorCase,
 )
 
 from .runtime import (
@@ -94,6 +97,9 @@ __all__ = [
     "WorldParser",
     "load_world",
     "parse_world",
+    # Behavioral DSL
+    "Behavior",
+    "BehaviorCase",
     # Runtime
     "GameState",
     "ObjectState",

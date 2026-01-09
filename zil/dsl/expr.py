@@ -21,6 +21,7 @@ Built-in Predicates:
     (here? OBJ)               - Is object in player's room
     (in? OBJ CONTAINER)       - Is object in container
     (room? LOC)               - Is location a room
+    (in-room? OBJ ROOM ...)   - Is object in any of listed rooms
     (any COLL PRED)           - Any element satisfies predicate
     (all COLL PRED)           - All elements satisfy predicate
 
@@ -151,6 +152,7 @@ class ExprEvaluator:
             "here?": self._eval_here,
             "in?": self._eval_in,
             "room?": self._eval_room,
+            "in-room?": self._eval_in_room,
 
             # Collections/quantifiers
             "any": self._eval_any,
@@ -168,6 +170,11 @@ class ExprEvaluator:
         if isinstance(expr, str):
             return expr
         if isinstance(expr, Symbol):
+            # Handle boolean literals
+            if expr.name.lower() == "true":
+                return True
+            if expr.name.lower() == "false":
+                return False
             # Symbol lookup - try global first, then treat as literal
             try:
                 return self.state.get_global(expr.name)
@@ -326,6 +333,28 @@ class ExprEvaluator:
             raise EvalError(f"'room?' expects 1 argument, got {len(form) - 1}")
         loc = self.eval(form[1])
         return self.state.is_room(loc)
+
+    def _eval_in_room(self, form: SList) -> bool:
+        """(in-room? OBJ ROOM1 ROOM2 ...) - check if object is in any of the listed rooms.
+
+        Typically used as (in-room? PLAYER MASS-AVE SMITH-ST) to check
+        if the player is in one of several specific rooms.
+        """
+        if len(form) < 3:
+            raise EvalError(f"'in-room?' expects at least 2 arguments, got {len(form) - 1}")
+
+        obj = self.eval(form[1])
+        obj_loc = self.state.get_object_location(obj)
+        if obj_loc is None:
+            return False
+
+        # Check if object's location is any of the specified rooms
+        for room_arg in form.items[2:]:
+            room_name = self.eval(room_arg)
+            if obj_loc == room_name:
+                return True
+
+        return False
 
     # === Collections/quantifiers ===
 

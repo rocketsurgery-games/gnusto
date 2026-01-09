@@ -387,15 +387,22 @@ actions:
 - Description embellishment
 - NPC conversation system
 
+## Related Documents
+
+- **[Behavioral DSL Extension](./behavioral-dsl.md)** - Object-specific behaviors, conditional responses, state-dependent logic
+
 ## Open Questions
 
 1. **Expression language**: What syntax for preconditions/effects?
    - Simple predicates? Full expression language?
    - Needs to be parseable AND verifiable
+   - **Resolved**: S-expressions, see Expression Language section
 
 2. **Inheritance/composition**: Can objects/actions inherit from templates?
+   - See behavioral-dsl.md for object type inheritance discussion
 
 3. **Scripting escape hatch**: Do we need a way to drop to code for truly complex logic?
+   - **Resolved**: No. Behavioral DSL handles complex cases declaratively.
 
 4. **Serialization**: How do we save/load game state?
 

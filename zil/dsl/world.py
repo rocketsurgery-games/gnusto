@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any
 import yaml
 
-from .sexpr import parse, SExpr, to_string
+from .sexpr import parse, SExpr, to_string, Symbol
 
 
 @dataclass
@@ -56,6 +56,53 @@ class Room:
 
 
 @dataclass
+class BehaviorCase:
+    """A single case in a behavior's case list."""
+    when: SExpr  # Condition (required) - use Symbol("true") for default
+    do: SExpr | None = None  # Effects to execute (optional)
+    message: str | None = None  # Message to display (optional)
+    handled: bool = True  # Stop processing? Default true
+
+    def to_dict(self) -> dict:
+        result: dict[str, Any] = {}
+        # Handle 'true' as default marker
+        if isinstance(self.when, Symbol) and self.when.name == "true":
+            pass  # Don't emit when: true for default case
+        else:
+            result["when"] = to_string(self.when)
+        if self.do is not None:
+            result["do"] = to_string(self.do)
+        if self.message is not None:
+            result["message"] = self.message
+        if not self.handled:
+            result["handled"] = False
+        return result
+
+
+@dataclass
+class Behavior:
+    """A behavior definition for a specific verb on an object."""
+    verb: str  # The verb this handles (e.g., "open", "take")
+    cases: list[BehaviorCase] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        if len(self.cases) == 1 and isinstance(self.cases[0].when, Symbol) and self.cases[0].when.name == "true":
+            # Single default case - emit compact form
+            case = self.cases[0]
+            result: dict[str, Any] = {}
+            if case.do is not None:
+                result["do"] = to_string(case.do)
+            if case.message is not None:
+                result["message"] = case.message
+            if not case.handled:
+                result["handled"] = False
+            return result
+        else:
+            # Multiple cases
+            return {"cases": [c.to_dict() for c in self.cases]}
+
+
+@dataclass
 class Object:
     """An object definition."""
     name: str
@@ -66,6 +113,9 @@ class Object:
     properties: dict[str, Any] = field(default_factory=dict)
     synonyms: list[str] = field(default_factory=list)
     adjectives: list[str] = field(default_factory=list)
+    behaviors: dict[str, Behavior] = field(default_factory=dict)
+    # ZIL source for manual translation reference
+    zil_source: str | None = None
 
     def to_dict(self) -> dict:
         result: dict[str, Any] = {}
@@ -83,6 +133,10 @@ class Object:
             result["synonyms"] = self.synonyms
         if self.adjectives:
             result["adjectives"] = self.adjectives
+        if self.behaviors:
+            result["behaviors"] = {v: b.to_dict() for v, b in self.behaviors.items()}
+        if self.zil_source:
+            result["zil_source"] = self.zil_source
         return result
 
 
@@ -365,7 +419,7 @@ class WorldParser:
         return room
 
     def _parse_object(self, name: str, data: dict) -> Object:
-        return Object(
+        obj = Object(
             name=name,
             description=data.get("description", ""),
             long_description=data.get("long_description"),
@@ -374,6 +428,52 @@ class WorldParser:
             properties=data.get("properties", {}),
             synonyms=data.get("synonyms", []),
             adjectives=data.get("adjectives", []),
+            zil_source=data.get("zil_source"),
+        )
+
+        if "behaviors" in data:
+            for verb, behavior_data in data["behaviors"].items():
+                obj.behaviors[verb] = self._parse_behavior(verb, behavior_data)
+
+        return obj
+
+    def _parse_behavior(self, verb: str, data: dict) -> Behavior:
+        """Parse a behavior definition."""
+        behavior = Behavior(verb=verb)
+
+        if "cases" in data:
+            # Multiple cases form
+            for case_data in data["cases"]:
+                behavior.cases.append(self._parse_behavior_case(case_data))
+        else:
+            # Single/default case form (no 'cases' key)
+            # The data itself is the case
+            behavior.cases.append(self._parse_behavior_case(data, is_default=True))
+
+        return behavior
+
+    def _parse_behavior_case(self, data: dict, is_default: bool = False) -> BehaviorCase:
+        """Parse a single behavior case."""
+        if is_default and "when" not in data:
+            when = Symbol("true")
+        elif "when" not in data:
+            when = Symbol("true")
+        else:
+            when_val = data["when"]
+            # Handle YAML parsing "true" as boolean
+            if when_val is True or (isinstance(when_val, str) and when_val.lower() == "true"):
+                when = Symbol("true")
+            else:
+                when = parse(when_val)
+
+        do_val = data.get("do")
+        do_expr = parse(do_val) if do_val else None
+
+        return BehaviorCase(
+            when=when,
+            do=do_expr,
+            message=data.get("message"),
+            handled=data.get("handled", True),
         )
 
     def _parse_action(self, name: str, data: dict) -> Action:
