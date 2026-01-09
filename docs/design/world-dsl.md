@@ -163,6 +163,12 @@ Rooms are objects with exits. The PLAYER's location is always a room.
 When `:via` is specified, the referenced object's `through` behavior is consulted.
 Most exits have no `:via` and allow free passage.
 
+**Doors and boundaries:** A door (or other boundary object) is typically referenced
+by exits in exactly two rooms - one on each side. The door's `:location` is cosmetic
+(where it's "seen"), but its behaviors apply whenever any exit references it via `:via`.
+Multiple rooms can reference the same door if the game's geometry requires it, but
+unusual configurations are the author's responsibility to keep consistent.
+
 ### The Player
 
 PLAYER is an object. "Global" state is just player properties.
@@ -270,11 +276,17 @@ an action targets the object (or references it via `:with`, etc.).
 - `:action` - for redirects, the action to perform instead
 
 **Special variables in behaviors:**
-- `self` - the object being acted upon
+- `self` - the object being acted upon (direct object)
 - `?with` - the instrument (e.g., "unlock X with Y")
 - `?on` - surface/target (e.g., "put X on Y")
 - `?in` - container (e.g., "put X in Y")
+- `?actor` - who is performing the action (defaults to PLAYER)
 - Other slots as needed, dynamically bound from action
+
+**Note on EXAMINE:** Examining an object is a behavior like any other - the object
+is the direct object of the action. The behavior returns context about what's
+observable, and the LLM generates a description. This keeps all object-specific
+logic in behaviors.
 
 ### Actions
 
