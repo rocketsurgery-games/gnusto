@@ -55,6 +55,12 @@ from .runtime import (
     Runtime,
 )
 
+from .converter import (
+    ZILtoDSLConverter,
+    ConversionResult,
+    convert_zil_to_dsl,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -95,4 +101,8 @@ __all__ = [
     "ActionResult",
     "MoveResult",
     "Runtime",
+    # ZIL-to-DSL converter
+    "ZILtoDSLConverter",
+    "ConversionResult",
+    "convert_zil_to_dsl",
 ]
