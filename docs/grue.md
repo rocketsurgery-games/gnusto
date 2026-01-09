@@ -1,13 +1,15 @@
-# World Definition DSL
+# GRUE - Game Rules and Universe Expressions
 
 ## Overview
 
-A declarative language for defining interactive fiction game worlds, designed to be:
+GRUE is a declarative language for defining interactive fiction game worlds, designed to be:
 
 1. **Statically analyzable** - State space can be explored for winnability, soft-locks, invariants
 2. **LLM-friendly** - Provides constraints and affordances for LLM-driven gameplay
 3. **Expressive** - Can represent the complexity of Infocom-style games
 4. **Extractable** - Can be generated from ZIL source with manual refinement
+
+File extension: `.grue`
 
 ## Design Principles
 
@@ -37,7 +39,7 @@ not actual mutation. This enables:
 
 ### LLM as Interpreter
 
-The DSL does NOT contain user-facing text. Instead, it provides:
+GRUE does NOT contain user-facing text. Instead, it provides:
 - Semantic outcomes (success, blocked, etc.)
 - Structured reasons for failures
 - Context hints for narrative generation
@@ -462,15 +464,16 @@ Verify: ∀ reachable states S, ∀ actions A:
 Single file for simple games, or directory structure for larger ones:
 
 ```
-game.world           ; single file (S-expressions)
+game.grue              ; single file
 
 ; or
 
 game/
-  world.scm          ; meta, globals, win/lose conditions
-  rooms.scm          ; room definitions
-  objects.scm        ; object definitions
-  npcs.scm           ; NPCs with conversation behaviors
+  world.grue           ; meta, globals, win/lose conditions
+  rooms.grue           ; room definitions
+  objects.grue         ; object definitions
+  npcs.grue            ; NPCs with conversation behaviors
 ```
 
-Files use `.scm` or `.world` extension for editor mode detection.
+Files use `.grue` extension. For editor support, configure your editor to use
+Scheme/Lisp mode for `.grue` files.
