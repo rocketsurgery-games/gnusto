@@ -1,3 +1,6 @@
 [submodule "omnigen2_repo"]
 	path = illustrations/omnigen2_repo
 	url = https://github.com/VectorSpaceLab/OmniGen2.git
+[submodule "infocom/lurkinghorror"]
+	path = infocom/lurkinghorror
+	url = https://github.com/the-infocom-files/lurkinghorror.git
