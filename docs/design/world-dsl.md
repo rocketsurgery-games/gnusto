@@ -1,411 +1,464 @@
-# World Definition DSL Design
+# World Definition DSL
 
 ## Overview
 
-A declarative domain-specific language for defining interactive fiction game worlds. The DSL captures game state, valid actions, transitions, and invariants in a form that is:
+A declarative language for defining interactive fiction game worlds, designed to be:
 
-1. **Formally verifiable** - State space can be analyzed for winnability, soft-locks, invariant violations
-2. **LLM-friendly** - Clear enough for an LLM to understand and reason about
-3. **Extensible** - New actions and behaviors without code changes
-4. **Extractable from ZIL** - Can be generated from existing Infocom source
+1. **Statically analyzable** - State space can be explored for winnability, soft-locks, invariants
+2. **LLM-friendly** - Provides constraints and affordances for LLM-driven gameplay
+3. **Expressive** - Can represent the complexity of Infocom-style games
+4. **Extractable** - Can be generated from ZIL source with manual refinement
 
-## Design Goals
+## Design Principles
 
-### Primary Goals
+### Pure S-Expression Syntax
 
-- **Correctness over flexibility**: The game state must always be consistent
-- **Verifiable winnability**: Provable that a path from start to victory exists
-- **Deterministic core**: State transitions are predictable and reproducible
-- **LLM integration points**: Explicit places where LLM has interpretive latitude
+The entire world definition uses S-expressions with Clojure-style keyword arguments.
+This provides:
+- Unambiguous parsing
+- Good editor support (paredit, rainbow parens, etc.)
+- Natural fit for static analysis (homoiconic)
+- Clear heritage from ZIL/MDL
 
-### Secondary Goals
+### Immutable State Model
 
-- Human-readable/writable format
-- Tooling support (validation, visualization, analysis)
-- Efficient runtime execution
-- Round-trip compatibility with ZIL (where possible)
+Game state is immutable. Effects are **declarative descriptions of state deltas**,
+not imperative mutations. An action transforms state:
 
-## Expression Language
-
-Expressions use S-expression (Lisp-like) syntax, as a nod to ZIL's MDL heritage
-and because S-expressions are trivially parseable, unambiguous, and naturally
-form expression trees suitable for static analysis.
-
-### Basic Syntax
-
-```lisp
-; Predicates
-(has-flag OBJ TAKEBIT)
-(= (loc OBJ) PLAYER)
-(in? OBJ ROOM)
-
-; Boolean operations
-(and EXPR EXPR ...)
-(or EXPR EXPR ...)
-(not EXPR)
-
-; Comparisons
-(= A B)
-(> A B)
-(< A B)
-(>= A B)
-(<= A B)
-
-; Property access
-(prop OBJ property-name)      ; -> value
-(loc OBJ)                     ; -> location of object
-(flags OBJ)                   ; -> set of flags
-
-; Quantifiers (for collections)
-(any COLLECTION (lambda (x) PRED))
-(all COLLECTION (lambda (x) PRED))
-
-; Special forms
-(visible? OBJ)                ; shorthand for visibility check
-(held? OBJ)                   ; shorthand for (= (loc OBJ) PLAYER)
-(here? OBJ)                   ; shorthand for (= (loc OBJ) (loc PLAYER))
+```
+State × Action → State'
 ```
 
-### Effects Syntax
+The "mutative" syntax (`set!`, `move!`) is notation for describing the delta,
+not actual mutation. This enables:
+- State space exploration (branching without rollback complexity)
+- Deterministic replay
+- Easy save/restore
 
-Effects use a similar S-expression style but with mutation operators:
+### LLM as Interpreter
 
-```lisp
-; Move object
-(move! OBJ DEST)
+The DSL does NOT contain user-facing text. Instead, it provides:
+- Semantic outcomes (success, blocked, etc.)
+- Structured reasons for failures
+- Context hints for narrative generation
 
-; Set flag
-(set-flag! OBJ FLAG)
-(clear-flag! OBJ FLAG)
+The LLM translates between natural language and structured actions,
+and generates narrative from outcomes. This separation allows:
+- Multiple narrative styles from same world
+- Flexible input parsing ("go north" vs "head to the lobby")
+- Rich, contextual responses
 
-; Set property
-(set-prop! OBJ PROP VALUE)
+## Syntax
 
-; Modify global
-(set! GLOBAL VALUE)
-(inc! GLOBAL)
-(inc! GLOBAL AMOUNT)
+### Basic Forms
+
+```scheme
+; Atoms
+SYMBOL          ; uppercase by convention for game entities
+keyword         ; lowercase for structural keywords
+:keyword        ; keyword arguments
+"string"        ; string literals
+42              ; numbers
+true false      ; booleans
+
+; Lists
+(form arg1 arg2 ...)
+
+; Keyword arguments (Clojure-style)
+(form :key1 value1 :key2 value2)
+
+; Result/response maps
+(outcome :status blocked :reason locked)
+```
+
+### Predicates (Pure Functions → Boolean)
+
+```scheme
+; Object queries
+(has-flag OBJ FLAG)           ; does object have flag?
+(prop OBJ property)           ; get property value (falsy if missing)
+(loc OBJ)                     ; get object's location
+(= A B)                       ; equality
+
+; Location predicates
+(in-room? OBJ ROOM1 ROOM2 ...)  ; is object in any listed room?
+(room-has-flag? FLAG)           ; does player's current room have flag?
+(here? OBJ)                     ; is object in player's room?
+(held? OBJ)                     ; is object in player's inventory?
+(visible? OBJ)                  ; can player see object?
+(contained-in? OBJ CONTAINER)   ; is object inside container?
+
+; Boolean logic
+(and EXPR ...)
+(or EXPR ...)
+(not EXPR)
+
+; Quantifiers
+(any COLLECTION PRED)         ; any element satisfies predicate
+(all COLLECTION PRED)         ; all elements satisfy predicate
+```
+
+### Effects (State Deltas)
+
+Effects describe how state changes. They don't mutate - they declare the delta.
+
+```scheme
+(move! OBJ DEST)              ; object moves to destination
+(set-flag! OBJ FLAG)          ; add flag to object
+(clear-flag! OBJ FLAG)        ; remove flag from object
+(set! OBJ :prop VALUE)        ; set property on object
 
 ; Compound effects
-(seq EFFECT EFFECT ...)       ; execute in order
+(seq EFFECT ...)              ; apply effects in order
 (when COND EFFECT)            ; conditional effect
 ```
 
-## Core Concepts
+### Objects
 
-### World State
+Everything in the game world is an object, including PLAYER and rooms.
 
-The complete game state at any moment:
-
-```yaml
-state:
-  player:
-    location: TERMINAL-ROOM
-    inventory: [FLASHLIGHT, KEY]
-
-  objects:
-    FLASHLIGHT:
-      location: PLAYER
-      flags: [TAKEBIT, LIGHTBIT, ONBIT]
-      properties:
-        battery_level: 100
-
-    DOOR:
-      location: TERMINAL-ROOM
-      flags: [DOORBIT]
-      properties:
-        locked: true
-
-  globals:
-    SCORE: 0
-    MOVES: 0
-    GAME_PHASE: "beginning"
+```scheme
+(object OUTSIDE-DOOR
+  :description "A heavy exterior door with an electronic lock"
+  :location MASS-AVE           ; where object is (or nil for abstract objects)
+  :flags (DOOR LOCKED OPENABLE FIXED)
+  :properties
+    ((lock-type electronic)
+     (key-required MASTER-KEY))
+  :behaviors
+    ((open ...)
+     (unlock ...)
+     (through ...)))
 ```
 
-### Objects and Rooms
+**Flags vs Properties:**
+- Flags are boolean presence/absence markers, optimized for `has-flag` checks
+- Properties are key-value pairs for arbitrary data
+- In practice, could unify these (flags are just boolean properties)
 
-Static definitions of what exists in the world:
+### Rooms
 
-```yaml
-rooms:
-  TERMINAL-ROOM:
-    description: "A large room crammed with computer terminals..."
-    exits:
-      SOUTH:
-        to: HALLWAY
-        when: (not (prop HACKER blocking))  # S-expr condition
-      OUT: HALLWAY
-    properties:
-      lit: true
+Rooms are objects with exits. The PLAYER's location is always a room.
 
-objects:
-  FLASHLIGHT:
-    description: "A sturdy flashlight"
-    initial_location: MAINTENANCE-CLOSET
-    flags: [TAKEBIT, LIGHTBIT]
-    properties:
-      battery_level: 100
+```scheme
+(room MASS-AVE
+  :description "The intersection of Mass Ave and Memorial Drive"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((in :to LOBBY :via OUTSIDE-DOOR)))
 
-  HACKER:
-    description: "A pale young man hunched over a terminal"
-    initial_location: TERMINAL-ROOM
-    flags: [PERSONBIT]
-    properties:
-      blocking: true  # Blocks south exit initially
+(room LOBBY
+  :description "The building's main lobby"
+  :flags (INSIDE LIT)
+  :exits
+    ((out :to MASS-AVE :via OUTSIDE-DOOR)
+     (north :to HALLWAY)))
 ```
+
+**Exit structure:**
+- `:to` - destination room (required)
+- `:via` - object that mediates passage (optional)
+- `:when` - condition for availability (optional, for simple cases)
+
+When `:via` is specified, the referenced object's `through` behavior is consulted.
+Most exits have no `:via` and allow free passage.
+
+### The Player
+
+PLAYER is an object. "Global" state is just player properties.
+
+```scheme
+(object PLAYER
+  :location TERMINAL-ROOM      ; starting room
+  :flags (PERSON)
+  :properties
+    ((score 0)
+     (moves 0)
+     (game-phase beginning)))
+```
+
+Inventory is just objects whose location is PLAYER:
+```scheme
+(held? KEY)  ; equivalent to (= (loc KEY) PLAYER)
+```
+
+### Containers
+
+Objects can contain other objects. An object's location can be another object.
+
+```scheme
+(object CHEST
+  :description "An old wooden chest"
+  :location ATTIC
+  :flags (CONTAINER OPENABLE LOCKED)
+  :properties
+    ((key-required BRASS-KEY)))
+
+(object COIN
+  :description "A gold coin"
+  :location CHEST              ; inside the chest
+  :flags (TAKEABLE))
+```
+
+Visibility rules:
+- Objects in closed containers are not visible
+- Objects in open containers are visible if the container is visible
+
+### Behaviors
+
+Behaviors define how objects respond to actions. They are evaluated when
+an action targets the object (or references it via `:with`, etc.).
+
+```scheme
+(object OUTSIDE-DOOR
+  :behaviors
+    ((open
+       (case (and (room-has-flag? OUTSIDE)
+                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD))
+         :outcome success
+         :effects ())  ; door auto-closes, no state change
+
+       (case (room-has-flag? OUTSIDE)
+         :outcome blocked
+         :reason locked-from-outside)
+
+       (case true
+         :outcome success
+         :effects ()
+         :context ((note auto-closing))))
+
+     (unlock
+       (case (and (room-has-flag? OUTSIDE)
+                  (= ?with MASTER-KEY))
+         :outcome blocked
+         :reason wrong-key-type
+         :context ((detail electronic-lock)))
+
+       (case (room-has-flag? OUTSIDE)
+         :outcome blocked
+         :reason locked-from-outside)
+
+       (case (and (has-flag self LOCKED)
+                  (= ?with MASTER-KEY))
+         :outcome success
+         :effects ((clear-flag! self LOCKED)))
+
+       (case (has-flag self LOCKED)
+         :outcome blocked
+         :reason need-key)
+
+       (case true
+         :outcome blocked
+         :reason not-locked))
+
+     (through
+       (case (room-has-flag? OUTSIDE)
+         :outcome redirect
+         :action (go :direction in))
+
+       (case true
+         :outcome redirect
+         :action (go :direction out)))))
+```
+
+**Case structure:**
+- First element is the condition (predicate)
+- `:outcome` - result type: `success`, `blocked`, `redirect`
+- `:effects` - state changes on success (list of effects)
+- `:reason` - semantic failure reason (for LLM interpretation)
+- `:context` - additional hints for LLM narrative
+- `:action` - for redirects, the action to perform instead
+
+**Special variables in behaviors:**
+- `self` - the object being acted upon
+- `?with` - the instrument (e.g., "unlock X with Y")
+- `?on` - surface/target (e.g., "put X on Y")
+- `?in` - container (e.g., "put X in Y")
+- Other slots as needed, dynamically bound from action
 
 ### Actions
 
-Declarative action definitions with S-expression preconditions and effects:
+The LLM sends structured actions to the world model:
 
-```yaml
-actions:
-  TAKE:
-    syntax: ["take {object}", "get {object}", "grab {object}"]
-    preconditions:
-      - (has-flag object TAKEBIT)
-      - (visible? object)
-      - (not (held? object))
-    effects:
-      - (move! object PLAYER)
-    messages:
-      success: "Taken."
-      not_here: "You don't see that here."
-      not_takeable: "You can't take that."
-
-  UNLOCK:
-    syntax: ["unlock {object} with {tool}"]
-    preconditions:
-      - (has-flag object LOCKBIT)
-      - (prop object locked)
-      - (held? tool)
-      - (= (prop tool unlocks) object)
-    effects:
-      - (set-prop! object locked false)
-    messages:
-      success: "Click! The {object} is now unlocked."
-      wrong_key: "That doesn't fit."
+```scheme
+(open DOOR)
+(unlock DOOR :with KEY)
+(put COIN :in CHEST)
+(give ASSIGNMENT :to HACKER)
+(go :direction north)
 ```
 
-### Transitions (State Machine)
+The world model:
+1. Resolves the target object(s)
+2. Checks visibility/reachability
+3. Evaluates the object's behavior for that verb
+4. Returns a structured response
 
-For complex multi-step state changes triggered by specific actions:
+**Response format:**
+```scheme
+; Success
+(result :outcome success
+        :effects ((moved KEY PLAYER))
+        :context ((first-time true)))
 
-```yaml
-transitions:
-  HACKER-LEAVES:
-    trigger:
-      action: GIVE
-      object: ASSIGNMENT
-      recipient: HACKER
-    when: (here? HACKER)
-    effects:
-      - (set-prop! HACKER blocking false)
-      - (move! HACKER NOWHERE)
-      - (inc! SCORE 5)
-    message: "The hacker glances at your assignment, nods, and shuffles off."
+; Blocked
+(result :outcome blocked
+        :reason locked
+        :context ((lock-type electronic)))
+
+; Unknown slot
+(result :outcome failed
+        :slot with
+        :reason not-applicable)
+
+; Redirect
+(result :outcome redirect
+        :action (go :direction in))
 ```
 
-### Invariants
+The LLM interprets these responses and generates natural language for the user.
 
-Conditions that must always hold (verified after every state change):
+### Time and Turns
 
-```yaml
-invariants:
-  # Player must always be in a valid room
-  player-in-room: (room? (loc PLAYER))
+Games track turns for timed events:
 
-  # Score can never decrease (uses special prev form)
-  score-monotonic: (>= SCORE (prev SCORE))
+```scheme
+; In PLAYER properties
+(moves 0)
 
-  # Light source required in dark rooms (or bad things happen)
-  light-required:
-    check: (or (prop (loc PLAYER) lit)
-               (any (inventory PLAYER)
-                    (lambda (obj) (and (has-flag obj LIGHTBIT)
-                                       (has-flag obj ONBIT)))))
-    on-violation: trigger-grue
+; Scheduled events
+(timer HACKER-LEAVES
+  :turns 10
+  :when (and (here? HACKER) (not (prop HACKER appeased)))
+  :effects ((move! HACKER ELSEWHERE))
+  :context ((reason bored)))
 ```
+
+For static analysis, we model time as part of state: each turn increments
+`(prop PLAYER moves)` and may trigger scheduled effects.
 
 ### Win/Lose Conditions
 
-```yaml
-victory:
-  when: (and (>= SCORE 100) EVIL_DEFEATED)
-  message: "Congratulations! You have vanquished the darkness..."
+```scheme
+(victory
+  :when (and (>= (prop PLAYER score) 100)
+             (prop PLAYER defeated-evil))
+  :context ((ending good)))
 
-defeat:
-  EATEN_BY_GRUE:
-    when: (and (not (lit? (loc PLAYER)))
-               (>= MOVES_IN_DARK 2))
-    message: "Oh no! You have been eaten by a grue!"
+(defeat EATEN-BY-GRUE
+  :when (and (not (room-has-flag? LIT))
+             (not (any (inventory PLAYER)
+                       (lambda (obj) (and (has-flag obj LIGHT)
+                                          (has-flag obj ON))))))
+  :context ((death-type grue)))
+
+(defeat FELL-IN-PIT
+  :when (and (= (loc PLAYER) DARK-PIT)
+             (not (has-flag ROPE TIED)))
+  :context ((death-type falling)))
 ```
 
-## LLM Integration Points
+## LLM Integration
 
-### Deterministic vs Stochastic Actions
+### Input Translation
 
-```yaml
-actions:
-  TAKE:
-    determinism: strict  # Must follow rules exactly
-    # ...
+User: "I want to get into the building"
 
-  TALK:
-    determinism: flexible  # LLM has latitude within constraints
-    syntax: ["talk to {npc}", "ask {npc} about {topic}"]
-    preconditions:
-      - (has-flag npc PERSONBIT)
-      - (visible? npc)
-    effects: []  # No state change - purely conversational
-    constraints:
-      # What the LLM MUST respect (natural language, not S-expr)
-      - response must be in-character for npc
-      - response must not reveal information npc doesn't know
-      - response must not imply state changes
-    llm_context:
-      # Additional context provided to LLM
-      - (prop npc personality)
-      - (prop npc knowledge)
-      - conversation_history
-```
+LLM considers:
+- Current location (MASS-AVE, has exit `:to LOBBY :via OUTSIDE-DOOR`)
+- OUTSIDE-DOOR has LOCKED flag
+- Player has KEY in inventory
 
-### Flavor Text Generation
+LLM tries: `(go :direction in)`
 
-```yaml
-rooms:
-  TERMINAL-ROOM:
-    description:
-      static: "A large room crammed with computer terminals..."
-      llm_embellish: true  # LLM can add atmospheric details
-      constraints:
-        must_mention: [terminals, exit south]
-        must_not_mention: (objects-not-in (loc PLAYER))
-        tone: "creepy academic"
-```
+World returns: `(result :outcome blocked :reason locked-from-outside)`
 
-### Outcome Interpretation
+LLM: "The door is locked from the outside."
 
-For actions where the outcome is determined by state but message is flexible:
+User: "Can I unlock it?"
 
-```yaml
-actions:
-  SEARCH:
-    syntax: ["search {container}"]
-    preconditions:
-      - (has-flag container SEARCHABLE)
-    outcomes:
-      found:
-        when: (prop container has_hidden_item)
-        effects:
-          - (move! (prop container hidden_item) (loc PLAYER))
-          - (set-prop! container has_hidden_item false)
-        message_template: "You find {(prop container hidden_item)}!"
-      nothing:
-        when: (not (prop container has_hidden_item))
-        effects: []
-        llm_message: true  # LLM generates "nothing found" flavor
-```
+LLM tries: `(unlock OUTSIDE-DOOR :with KEY)`
 
-## Formal Verification
+World returns: `(result :outcome blocked :reason wrong-key-type :context ((detail electronic-lock)))`
 
-### State Space Analysis
+LLM: "You try your key, but this appears to be an electronic lock - a physical key won't work."
 
-The DSL enables:
+### Output Generation
+
+The LLM generates narrative from:
+1. The action attempted
+2. The outcome and reason
+3. Context hints
+4. Current game state
+5. Narrative style/tone settings
+
+This allows rich, varied prose while maintaining precise game state.
+
+## Static Analysis
+
+The pure functional model enables:
+
+### State Space Exploration
 
 ```
 Given: Initial state S₀
-Prove: ∃ path P where P(S₀) → Victory
-
-Check: ∀ reachable states S:
-  - invariants(S) holds
-  - ¬defeat(S) ∨ ∃ recovery path
+Enumerate: All reachable states via valid actions
+Check: Victory reachable, no unrecoverable states
 ```
 
-### Tools We Could Build
-
-1. **Winnability checker** - BFS/DFS through state space
-2. **Soft-lock detector** - Find states with no path to victory
-3. **Invariant validator** - Verify no transition violates invariants
-4. **Difficulty estimator** - Minimum steps to victory
-5. **Hint generator** - Given current state, suggest next action
-
-## File Format
-
-YAML for human readability, with JSON schema for validation:
+### Winnability Analysis
 
 ```
-game/
-  world.yaml       # Core definitions
-  rooms.yaml       # Room definitions
-  objects.yaml     # Object definitions
-  actions.yaml     # Action definitions
-  npcs.yaml        # NPC definitions with personalities
-  transitions.yaml # Complex state transitions
-  invariants.yaml  # Game invariants
-  schema/          # JSON Schema for validation
+Prove: ∃ action sequence A₁...Aₙ where Aₙ(...A₁(S₀)) satisfies victory
 ```
 
-Or single-file for simple games:
+### Soft-Lock Detection
 
-```yaml
-# lurking-horror.world.yaml
-meta:
-  name: "The Lurking Horror"
-  author: "Infocom"
-  version: "1.0"
-
-rooms:
-  # ...
-
-objects:
-  # ...
-
-actions:
-  # ...
+```
+Find: States S where:
+  - victory(S) = false
+  - ∀ valid actions A: leads to states already explored (cycle)
+  - no unexplored states reachable
 ```
 
-## Migration Path
+### Invariant Verification
 
-### Phase 1: Extract from ZIL
-- Parse existing ZIL source
-- Generate DSL definitions for rooms, objects
-- Extract SYNTAX → action mappings
-
-### Phase 2: Core Runtime
-- DSL parser and validator
-- State machine executor
-- Basic action handling
-
-### Phase 3: Verification Tools
-- State space explorer
-- Winnability checker
-- Invariant validator
-
-### Phase 4: LLM Integration
-- Flexible action handlers
-- Description embellishment
-- NPC conversation system
-
-## Related Documents
-
-- **[Behavioral DSL Extension](./behavioral-dsl.md)** - Object-specific behaviors, conditional responses, state-dependent logic
+```
+Verify: ∀ reachable states S, ∀ actions A:
+  invariants(apply(A, S)) = true OR defeat triggered
+```
 
 ## Open Questions
 
-1. **Expression language**: What syntax for preconditions/effects?
-   - Simple predicates? Full expression language?
-   - Needs to be parseable AND verifiable
-   - **Resolved**: S-expressions, see Expression Language section
+1. **NPC modeling** - Are NPCs just objects with PERSON flag and behaviors for
+   TALK/ASK/GIVE? Do they need special handling for conversation state?
 
-2. **Inheritance/composition**: Can objects/actions inherit from templates?
-   - See behavioral-dsl.md for object type inheritance discussion
+2. **Lighting propagation** - Does light from objects illuminate containers?
+   Rooms? How do we model "the lantern lights the room"?
 
-3. **Scripting escape hatch**: Do we need a way to drop to code for truly complex logic?
-   - **Resolved**: No. Behavioral DSL handles complex cases declaratively.
+3. **Scope/disambiguation** - When there are two KEYs visible, how does
+   "unlock door with key" resolve? Is this purely LLM responsibility?
 
-4. **Serialization**: How do we save/load game state?
+4. **Complex conditionals** - ZIL has `PER` routines that do arbitrary computation.
+   Can all such cases be expressed declaratively, or do we need an escape hatch?
 
-5. **Debugging**: How do we trace why an action failed or state changed?
+5. **Save/restore semantics** - How does save/restore interact with the
+   immutable state model? (Likely trivial - just serialize state)
 
-6. **Versioning**: How do we handle DSL evolution while maintaining compatibility?
+## File Format
+
+Single file for simple games, or directory structure for larger ones:
+
+```
+game.world           ; single file (S-expressions)
+
+; or
+
+game/
+  world.scm          ; meta, globals, win/lose conditions
+  rooms.scm          ; room definitions
+  objects.scm        ; object definitions
+  npcs.scm           ; NPCs with conversation behaviors
+```
+
+Files use `.scm` or `.world` extension for editor mode detection.

@@ -1,0 +1,187 @@
+; OUTSIDE-DOOR Example
+; Demonstrates behavioral DSL with the exterior door from Lurking Horror
+;
+; This door exhibits complex location-dependent behavior:
+; - From outside at certain locations: door opens (push-bar)
+; - From outside elsewhere: locked
+; - From inside: opens but auto-closes
+; - MASTER-KEY doesn't work (electronic lock)
+
+(world
+  :name "Outside Door Example"
+  :description "Demonstrates complex door behavior from Lurking Horror")
+
+; === PLAYER ===
+
+(object PLAYER
+  :location MASS-AVE
+  :flags (PERSON)
+  :properties
+    ((score 0)
+     (moves 0)))
+
+; === ROOMS ===
+
+(room MASS-AVE
+  :description "The windswept intersection of Mass Ave and Memorial Drive"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((in :to LOBBY :via OUTSIDE-DOOR)
+     (east :to SMITH-ST)
+     (south :to GREAT-COURT)))
+
+(room SMITH-ST
+  :description "Smith Street, along the side of the building"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((in :to LOBBY :via OUTSIDE-DOOR)
+     (west :to MASS-AVE)))
+
+(room GREAT-COURT
+  :description "The great court, surrounded by imposing buildings"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((in :to LOBBY :via OUTSIDE-DOOR)
+     (north :to MASS-AVE)))
+
+(room COURTYARD
+  :description "A small courtyard with a locked door"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((in :to LOBBY :via OUTSIDE-DOOR)))
+
+(room CS-ROOF
+  :description "The roof of the computer science building"
+  :flags (OUTSIDE LIT)
+  :exits
+    ((down :to LOBBY :via OUTSIDE-DOOR)))
+
+(room LOBBY
+  :description "The building's main lobby, quiet at this hour"
+  :flags (INSIDE LIT)
+  :exits
+    ((out :to MASS-AVE :via OUTSIDE-DOOR)
+     (north :to HALLWAY)))
+
+(room HALLWAY
+  :description "A long corridor stretching into darkness"
+  :flags (INSIDE LIT)
+  :exits
+    ((south :to LOBBY)))
+
+; === OBJECTS ===
+
+(object OUTSIDE-DOOR
+  :description "A heavy exterior door with an electronic lock"
+  :location MASS-AVE
+  :flags (DOOR LOCKED OPENABLE FIXED)
+  :properties
+    ((lock-type electronic))
+
+  :behaviors
+    (; OPEN behavior - depends on which side you're on and where
+     (open
+       ; Outside at push-bar locations: door opens freely
+       (case (and (room-has-flag? OUTSIDE)
+                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF))
+         :outcome success
+         :effects ()
+         :context ((mechanism push-bar)))
+
+       ; Outside elsewhere: locked
+       (case (room-has-flag? OUTSIDE)
+         :outcome blocked
+         :reason locked-from-outside)
+
+       ; Inside: opens but auto-closes (no state change)
+       (case true
+         :outcome success
+         :effects ()
+         :context ((note auto-closing))))
+
+     ; UNLOCK behavior - electronic lock rejects physical keys
+     (unlock
+       ; Outside with master key at push-bar locations: wrong key type
+       (case (and (room-has-flag? OUTSIDE)
+                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF)
+                  (= ?with MASTER-KEY))
+         :outcome blocked
+         :reason wrong-key-type
+         :context ((detail electronic-lock)
+                   (expected card-key)))
+
+       ; Outside elsewhere: just locked
+       (case (room-has-flag? OUTSIDE)
+         :outcome blocked
+         :reason locked-from-outside)
+
+       ; Inside with master key: success
+       (case (and (has-flag self LOCKED)
+                  (= ?with MASTER-KEY))
+         :outcome success
+         :effects ((clear-flag! self LOCKED)))
+
+       ; Inside without key: need a key
+       (case (has-flag self LOCKED)
+         :outcome blocked
+         :reason need-key)
+
+       ; Already unlocked
+       (case true
+         :outcome blocked
+         :reason not-locked))
+
+     ; CLOSE behavior - always succeeds (spring-loaded)
+     (close
+       (case true
+         :outcome success
+         :effects ()
+         :context ((note spring-loaded))))
+
+     ; THROUGH behavior - redirects to movement
+     (through
+       (case (room-has-flag? OUTSIDE)
+         :outcome redirect
+         :action (go :direction in))
+
+       (case true
+         :outcome redirect
+         :action (go :direction out)))
+
+     ; EXAMINE behavior - describe based on location
+     (examine
+       (case (room-has-flag? OUTSIDE)
+         :outcome success
+         :effects ()
+         :context ((visible-features (electronic-lock push-bar))
+                   (apparent-state locked)))
+
+       (case true
+         :outcome success
+         :effects ()
+         :context ((visible-features (electronic-lock))
+                   (apparent-state
+                     (if (has-flag self LOCKED) locked unlocked)))))))
+
+(object MASTER-KEY
+  :description "A worn brass key on a GBS keyring"
+  :location PLAYER
+  :flags (TAKEABLE)
+  :properties
+    ((key-type physical)))
+
+(object CARD-KEY
+  :description "A white plastic card with a magnetic stripe"
+  :location HALLWAY
+  :flags (TAKEABLE)
+  :properties
+    ((key-type electronic)))
+
+; === WIN/LOSE CONDITIONS ===
+
+; For this example, victory is reaching the hallway
+(victory
+  :when (= (loc PLAYER) HALLWAY)
+  :context ((ending reached-inside)))
+
+; No defeat conditions in this simple example
