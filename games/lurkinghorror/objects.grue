@@ -53,9 +53,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ACCESS-PANEL
@@ -63,10 +63,7 @@
   :description "access panel"
   :location CS-ELEVATOR-ROOM
   :flags (NDESCBIT AN CONTBIT SEARCHBIT OPENABLE)
-  :properties
-    (
-      (capacity 20)
-    )
+  :properties (:capacity 20)
 
   ; --- ZIL Source ---
   ; <ROUTINE ACCESS-PANEL-F ()
@@ -84,9 +81,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object AIR
@@ -110,9 +107,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-DOOR
@@ -167,9 +164,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-TRAP-DOOR
@@ -211,9 +208,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-WINDOW
@@ -246,9 +243,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ARCHWAY
@@ -275,9 +272,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ASSIGNMENT
@@ -285,10 +282,7 @@
   :description "assignment"
   :location PLAYER
   :flags (AN READBIT TAKEBIT)
-  :properties
-    (
-      (size 1)
-    )
+  :properties (:size 1)
 
   ; --- ZIL Source ---
   ; <ROUTINE ASSIGNMENT-F ()
@@ -306,19 +300,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object AXE
   :description "fire axe"
   :location EMERGENCY-CABINET
   :flags (TRYTAKEBIT TAKEBIT WEAPONBIT)
-  :properties
-    (
-      (size 10)
-    )
+  :properties (:size 10)
 )
 
 ; [NEEDS-TRANSLATION] BASEMENT-BUTTON
@@ -357,9 +348,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BOLT-CUTTER
@@ -367,11 +358,7 @@
   :description "bolt cutter"
   :location URCHIN
   :flags (INVISIBLE TAKEBIT TOOLBIT WEAPONBIT)
-  :properties
-    (
-      (size 10)
-      (value 5)
-    )
+  :properties (:size 10 :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE BOLT-CUTTER-F ()
@@ -386,9 +373,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BOOTS
@@ -407,9 +394,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BRICK-HOLE
@@ -451,9 +438,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BRICK-WALL
@@ -461,11 +448,7 @@
   :description "brick wall"
   :location STEAM-TUNNEL-EAST
   :flags (SEARCHBIT OPENBIT CONTBIT)
-  :properties
-    (
-      (contfcn "BRICK-WALL-CONT")
-      (descfcn "BRICK-WALL-DESC")
-    )
+  :properties (:contfcn "BRICK-WALL-CONT" :descfcn "BRICK-WALL-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE BRICK-WALL-F ()
@@ -569,9 +552,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BROKEN-BRICK
@@ -593,9 +576,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BRONZE-PLUG
@@ -630,9 +613,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] BROWN-ELEVATOR
@@ -647,9 +630,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CABLE
@@ -695,9 +678,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CARTON
@@ -705,10 +688,7 @@
   :description "cardboard carton"
   :location REFRIGERATOR
   :flags (READBIT TRYTAKEBIT TAKEBIT SEARCHBIT FOODBIT CONTBIT OPENABLE)
-  :properties
-    (
-      (capacity 10)
-    )
+  :properties (:capacity 10)
 
   ; --- ZIL Source ---
   ; <ROUTINE CARTON-F ()
@@ -740,9 +720,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CARVING-SYMBOL
@@ -761,9 +741,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CARVINGS
@@ -789,9 +769,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object CATWALK
@@ -812,9 +792,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CHAIN
@@ -822,11 +802,7 @@
   :description "greasy chain"
   :location ELEVATOR-PIT
   :flags (TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (size 20)
-      (descfcn "CHAIN-DESC")
-    )
+  :properties (:size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -941,20 +917,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CHAIN-1
 (object CHAIN-1
   :description "greasy chain"
   :flags (NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (size 20)
-      (descfcn "CHAIN-DESC")
-    )
+  :properties (:size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -1069,20 +1041,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CHAIN-2
 (object CHAIN-2
   :description "greasy chain"
   :flags (INVISIBLE NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT OPENBIT)
-  :properties
-    (
-      (size 20)
-      (descfcn "CHAIN-DESC")
-    )
+  :properties (:size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -1197,9 +1165,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CHAIR
@@ -1208,10 +1176,7 @@
   :fdesc "Nearby is one of those ugly molded plastic chairs."
   :location TERMINAL-ROOM
   :flags (TAKEBIT VEHBIT SEARCHBIT CONTBIT OPENBIT FURNITURE SURFACEBIT)
-  :properties
-    (
-      (size 100)
-    )
+  :properties (:size 100)
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIR-F ("OPT" RARG)
@@ -1235,9 +1200,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CHINESE-FOOD
@@ -1245,10 +1210,7 @@
   :description "Chinese food"
   :location CARTON
   :flags (NOABIT TAKEBIT TRYTAKEBIT FOODBIT)
-  :properties
-    (
-      (heat 0)
-    )
+  :properties (:heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE CHINESE-FOOD-F ()
@@ -1276,9 +1238,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CLOSE-BUTTON
@@ -1298,9 +1260,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] COKE
@@ -1308,11 +1270,7 @@
   :description "two liter bottle of Classic Coke"
   :location REFRIGERATOR
   :flags (TAKEBIT FOODBIT OPENABLE)
-  :properties
-    (
-      (size 5)
-      (heat 0)
-    )
+  :properties (:size 5 :heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE COKE-F ("AUX" SIZ TIRE)
@@ -1376,9 +1334,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CONTROLS
@@ -1460,9 +1418,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CORRIDOR
@@ -1480,19 +1438,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object CROWBAR
   :description "crowbar"
   :location TEMPORARY-BASEMENT
   :flags (TAKEBIT WEAPONBIT)
-  :properties
-    (
-      (size 10)
-    )
+  :properties (:size 10)
 )
 
 ; [NEEDS-TRANSLATION] CURTAIN
@@ -1500,10 +1455,7 @@
   :description "slime curtain"
   :location OUTER-LAIR
   :flags (NDESCBIT)
-  :properties
-    (
-      (value 5)
-    )
+  :properties (:value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE CURTAIN-F ("AUX" W)
@@ -1557,9 +1509,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] CURTAIN-DOOR
@@ -1585,19 +1537,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] DEAD-RAT
 (object DEAD-RAT
   :description "dead rat"
   :flags (SEARCHBIT TAKEBIT OPENBIT CONTBIT)
-  :properties
-    (
-      (heat 0)
-    )
+  :properties (:heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE DEAD-RAT-F ()
@@ -1626,9 +1575,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object DIRT
@@ -1656,9 +1605,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] DOME-DOOR
@@ -1686,9 +1635,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] DOME-LADDER
@@ -1696,11 +1645,7 @@
   :description "wooden ladder"
   :location TOP-OF-DOME
   :flags (TAKEBIT)
-  :properties
-    (
-      (size 120)
-      (descfcn "DOME-LADDER-DESC")
-    )
+  :properties (:size 120 :descfcn "DOME-LADDER-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE DOME-LADDER-F ()
@@ -1763,9 +1708,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] DOWN-BUTTON
@@ -1779,9 +1724,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] EAST-WALL
@@ -1797,9 +1742,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR
@@ -1836,9 +1781,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object ELEVATOR-CEILING
@@ -1867,9 +1812,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-1
@@ -1877,11 +1822,7 @@
   :description "elevator doors"
   :location COMP-CENTER
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties
-    (
-      (contfcn "ELEVATOR-DOOR-CONT")
-      (descfcn "ELEVATOR-DOORS-DESC")
-    )
+  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -1970,9 +1911,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-2
@@ -1980,11 +1921,7 @@
   :description "elevator doors"
   :location CS-2ND
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties
-    (
-      (contfcn "ELEVATOR-DOOR-CONT")
-      (descfcn "ELEVATOR-DOORS-DESC")
-    )
+  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2073,9 +2010,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-3
@@ -2083,11 +2020,7 @@
   :description "elevator doors"
   :location CS-3RD
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties
-    (
-      (contfcn "ELEVATOR-DOOR-CONT")
-      (descfcn "ELEVATOR-DOORS-DESC")
-    )
+  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2176,9 +2109,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-B
@@ -2186,11 +2119,7 @@
   :description "elevator doors"
   :location CS-BASEMENT
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties
-    (
-      (contfcn "ELEVATOR-DOOR-CONT")
-      (descfcn "ELEVATOR-DOORS-DESC")
-    )
+  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2279,9 +2208,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-FLOOR
@@ -2305,9 +2234,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ELIXIR
@@ -2344,9 +2273,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] EMERGENCY-CABINET
@@ -2354,12 +2283,7 @@
   :description "emergency cabinet"
   :location INF-4
   :flags (CONTBIT TRANSBIT READBIT AN SEARCHBIT OPENABLE)
-  :properties
-    (
-      (capacity 100)
-      (descfcn "EMERGENCY-CABINET-DESC")
-      (text "\"In case of emergency, break glass.\"")
-    )
+  :properties (:capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE EMERGENCY-CABINET-F ()
@@ -2396,9 +2320,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] EYES
@@ -2415,9 +2339,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object FEET
@@ -2455,9 +2379,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLASK
@@ -2465,12 +2389,7 @@
   :description "metal flask"
   :location TEMPORARY-LAB
   :flags (TAKEBIT CONTBIT SEARCHBIT OPENABLE)
-  :properties
-    (
-      (size 50)
-      (capacity 9)
-      (contfcn "FLASK-CONT")
-    )
+  :properties (:size 50 :capacity 9 :contfcn "FLASK-CONT")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLASK-F ()
@@ -2502,19 +2421,15 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLIER
 (object FLIER
   :description "creature"
-  :properties
-    (
-      (descfcn "FLIER-DESC")
-      (value 5)
-    )
+  :properties (:descfcn "FLIER-DESC" :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE FLIER-F ()
@@ -2553,9 +2468,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLIER-SHAPE
@@ -2574,9 +2489,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-BUTTON
@@ -2615,9 +2530,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-WAX
@@ -2625,10 +2540,7 @@
   :description "floor wax"
   :location PLASTIC-CONTAINER
   :flags (NOABIT TRYTAKEBIT TAKEBIT TOUCHBIT)
-  :properties
-    (
-      (descfcn "FLOOR-WAX-DESC")
-    )
+  :properties (:descfcn "FLOOR-WAX-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-WAX-F ()
@@ -2688,9 +2600,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-WAXER
@@ -2698,11 +2610,7 @@
   :description "floor waxer"
   :location INF-2
   :flags (VEHBIT SURFACEBIT POWERBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (descfcn "FLOOR-WAXER-DESC")
-      (contfcn "FLOOR-WAXER-F")
-    )
+  :properties (:descfcn "FLOOR-WAXER-DESC" :contfcn "FLOOR-WAXER-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-WAXER-F ("OPT" RARG)
@@ -2764,9 +2672,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FORKLIFT
@@ -2878,9 +2786,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] FROB
@@ -2924,9 +2832,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-FLOOR-WAXER
@@ -2956,9 +2864,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-HOLE
@@ -2974,9 +2882,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-MAINTENANCE-MAN
@@ -2998,9 +2906,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object GLOBAL-OBJECTS
@@ -3026,9 +2934,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-SLEEP
@@ -3044,9 +2952,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-URCHINS
@@ -3077,9 +2985,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GLOVES
@@ -3113,9 +3021,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GRAFFITI
@@ -3129,9 +3037,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] GROUND
@@ -3150,9 +3058,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] HACKER
@@ -3160,11 +3068,7 @@
   :description "hacker"
   :location TERMINAL-ROOM
   :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
-  :properties
-    (
-      (descfcn "HACKER-DESC")
-      (contfcn "HACKER-F")
-    )
+  :properties (:descfcn "HACKER-DESC" :contfcn "HACKER-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE HACKER-F ("AUX" H "OPT" RARG)
@@ -3367,21 +3271,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] HAND
 (object HAND
   :description "human hand"
   :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
-  :properties
-    (
-      (value 5)
-      (heat 0)
-      (contfcn "HAND-F")
-    )
+  :properties (:value 5 :heat 0 :contfcn "HAND-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE HAND-F ("OPT" RARG)
@@ -3447,9 +3346,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object HANDS
@@ -3467,10 +3366,7 @@
   :description "HELP key"
   :location PC
   :flags (NDESCBIT READBIT)
-  :properties
-    (
-      (text "It says \"HELP\" in reassuring blue letters.")
-    )
+  :properties (:text "It says \"HELP\" in reassuring blue letters.")
 
   ; --- ZIL Source ---
   ; <ROUTINE HELP-KEY-F ()
@@ -3499,9 +3395,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] HIGH-VOLTAGE
@@ -3627,9 +3523,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object HIM
@@ -3656,9 +3552,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] INPUT-CABLE
@@ -3705,9 +3601,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] INPUT-SOCKET
@@ -3725,9 +3621,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object INTDIR
@@ -3752,9 +3648,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] IRON-PLATE
@@ -3814,9 +3710,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object IT
@@ -3847,9 +3743,9 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object KEY-1
@@ -3881,10 +3777,7 @@
   :description "keyring"
   :location HACKER
   :flags (NDESCBIT TAKEBIT CONTBIT SURFACEBIT OPENBIT)
-  :properties
-    (
-      (contfcn "HACKER-F")
-    )
+  :properties (:contfcn "HACKER-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE KEYRING-F ()
@@ -3899,19 +3792,16 @@
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object KITCHEN-COUNTER
   :description "kitchen counter"
   :location KITCHEN
   :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties
-    (
-      (capacity 200)
-    )
+  :properties (:capacity 200)
 )
 
 ; [NEEDS-TRANSLATION] KNIFE
@@ -3936,9 +3826,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] LAB
@@ -3967,9 +3857,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] LAB-BENCH
@@ -3977,10 +3867,7 @@ knife."
   :description "lab bench"
   :location ALCHEMY-LAB
   :flags (SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (capacity 200)
-    )
+  :properties (:capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE LAB-BENCH-F ()
@@ -4004,9 +3891,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] LADDER
@@ -4029,9 +3916,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] LIGHT
@@ -4048,23 +3935,15 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object LOCAL-GLOBALS
   :fdesc "F"
   :ldesc "F"
-  :properties
-    (
-      (descfcn 0)
-      (contfcn 0)
-      (count 0)
-      (size 0)
-      (text "")
-      (capacity 0)
-    )
+  :properties (:descfcn 0 :contfcn 0 :count 0 :size 0 :text "" :capacity 0)
 )
 
 ; [NEEDS-TRANSLATION] LOVECRAFT
@@ -4072,11 +3951,7 @@ knife."
   :description "Alchemy Department computer"
   :location ALCHEMY-LAB
   :flags (READBIT AN)
-  :properties
-    (
-      (text "Written with a marking pen on the display is \"Lovecraft.\"")
-      (size 30)
-    )
+  :properties (:text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE LOVECRAFT-F ()
@@ -4106,9 +3981,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] LURKER
@@ -4137,9 +4012,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MAINTENANCE-MAN
@@ -4211,9 +4086,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MANHOLE
@@ -4221,11 +4096,7 @@ knife."
   :description "manhole"
   :location STORAGE-ROOM
   :flags (OPENBIT CONTBIT SEARCHBIT RMUNGBIT DOORBIT)
-  :properties
-    (
-      (capacity 200)
-      (descfcn "MANHOLE-DESC")
-    )
+  :properties (:capacity 200 :descfcn "MANHOLE-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE MANHOLE-F ()
@@ -4271,9 +4142,9 @@ knife."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MANHOLE-COVER
@@ -4283,10 +4154,7 @@ knife."
 crud."
   :location MANHOLE
   :flags (TAKEBIT TRYTAKEBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties
-    (
-      (size 200)
-    )
+  :properties (:size 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE MANHOLE-COVER-F ()
@@ -4335,9 +4203,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MASS
@@ -4392,19 +4260,16 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MASTER-KEY
 (object MASTER-KEY
   :description "master key"
   :flags (TAKEBIT TRYTAKEBIT)
-  :properties
-    (
-      (value 5)
-    )
+  :properties (:value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE MASTER-KEY-F ()
@@ -4422,9 +4287,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ME
@@ -4457,19 +4322,16 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MENU-BOX
 (object MENU-BOX
   :description "menu box"
   :flags (NDESCBIT READBIT)
-  :properties
-    (
-      (text "\"Edit Classics Paper.\"")
-    )
+  :properties (:text "\"Edit Classics Paper.\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE MENU-BOX-F ()
@@ -4486,9 +4348,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MICROWAVE
@@ -4496,10 +4358,7 @@ crud."
   :description "microwave oven"
   :location KITCHEN
   :flags (NDESCBIT SEARCHBIT CONTBIT TRANSBIT OPENABLE)
-  :properties
-    (
-      (capacity 30)
-    )
+  :properties (:capacity 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE MICROWAVE-F ()
@@ -4521,9 +4380,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MIST
@@ -4542,9 +4401,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MORE-BOX
@@ -4565,9 +4424,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] MOUSE
@@ -4589,9 +4448,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] NEW-BRICK
@@ -4611,9 +4470,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] NITROGEN
@@ -4654,9 +4513,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object NOISE
@@ -4675,9 +4534,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] NOT-HERE-OBJECT
@@ -4711,9 +4570,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] NOTE
@@ -4721,10 +4580,7 @@ crud."
   :description "piece of paper"
   :location SECRET-HOLE
   :flags (TAKEBIT READBIT)
-  :properties
-    (
-      (value 5)
-    )
+  :properties (:value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE NOTE-F ()
@@ -4749,9 +4605,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ODD-PAPER
@@ -4777,9 +4633,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] OFFICE-DOOR
@@ -4793,9 +4649,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] OPEN-BUTTON
@@ -4815,9 +4671,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object OUTLET
@@ -4863,9 +4719,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] OUTSIDE-DOOR
@@ -4891,9 +4747,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PADLOCK
@@ -4963,9 +4819,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PC
@@ -4974,10 +4830,7 @@ crud."
   :fdesc "A really whiz-bang pc is right inside the door."
   :location TERMINAL-ROOM
   :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties
-    (
-      (size 30)
-    )
+  :properties (:size 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE PC-F ("AUX" TMP)
@@ -5051,9 +4904,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PEACH-TREE
@@ -5091,9 +4944,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PENTAGRAM
@@ -5101,10 +4954,7 @@ crud."
   :description "pentagram"
   :location ALCHEMY-LAB
   :flags (NDESCBIT VEHBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (capacity 200)
-    )
+  :properties (:capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE PENTAGRAM-F ("AUX" O "OPT" RARG)
@@ -5183,9 +5033,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PLASTIC-CONTAINER
@@ -5193,12 +5043,7 @@ crud."
   :description "plastic container"
   :location INF-1
   :flags (TAKEBIT CONTBIT READBIT SEARCHBIT OPENABLE)
-  :properties
-    (
-      (capacity 30)
-      (size 15)
-      (text "\"Frobozz Magic Floor Wax (and Dessert Topping)\"")
-    )
+  :properties (:capacity 30 :size 15 :text "\"Frobozz Magic Floor Wax (and Dessert Topping)\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE PLASTIC-CONTAINER-F ()
@@ -5223,9 +5068,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PLATFORM
@@ -5246,9 +5091,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PLAYER
@@ -5281,9 +5126,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] POOL
@@ -5333,9 +5178,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] POWER-CORD
@@ -5399,9 +5244,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PRESSURE-VALVE
@@ -5409,10 +5254,7 @@ crud."
   :description "pressure valve"
   :location TUNNEL-EAST
   :flags (NDESCBIT OPENABLE)
-  :properties
-    (
-      (value 5)
-    )
+  :properties (:value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE PRESSURE-VALVE-F ()
@@ -5453,9 +5295,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] PROFESSOR
@@ -5463,12 +5305,7 @@ crud."
   :description "professor"
   :location ALCHEMY-DEPT
   :flags (PERSON OPENBIT CONTBIT SEARCHBIT)
-  :properties
-    (
-      (value 5)
-      (contfcn "PROFESSOR-F")
-      (descfcn "PROFESSOR-DESC")
-    )
+  :properties (:value 5 :contfcn "PROFESSOR-F" :descfcn "PROFESSOR-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE PROFESSOR-F ("OPT" RARG)
@@ -5563,9 +5400,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object PROGRAM
@@ -5593,9 +5430,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] RAT-SYMBOL
@@ -5603,10 +5440,7 @@ crud."
   :description "branded symbol"
   :location DEAD-RAT
   :flags (NDESCBIT)
-  :properties
-    (
-      (size 0)
-    )
+  :properties (:size 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE RAT-SYMBOL-F ()
@@ -5620,19 +5454,16 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] RATS
 (object RATS
   :description "sewer rats"
   :flags (NOABIT)
-  :properties
-    (
-      (descfcn "RATS-DESC")
-    )
+  :properties (:descfcn "RATS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE RATS-F ()
@@ -5671,9 +5502,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] READOUT
@@ -5703,9 +5534,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] REFRIGERATOR
@@ -5713,10 +5544,7 @@ crud."
   :description "refrigerator"
   :location KITCHEN
   :flags (NDESCBIT SEARCHBIT CONTBIT OPENABLE READBIT)
-  :properties
-    (
-      (capacity 200)
-    )
+  :properties (:capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE REFRIGERATOR-F ()
@@ -5741,9 +5569,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] REPEATER
@@ -5751,10 +5579,7 @@ crud."
   :description "metal box"
   :location INNER-LAIR
   :flags (TRANSBIT CONTBIT SEARCHBIT OPENABLE)
-  :properties
-    (
-      (descfcn "REPEATER-DESC")
-    )
+  :properties (:descfcn "REPEATER-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE REPEATER-F ()
@@ -5773,9 +5598,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] REPEATER-COVER
@@ -5812,9 +5637,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] RING
@@ -5841,9 +5666,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ROD
@@ -5869,9 +5694,9 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] ROOF-DOOR
@@ -5899,21 +5724,18 @@ crud."
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object ROOF-DOOR-SIGN
   :description "sign"
   :location BROWN-TOP-FLOOR
   :flags (READBIT NDESCBIT)
-  :properties
-    (
-      (text "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below,
+  :properties (:text "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below,
 it says \"This means you!\" and below that in different handwriting,
 it says \"Who, me?\"")
-    )
 )
 
 (object ROOMS
@@ -5923,10 +5745,7 @@ it says \"Who, me?\"")
 (object SECRET-HOLE
   :description "cylindrical hole"
   :flags (CONTBIT OPENBIT SEARCHBIT)
-  :properties
-    (
-      (capacity 5)
-    )
+  :properties (:capacity 5)
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-1
@@ -5972,9 +5791,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-2
@@ -6020,9 +5839,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-3
@@ -6068,9 +5887,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-B
@@ -6116,9 +5935,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SIGNUP
@@ -6150,9 +5969,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SLAB
@@ -6160,10 +5979,7 @@ it says \"Who, me?\"")
   :description "slab of granite"
   :location CAVE-ALTAR
   :flags (NDESCBIT SEARCHBIT VEHBIT OPENBIT SURFACEBIT CONTBIT)
-  :properties
-    (
-      (capacity 200)
-    )
+  :properties (:capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE SLAB-F ()
@@ -6192,18 +6008,15 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SLIME
 (object SLIME
   :description "crawling slime"
-  :properties
-    (
-      (descfcn "SLIME-DESC")
-    )
+  :properties (:descfcn "SLIME-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE SLIME-F ()
@@ -6229,9 +6042,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SLOTS
@@ -6277,9 +6090,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SMOOTH-STONE
@@ -6287,11 +6100,7 @@ it says \"Who, me?\"")
   :description "smooth stone"
   :location PLATFORM-ROOM
   :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT WEAPONBIT)
-  :properties
-    (
-      (value 5)
-      (descfcn "SMOOTH-STONE-DESC")
-    )
+  :properties (:value 5 :descfcn "SMOOTH-STONE-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE SMOOTH-STONE-F ()
@@ -6363,9 +6172,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SNACK
@@ -6373,11 +6182,7 @@ it says \"Who, me?\"")
   :description "package of Funny Bones"
   :location KITCHEN-COUNTER
   :flags (TAKEBIT FOODBIT READBIT OPENABLE)
-  :properties
-    (
-      (heat 0)
-      (text "\"Funny Bones\"")
-    )
+  :properties (:heat 0 :text "\"Funny Bones\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE SNACK-F ()
@@ -6412,9 +6217,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SNOW
@@ -6430,9 +6235,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] SOUTH-WALL
@@ -6447,9 +6252,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object STEAM-PIPES
@@ -6462,10 +6267,7 @@ it says \"Who, me?\"")
   :description "carved symbol"
   :location SMOOTH-STONE
   :flags (NDESCBIT)
-  :properties
-    (
-      (size 0)
-    )
+  :properties (:size 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE STONE-SYMBOL-F ()
@@ -6479,9 +6281,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] STOP-SWITCH
@@ -6497,9 +6299,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] STUDENTS
@@ -6513,9 +6315,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] TATTOO
@@ -6523,10 +6325,7 @@ it says \"Who, me?\"")
   :description "tattoo"
   :location HAND
   :flags (NDESCBIT)
-  :properties
-    (
-      (size 0)
-    )
+  :properties (:size 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE TATTOO-F ()
@@ -6538,9 +6337,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] TENTACLE
@@ -6575,9 +6374,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] TUB
@@ -6585,10 +6384,7 @@ it says \"Who, me?\"")
   :description "tub of dirt"
   :location INSIDE-DOME
   :flags (NDESCBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties
-    (
-      (capacity 30)
-    )
+  :properties (:capacity 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE TUB-F ()
@@ -6614,9 +6410,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] UP-BUTTON
@@ -6652,9 +6448,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] URCHIN
@@ -6662,10 +6458,7 @@ it says \"Who, me?\"")
   :description "urchin"
   :location AERO-LOBBY
   :flags (PERSON AN SEARCHBIT OPENBIT CONTBIT)
-  :properties
-    (
-      (descfcn "URCHIN-DESC")
-    )
+  :properties (:descfcn "URCHIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-F ("AUX" MANY?)
@@ -6750,9 +6543,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] URCHIN-CLOTHES
@@ -6772,9 +6565,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] URCHIN-WIRE
@@ -6782,10 +6575,7 @@ it says \"Who, me?\"")
   :description "wire"
   :location LARGE-CHAMBER
   :flags (NDESCBIT)
-  :properties
-    (
-      (value 5)
-    )
+  :properties (:value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-WIRE-F ()
@@ -6823,9 +6613,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] URCHINS
@@ -6833,10 +6623,7 @@ it says \"Who, me?\"")
   :description "urchins"
   :location SLOTS
   :flags (INVISIBLE PERSON NOABIT)
-  :properties
-    (
-      (descfcn "URCHINS-DESC")
-    )
+  :properties (:descfcn "URCHINS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHINS-F ()
@@ -6871,9 +6658,9 @@ it says \"Who, me?\"")
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] VAT
@@ -6881,15 +6668,9 @@ it says \"Who, me?\"")
   :description "vat"
   :location LAB-BENCH
   :flags (TAKEBIT READBIT OPENBIT CONTBIT TRANSBIT SEARCHBIT)
-  :properties
-    (
-      (capacity 20)
-      (size 20)
-      (text "The text is a long chemical-sounding name typed on a
+  :properties (:capacity 20 :size 20 :text "The text is a long chemical-sounding name typed on a
 label affixed to the container. Below is written in pencil
-\"Elixir of Life.\"")
-      (contfcn "VAT-CONT-F")
-    )
+\"Elixir of Life.\"" :contfcn "VAT-CONT-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE VAT-F ()
@@ -6930,9 +6711,9 @@ label affixed to the container. Below is written in pencil
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] WALL
@@ -6947,18 +6728,15 @@ label affixed to the container. Below is written in pencil
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 (object WALL-SOCKET
   :description "wall socket"
   :location INF-3
-  :properties
-    (
-      (descfcn "WALL-SOCKET-DESC")
-    )
+  :properties (:descfcn "WALL-SOCKET-DESC")
 )
 
 ; [NEEDS-TRANSLATION] WEST-WALL
@@ -6973,19 +6751,16 @@ label affixed to the container. Below is written in pencil
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 
 ; [NEEDS-TRANSLATION] YAK-WINDOW
 (object YAK-WINDOW
   :description "YAK editor"
   :flags (NDESCBIT READBIT)
-  :properties
-    (
-      (text "\"YAK 5.3\"")
-    )
+  :properties (:text "\"YAK 5.3\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE YAK-WINDOW-F ()
@@ -7012,8 +6787,8 @@ label affixed to the container. Below is written in pencil
   ; >
   ; --- End ZIL Source ---
 
-  :behaviors
-    (; TODO: Translate from ZIL source above
-    )
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
 )
 

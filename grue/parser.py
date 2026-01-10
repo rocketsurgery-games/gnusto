@@ -263,40 +263,93 @@ class GrueParser:
         return exits
 
     def _parse_properties(self, expr: SExpr) -> dict[str, Any]:
-        """Parse properties like ((key-type electronic) (locked true))."""
+        """Parse properties.
+
+        Supports two formats:
+        - New (Clojure-style): (:capacity 20 :strength 10)
+        - Legacy: ((capacity 20) (strength 10))
+        """
         if not isinstance(expr, SList):
             raise GrueParseError(f"Expected properties list, got {expr}")
 
         props = {}
-        for item in expr:
-            if not isinstance(item, SList) or len(item) < 2:
-                raise GrueParseError(f"Expected (key value) property, got {item}")
+        items = list(expr.items)
 
-            key = self._expect_symbol(item[0], "property key")
-            value = self._sexpr_to_value(item[1])
-            props[key] = value
+        # Detect format: if first item is a Keyword, use new format
+        if items and isinstance(items[0], Keyword):
+            # New format: keyword-value pairs
+            i = 0
+            while i < len(items):
+                if isinstance(items[i], Keyword):
+                    key = items[i].name
+                    if i + 1 >= len(items):
+                        raise GrueParseError(f"Missing value for property :{key}")
+                    value = self._sexpr_to_value(items[i + 1])
+                    props[key] = value
+                    i += 2
+                else:
+                    i += 1
+        else:
+            # Legacy format: (key value) pairs
+            for item in expr:
+                if not isinstance(item, SList) or len(item) < 2:
+                    raise GrueParseError(f"Expected (key value) property, got {item}")
+
+                key = self._expect_symbol(item[0], "property key")
+                value = self._sexpr_to_value(item[1])
+                props[key] = value
 
         return props
 
     def _parse_behaviors(self, expr: SExpr) -> list[GrueBehavior]:
-        """Parse behaviors list."""
+        """Parse behaviors list.
+
+        Supports two formats:
+        - New (Clojure-style): (:verb (case ...) (case ...))
+        - Legacy: ((verb (case ...) (case ...)))
+        """
         if not isinstance(expr, SList):
             raise GrueParseError(f"Expected behaviors list, got {expr}")
 
         behaviors = []
-        for item in expr:
-            if not isinstance(item, SList) or len(item) < 2:
-                raise GrueParseError(f"Expected behavior form, got {item}")
+        items = list(expr.items)
+        i = 0
 
-            verb = self._expect_symbol(item[0], "behavior verb")
-            behavior = GrueBehavior(verb=verb)
+        while i < len(items):
+            item = items[i]
 
-            # Rest of items are case forms
-            for case_expr in item.items[1:]:
-                case = self._parse_case(case_expr)
-                behavior.cases.append(case)
+            # New format: :keyword followed by case(s)
+            if isinstance(item, Keyword):
+                verb = item.name
+                behavior = GrueBehavior(verb=verb)
+                i += 1
 
-            behaviors.append(behavior)
+                # Collect all case forms until next keyword or end
+                while i < len(items) and isinstance(items[i], SList):
+                    # Check if it's a case form
+                    if len(items[i]) >= 1 and isinstance(items[i][0], Symbol) and items[i][0].name == "case":
+                        case = self._parse_case(items[i])
+                        behavior.cases.append(case)
+                        i += 1
+                    else:
+                        break
+
+                behaviors.append(behavior)
+
+            # Legacy format: (verb (case ...) ...)
+            elif isinstance(item, SList) and len(item) >= 2:
+                verb = self._expect_symbol(item[0], "behavior verb")
+                behavior = GrueBehavior(verb=verb)
+
+                # Rest of items are case forms
+                for case_expr in item.items[1:]:
+                    case = self._parse_case(case_expr)
+                    behavior.cases.append(case)
+
+                behaviors.append(behavior)
+                i += 1
+            else:
+                i += 1  # Skip unknown items (e.g., comments)
 
         return behaviors
 

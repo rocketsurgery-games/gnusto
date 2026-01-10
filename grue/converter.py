@@ -499,9 +499,7 @@ class ZILtoGRUEConverter:
         self._emit(f'  :description "passage"')
         self._emit(f'  :flags (INVISIBLE)')
         self._emit(f'  :behaviors (')
-        self._emit(f'    (through')
-        self._emit(f'      (case true')
-        self._emit(f'        :outcome success))))')
+        self._emit(f'    :through (case true :outcome success)))')
         self._emit("")
 
     def _convert_object(self, obj: ZILObject) -> bool:
@@ -549,17 +547,17 @@ class ZILtoGRUEConverter:
                     extra_props.append((prop_name.lower(), val))
 
         if extra_props:
-            self._emit("  :properties")
-            self._emit("    (")
+            # Emit properties as flattened keyword-value pairs
+            prop_parts = []
             for prop_name, val in extra_props:
                 if isinstance(val, str):
-                    self._emit(f'      ({prop_name} "{self._escape_string(val)}")')
+                    prop_parts.append(f':{prop_name} "{self._escape_string(val)}"')
                 elif isinstance(val, list):
                     val_str = " ".join(str(v) for v in val)
-                    self._emit(f"      ({prop_name} {val_str})")
+                    prop_parts.append(f":{prop_name} ({val_str})")
                 else:
-                    self._emit(f"      ({prop_name} {val})")
-            self._emit("    )")
+                    prop_parts.append(f":{prop_name} {val}")
+            self._emit(f"  :properties ({' '.join(prop_parts)})")
 
         # If has action routine, include ZIL source as comment
         if has_action and action_routine in self.data.routines:
@@ -573,9 +571,9 @@ class ZILtoGRUEConverter:
                 self._emit(f"  ; {line}")
             self._emit("  ; --- End ZIL Source ---")
             self._emit("")
-            self._emit("  :behaviors")
-            self._emit("    (; TODO: Translate from ZIL source above")
-            self._emit("    )")
+            self._emit("  :behaviors (")
+            self._emit("    ; TODO: Translate from ZIL source above")
+            self._emit("  )")
 
         self._emit(")")
         self._emit("")

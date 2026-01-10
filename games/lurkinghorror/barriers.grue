@@ -14,9 +14,25 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
+
+; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-LAB down exit
+; Synthesized from PER routine: ALCHEMY-LAB-DOWN-EXIT
+; ZIL Source:
+; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
+;   <COND
+;       (<AND
+;         ,LAB-BENCH-MOVED?
+;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
+;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
+;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
+; >
+(object ALCHEMY-LAB-DOWN-EXIT-BARRIER
+  :location ALCHEMY-LAB
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-LAB north exit
 ; Synthesized from PER routine: ALCHEMY-LAB-EXIT
@@ -38,29 +54,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
-
-; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-LAB down exit
-; Synthesized from PER routine: ALCHEMY-LAB-DOWN-EXIT
-; ZIL Source:
-; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
-;   <COND
-;       (<AND
-;         ,LAB-BENCH-MOVED?
-;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
-;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
-;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
-; >
-(object ALCHEMY-LAB-DOWN-EXIT-BARRIER
-  :location ALCHEMY-LAB
-  :description "passage"
-  :flags (INVISIBLE)
-  :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for BRICK-TUNNEL up exit
 ; Synthesized from PER routine: BRICK-TUNNEL-EXIT
@@ -76,11 +70,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for BROWN-ROOF in exit
+; [NEEDS-TRANSLATION] Barrier object for BROWN-ROOF east exit
 ; Synthesized from PER routine: BROWN-ROOF-EXIT
 ; ZIL Source:
 ; <ROUTINE BROWN-ROOF-EXIT ()
@@ -96,11 +88,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for COMP-CENTER in exit
+; [NEEDS-TRANSLATION] Barrier object for COMP-CENTER south exit
 ; Synthesized from PER routine: CS-ELEVATOR-ENTER
 ; ZIL Source:
 ; <ROUTINE CS-ELEVATOR-ENTER ()
@@ -128,11 +118,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for CS-2ND in exit
+; [NEEDS-TRANSLATION] Barrier object for CS-2ND south exit
 ; Synthesized from PER routine: CS-ELEVATOR-ENTER
 ; ZIL Source:
 ; <ROUTINE CS-ELEVATOR-ENTER ()
@@ -160,11 +148,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for CS-3RD in exit
+; [NEEDS-TRANSLATION] Barrier object for CS-3RD south exit
 ; Synthesized from PER routine: CS-ELEVATOR-ENTER
 ; ZIL Source:
 ; <ROUTINE CS-ELEVATOR-ENTER ()
@@ -192,11 +178,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for CS-BASEMENT in exit
+; [NEEDS-TRANSLATION] Barrier object for CS-BASEMENT south exit
 ; Synthesized from PER routine: CS-ELEVATOR-ENTER
 ; ZIL Source:
 ; <ROUTINE CS-ELEVATOR-ENTER ()
@@ -224,9 +208,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for CS-BASEMENT down exit
 ; Synthesized from PER routine: CS-PIT-ENTER
@@ -247,9 +229,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for CS-ELEVATOR-ROOM north exit
 ; Synthesized from PER routine: CS-ELEVATOR-EXIT
@@ -270,11 +250,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for DEAD-STORAGE in exit
+; [NEEDS-TRANSLATION] Barrier object for DEAD-STORAGE east exit
 ; Synthesized from PER routine: STORAGE-EXIT
 ; ZIL Source:
 ; <ROUTINE STORAGE-EXIT ()
@@ -296,9 +274,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for ELEVATOR-PIT out exit
 ; Synthesized from PER routine: PIT-DOOR-EXIT
@@ -331,9 +307,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for INF-1 east exit
 ; Synthesized from PER routine: WAXER-EXIT
@@ -375,9 +349,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for INF-2 east exit
 ; Synthesized from PER routine: WAXER-EXIT
@@ -419,11 +391,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for INF-3 out exit
+; [NEEDS-TRANSLATION] Barrier object for INF-3 south exit
 ; Synthesized from PER routine: GREAT-COURT-EXIT
 ; ZIL Source:
 ; <ROUTINE GREAT-COURT-EXIT ()
@@ -440,9 +410,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for INF-3 east exit
 ; Synthesized from PER routine: WAXER-EXIT
@@ -484,9 +452,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for INF-4 east exit
 ; Synthesized from PER routine: WAXER-EXIT
@@ -528,11 +494,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for INF-5 north exit
+; [NEEDS-TRANSLATION] Barrier object for INF-5 south exit
 ; Synthesized from PER routine: WAXER-EXIT
 ; ZIL Source:
 ; <ROUTINE WAXER-EXIT ()
@@ -572,11 +536,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for INSIDE-DOME out exit
+; [NEEDS-TRANSLATION] Barrier object for INSIDE-DOME down exit
 ; Synthesized from PER routine: INSIDE-DOME-EXIT
 ; ZIL Source:
 ; <ROUTINE INSIDE-DOME-EXIT ()
@@ -589,9 +551,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for LARGE-CHAMBER down exit
 ; Synthesized from PER routine: LAIR-EXIT
@@ -618,9 +578,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL west exit
 ; Synthesized from PER routine: RATS-EXIT
@@ -646,9 +604,24 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
+
+; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL-EAST south exit
+; Synthesized from PER routine: ELEVATOR-PIT-ENTER
+; ZIL Source:
+; <ROUTINE ELEVATOR-PIT-ENTER ()
+;   <COND
+;       (,BRICK-WALL-FLAG <COND
+;         (<ZERO? ,ELEVATOR-LOC> <TELL "A " 'ELEVATOR-FLOOR " blocks your way." CR> <RFALSE>)
+;         (ELSE ,ELEVATOR-PIT)>)
+;       (ELSE <TELL "You are trying to walk through a brick wall." CR> <RFALSE>)>
+; >
+(object ELEVATOR-PIT-ENTER-BARRIER
+  :location STEAM-TUNNEL-EAST
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL-EAST west exit
 ; Synthesized from PER routine: RATS-EXIT
@@ -674,28 +647,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
-
-; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL-EAST south exit
-; Synthesized from PER routine: ELEVATOR-PIT-ENTER
-; ZIL Source:
-; <ROUTINE ELEVATOR-PIT-ENTER ()
-;   <COND
-;       (,BRICK-WALL-FLAG <COND
-;         (<ZERO? ,ELEVATOR-LOC> <TELL "A " 'ELEVATOR-FLOOR " blocks your way." CR> <RFALSE>)
-;         (ELSE ,ELEVATOR-PIT)>)
-;       (ELSE <TELL "You are trying to walk through a brick wall." CR> <RFALSE>)>
-; >
-(object ELEVATOR-PIT-ENTER-BARRIER
-  :location STEAM-TUNNEL-EAST
-  :description "passage"
-  :flags (INVISIBLE)
-  :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for STORAGE-ROOM down exit
 ; Synthesized from PER routine: MANHOLE-EXIT
@@ -714,9 +666,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for SUB-BASEMENT nw exit
 ; Synthesized from PER routine: TOMB-SQUEEZE
@@ -734,11 +684,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for TERMINAL-ROOM out exit
+; [NEEDS-TRANSLATION] Barrier object for TERMINAL-ROOM south exit
 ; Synthesized from PER routine: HACKER-EXIT
 ; ZIL Source:
 ; <ROUTINE HACKER-EXIT ()
@@ -756,11 +704,9 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for TOMB out exit
+; [NEEDS-TRANSLATION] Barrier object for TOMB se exit
 ; Synthesized from PER routine: TOMB-SQUEEZE
 ; ZIL Source:
 ; <ROUTINE TOMB-SQUEEZE ("AUX" TMP)
@@ -776,9 +722,27 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
+
+; [NEEDS-TRANSLATION] Barrier object for TUNNEL east exit
+; Synthesized from PER routine: STEAM-EXIT
+; ZIL Source:
+; <ROUTINE STEAM-EXIT ()
+;   <COND
+;       (<FSET? ,PRESSURE-VALVE ,OPENBIT> <COND
+;         (<WINNER? ,PLAYER> <TELL
+;           "You would be plunging into scalding steam. Not such a smart idea, if
+;   you ask me."
+;           CR>)> <RFALSE>)
+;       (<HERE? ,TUNNEL> ,TUNNEL-EAST)
+;       (ELSE ,TUNNEL)>
+; >
+(object STEAM-EXIT-BARRIER
+  :location TUNNEL
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for TUNNEL west exit
 ; Synthesized from PER routine: RATS-EXIT
@@ -804,31 +768,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
-
-; [NEEDS-TRANSLATION] Barrier object for TUNNEL east exit
-; Synthesized from PER routine: STEAM-EXIT
-; ZIL Source:
-; <ROUTINE STEAM-EXIT ()
-;   <COND
-;       (<FSET? ,PRESSURE-VALVE ,OPENBIT> <COND
-;         (<WINNER? ,PLAYER> <TELL
-;           "You would be plunging into scalding steam. Not such a smart idea, if
-;   you ask me."
-;           CR>)> <RFALSE>)
-;       (<HERE? ,TUNNEL> ,TUNNEL-EAST)
-;       (ELSE ,TUNNEL)>
-; >
-(object STEAM-EXIT-BARRIER
-  :location TUNNEL
-  :description "passage"
-  :flags (INVISIBLE)
-  :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for TUNNEL-EAST west exit
 ; Synthesized from PER routine: RATS-EXIT
@@ -854,9 +794,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for TUNNEL-WEST west exit
 ; Synthesized from PER routine: RATS-EXIT
@@ -882,9 +820,7 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
 ; [NEEDS-TRANSLATION] Barrier object for UNDER-ALCHEMY-LAB up exit
 ; Synthesized from PER routine: UNDER-ALCHEMY-LAB-EXIT
@@ -901,7 +837,5 @@
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case true
-        :outcome success))))
+    :through (case true :outcome success)))
 
