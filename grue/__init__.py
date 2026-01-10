@@ -70,6 +70,14 @@ from .testing import (
     pytest_harness,
 )
 
+from .test_dsl import (
+    TestRunner,
+    TestResult,
+    TestSuiteResult,
+    run_tests,
+    run_tests_from_string,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -113,10 +121,16 @@ __all__ = [
     "ConversionResult",
     "ast_to_zil",
     "routine_to_zil",
-    # Testing
+    # Testing (Python)
     "GrueTestHarness",
     "GrueTestCase",
     "StateSnapshot",
     "ActionTrace",
     "pytest_harness",
+    # Testing (Grue-native)
+    "TestRunner",
+    "TestResult",
+    "TestSuiteResult",
+    "run_tests",
+    "run_tests_from_string",
 ]
