@@ -153,6 +153,7 @@ class ExprEvaluator:
             "in?": self._eval_in,
             "room?": self._eval_room,
             "in-room?": self._eval_in_room,
+            "room-has-flag?": self._eval_room_has_flag,
 
             # Collections/quantifiers
             "any": self._eval_any,
@@ -355,6 +356,15 @@ class ExprEvaluator:
                 return True
 
         return False
+
+    def _eval_room_has_flag(self, form: SList) -> bool:
+        """(room-has-flag? FLAG) - check if player's current room has the specified flag."""
+        if len(form) != 2:
+            raise EvalError(f"'room-has-flag?' expects 1 argument, got {len(form) - 1}")
+
+        flag = self.eval(form[1])
+        player_room = self.state.get_player_location()
+        return self.state.get_object_flag(player_room, flag)
 
     # === Collections/quantifiers ===
 

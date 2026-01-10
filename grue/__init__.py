@@ -46,6 +46,14 @@ from .parser import (
     parse_grue,
 )
 
+from .runtime import (
+    GrueRuntime,
+    GameState,
+    ObjectState,
+    ActionResult,
+    GrueStateAdapter,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -77,4 +85,10 @@ __all__ = [
     "GrueDefeat",
     "load_grue",
     "parse_grue",
+    # Runtime
+    "GrueRuntime",
+    "GameState",
+    "ObjectState",
+    "ActionResult",
+    "GrueStateAdapter",
 ]
