@@ -431,6 +431,147 @@ class TestRealWorldScenarios:
         assert eval_predicate(light_check, state) is False
 
 
+class TestUserDefinedFunctions:
+    """Test user-defined functions via defn."""
+
+    def test_define_and_call_no_args(self):
+        """Define a zero-argument function and call it."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        # Define function
+        executor.execute(parse("(defn at-terminal? () (= (loc PLAYER) TERMINAL-ROOM))"))
+
+        # Call it via the evaluator (shares function registry)
+        result = executor._predicates.eval(parse("(at-terminal?)"))
+        assert result is True
+
+    def test_define_and_call_with_args(self):
+        """Define a function with arguments."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        # Define function that checks if an object has a specific flag
+        executor.execute(parse("(defn is-takeable? (obj) (has-flag obj TAKEBIT))"))
+
+        # Call with different objects
+        assert executor._predicates.eval(parse("(is-takeable? FLASHLIGHT)")) is True
+        assert executor._predicates.eval(parse("(is-takeable? HACKER)")) is False
+
+    def test_define_with_multiple_args(self):
+        """Define function with multiple arguments."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        # Define function that checks if object is at location
+        # Note: use 'place' not 'loc' to avoid shadowing builtin (loc obj)
+        executor.execute(parse("(defn obj-at? (obj place) (= (loc obj) place))"))
+
+        # Call with arguments
+        assert executor._predicates.eval(parse("(obj-at? FLASHLIGHT PLAYER)")) is True
+        assert executor._predicates.eval(parse("(obj-at? DOOR TERMINAL-ROOM)")) is True
+        assert executor._predicates.eval(parse("(obj-at? FLASHLIGHT HALLWAY)")) is False
+
+    def test_function_body_with_complex_expression(self):
+        """Function body can be complex expressions."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        # Define function with and/or/not
+        executor.execute(parse("""
+            (defn can-take? (obj)
+              (and (has-flag obj TAKEBIT)
+                   (visible? obj)
+                   (not (held? obj))))
+        """))
+
+        # CHAIR can be taken (takeable, visible in room, not held)
+        assert executor._predicates.eval(parse("(can-take? CHAIR)")) is True
+        # FLASHLIGHT already held
+        assert executor._predicates.eval(parse("(can-take? FLASHLIGHT)")) is False
+
+    def test_functions_can_call_other_functions(self):
+        """User-defined functions can call other user-defined functions."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        # Define helper
+        executor.execute(parse("(defn is-person? (obj) (has-flag obj PERSONBIT))"))
+        # Define function that uses helper
+        executor.execute(parse("(defn is-person-here? (obj) (and (is-person? obj) (here? obj)))"))
+
+        assert executor._predicates.eval(parse("(is-person-here? HACKER)")) is True
+        assert executor._predicates.eval(parse("(is-person-here? CHAIR)")) is False
+
+    def test_wrong_arity_error(self):
+        """Calling function with wrong number of arguments raises error."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        executor.execute(parse("(defn two-args (a b) (= a b))"))
+
+        with pytest.raises(EvalError) as excinfo:
+            executor._predicates.eval(parse("(two-args 1)"))
+        assert "expects 2 arguments" in str(excinfo.value)
+
+        with pytest.raises(EvalError) as excinfo:
+            executor._predicates.eval(parse("(two-args 1 2 3)"))
+        assert "expects 2 arguments" in str(excinfo.value)
+
+    def test_defn_name_must_be_symbol(self):
+        """defn name must be a symbol."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        with pytest.raises(EvalError) as excinfo:
+            executor.execute(parse("(defn 123 () true)"))
+        assert "must be a symbol" in str(excinfo.value)
+
+    def test_defn_params_must_be_list(self):
+        """defn params must be a list."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        with pytest.raises(EvalError) as excinfo:
+            executor.execute(parse("(defn foo x true)"))
+        assert "params must be a list" in str(excinfo.value)
+
+    def test_defn_param_must_be_symbol(self):
+        """defn parameters must be symbols."""
+        state = MockWorldState()
+        executor = EffectExecutor(state)
+
+        with pytest.raises(EvalError) as excinfo:
+            executor.execute(parse("(defn foo (123) true)"))
+        assert "parameter must be a symbol" in str(excinfo.value)
+
+    def test_define_function_directly(self):
+        """Test define_function method on ExprEvaluator."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+
+        # Define function directly
+        evaluator.define_function("always-true", [], parse("true"))
+        evaluator.define_function("is-lit", ["obj"], parse("(has-flag obj LIGHTBIT)"))
+
+        assert evaluator.eval(parse("(always-true)")) is True
+        assert evaluator.eval(parse("(is-lit FLASHLIGHT)")) is True
+        assert evaluator.eval(parse("(is-lit KEY)")) is False
+
+    def test_shared_function_registry(self):
+        """Executor and evaluator share function registry."""
+        state = MockWorldState()
+        functions = {}
+        executor = EffectExecutor(state, functions)
+        evaluator = ExprEvaluator(state, functions)
+
+        # Define via executor
+        executor.execute(parse("(defn test-fn () true)"))
+
+        # Callable via evaluator
+        assert evaluator.eval(parse("(test-fn)")) is True
+
+
 class TestErrorHandling:
     """Test error conditions."""
 

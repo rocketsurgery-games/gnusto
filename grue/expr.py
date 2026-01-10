@@ -4,6 +4,7 @@ Expression evaluator.
 This module provides:
 - Predicate evaluation (boolean expressions)
 - Effect execution (state mutations)
+- User-defined functions via (defn name (args) body)
 - Type checking for expressions
 
 Built-in Predicates:
@@ -35,6 +36,7 @@ Built-in Effects:
     (inc! GLOBAL AMT)         - Increment global by amount
     (seq EFFECT ...)          - Execute effects in order
     (when COND EFFECT)        - Conditional effect
+    (defn NAME (PARAMS) BODY) - Define user function
 """
 
 from dataclasses import dataclass
@@ -122,10 +124,16 @@ class ExprEvaluator:
 
     This evaluator handles both predicates (returning bool)
     and value expressions (returning any type).
+
+    Supports user-defined functions via define_function():
+        evaluator.define_function("double", ["x"], parse("(+ x x)"))
+        evaluator.eval(parse("(double 5)"))  # Returns 10
     """
 
-    def __init__(self, state: WorldState):
+    def __init__(self, state: WorldState, functions: dict[str, tuple[list[str], SExpr]] | None = None):
         self.state = state
+        # User-defined functions: name -> (params, body)
+        self._functions: dict[str, tuple[list[str], SExpr]] = functions if functions is not None else {}
         # Map of special form names to handlers
         self._builtins: dict[str, Callable[..., Any]] = {
             # Boolean operators
@@ -204,7 +212,42 @@ class ExprEvaluator:
         if name in self._builtins:
             return self._builtins[name](form)
 
+        # Check user-defined functions
+        if name in self._functions:
+            return self._call_function(name, form)
+
         raise EvalError(f"Unknown function: {name}")
+
+    def define_function(self, name: str, params: list[str], body: SExpr) -> None:
+        """
+        Define a user function.
+
+        Args:
+            name: Function name
+            params: List of parameter names
+            body: S-expression for function body
+        """
+        self._functions[name] = (params, body)
+
+    def _call_function(self, name: str, form: SList) -> Any:
+        """Call a user-defined function with argument binding."""
+        params, body = self._functions[name]
+        args = form.items[1:]
+
+        if len(args) != len(params):
+            raise EvalError(
+                f"Function '{name}' expects {len(params)} arguments, got {len(args)}"
+            )
+
+        # Evaluate arguments
+        arg_values = [self.eval(arg) for arg in args]
+
+        # Substitute parameters in body
+        result_expr = body
+        for param, value in zip(params, arg_values):
+            result_expr = self._substitute(result_expr, param, value)
+
+        return self.eval(result_expr)
 
     # === Boolean operators ===
 
@@ -473,11 +516,21 @@ class ExprEvaluator:
 class EffectExecutor:
     """
     Execute effects (state mutations) against a world state.
+
+    Supports user-defined functions via (defn name (params) body):
+        executor.execute(parse("(defn at-lobby? () (= (loc PLAYER) LOBBY))"))
+        evaluator.eval(parse("(at-lobby?)"))  # Uses shared function registry
     """
 
-    def __init__(self, state: MutableWorldState):
+    def __init__(
+        self,
+        state: MutableWorldState,
+        functions: dict[str, tuple[list[str], SExpr]] | None = None
+    ):
         self.state = state
-        self._predicates = ExprEvaluator(state)
+        # Shared function registry between evaluator and executor
+        self._functions: dict[str, tuple[list[str], SExpr]] = functions if functions is not None else {}
+        self._predicates = ExprEvaluator(state, self._functions)
         self._effects: dict[str, Callable[..., None]] = {
             "move!": self._exec_move,
             "set-flag!": self._exec_set_flag,
@@ -487,6 +540,7 @@ class EffectExecutor:
             "inc!": self._exec_inc,
             "seq": self._exec_seq,
             "when": self._exec_when,
+            "defn": self._exec_defn,
         }
 
     def execute(self, expr: SExpr) -> None:
@@ -585,6 +639,41 @@ class EffectExecutor:
 
         if self._eval(condition):
             self.execute(effect)
+
+    def _exec_defn(self, form: SList) -> None:
+        """
+        (defn NAME (PARAMS) BODY)
+
+        Define a user function that can be called in expressions.
+
+        Example:
+            (defn at-lobby? () (= (loc PLAYER) LOBBY))
+            (defn door-open? (door) (not (has-flag door LOCKED)))
+        """
+        if len(form) != 4:
+            raise EvalError(f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}")
+
+        # Extract function name
+        name_expr = form[1]
+        if not isinstance(name_expr, Symbol):
+            raise EvalError(f"'defn' name must be a symbol, got: {name_expr}")
+        name = name_expr.name
+
+        # Extract parameter list
+        params_expr = form[2]
+        if not isinstance(params_expr, SList):
+            raise EvalError(f"'defn' params must be a list, got: {params_expr}")
+        params: list[str] = []
+        for p in params_expr.items:
+            if not isinstance(p, Symbol):
+                raise EvalError(f"'defn' parameter must be a symbol, got: {p}")
+            params.append(p.name)
+
+        # Body is kept as-is (not evaluated until called)
+        body = form[3]
+
+        # Register in shared function dictionary
+        self._functions[name] = (params, body)
 
 
 def eval_predicate(expr: str | SExpr, state: WorldState) -> bool:
