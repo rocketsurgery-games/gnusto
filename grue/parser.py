@@ -56,6 +56,7 @@ class GrueRoom:
     """A room definition."""
     name: str
     description: str = ""
+    ldesc: str = ""  # Long description
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -66,6 +67,8 @@ class GrueObject:
     """An object definition."""
     name: str
     description: str = ""
+    fdesc: str = ""  # First description (before object is moved)
+    ldesc: str = ""  # Long description
     location: str | None = None
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -182,6 +185,8 @@ class GrueParser:
 
         if "description" in kwargs:
             room.description = self._expect_string(kwargs["description"], "room description")
+        if "ldesc" in kwargs:
+            room.ldesc = self._expect_string(kwargs["ldesc"], "room ldesc")
         if "flags" in kwargs:
             room.flags = self._parse_flags(kwargs["flags"])
         if "exits" in kwargs:
@@ -203,6 +208,10 @@ class GrueParser:
 
         if "description" in kwargs:
             obj.description = self._expect_string(kwargs["description"], "object description")
+        if "fdesc" in kwargs:
+            obj.fdesc = self._expect_string(kwargs["fdesc"], "object fdesc")
+        if "ldesc" in kwargs:
+            obj.ldesc = self._expect_string(kwargs["ldesc"], "object ldesc")
         if "location" in kwargs:
             obj.location = self._expect_symbol(kwargs["location"], "object location")
         if "flags" in kwargs:
