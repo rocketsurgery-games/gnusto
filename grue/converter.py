@@ -246,6 +246,11 @@ class ZILtoGRUEConverter:
         if desc:
             self._emit(f'  :description "{self._escape_string(str(desc))}"')
 
+        # Long description
+        ldesc = room.get_property_value("LDESC")
+        if ldesc:
+            self._emit(f'  :ldesc "{self._escape_string(str(ldesc))}"')
+
         # Flags
         flags = room.get_property_values("FLAGS")
         if flags:
@@ -413,6 +418,16 @@ class ZILtoGRUEConverter:
         desc = obj.get_property_value("DESC")
         if desc:
             self._emit(f'  :description "{self._escape_string(str(desc))}"')
+
+        # First description (shown before object is moved/taken)
+        fdesc = obj.get_property_value("FDESC")
+        if fdesc:
+            self._emit(f'  :fdesc "{self._escape_string(str(fdesc))}"')
+
+        # Long description
+        ldesc = obj.get_property_value("LDESC")
+        if ldesc:
+            self._emit(f'  :ldesc "{self._escape_string(str(ldesc))}"')
 
         # Location
         loc = obj.get_property_value("IN")
