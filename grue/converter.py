@@ -106,6 +106,15 @@ def routine_to_zil(routine: Routine) -> str:
 
 
 @dataclass
+class ExitInfo:
+    """Information about a room exit."""
+    direction: str
+    to: str
+    via: str | None = None  # Door object for IF X IS OPEN
+    per: str | None = None  # PER routine name
+
+
+@dataclass
 class ConversionResult:
     """Result of ZIL to GRUE conversion."""
     grue_source: str
@@ -217,6 +226,13 @@ class ZILtoGRUEConverter:
 
     def _convert_room(self, room: ZILObject) -> None:
         """Convert a room to GRUE."""
+        exits = self._extract_exits(room)
+        per_routines = [e.per for e in exits if e.per]
+
+        # Add [NEEDS-TRANSLATION] marker if room has PER exits
+        if per_routines:
+            self._emit(f"; [NEEDS-TRANSLATION] Room {room.name} has PER exits")
+
         self._emit(f"(room {room.name}")
 
         # Description
@@ -231,19 +247,37 @@ class ZILtoGRUEConverter:
             self._emit(f"  :flags ({flag_str})")
 
         # Exits
-        exits = self._extract_exits(room)
         if exits:
             self._emit("  :exits")
             self._emit("    (")
-            for direction, dest in exits:
-                self._emit(f"      ({direction} :to {dest})")
+            for exit_info in exits:
+                exit_parts = [f"{exit_info.direction} :to {exit_info.to}"]
+                if exit_info.via:
+                    exit_parts.append(f":via {exit_info.via}")
+                if exit_info.per:
+                    exit_parts.append(f":per {exit_info.per}")
+                self._emit(f"      ({' '.join(exit_parts)})")
             self._emit("    )")
+
+        # Include PER routine sources as comments (deduplicated)
+        if per_routines:
+            unique_routines = list(dict.fromkeys(per_routines))  # Preserve order, dedupe
+            self._emit("")
+            self._emit("  ; --- PER Exit Routines ---")
+            for routine_name in unique_routines:
+                routine = self.data.routines.get(routine_name)
+                if routine:
+                    zil_source = routine_to_zil(routine)
+                    for line in zil_source.split("\n"):
+                        self._emit(f"  ; {line}")
+                    self._emit("  ;")
+            self._emit("  ; --- End PER Exit Routines ---")
 
         self._emit(")")
         self._emit("")
 
-    def _extract_exits(self, room: ZILObject) -> list[tuple[str, str]]:
-        """Extract simple exits from a room."""
+    def _extract_exits(self, room: ZILObject) -> list[ExitInfo]:
+        """Extract exits from a room, including conditional and PER exits."""
         exits = []
 
         for direction in DIRECTION_PROPERTIES:
@@ -251,7 +285,8 @@ class ZILtoGRUEConverter:
             if not prop or not prop.values:
                 continue
 
-            first_val = prop.values[0]
+            values = prop.values
+            first_val = values[0]
 
             # Skip IN if it's the container property
             if direction == "IN":
@@ -260,21 +295,93 @@ class ZILtoGRUEConverter:
 
             direction_lower = direction.lower()
 
-            # Simple exit: (NORTH TO ROOM-NAME)
-            if first_val == "TO" and len(prop.values) >= 2:
-                dest = str(prop.values[1])
-                exits.append((direction_lower, dest))
-            # Direct room reference
+            # Pattern: (DIRECTION TO ROOM-NAME)
+            if first_val == "TO" and len(values) >= 2:
+                dest = str(values[1])
+                via = None
+
+                # Check for conditional: (DIRECTION TO ROOM IF DOOR IS OPEN)
+                # values = ['TO', 'ROOM', 'IF', 'DOOR', 'IS', 'OPEN']
+                if len(values) >= 6 and values[2] == "IF" and values[4] == "IS":
+                    door = str(values[3])
+                    state = str(values[5])
+                    if state == "OPEN":
+                        via = door
+                    else:
+                        self.warnings.append(
+                            f"Room {room.name}: {direction} has condition '{door} IS {state}' (non-OPEN not supported)"
+                        )
+
+                exits.append(ExitInfo(direction=direction_lower, to=dest, via=via))
+
+            # Pattern: (DIRECTION ROOM-NAME) - direct reference
             elif isinstance(first_val, str) and first_val in self.data.rooms:
-                exits.append((direction_lower, first_val))
-            # PER routine - add warning
-            elif first_val == "PER":
-                routine = prop.values[1] if len(prop.values) > 1 else "?"
+                exits.append(ExitInfo(direction=direction_lower, to=first_val))
+
+            # Pattern: (DIRECTION PER ROUTINE)
+            elif first_val == "PER" and len(values) >= 2:
+                routine_name = str(values[1])
+                # Try to find destination from routine if it's simple
+                dest = self._infer_per_destination(routine_name)
+                exits.append(ExitInfo(direction=direction_lower, to=dest, per=routine_name))
+
+            # Pattern: (DIRECTION NEXIT) - blocked exit
+            elif first_val == "NEXIT":
+                # NEXIT means "no exit in this direction" - skip it
+                pass
+
+            # Pattern: (DIRECTION SORRY ...) - blocked with message
+            elif first_val == "SORRY":
+                # SORRY is a blocked exit with a message - skip for now
+                pass
+
+            # Pattern: (DIRECTION "message") - blocked with message string
+            # Strings with spaces are messages, not room names
+            elif isinstance(first_val, str) and " " in first_val:
+                # This is a blocked exit with a message - skip for now
+                pass
+            elif len(values) == 1 and first_val not in self.data.rooms:
+                # Single value that's not a room - likely a blocked message or constant
+                pass
+
+            else:
                 self.warnings.append(
-                    f"Room {room.name}: {direction} uses PER {routine} (needs manual handling)"
+                    f"Room {room.name}: {direction} has unrecognized pattern: {values[:3]}..."
                 )
 
         return exits
+
+    def _infer_per_destination(self, routine_name: str) -> str:
+        """Try to infer destination from a PER routine. Returns '?' if unknown."""
+        routine = self.data.routines.get(routine_name)
+        if not routine:
+            return "?"
+
+        # Look for simple patterns like <ELSE ,ROOM-NAME> at end of routine
+        # This is a heuristic - complex routines may have multiple destinations
+        for form in reversed(routine.body):
+            dest = self._find_room_in_form(form)
+            if dest:
+                return dest
+
+        return "?"
+
+    def _find_room_in_form(self, node: ASTNode) -> str | None:
+        """Recursively search for a room reference in a form."""
+        if isinstance(node, Atom):
+            # Check if this atom is a room reference (with or without comma prefix)
+            name = node.name
+            if name.startswith(","):
+                name = name[1:]
+            if name in self.data.rooms:
+                return name
+        elif isinstance(node, (Form, List)):
+            # Search through Form and List elements
+            for elem in node.elements:
+                result = self._find_room_in_form(elem)
+                if result:
+                    return result
+        return None
 
     def _convert_object(self, obj: ZILObject) -> bool:
         """Convert an object to GRUE. Returns True if it has an ACTION routine."""
