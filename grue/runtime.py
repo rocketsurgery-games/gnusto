@@ -228,11 +228,14 @@ class GrueRuntime:
         return ""
 
     def get_room_description(self, room_name: str | None = None) -> str:
-        """Get a room's description."""
+        """Get a room's description. Returns ldesc if available, otherwise description."""
         if room_name is None:
             room_name = self.get_player_location()
         room = self.world.rooms.get(room_name)
         if room:
+            # Prefer ldesc (long description) if available
+            if room.ldesc:
+                return room.ldesc
             return room.description
         return ""
 
