@@ -1,5 +1,5 @@
 """
-Expression evaluator for the World DSL.
+Expression evaluator.
 
 This module provides:
 - Predicate evaluation (boolean expressions)

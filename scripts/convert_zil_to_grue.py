@@ -31,7 +31,7 @@ def main():
     # Load game
     print(f"Loading {args.game_path}...", file=sys.stderr)
     try:
-        data, world = load_game(args.game_path)
+        data = load_game(args.game_path)
     except Exception as e:
         print(f"Error loading game: {e}", file=sys.stderr)
         sys.exit(1)

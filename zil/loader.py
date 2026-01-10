@@ -10,7 +10,6 @@ from pathlib import Path
 from .ast import ASTNode, Form, String
 from .parser import parse
 from .extractor import extract_game_data, GameData
-from .world import World
 
 
 def parse_file(filepath: Path | str) -> list[ASTNode]:
@@ -109,7 +108,7 @@ def parse_with_includes(
 def load_game(
     path: Path | str,
     use_includes: bool = True,
-) -> tuple[GameData, World]:
+) -> GameData:
     """
     Load a complete game from ZIL source.
 
@@ -119,11 +118,11 @@ def load_game(
                      If False or path is a directory, just load all .zil files.
 
     Returns:
-        Tuple of (GameData, World) ready to use.
+        GameData extracted from the ZIL source.
 
     Example:
-        data, world = load_game("infocom/lurkinghorror")
-        print(world.describe_room())
+        data = load_game("infocom/lurkinghorror")
+        print(f"Loaded {len(data.rooms)} rooms")
     """
     path = Path(path)
 
@@ -152,6 +151,4 @@ def load_game(
     else:
         raise FileNotFoundError(f"Path not found: {path}")
 
-    data = extract_game_data(ast)
-    world = World(data)
-    return data, world
+    return extract_game_data(ast)

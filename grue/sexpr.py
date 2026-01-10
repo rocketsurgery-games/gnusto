@@ -1,5 +1,5 @@
 """
-S-expression parser for the World DSL.
+S-expression parser.
 
 Grammar (EBNF):
     sexpr      ::= atom | string | number | list

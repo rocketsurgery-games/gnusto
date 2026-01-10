@@ -1,4 +1,4 @@
-"""Tests for DSL expression evaluator."""
+"""Tests for expression evaluator."""
 
 import pytest
 from grue.expr import (
