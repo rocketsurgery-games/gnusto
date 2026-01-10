@@ -21,11 +21,12 @@
   :flags (ONBIT)
   :exits
     (
-      (east :to CS-BASEMENT)
       (west :to AERO-STAIRS)
+      (east :to CS-BASEMENT)
     )
 )
 
+; [NEEDS-TRANSLATION] Room AERO-LOBBY: ACTION AERO-LOBBY-F
 (room AERO-LOBBY
   :description "Aero Lobby"
   :flags (ONBIT)
@@ -34,6 +35,17 @@
       (south :to INF-1)
       (down :to AERO-STAIRS)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE AERO-LOBBY-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         ,THE-LOBBY
+  ;         "Aeronautical Engineering Building. Stairs
+  ;   lead down and a corridor heads south towards the main building."
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room AERO-STAIRS
@@ -42,12 +54,12 @@
   :exits
     (
       (up :to AERO-LOBBY)
-      (down :to SUB-BASEMENT)
       (east :to AERO-BASEMENT)
+      (down :to SUB-BASEMENT)
     )
 )
 
-; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT has PER exits
+; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT: ACTION ALCHEMY-DEPT-F, PER exits
 (room ALCHEMY-DEPT
   :description "Department of Alchemy"
   :flags (ONBIT)
@@ -68,27 +80,36 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE ALCHEMY-DEPT-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This office is clinically clean, shiny, and modern. It looks like
+  ;   something out of a science fiction movie. "> <COND
+  ;         (<FSET? ,ALCHEMY-DOOR ,OPENBIT> <TELL "An open">)
+  ;         (ELSE <TELL "A closed">)> <TELL
+  ;         " door to the north leads
+  ;   back into the corridor and an archway opens to the south."
+  ;         CR>)
+  ;       (<RARG? ENTER> <COND
+  ;         (<AND
+  ;           <EQUAL? ,OHERE ,CHEMISTRY-BLDG>
+  ;           <NOT ,PROF-DEAD?>> <FCLEAR ,ALCHEMY-DOOR ,LOCKED> <FCLEAR ,ALCHEMY-DOOR ,OPENBIT>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room ALCHEMY-LAB has PER exits
+; [NEEDS-TRANSLATION] Room ALCHEMY-LAB: ACTION ALCHEMY-LAB-F, PER exits
 (room ALCHEMY-LAB
   :description "Lab"
   :exits
     (
-      (down :to UNDER-ALCHEMY-LAB :per ALCHEMY-LAB-DOWN-EXIT)
       (north :to ALCHEMY-DEPT :per ALCHEMY-LAB-EXIT)
+      (down :to UNDER-ALCHEMY-LAB :per ALCHEMY-LAB-DOWN-EXIT)
     )
 
   ; --- PER Exit Routines ---
-  ; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
-  ;   <COND
-  ;       (<AND
-  ;         ,LAB-BENCH-MOVED?
-  ;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
-  ;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
-  ;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
-  ; >
-  ;
   ; <ROUTINE ALCHEMY-LAB-EXIT ()
   ;   <COND
   ;       (,TIED-UP? <COND
@@ -102,9 +123,60 @@
   ;       (ELSE <MOVE ,WINNER ,HERE> ,ALCHEMY-DEPT)>
   ; >
   ;
+  ; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
+  ;   <COND
+  ;       (<AND
+  ;         ,LAB-BENCH-MOVED?
+  ;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
+  ;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
+  ;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
+  ; >
+  ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE ALCHEMY-LAB-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <COND
+  ;         (<NOT ,PROF-DEAD?> <TELL
+  ;           "The lab is an ultramodern, fully equipped chemistry lab. Unfortunately,
+  ;   or perhaps fortunately, you aren't a chemistry major, so the equipment
+  ;   might as well be magical.">)
+  ;         (ELSE <TELL
+  ;           "The lab is a shambles. It looks like something red and sticky has
+  ;   been spread over the walls, ceiling, and floor. Much of the equipment,
+  ;   particularly that near the center of the room, has been destroyed.">)> <COND
+  ;         (,LAB-BENCH-MOVED? <TELL " There is "> <AN-OPEN/CLOSED ,ALCHEMY-TRAP-DOOR> <TELL " in the floor." CR>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? EXAMINE GROUND> <NEW-PRSO ,PENTAGRAM> <RTRUE>)
+  ;         (<VERB?
+  ;           EXAMINE
+  ;           READ
+  ;           LOOK-INSIDE
+  ;           ASK-ABOUT
+  ;           TELL-ME-ABOUT
+  ;           TELL-ABOUT> <RFALSE>)
+  ;         (<AND
+  ;           <IN? ,PROFESSOR ,HERE>
+  ;           <EQUAL? ,VAT ,PRSO ,PRSI>> <COND
+  ;           (<L? ,TIED-UP? 3> <TELL
+  ;             CTHE
+  ;             ,PROFESSOR
+  ;             ", none too gently, prevents you. \"Plenty of time for that
+  ;   later,\" he cautions you."
+  ;             CR>)
+  ;           (<EQUAL? ,PERFORM-DEPTH 1> <TELL
+  ;             CTHE
+  ;             ,PROFESSOR
+  ;             " watches you in horror, stumbling over his ritual."
+  ;             CR
+  ;             CR> <RFALSE>)>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room BOWL-ROOM: ACTION RANDOM-YUGGOTH-F
 (room BOWL-ROOM
   :description "Basalt Bowl"
   :flags (ONBIT)
@@ -114,15 +186,26 @@
       (in :to PLATFORM-ROOM)
       (down :to PLATFORM-ROOM)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE RANDOM-YUGGOTH-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> % <IFSOUND
+  ;         <SOUNDS
+  ;           ,S-DRONE
+  ;           ,S-START
+  ;           <COND (<HERE? ,YUGGOTH> 2) (ELSE 4)>>> <QUEUE I-YUGGOTH 2>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room BRICK-TUNNEL has PER exits
+; [NEEDS-TRANSLATION] Room BRICK-TUNNEL: ACTION BRICK-TUNNEL-F, PER exits
 (room BRICK-TUNNEL
   :description "Brick Tunnel"
   :exits
     (
-      (south :to UNDER-ALCHEMY-LAB)
       (up :to STORAGE-ROOM :per BRICK-TUNNEL-EXIT)
+      (south :to UNDER-ALCHEMY-LAB)
       (north :to CAVE-ROOM)
     )
 
@@ -135,6 +218,33 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE BRICK-TUNNEL-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is an ancient tunnel constructed of roughly
+  ;   mortared bricks and stones. "> <COND
+  ;         (<ZERO? ,MANHOLE-SCORE> <TELL
+  ;           "A slippery and almost invisible set of
+  ;   handholds leads up. ">)> <TELL
+  ;         "The tunnel continues a long way north and south from here."
+  ;         CR>)
+  ;       (<RARG? ENTER> <FSET ,MANHOLE ,NDESCBIT> <MOVE ,MANHOLE ,HERE> <COND
+  ;         (<AND
+  ;           <EQUAL? ,OHERE ,STORAGE-ROOM>
+  ;           <FSET? ,MANHOLE ,RMUNGBIT>> <FCLEAR ,MANHOLE ,RMUNGBIT> <TELL
+  ;           S
+  ;           "You push your way through "
+  ;           "cobwebs, damp fungus,
+  ;   and other obstructions."
+  ;           CR
+  ;           CR>)
+  ;         (<EQUAL? ,OHERE ,UNDER-ALCHEMY-LAB> <TELL ,DOWN-LONG-TUNNEL>)>)
+  ;       (<RARG? LEAVE> <COND
+  ;         (<EQUAL? ,OHERE ,UNDER-ALCHEMY-LAB ,CAVE-ROOM> <TELL ,DOWN-LONG-TUNNEL>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room BROWN-BASEMENT
@@ -147,27 +257,42 @@
     )
 )
 
+; [NEEDS-TRANSLATION] Room BROWN-BUILDING: ACTION BROWN-BUILDING-F
 (room BROWN-BUILDING
   :description "Brown Building"
   :flags (ONBIT)
   :exits
     (
-      (south :to COURTYARD)
       (up :to BROWN-TOP-FLOOR)
-      (down :to BROWN-BASEMENT)
+      (south :to COURTYARD)
       (out :to COURTYARD)
+      (down :to BROWN-BASEMENT)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE BROWN-BUILDING-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         ,THE-LOBBY
+  ;         "Brown Building, an eighteen-story skyscraper
+  ;   which houses the Meteorology Department and other outposts of the
+  ;   Earth Sciences. The elevator is out of order, but a long stairway leads up
+  ;   to the roof, and another leads
+  ;   down to the basement. A revolving door leads out into the night."
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room BROWN-ROOF has PER exits
+; [NEEDS-TRANSLATION] Room BROWN-ROOF: ACTION BROWN-ROOF-F, PER exits
 (room BROWN-ROOF
   :description "Skyscraper Roof"
   :flags (ONBIT OUTSIDE)
   :exits
     (
       (up :to INSIDE-DOME)
-      (in :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
       (east :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
+      (in :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -181,6 +306,15 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE BROWN-ROOF-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <EXIT-TO-COLD>)
+  ;       (<RARG? LEAVE> <EXIT-FROM-COLD>)
+  ;       (<RARG? BEG> <ROOF-BEGS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room BROWN-TOP-FLOOR
@@ -188,9 +322,9 @@
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-BUILDING)
       (west :to BROWN-ROOF :via ROOF-DOOR)
       (out :to BROWN-ROOF :via ROOF-DOOR)
+      (down :to BROWN-BUILDING)
     )
 )
 
@@ -204,14 +338,44 @@
     )
 )
 
+; [NEEDS-TRANSLATION] Room CAVE-ALTAR: ACTION CAVE-ALTAR-F
 (room CAVE-ALTAR
   :description "Before the Altar"
   :exits
     (
       (up :to CAVE-ROOM)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CAVE-ALTAR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <THIS-IS-IT ,CARVING-SYMBOL> <TELL
+  ;         "You are at the bottom of the cave. The huge "
+  ;         'SLAB
+  ;         " in the center
+  ;   is a sort of altar. It is carved with strange and
+  ;   disturbing symbols, the largest of which looks very familiar. Some
+  ;   of the symbols are obscured by rusty red stains. Nearby
+  ;   is an iron plate set in the concrete of the floor."
+  ;         CR>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <P? FIND STUDENTS>
+  ;           ,SEEN-PIT?> <TELL
+  ;           "You no longer need to look for them. You now understand the stains
+  ;   on the altar."
+  ;           CR>)
+  ;         (<AND
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?DOWN>
+  ;           ,SEEN-PIT?> <TELL "You're joking." CR>)>)
+  ;       (<RARG? ENTER> <COND
+  ;         (<FSET? ,IRON-PLATE ,OPENBIT> <QUEUE I-PANEL-NOISES -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room CAVE-ROOM: ACTION CAVE-ROOM-F
 (room CAVE-ROOM
   :description "Renovated Cave"
   :exits
@@ -219,8 +383,24 @@
       (south :to BRICK-TUNNEL)
       (down :to CAVE-ALTAR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CAVE-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are in a huge, cave-like construction. A path leads down to a
+  ;   floor partly covered with rough concrete. The walls and ceiling
+  ;   are high and reinforced with beams of wood, iron, and steel. In the center
+  ;   of the floor you can see a large, flat "
+  ;         'SLAB
+  ;         ". The only
+  ;   exit is behind you to the south."
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room CHEMISTRY-BLDG: ACTION CHEMISTRY-BLDG-F
 (room CHEMISTRY-BLDG
   :description "Chemistry Building"
   :flags (ONBIT)
@@ -229,19 +409,34 @@
       (south :to ALCHEMY-DEPT :via ALCHEMY-DOOR)
       (north :to INF-5)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CHEMISTRY-BLDG-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This corridor is lined with closed, dark offices. At the south end of
+  ;   the corridor is a door with a light shining behind it. "> <COND
+  ;         (<FSET? ,ALCHEMY-DOOR ,OPENBIT> <TELL "The door is open.">)
+  ;         (ELSE <TELL "There is something written on the door.">)> <CRLF>)
+  ;       (<RARG? ENTER> <COND
+  ;         (<AND
+  ;           <EQUAL? ,OHERE ,ALCHEMY-DEPT>
+  ;           <NOT ,PROF-DEAD?>> <SETG LEFT-ALCHEMY? T> <FSET ,ALCHEMY-DOOR ,LOCKED> <FCLEAR ,ALCHEMY-DOOR ,OPENBIT> <TELL "The door closes behind you." CR CR>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room COMP-CENTER has PER exits
+; [NEEDS-TRANSLATION] Room COMP-CENTER: ACTION COMP-CENTER-F, PER exits
 (room COMP-CENTER
   :description "Computer Center"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (up :to CS-2ND)
       (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (down :to CS-BASEMENT)
+      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (north :to SMITH-ST)
+      (down :to CS-BASEMENT)
     )
 
   ; --- PER Exit Routines ---
@@ -267,8 +462,18 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE COMP-CENTER-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL ,THE-LOBBY 'COMP-CENTER ". "> <ELEVATOR-AND-BUTTONS> <TELL "to the south."> <DESCRIBE-STAIRS> <TELL S "To the north is " 'SMITH-ST "." CR>)
+  ;       (<RARG? BEG> <CS-BEGS>)
+  ;       (<RARG? ENTER> <EXIT-FROM-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room COURTYARD: ACTION COURTYARD-F
 (room COURTYARD
   :description "Small Courtyard"
   :flags (ONBIT OUTSIDE)
@@ -277,20 +482,28 @@
       (in :to BROWN-BUILDING)
       (north :to BROWN-BUILDING)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE COURTYARD-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <EXIT-TO-COLD>)
+  ;       (<RARG? LEAVE> <EXIT-FROM-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-2ND has PER exits
+; [NEEDS-TRANSLATION] Room CS-2ND: ACTION CS-2ND-F, PER exits
 (room CS-2ND
   :description "Second Floor"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (west :to KITCHEN)
       (up :to CS-3RD)
       (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (down :to COMP-CENTER)
-      (west :to KITCHEN)
+      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (north :to TERMINAL-ROOM)
+      (down :to COMP-CENTER)
     )
 
   ; --- PER Exit Routines ---
@@ -316,19 +529,28 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CS-2ND-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL "This is the second"> <DESCRIBE-ELEVATOR-AND-BUTTONS> <TELL " A large, noisy room is to the north."> <DESCRIBE-STAIRS> <TELL "To the west
+  ;   a corridor leads into a smaller room." CR>)
+  ;       (<RARG? BEG> <CS-BEGS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-3RD has PER exits
+; [NEEDS-TRANSLATION] Room CS-3RD: ACTION CS-3RD-F, PER exits
 (room CS-3RD
   :description "Third Floor"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (up :to CS-ROOF)
       (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (down :to CS-2ND)
+      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (out :to CS-ROOF)
+      (down :to CS-2ND)
     )
 
   ; --- PER Exit Routines ---
@@ -354,20 +576,34 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CS-3RD-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL "This is the third"> <DESCRIBE-ELEVATOR-AND-BUTTONS> <DESCRIBE-STAIRS> <TELL
+  ;         S
+  ;         "To the north is "
+  ;         "a glass wall beyond which
+  ;   you can see a computer room crammed with computer equipment. A stairway
+  ;   leads up."
+  ;         CR>)
+  ;       (<RARG? BEG> <CS-BEGS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-BASEMENT has PER exits
+; [NEEDS-TRANSLATION] Room CS-BASEMENT: ACTION CS-BASEMENT-F, PER exits
 (room CS-BASEMENT
   :description "Basement"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to COMP-CENTER)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (down :to ELEVATOR-PIT :per CS-PIT-ENTER)
-      (east :to TEMPORARY-BASEMENT)
       (west :to AERO-BASEMENT)
+      (up :to COMP-CENTER)
+      (east :to TEMPORARY-BASEMENT)
+      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (down :to ELEVATOR-PIT :per CS-PIT-ENTER)
     )
 
   ; --- PER Exit Routines ---
@@ -405,16 +641,27 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CS-BASEMENT-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "Bare concrete walls line a wide corridor leading east and west. "> <ELEVATOR-AND-BUTTONS> <TELL "to the south."> <DESCRIBE-STAIRS> <TELL
+  ;         S
+  ;         "From floor to ceiling run wire channels and steam pipes.|">)
+  ;       (<RARG? BEG> <CS-BEGS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM has PER exits
+; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM: ACTION CS-ELEVATOR-ROOM-F, PER exits
 (room CS-ELEVATOR-ROOM
   :description "Elevator"
   :flags (ONBIT)
   :exits
     (
-      (out :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
       (north :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
+      (out :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -431,8 +678,32 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CS-ELEVATOR-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is a battered, rather dirty elevator. The fake wood walls are
+  ;   scratched and marred with graffiti. "> <ELEVATOR-DOORS-OPEN-CLOSED ,ELEVATOR-DOOR> <TELL
+  ;         ,TO-THE-RIGHT
+  ;         "doors is an
+  ;   area with "
+  ;         'FLOOR-BUTTON
+  ;         "s (B and 1 through 3), an "
+  ;         'OPEN-BUTTON
+  ;         ", a "
+  ;         'CLOSE-BUTTON
+  ;         ", a "
+  ;         'STOP-SWITCH
+  ;         ", and an "
+  ;         'ALARM-BUTTON
+  ;         "."> <TELL-BUTTON 0 % <ASCII !B>> <TELL-BUTTON 1 % <ASCII !1>> <TELL-BUTTON 2 % <ASCII !2>> <TELL-BUTTON 3 % <ASCII !3>> <TELL " Below these is an " 'ACCESS-PANEL " which is "> <OPEN-CLOSED ,ACCESS-PANEL>)
+  ;       (<RARG? BEG> <COND (<VERB? DISEMBARK> <DO-WALK ,P?NORTH>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room CS-ROOF: ACTION CS-ROOF-F
 (room CS-ROOF
   :description "Roof"
   :flags (ONBIT OUTSIDE)
@@ -441,16 +712,33 @@
       (in :to CS-3RD)
       (down :to CS-3RD)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE CS-ROOF-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is the roof of the "
+  ;         'COMP-CENTER
+  ;         ". A door leads to the stairway.
+  ;   The roof is covered with tarred pea gravel and drifted snow. The wind
+  ;   howls around your ears. To the south and southeast you can dimly see the
+  ;   looming shapes of the Great Dome and the Brown Building."
+  ;         CR>)
+  ;       (<RARG? BEG> <ROOF-BEGS>)
+  ;       (<RARG? ENTER> <TELL "You push through the door to the roof. "> <EXIT-TO-COLD>)
+  ;       (<RARG? LEAVE> <EXIT-FROM-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room DEAD-STORAGE has PER exits
+; [NEEDS-TRANSLATION] Room DEAD-STORAGE: ACTION DEAD-STORAGE-F, PER exits
 (room DEAD-STORAGE
   :description "Dead Storage"
   :exits
     (
-      (in :to STORAGE-ROOM :per STORAGE-EXIT)
-      (east :to STORAGE-ROOM :per STORAGE-EXIT)
       (west :to TEMPORARY-BASEMENT)
+      (east :to STORAGE-ROOM :per STORAGE-EXIT)
+      (in :to STORAGE-ROOM :per STORAGE-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -470,27 +758,51 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE DEAD-STORAGE-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is a storage room. It contains an incredible assemblage of discarded
+  ;   junk. Some of it is so old and mouldering that you can't be sure where one
+  ;   bit of junk stops and the next begins. It's piled to the ceiling on
+  ;   ancient, rotting pallets"> <COND
+  ;         (<L? ,JUNK-MOVED? ,JUNK-MOVES-NEEDED> <TELL "; you can't even see the east wall.">)
+  ;         (ELSE <TELL ". A narrow path winds eastward through the junk.">)> <CRLF>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? THROUGH ROOMS> <DO-WALK ,P?EAST>)
+  ;         (<P? MOVE CORRIDOR> <NEW-PRSO ,JUNK> <RTRUE>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room DOME-ROOF: ACTION DOME-ROOF-F
 (room DOME-ROOF
   :description "Roof of Great Dome"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to TOP-OF-DOME :via DOME-DOOR)
       (up :to ON-DOME)
       (in :to TOP-OF-DOME :via DOME-DOOR)
+      (south :to TOP-OF-DOME :via DOME-DOOR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE DOME-ROOF-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <COND (<EQUAL? ,OHERE ,TOP-OF-DOME> <EXIT-TO-COLD>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room ELEVATOR-PIT has PER exits
+; [NEEDS-TRANSLATION] Room ELEVATOR-PIT: ACTION ELEVATOR-PIT-F, PER exits
 (room ELEVATOR-PIT
   :description "Concrete Box"
   :exits
     (
       (up :to CS-BASEMENT :per PIT-DOOR-EXIT)
-      (out :to CS-BASEMENT :per PIT-DOOR-EXIT)
       (north :to STEAM-TUNNEL-EAST)
+      (out :to CS-BASEMENT :per PIT-DOOR-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -519,6 +831,47 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE ELEVATOR-PIT-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This small room is pretty bare and featureless. The north wall is
+  ;   brick and the other three walls are concrete. The east and west walls
+  ;   are adorned with rails not unlike railroad rails. Above you "> <COND
+  ;         (<IN? ,ELEVATOR-FLOOR ,SHAFT-B> <TELL
+  ;           "and out of reach, the shaft is blocked by something."
+  ;           CR>)
+  ;         (ELSE <TELL
+  ;           "is an empty shaft. On the north side of the shaft is an elevator
+  ;   door"> <COND
+  ;           (<FIRST? ,ELEVATOR-DOOR-B> <TELL " wedged open by " A <FIRST? ,ELEVATOR-DOOR-B>>)
+  ;           (<FSET? ,ELEVATOR-DOOR-B ,OPENBIT> <TELL " which you are holding open">)> <TELL ,PERIOD>)>)
+  ;       (<RARG? ENTER> <MOVE-WALL ,A?NORTH> <COND
+  ;         (<NOT ,BRICK-WALL-FLAG> <COND
+  ;           (<NOT
+  ;             <BTST ,BRICK-FLAG ,BF-PIT>> <MOVE ,NEW-BRICK ,BRICK-WALL>)
+  ;           (<NOT
+  ;             <BTST ,BRICK-FLAG ,BF-TUNNEL>> <MOVE ,BROKEN-BRICK ,BRICK-WALL>)>)> <RANDOM-ELEVATOR-MOTION>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <VERB? WALK>
+  ;           <NOT
+  ;             <EQUAL? ,P-WALK-DIR ,P?UP>>
+  ;           <HELD? ,CHAIN>
+  ;           ,CHAIN-HOOKED?> <TELL S "You reach the end of your chain pretty quickly.|">)
+  ;         (<P? RUB AIR> <NEW-PRSO ,BRICK-WALL> <RTRUE>)
+  ;         (<P? THROUGH GLOBAL-HOLE> <DO-WALK ,P?NORTH>)
+  ;         (<P? LOOK-UP ROOMS> <TELL "You see an " 'SHAFT-B "." CR>)
+  ;         (<AND
+  ;           <VERB? WALK>
+  ;           <NOT
+  ;             <EQUAL? ,P-WALK-DIR ,P?UP ,P?OUT>>> <MOVE-FROM-DOORS>)
+  ;         (<P? LISTEN (<> NOISE)> <COND
+  ;           (<NOT ,ELEVATOR-STOPPED?> <TELL "You hear the whine of powerful machinery." CR>)
+  ;           (<AND ,BRICK-WALL-FLAG <IN-TUNNEL? ,RATS>> <TELL ,RATS-CHITTERING>)>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room ENGINEERING-BLDG
@@ -530,11 +883,20 @@
     )
 )
 
+; [NEEDS-TRANSLATION] Room GREAT-COURT: ACTION GREAT-COURT-F
 (room GREAT-COURT
   :description "Great Court"
   :flags (ONBIT OUTSIDE)
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE GREAT-COURT-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <AS-YOU-ENTER-LEAVE "leave"> <EXIT-TO-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room GREAT-DOME: ACTION GREAT-DOME-F
 (room GREAT-DOME
   :description "Great Dome"
   :flags (ONBIT)
@@ -542,19 +904,46 @@
     (
       (down :to INF-3)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE GREAT-DOME-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "Here a walkway circles the base of a huge ornate dome. Below is the
+  ;   Infinite Corridor."> <COND
+  ;         (<NOT
+  ;           <FSET? ,DOME-LADDER ,TOUCHBIT>> <TELL
+  ;           " From stories of Tech Exploring trips, you recall that there is supposed to
+  ;   be a ladder here."> <COND
+  ;           (<NOT
+  ;             <FSET? ,TENTACLE ,INVISIBLE>> <TELL
+  ;             " On the other hand, there is a shiny rope-like thing hanging near
+  ;   where the ladder used to be, and leading upward.">)>)> <COND
+  ;         (<IN? ,FLOOR-WAXER ,INF-3> <TELL
+  ;           " Below you, in the corridor, you can see "
+  ;           A
+  ;           ,FLOOR-WAXER> <COND
+  ;           (<NOT ,CORD-SEVERED?> <TELL ", busily waxing the floor">)> <TELL ".">)> <CRLF>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?UP>
+  ;           <HERE? ,LADDER-BOTTOM?>> <PERFORM ,V?CLIMB-UP ,DOME-LADDER> <RTRUE>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-1 has PER exits
+; [NEEDS-TRANSLATION] Room INF-1: ACTION INF-F, PER exits
 (room INF-1
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to ENGINEERING-BLDG)
-      (east :to ? :per WAXER-EXIT)
       (west :to MASS-AVE)
-      (out :to MASS-AVE)
+      (east :to ? :per WAXER-EXIT)
+      (south :to ENGINEERING-BLDG)
       (north :to AERO-LOBBY)
+      (out :to MASS-AVE)
     )
 
   ; --- PER Exit Routines ---
@@ -592,16 +981,51 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INF-F (RARG "AUX" L)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The so-called infinite corridor runs from east to west in the main
+  ;   campus building."> <COND
+  ;         (<HERE? ,INF-1> <TELL " This is the west end.">)
+  ;         (<HERE? ,INF-2 ,INF-3 ,INF-4> <TELL " The corridor extends both ways from here.">)
+  ;         (<HERE? ,INF-5> <TELL " This is the east end.">)> <COND
+  ;         (<HERE? ,INF-2 ,INF-4> <TELL
+  ;           " Many closed and locked offices are to the north and south.">)
+  ;         (<HERE? ,INF-1> <TELL
+  ;           " Side corridors lead north and south, and a set of doors leads west into
+  ;   the howling blizzard.">)
+  ;         (<HERE? ,INF-3> <TELL
+  ;           " A stairway leads up, and a door leads out to the Great Court.">)
+  ;         (<HERE? ,INF-5> <TELL " The corridor branches north and south here.">)> <CRLF>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <NOT
+  ;             <IN? ,FLOOR-WAXER ,HERE>>
+  ;           <VERB? WALK LOOK>> <TELL CR S "There is a " "largish machine "> <COND (<NOT ,CORD-SEVERED?> <TELL "being operated ">)> <TELL ,DOWN-THE-HALL> <FLOOR-WAXER-DIRECTION> <CRLF>)>)
+  ;       (<RARG? ENTER> <SETG DOOR-WARNING <>> <COND
+  ;         (<EQUAL? ,OHERE ,INF-1 ,INF-2 ,INF-3 ,INF-4 ,INF-5>)
+  ;         (<AND
+  ;           <NOT
+  ;             <FSET? ,HERE ,TOUCHBIT>>
+  ;           <NOT
+  ;             <QUEUE I-WAXER-MOVES 10 T>>> T)
+  ;         (<AND
+  ;           <IN? ,MAINTENANCE-MAN ,HERE>
+  ;           <FSET? ,MAINTENANCE-MAN ,PERSON>> <QUEUE I-MAINT-ATTACK -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-2 has PER exits
+; [NEEDS-TRANSLATION] Room INF-2: ACTION INF-F, PER exits
 (room INF-2
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (east :to ? :per WAXER-EXIT)
       (west :to INF-1)
+      (east :to ? :per WAXER-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -639,22 +1063,90 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INF-F (RARG "AUX" L)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The so-called infinite corridor runs from east to west in the main
+  ;   campus building."> <COND
+  ;         (<HERE? ,INF-1> <TELL " This is the west end.">)
+  ;         (<HERE? ,INF-2 ,INF-3 ,INF-4> <TELL " The corridor extends both ways from here.">)
+  ;         (<HERE? ,INF-5> <TELL " This is the east end.">)> <COND
+  ;         (<HERE? ,INF-2 ,INF-4> <TELL
+  ;           " Many closed and locked offices are to the north and south.">)
+  ;         (<HERE? ,INF-1> <TELL
+  ;           " Side corridors lead north and south, and a set of doors leads west into
+  ;   the howling blizzard.">)
+  ;         (<HERE? ,INF-3> <TELL
+  ;           " A stairway leads up, and a door leads out to the Great Court.">)
+  ;         (<HERE? ,INF-5> <TELL " The corridor branches north and south here.">)> <CRLF>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <NOT
+  ;             <IN? ,FLOOR-WAXER ,HERE>>
+  ;           <VERB? WALK LOOK>> <TELL CR S "There is a " "largish machine "> <COND (<NOT ,CORD-SEVERED?> <TELL "being operated ">)> <TELL ,DOWN-THE-HALL> <FLOOR-WAXER-DIRECTION> <CRLF>)>)
+  ;       (<RARG? ENTER> <SETG DOOR-WARNING <>> <COND
+  ;         (<EQUAL? ,OHERE ,INF-1 ,INF-2 ,INF-3 ,INF-4 ,INF-5>)
+  ;         (<AND
+  ;           <NOT
+  ;             <FSET? ,HERE ,TOUCHBIT>>
+  ;           <NOT
+  ;             <QUEUE I-WAXER-MOVES 10 T>>> T)
+  ;         (<AND
+  ;           <IN? ,MAINTENANCE-MAN ,HERE>
+  ;           <FSET? ,MAINTENANCE-MAN ,PERSON>> <QUEUE I-MAINT-ATTACK -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-3 has PER exits
+; [NEEDS-TRANSLATION] Room INF-3: ACTION INF-F, PER exits
 (room INF-3
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to GREAT-COURT :per GREAT-COURT-EXIT)
+      (west :to INF-2)
       (up :to GREAT-DOME)
       (east :to ? :per WAXER-EXIT)
-      (west :to INF-2)
+      (south :to GREAT-COURT :per GREAT-COURT-EXIT)
       (out :to GREAT-COURT :per GREAT-COURT-EXIT)
     )
 
   ; --- PER Exit Routines ---
+  ; <ROUTINE WAXER-EXIT ()
+  ;   <COND
+  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+  ;       (<AND
+  ;         <IN? ,FLOOR-WAXER ,HERE>
+  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+  ;         (ELSE <TELL
+  ;           "In a deft maneuver, "
+  ;           THE
+  ;           ,MAINTENANCE-MAN
+  ;           " steers the "
+  ;           'FLOOR-WAXER
+  ;           " into
+  ;   your path, blocking your advance."
+  ;           CR>)> <RFALSE>)
+  ;       (<AND
+  ;         ,CORD-SEVERED?
+  ;         <IN? ,MAINTENANCE-MAN ,HERE>
+  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+  ;         <NOT
+  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+  ;         CTHE
+  ;         ,MAINTENANCE-MAN
+  ;         S
+  ;         " lurches toward you"
+  ;         ", grasping and panting. There is
+  ;   no way to go around him."
+  ;         CR> <RFALSE>)
+  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
+  ; >
+  ;
   ; <ROUTINE GREAT-COURT-EXIT ()
   ;   <COND
   ;       (<WINNER? ,URCHIN> <RFALSE>)
@@ -665,50 +1157,52 @@
   ;         CR> <RFALSE>)>
   ; >
   ;
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INF-F (RARG "AUX" L)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The so-called infinite corridor runs from east to west in the main
+  ;   campus building."> <COND
+  ;         (<HERE? ,INF-1> <TELL " This is the west end.">)
+  ;         (<HERE? ,INF-2 ,INF-3 ,INF-4> <TELL " The corridor extends both ways from here.">)
+  ;         (<HERE? ,INF-5> <TELL " This is the east end.">)> <COND
+  ;         (<HERE? ,INF-2 ,INF-4> <TELL
+  ;           " Many closed and locked offices are to the north and south.">)
+  ;         (<HERE? ,INF-1> <TELL
+  ;           " Side corridors lead north and south, and a set of doors leads west into
+  ;   the howling blizzard.">)
+  ;         (<HERE? ,INF-3> <TELL
+  ;           " A stairway leads up, and a door leads out to the Great Court.">)
+  ;         (<HERE? ,INF-5> <TELL " The corridor branches north and south here.">)> <CRLF>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <NOT
+  ;             <IN? ,FLOOR-WAXER ,HERE>>
+  ;           <VERB? WALK LOOK>> <TELL CR S "There is a " "largish machine "> <COND (<NOT ,CORD-SEVERED?> <TELL "being operated ">)> <TELL ,DOWN-THE-HALL> <FLOOR-WAXER-DIRECTION> <CRLF>)>)
+  ;       (<RARG? ENTER> <SETG DOOR-WARNING <>> <COND
+  ;         (<EQUAL? ,OHERE ,INF-1 ,INF-2 ,INF-3 ,INF-4 ,INF-5>)
+  ;         (<AND
+  ;           <NOT
+  ;             <FSET? ,HERE ,TOUCHBIT>>
+  ;           <NOT
+  ;             <QUEUE I-WAXER-MOVES 10 T>>> T)
+  ;         (<AND
+  ;           <IN? ,MAINTENANCE-MAN ,HERE>
+  ;           <FSET? ,MAINTENANCE-MAN ,PERSON>> <QUEUE I-MAINT-ATTACK -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-4 has PER exits
+; [NEEDS-TRANSLATION] Room INF-4: ACTION INF-F, PER exits
 (room INF-4
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (east :to ? :per WAXER-EXIT)
       (west :to INF-3)
+      (east :to ? :per WAXER-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -746,16 +1240,51 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INF-F (RARG "AUX" L)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The so-called infinite corridor runs from east to west in the main
+  ;   campus building."> <COND
+  ;         (<HERE? ,INF-1> <TELL " This is the west end.">)
+  ;         (<HERE? ,INF-2 ,INF-3 ,INF-4> <TELL " The corridor extends both ways from here.">)
+  ;         (<HERE? ,INF-5> <TELL " This is the east end.">)> <COND
+  ;         (<HERE? ,INF-2 ,INF-4> <TELL
+  ;           " Many closed and locked offices are to the north and south.">)
+  ;         (<HERE? ,INF-1> <TELL
+  ;           " Side corridors lead north and south, and a set of doors leads west into
+  ;   the howling blizzard.">)
+  ;         (<HERE? ,INF-3> <TELL
+  ;           " A stairway leads up, and a door leads out to the Great Court.">)
+  ;         (<HERE? ,INF-5> <TELL " The corridor branches north and south here.">)> <CRLF>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <NOT
+  ;             <IN? ,FLOOR-WAXER ,HERE>>
+  ;           <VERB? WALK LOOK>> <TELL CR S "There is a " "largish machine "> <COND (<NOT ,CORD-SEVERED?> <TELL "being operated ">)> <TELL ,DOWN-THE-HALL> <FLOOR-WAXER-DIRECTION> <CRLF>)>)
+  ;       (<RARG? ENTER> <SETG DOOR-WARNING <>> <COND
+  ;         (<EQUAL? ,OHERE ,INF-1 ,INF-2 ,INF-3 ,INF-4 ,INF-5>)
+  ;         (<AND
+  ;           <NOT
+  ;             <FSET? ,HERE ,TOUCHBIT>>
+  ;           <NOT
+  ;             <QUEUE I-WAXER-MOVES 10 T>>> T)
+  ;         (<AND
+  ;           <IN? ,MAINTENANCE-MAN ,HERE>
+  ;           <FSET? ,MAINTENANCE-MAN ,PERSON>> <QUEUE I-MAINT-ATTACK -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-5 has PER exits
+; [NEEDS-TRANSLATION] Room INF-5: ACTION INF-F, PER exits
 (room INF-5
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to ? :per WAXER-EXIT)
       (west :to INF-4)
+      (south :to ? :per WAXER-EXIT)
       (north :to ? :per WAXER-EXIT)
     )
 
@@ -794,8 +1323,44 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INF-F (RARG "AUX" L)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The so-called infinite corridor runs from east to west in the main
+  ;   campus building."> <COND
+  ;         (<HERE? ,INF-1> <TELL " This is the west end.">)
+  ;         (<HERE? ,INF-2 ,INF-3 ,INF-4> <TELL " The corridor extends both ways from here.">)
+  ;         (<HERE? ,INF-5> <TELL " This is the east end.">)> <COND
+  ;         (<HERE? ,INF-2 ,INF-4> <TELL
+  ;           " Many closed and locked offices are to the north and south.">)
+  ;         (<HERE? ,INF-1> <TELL
+  ;           " Side corridors lead north and south, and a set of doors leads west into
+  ;   the howling blizzard.">)
+  ;         (<HERE? ,INF-3> <TELL
+  ;           " A stairway leads up, and a door leads out to the Great Court.">)
+  ;         (<HERE? ,INF-5> <TELL " The corridor branches north and south here.">)> <CRLF>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <NOT
+  ;             <IN? ,FLOOR-WAXER ,HERE>>
+  ;           <VERB? WALK LOOK>> <TELL CR S "There is a " "largish machine "> <COND (<NOT ,CORD-SEVERED?> <TELL "being operated ">)> <TELL ,DOWN-THE-HALL> <FLOOR-WAXER-DIRECTION> <CRLF>)>)
+  ;       (<RARG? ENTER> <SETG DOOR-WARNING <>> <COND
+  ;         (<EQUAL? ,OHERE ,INF-1 ,INF-2 ,INF-3 ,INF-4 ,INF-5>)
+  ;         (<AND
+  ;           <NOT
+  ;             <FSET? ,HERE ,TOUCHBIT>>
+  ;           <NOT
+  ;             <QUEUE I-WAXER-MOVES 10 T>>> T)
+  ;         (<AND
+  ;           <IN? ,MAINTENANCE-MAN ,HERE>
+  ;           <FSET? ,MAINTENANCE-MAN ,PERSON>> <QUEUE I-MAINT-ATTACK -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room INNER-LAIR: ACTION INNER-LAIR-F
 (room INNER-LAIR
   :description "Inner Lair"
   :flags (ONBIT)
@@ -803,16 +1368,38 @@
     (
       (up :to OUTER-LAIR :via CURTAIN-DOOR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INNER-LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         S
+  ;         "The floor here is "
+  ;         "a stagnant, slime infested pool of water.
+  ;   It feels to "> <COND
+  ;         (<NOT
+  ;           <FSET? ,BOOTS ,WEARBIT>> <TELL "your sodden feet to ">)> <TELL "be about six inches deep."> <COND
+  ;         (<IN? ,MASS ,HERE> <TELL
+  ;           " Ropes
+  ;   or wires tumble down the slope, where they enter a
+  ;   large whitish mass which takes up much of the chamber. The noise is loud
+  ;   here, and comes from the mass, which undulates in synchrony
+  ;   with the noise.">)> <TELL " Wan, sourceless light illuminates the chamber." CR>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? LISTEN (<> NOISE)> <NEW-PRSO ,MASS> <RTRUE>)>)
+  ;       (<RARG? ENTER> % <IFSOUND <SOUNDS ,S-ZOMBIE>> <FSET ,CURTAIN-DOOR ,LOCKED> <FCLEAR ,CURTAIN-DOOR ,OPENBIT> <QUEUE I-HAND-DIVES -1> <MOVE ,HACKER ,LAIR-5> <QUEUE I-HACKER-RETURNS 2> <AS-YOU-ENTER-LEAVE "enter">)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INSIDE-DOME has PER exits
+; [NEEDS-TRANSLATION] Room INSIDE-DOME: ACTION INSIDE-DOME-F, PER exits
 (room INSIDE-DOME
   :description "Inside Dome"
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-ROOF :per INSIDE-DOME-EXIT)
       (out :to BROWN-ROOF :per INSIDE-DOME-EXIT)
+      (down :to BROWN-ROOF :per INSIDE-DOME-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -823,6 +1410,18 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE INSIDE-DOME-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <COND
+  ;         (<AND <ZERO? ,FLIER-COUNT> <HELD? ,SMOOTH-STONE>> <QUEUE I-FLIER -1>)>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? (DIG SEARCH) DIRT> <NEW-PRSO ,TUB> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND <ZERO? ,FLIER-COUNT> <HELD? ,HAND>> <QUEUE I-FLIER -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room KITCHEN
@@ -834,128 +1433,425 @@
     )
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-1: ACTION LAIR-F
 (room LAIR-1
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-6)
       (up :to LARGE-CHAMBER)
       (east :to LAIR-1)
+      (south :to LAIR-6)
       (north :to LAIR-2)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-10: ACTION LAIR-F
 (room LAIR-10
   :description "Wet Tunnel"
   :exits
     (
-      (up :to LAIR-9)
       (west :to LAIR-7)
+      (up :to LAIR-9)
       (north :to LAIR-10)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-11: ACTION LAIR-F
 (room LAIR-11
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-11)
       (up :to LAIR-11)
       (east :to LAIR-9)
+      (south :to LAIR-11)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-2: ACTION LAIR-F
 (room LAIR-2
   :description "Wet Tunnel"
   :exits
     (
-      (up :to LAIR-8)
-      (down :to LAIR-3)
-      (east :to LAIR-1)
       (west :to LAIR-7)
+      (up :to LAIR-8)
+      (east :to LAIR-1)
+      (down :to LAIR-3)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-3: ACTION LAIR-F
 (room LAIR-3
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-4)
-      (east :to LAIR-2)
       (west :to LAIR-7)
+      (east :to LAIR-2)
+      (south :to LAIR-4)
       (north :to LAIR-6)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-4: ACTION LAIR-F
 (room LAIR-4
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-5)
-      (up :to LAIR-3)
-      (down :to LAIR-10)
-      (east :to LAIR-10)
       (west :to LAIR-11)
+      (up :to LAIR-3)
+      (east :to LAIR-10)
+      (south :to LAIR-5)
+      (down :to LAIR-10)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-5: ACTION LAIR-F
 (room LAIR-5
   :description "Wet Tunnel"
   :exits
     (
-      (up :to LAIR-5)
-      (down :to OUTER-LAIR)
-      (east :to LAIR-11)
       (west :to LAIR-3)
+      (up :to LAIR-5)
+      (east :to LAIR-11)
       (north :to LAIR-4)
+      (down :to OUTER-LAIR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-6: ACTION LAIR-F
 (room LAIR-6
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-8)
-      (east :to LAIR-1)
       (west :to LAIR-3)
+      (east :to LAIR-1)
       (north :to LAIR-6)
+      (down :to LAIR-8)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-7: ACTION LAIR-F
 (room LAIR-7
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-2)
-      (up :to LAIR-10)
-      (down :to LAIR-7)
-      (east :to LAIR-3)
       (west :to LAIR-1)
+      (up :to LAIR-10)
+      (east :to LAIR-3)
+      (south :to LAIR-2)
+      (down :to LAIR-7)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-8: ACTION LAIR-F
 (room LAIR-8
   :description "Wet Tunnel"
   :exits
     (
       (up :to LAIR-6)
-      (down :to LAIR-9)
       (east :to LAIR-2)
+      (down :to LAIR-9)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room LAIR-9: ACTION LAIR-F
 (room LAIR-9
   :description "Wet Tunnel"
   :exits
     (
       (up :to LAIR-2)
-      (down :to LAIR-10)
       (east :to LAIR-8)
       (north :to LAIR-6)
+      (down :to LAIR-10)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room LARGE-CHAMBER has PER exits
+; [NEEDS-TRANSLATION] Room LARGE-CHAMBER: ACTION LARGE-CHAMBER-F, PER exits
 (room LARGE-CHAMBER
   :description "Large Chamber"
   :exits
@@ -984,16 +1880,67 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LARGE-CHAMBER-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is a wide spot in the tunnel, just as wet and muddy as elsewhere.
+  ;   The walls are slimy as well. Numerous slots or
+  ;   indentations about two feet wide and a foot high open here and there. "> <COND
+  ;         (<LOC ,URCHINS> <COND
+  ;           (<FSET? ,URCHINS ,RMUNGBIT> <TELL "Stubs of the wire still ">)
+  ;           (ELSE <TELL
+  ;             "Thin, wire or ropelike growths emerge
+  ;   from a hole further down and ">)> <COND
+  ;           (<IN? ,URCHINS ,SLOTS> <TELL
+  ;             "enter each of the slots. There is
+  ;   background noise here, almost loud enough to hear clearly.">)
+  ;           (<IN? ,URCHINS ,HERE> <TELL "envelop the head of each urchin. The
+  ;   urchins are "> <COND
+  ;             (<FSET? ,URCHINS ,RMUNGBIT> <TELL "catatonic.">)
+  ;             (ELSE <TELL
+  ;               "saying or chanting something repetitive and monotonal,
+  ;   almost machinelike.">)>)>)
+  ;         (ELSE <TELL "There is a" S " hole leading down.">)> <CRLF>)
+  ;       (<RARG? ENTER> <SETG LAIR-FLAG <>> % <IFSOUND
+  ;         <COND
+  ;           (<IN? ,URCHINS ,HERE> <SOUNDS ,S-VOICE ,S-START 2>)
+  ;           (<IN? ,URCHINS ,SLOTS> <SOUNDS ,S-VOICE ,S-START 8>)>> <QUEUE I-URCHINS -1>)
+  ;       (<RARG? LEAVE> % <IFSOUND
+  ;         <SOUNDS ,S-VOICE ,S-STOP>>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? THROUGH GLOBAL-HOLE> <DO-WALK ,P?DOWN>)
+  ;         (<P? EXAMINE GLOBAL-HOLE> <TELL
+  ;           "It's a slimy, muddy hole, but it's the only way down."
+  ;           CR>)
+  ;         (<AND
+  ;           <VERB? WALK>
+  ;           <NOT
+  ;             <EQUAL? ,P-WALK-DIR ,P?DOWN ,P?UP>>> <PERFORM ,V?THROUGH ,SLOTS> <RTRUE>)
+  ;         (<P? LISTEN (NOISE <>)> <NEW-PRSO
+  ;           <COND (<IN? ,URCHINS ,SLOTS> ,SLOTS) (ELSE ,URCHINS)>> <RTRUE>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room MASS-AVE: ACTION MASS-AVE-F
 (room MASS-AVE
   :description "Mass. Ave."
   :flags (OUTSIDE ONBIT)
   :exits
     (
-      (in :to INF-1)
       (east :to INF-1)
+      (in :to INF-1)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE MASS-AVE-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <EXIT-TO-COLD>)
+  ;       (<RARG? LEAVE> <EXIT-FROM-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room MUDDY-TUNNEL
@@ -1001,8 +1948,8 @@
   :exits
     (
       (up :to TUNNEL-ENTRANCE)
-      (down :to LARGE-CHAMBER)
       (east :to TUNNEL-ENTRANCE)
+      (down :to LARGE-CHAMBER)
     )
 )
 
@@ -1016,6 +1963,7 @@
     )
 )
 
+; [NEEDS-TRANSLATION] Room ON-DOME: ACTION ON-DOME-F
 (room ON-DOME
   :description "On the Great Dome"
   :flags (ONBIT OUTSIDE)
@@ -1023,53 +1971,154 @@
     (
       (down :to DOME-ROOF)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE ON-DOME-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <TELL
+  ;         ,YOU-SCRAMBLE-UP
+  ;         "icy surface of the dome, almost slipping a few
+  ;   times, but finally you make it to the top."
+  ;         CR
+  ;         CR>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND <VERB? WALK> <NOT
+  ;           <EQUAL? ,P-WALK-DIR ,P?DOWN>>> <TELL "There is nowhere to go but down." CR>)
+  ;         (ELSE <ROOF-BEGS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room OUTER-LAIR: ACTION LAIR-F
 (room OUTER-LAIR
   :description "Wet Tunnel"
   :flags (ONBIT)
   :exits
     (
-      (south :to INNER-LAIR :via CURTAIN-DOOR)
       (up :to LAIR-5)
       (in :to INNER-LAIR :via CURTAIN-DOOR)
+      (south :to INNER-LAIR :via CURTAIN-DOOR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE LAIR-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily
+  ;   water covers the floor."> <COND
+  ;         (<HERE? ,OUTER-LAIR> <COND
+  ;           (<IN? ,CURTAIN ,HERE> <TELL " A curtain of moldy slime covers the south wall." CR>)
+  ;           (ELSE <TELL " There is an ancient door in the south wall. "> <TELL-OPEN-CLOSED ,CURTAIN-DOOR>)>)
+  ;         (ELSE <CRLF>)>)
+  ;       (<RARG? LEAVE> <SETG LAIR-FLAG <>> <FCLEAR ,HERE ,TOUCHBIT>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           <HERE? ,OUTER-LAIR>
+  ;           <IN? ,CURTAIN ,HERE>
+  ;           <VERB? WALK>
+  ;           <EQUAL? ,P-WALK-DIR ,P?SOUTH>> <PERFORM ,V?THROUGH ,CURTAIN> <RTRUE>)>)
+  ;       (<RARG? END> <COND
+  ;         (<AND
+  ;           <IN? ,HAND ,PLAYER>
+  ;           <FSET? ,HAND ,PERSON>
+  ;           <IN? ,RING ,HAND>
+  ;           <NOT <HERE? ,LAIR-FLAG>>> <SETG LAIR-FLAG ,HERE> <HAND-POINTS>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room PLATFORM-ROOM: ACTION PLATFORM-ROOM-F
 (room PLATFORM-ROOM
   :description "At Platform"
   :flags (ONBIT)
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE PLATFORM-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> % <IFSOUND
+  ;         <SOUNDS ,S-DRONE ,S-START 6>>)
+  ;       (<RARG? BEG> <COND
+  ;         (<VERB? WALK> <COND
+  ;           (<EQUAL? ,P-WALK-DIR ,P?UP> <TELL "You are prevented, as the crowd holds you back." CR>)
+  ;           (ELSE <TELL
+  ;             "The crowding is such that you can barely move, much less walk."
+  ;             CR>)>)
+  ;         (<P? LISTEN (<> NOISE)> <TELL "It sounds like supplication." CR>)
+  ;         (<AND
+  ;           <P? SMELL <>>
+  ;           <IN? ,LURKER ,HERE>> <NEW-PRSO ,LURKER> <RTRUE>)
+  ;         (<OR
+  ;           <P?
+  ;             (DROP PUT THROW)
+  ;             SMOOTH-STONE>
+  ;           <P? ATTACK * SMOOTH-STONE>> <TELL
+  ;           "You can't. You go through the motions, but the stone doesn't leave your
+  ;   hand."
+  ;           CR>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room SMITH-ST: ACTION SMITH-ST-F
 (room SMITH-ST
   :description "Smith Street"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to COMP-CENTER)
-      (in :to COMP-CENTER)
       (east :to SMITH-ST-2)
+      (in :to COMP-CENTER)
+      (south :to COMP-CENTER)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE SMITH-ST-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         'SMITH-ST
+  ;         " runs east and west along the north side of the main campus
+  ;   area. At the moment, it is an arctic wasteland of howling wind and
+  ;   drifting snow. On the other side of the street, barely visible, are
+  ;   the lidless eyes of streetlights. The street hasn't been plowed, or
+  ;   if it has been, it did no good."
+  ;         CR>)
+  ;       (<AND <RARG? ENTER> <NOT
+  ;         <EQUAL? ,OHERE ,SMITH-ST-2>>> <EXIT-TO-COLD>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room SMITH-ST-2: ACTION SMITH-ST-2-F
 (room SMITH-ST-2
   :description "Smith Street"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to TEMPORARY-LAB)
-      (in :to TEMPORARY-LAB)
       (west :to SMITH-ST)
+      (in :to TEMPORARY-LAB)
+      (south :to TEMPORARY-LAB)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE SMITH-ST-2-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         'SMITH-ST
+  ;         " runs west towards the computer center here. To the south is
+  ;   a dilapidated grey wooden building. The street is an impassable sea of
+  ;   blowing and drifting snow."
+  ;         CR>)
+  ;       (<RARG? ENTER> <COND (<EQUAL? ,OHERE ,TEMPORARY-LAB> <EXIT-TO-COLD>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STEAM-TUNNEL has PER exits
+; [NEEDS-TRANSLATION] Room STEAM-TUNNEL: ACTION STEAM-TUNNEL-F, PER exits
 (room STEAM-TUNNEL
   :description "Steam Tunnel"
   :exits
     (
-      (east :to STEAM-TUNNEL-EAST)
       (west :to TUNNEL-WEST :per RATS-EXIT)
+      (east :to STEAM-TUNNEL-EAST)
     )
 
   ; --- PER Exit Routines ---
@@ -1091,18 +2140,41 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE STEAM-TUNNEL-F (RARG)
+  ;   <COND (<RARG? BEG> <FOOD-FOR-RATS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STEAM-TUNNEL-EAST has PER exits
+; [NEEDS-TRANSLATION] Room STEAM-TUNNEL-EAST: ACTION STEAM-TUNNEL-EAST-F, PER exits
 (room STEAM-TUNNEL-EAST
   :description "Steam Tunnel"
   :exits
     (
-      (south :to ELEVATOR-PIT :per ELEVATOR-PIT-ENTER)
       (west :to TUNNEL-WEST :per RATS-EXIT)
+      (south :to ELEVATOR-PIT :per ELEVATOR-PIT-ENTER)
     )
 
   ; --- PER Exit Routines ---
+  ; <ROUTINE RATS-EXIT ("AUX" H)
+  ;   <COND
+  ;       (<AND
+  ;         <IN? ,RATS ,HERE>
+  ;         <NOT ,ON-CABLE?>> <SETG
+  ;         RATS-HERE
+  ;         <+ ,RATS-HERE 1>> <TELL
+  ;         "You plunge into the mass of rats, but there are too many of them, and
+  ;   you can't force your way past."
+  ;         CR> <RFALSE>)
+  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+  ; >
+  ;
   ; <ROUTINE ELEVATOR-PIT-ENTER ()
   ;   <COND
   ;       (,BRICK-WALL-FLAG <COND
@@ -1111,33 +2183,42 @@
   ;       (ELSE <TELL "You are trying to walk through a brick wall." CR> <RFALSE>)>
   ; >
   ;
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE STEAM-TUNNEL-EAST-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "The steam pipe and coaxial cable turn upwards and disappear into the
+  ;   ceiling here. The tunnel itself comes to an end in a grimy, damp, and
+  ;   dripping triad of crumbling brick walls."> <COND
+  ;         (<AND <NOT ,BRICK-WALL-FLAG> <NOT ,BRICK-FLAG>> <TELL " The south wall looks particularly decrepit.">)> <CRLF>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? RUB AIR> <NEW-PRSO ,BRICK-WALL> <RTRUE>)
+  ;         (<P? THROUGH GLOBAL-HOLE> <DO-WALK ,P?SOUTH>)
+  ;         (ELSE <FOOD-FOR-RATS>)>)
+  ;       (<RARG? ENTER> <MOVE-WALL ,A?SOUTH> <COND
+  ;         (<NOT ,BRICK-WALL-FLAG> <COND
+  ;           (<NOT
+  ;             <BTST ,BRICK-FLAG ,BF-TUNNEL>> <MOVE ,BROKEN-BRICK ,BRICK-WALL>)
+  ;           (<NOT
+  ;             <BTST ,BRICK-FLAG ,BF-PIT>> <MOVE ,NEW-BRICK ,BRICK-WALL>)>)> <RANDOM-ELEVATOR-MOTION> <COND
+  ;         (<AND
+  ;           <NOT <ZERO?
+  ;             <GETP ,PRESSURE-VALVE ,P?VALUE>>>
+  ;           <NOT
+  ;             <FSET? ,PRESSURE-VALVE ,OPENBIT>>> <DEQUEUE I-RATS-GO-AWAY> <QUEUE I-RATS -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STORAGE-ROOM has PER exits
+; [NEEDS-TRANSLATION] Room STORAGE-ROOM: ACTION STORAGE-ROOM-F, PER exits
 (room STORAGE-ROOM
   :description "Ancient Storage"
   :exits
     (
-      (down :to BRICK-TUNNEL :per MANHOLE-EXIT)
       (west :to DEAD-STORAGE)
+      (down :to BRICK-TUNNEL :per MANHOLE-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -1152,9 +2233,16 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE STORAGE-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <FCLEAR ,MANHOLE ,NDESCBIT> <MOVE ,MANHOLE ,HERE>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room SUB-BASEMENT has PER exits
+; [NEEDS-TRANSLATION] Room SUB-BASEMENT: PER exits
 (room SUB-BASEMENT
   :description "Subbasement"
   :flags (ONBIT)
@@ -1182,23 +2270,32 @@
   :flags (ONBIT)
   :exits
     (
+      (west :to CS-BASEMENT)
       (up :to TEMPORARY-LAB)
       (east :to DEAD-STORAGE)
-      (west :to CS-BASEMENT)
     )
 )
 
+; [NEEDS-TRANSLATION] Room TEMPORARY-LAB: ACTION TEMPORARY-LAB-F
 (room TEMPORARY-LAB
   :description "Temporary Lab"
   :exits
     (
-      (down :to TEMPORARY-BASEMENT)
-      (out :to SMITH-ST-2)
       (north :to SMITH-ST-2)
+      (out :to SMITH-ST-2)
+      (down :to TEMPORARY-BASEMENT)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TEMPORARY-LAB-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> <DEQUEUE I-FREEZE-TO-DEATH> <COND
+  ;         (<G? ,FREEZE-COUNT 0> <SETG FREEZE-COUNT 0> <TELL ,PUSH-INTO "comparative warmth of a laboratory." CR CR>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TERMINAL-ROOM has PER exits
+; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F, PER exits
 (room TERMINAL-ROOM
   :description "Terminal Room"
   :flags (ONBIT)
@@ -1221,17 +2318,52 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TERMINAL-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? BEG> <COND
+  ;         (<AND <NOT <VERB? TELL>> <GAME-VERB?>> <RFALSE>)
+  ;         (<QUEUED? I-HACKER-HELPS> <COND
+  ;           (<P?
+  ;             (RUB POINT CLICK HELP)
+  ;             (MENU-BOX MORE-BOX <>)> <TELL
+  ;             ,HACKER-PREVENTS
+  ;             "Who's the hacker here?\" he snarls."
+  ;             CR>)>)
+  ;         (<QUEUED? I-COMPULSION> <COND
+  ;           (<P?
+  ;             (RUB POINT CLICK PUSH ATTACK)
+  ;             MORE-BOX> <RFALSE>)
+  ;           (<P? READ ,ODD-PAPER> <RFALSE>)
+  ;           (ELSE <COND
+  ;             (<VERB? TELL HELLO> <TELL "Your throat tightens, and no sound issues forth. ">)
+  ;             (<VERB? INVENTORY LAMP-OFF> <TELL "Your body refuses to obey your brain's command. ">)> <TELL
+  ;             "Instead, you find your finger moving towards the MORE box, and you touch
+  ;   it. The screen feels oddly cold."
+  ;             CR> <COND (<VERB? TELL> <END-QUOTE>) (ELSE <RTRUE>)>)>)>)
+  ;       (<AND
+  ;         <RARG? ENTER>
+  ;         <EQUAL? ,OHERE ,PLATFORM-ROOM>> <QUEUE I-HACKER-HELPS -1> <TELL
+  ;         "You are awakened by the thump of your head hitting the terminal
+  ;   in front of you. Falling asleep over term papers! It must have been a
+  ;   nightmare. Embarrassed, you glance around. Yes, the hacker is looking
+  ;   in your direction. He must have heard the thump."
+  ;         CR
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TOMB has PER exits
+; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F, PER exits
 (room TOMB
   :description "Tomb"
   :flags (ONBIT)
   :exits
     (
-      (down :to TUNNEL :via ACCESS-HATCH)
       (se :to TOMB :per TOMB-SQUEEZE)
       (out :to TOMB :per TOMB-SQUEEZE)
+      (down :to TUNNEL :via ACCESS-HATCH)
     )
 
   ; --- PER Exit Routines ---
@@ -1245,29 +2377,98 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TOMB-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is a tiny, narrow, ill-fitting room. It
+  ;   appears to have been a left over space from the joining of two
+  ;   preexisting buildings. It is roughly coffin shaped. The walls are
+  ;   covered by decades of overlaid graffiti, but there is one which is
+  ;   painted in huge fluorescent letters that were apparently impossible
+  ;   for later artists to completely deface. On the floor is a rusty access
+  ;   hatch"> <COND
+  ;         (<EQUAL? ,PADLOCK-ON? ,ACCESS-HATCH> <TELL " locked with a huge padlock">)
+  ;         (<FSET? ,ACCESS-HATCH ,OPENBIT> <TELL " which is open">)> <TELL ,PERIOD>)
+  ;       (<RARG? BEG> <COND
+  ;         (<P? (READ EXAMINE) (GRAFFITI WALL)> <TELL "It reads \"The Tomb of the Unknown Tool.\"" CR>)
+  ;         (<P? (THROW DROP) * GLOBAL-HOLE> <MOVE ,PRSO ,TUNNEL> <TELL "Gone." CR>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room TOP-OF-DOME: ACTION TOP-OF-DOME-F
 (room TOP-OF-DOME
   :description "Top of Dome"
   :flags (ONBIT)
   :exits
     (
-      (out :to DOME-ROOF :via DOME-DOOR)
       (north :to DOME-ROOF :via DOME-DOOR)
+      (out :to DOME-ROOF :via DOME-DOOR)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TOP-OF-DOME-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "Inside the great dome, near the top, a metal catwalk is precariously perched.
+  ;   There is no way further up, but a small metal door is set in the side of
+  ;   the dome."> <COND
+  ;         (<FSET? ,DOME-DOOR ,OPENBIT> <TELL " Frigid wind and snow blow through the open door.">)> <CRLF>)
+  ;       (<RARG? BEG> <COND
+  ;         (<VERB? WALK> <COND
+  ;           (<AND
+  ;             <EQUAL? ,P-WALK-DIR ,P?UP>
+  ;             <HERE? ,LADDER-BOTTOM?>> <PERFORM ,V?CLIMB-UP ,DOME-LADDER> <RTRUE>)
+  ;           (<AND
+  ;             <EQUAL? ,P-WALK-DIR ,P?DOWN>
+  ;             <HERE? ,LADDER-TOP?>> <PERFORM ,V?CLIMB-DOWN ,DOME-LADDER> <RTRUE>)>)>)
+  ;       (<RARG? ENTER> <COND
+  ;         (<EQUAL? ,OHERE ,DOME-ROOF> <EXIT-FROM-COLD>)
+  ;         (<NOT
+  ;           <FSET? ,TENTACLE ,INVISIBLE>> <FSET ,TENTACLE ,INVISIBLE> <TELL
+  ;           "You stand up on the catwalk, catching your breath for a moment.
+  ;   Your eyes stray along the strand you climbed. It trails along the
+  ;   catwalk, where it joins something large and squishy squatting at
+  ;   the far side. A single, bright-blue eye opens in the squishy mass,
+  ;   and the tentacle (for that's what it is) retracts. The mass almost
+  ;   flows through the spaces in the catwalk railing and drops to the
+  ;   floor fifteen feet below. Before you can react, it's gone."
+  ;           CR
+  ;           CR>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL has PER exits
+; [NEEDS-TRANSLATION] Room TUNNEL: ACTION TUNNEL-F, PER exits
 (room TUNNEL
   :description "Steam Tunnel"
   :exits
     (
+      (west :to TUNNEL-WEST :per RATS-EXIT)
       (up :to TOMB :via ACCESS-HATCH)
       (east :to TUNNEL :per STEAM-EXIT)
-      (west :to TUNNEL-WEST :per RATS-EXIT)
     )
 
   ; --- PER Exit Routines ---
+  ; <ROUTINE RATS-EXIT ("AUX" H)
+  ;   <COND
+  ;       (<AND
+  ;         <IN? ,RATS ,HERE>
+  ;         <NOT ,ON-CABLE?>> <SETG
+  ;         RATS-HERE
+  ;         <+ ,RATS-HERE 1>> <TELL
+  ;         "You plunge into the mass of rats, but there are too many of them, and
+  ;   you can't force your way past."
+  ;         CR> <RFALSE>)
+  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+  ; >
+  ;
   ; <ROUTINE STEAM-EXIT ()
   ;   <COND
   ;       (<FSET? ,PRESSURE-VALVE ,OPENBIT> <COND
@@ -1279,33 +2480,45 @@
   ;       (ELSE ,TUNNEL)>
   ; >
   ;
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TUNNEL-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TUNNEL-AND-PIPE> <TELL
+  ;         "You have
+  ;   gone from the arctic to the tropics. The concrete tunnel has odd molds
+  ;   and fungi growing on its walls and ceiling, and the floor is squishy.
+  ;   Torn clots of insulation litter the floor.
+  ;   Along the ceiling runs a thick tangle of coaxial
+  ;   cable. The tunnel heads east and west. A rusty metal ladder leads up."
+  ;         CR>)
+  ;       (<RARG? BEG> <COND
+  ;         (,RATS-HERE <COND
+  ;           (<AND
+  ;             <VERB? WALK>
+  ;             <EQUAL? ,P-WALK-DIR ,P?UP>> <SETG ON-CABLE? <>> <TELL
+  ;             "You force your way through the mass of rats, grabbing onto the rusty
+  ;   ladder like a mast on a stormy sea, and begin to pull your way up. A few
+  ;   rats drop off, squealing in anger. You climb higher, reaching the hatch,
+  ;   as the last of the rats drops to the floor below."
+  ;             CR
+  ;             CR> <RFALSE>)
+  ;           (<FOOD-FOR-RATS>)>)>)
+  ;       (<RARG? ENTER> <COND
+  ;         (<NOT <ZERO?
+  ;           <GETP ,PRESSURE-VALVE ,P?VALUE>>> <DEQUEUE I-RATS-GO-AWAY> <QUEUE I-RATS -1>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL-EAST has PER exits
+; [NEEDS-TRANSLATION] Room TUNNEL-EAST: ACTION TUNNEL-EAST-F, PER exits
 (room TUNNEL-EAST
   :description "Steam Tunnel"
   :exits
     (
-      (east :to STEAM-TUNNEL)
       (west :to TUNNEL-WEST :per RATS-EXIT)
+      (east :to STEAM-TUNNEL)
     )
 
   ; --- PER Exit Routines ---
@@ -1327,26 +2540,38 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TUNNEL-EAST-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TUNNEL-AND-PIPE> <TELL
+  ;         "A thick bundle of coaxial cable runs east to
+  ;   west along the ceiling. There is a pressure release valve on the steam
+  ;   pipe here."> <COND
+  ;         (<FSET? ,PRESSURE-VALVE ,OPENBIT> <TELL " The valve is" ,WIDE-OPEN>)> <CRLF>)
+  ;       (<RARG? BEG> <FOOD-FOR-RATS>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 (room TUNNEL-ENTRANCE
   :description "Tunnel Entrance"
   :exits
     (
+      (west :to MUDDY-TUNNEL)
+      (east :to TUNNEL-WEST)
       (in :to MUDDY-TUNNEL)
       (down :to MUDDY-TUNNEL)
-      (east :to TUNNEL-WEST)
-      (west :to MUDDY-TUNNEL)
     )
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL-WEST has PER exits
+; [NEEDS-TRANSLATION] Room TUNNEL-WEST: ACTION TUNNEL-WEST-F, PER exits
 (room TUNNEL-WEST
   :description "Steam Tunnel"
   :exits
     (
-      (east :to TUNNEL)
       (west :to TUNNEL-WEST :per RATS-EXIT)
+      (east :to TUNNEL)
     )
 
   ; --- PER Exit Routines ---
@@ -1368,9 +2593,24 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TUNNEL-WEST-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TUNNEL-AND-PIPE> <TELL
+  ;         "A bundle of coaxial cable runs along the ceiling,
+  ;   festooned with damp mold and cobwebs. The tunnel continues west."
+  ;         CR>)
+  ;       (<RARG? BEG> <COND
+  ;         (<AND
+  ;           ,RATS-HERE
+  ;           <VERB? DROP>
+  ;           <FSET? ,PRSO ,FOODBIT>> <THROW-FOOD>)>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room UNDER-ALCHEMY-LAB has PER exits
+; [NEEDS-TRANSLATION] Room UNDER-ALCHEMY-LAB: ACTION UNDER-ALCHEMY-LAB-F, PER exits
 (room UNDER-ALCHEMY-LAB
   :description "Cinderblock Tunnel"
   :exits
@@ -1389,8 +2629,21 @@
   ; >
   ;
   ; --- End PER Exit Routines ---
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE UNDER-ALCHEMY-LAB-F (RARG)
+  ;   <COND
+  ;       (<RARG? LOOK> <TELL
+  ;         "This is a tunnel whose walls are cinderblock, with a concrete floor and
+  ;   ceiling. A metal ladder leads up to "> <AN-OPEN/CLOSED ,ALCHEMY-TRAP-DOOR> <TELL
+  ;         " in the ceiling, and the
+  ;   tunnel continues north, where the cinderblock walls become brick."
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room YUGGOTH: ACTION RANDOM-YUGGOTH-F
 (room YUGGOTH
   :description "Place"
   :flags (ONBIT)
@@ -1398,6 +2651,17 @@
     (
       (down :to BOWL-ROOM)
     )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE RANDOM-YUGGOTH-F (RARG)
+  ;   <COND
+  ;       (<RARG? ENTER> % <IFSOUND
+  ;         <SOUNDS
+  ;           ,S-DRONE
+  ;           ,S-START
+  ;           <COND (<HERE? ,YUGGOTH> 2) (ELSE 4)>>> <QUEUE I-YUGGOTH 2>)>
+  ; >
+  ; --- End Room ACTION Routine ---
 )
 
 ; === OBJECTS ===

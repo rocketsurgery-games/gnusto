@@ -228,10 +228,16 @@ class ZILtoGRUEConverter:
         """Convert a room to GRUE."""
         exits = self._extract_exits(room)
         per_routines = [e.per for e in exits if e.per]
+        action_routine = room.get_property_value("ACTION")
 
-        # Add [NEEDS-TRANSLATION] marker if room has PER exits
+        # Add [NEEDS-TRANSLATION] marker if room has ACTION or PER exits
+        needs_translation = []
+        if action_routine:
+            needs_translation.append(f"ACTION {action_routine}")
         if per_routines:
-            self._emit(f"; [NEEDS-TRANSLATION] Room {room.name} has PER exits")
+            needs_translation.append("PER exits")
+        if needs_translation:
+            self._emit(f"; [NEEDS-TRANSLATION] Room {room.name}: {', '.join(needs_translation)}")
 
         self._emit(f"(room {room.name}")
 
@@ -272,6 +278,16 @@ class ZILtoGRUEConverter:
                         self._emit(f"  ; {line}")
                     self._emit("  ;")
             self._emit("  ; --- End PER Exit Routines ---")
+
+        # Include room ACTION routine source as comment
+        if action_routine and action_routine in self.data.routines:
+            routine = self.data.routines[action_routine]
+            zil_source = routine_to_zil(routine)
+            self._emit("")
+            self._emit("  ; --- Room ACTION Routine ---")
+            for line in zil_source.split("\n"):
+                self._emit(f"  ; {line}")
+            self._emit("  ; --- End Room ACTION Routine ---")
 
         self._emit(")")
         self._emit("")
