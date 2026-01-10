@@ -4,49 +4,40 @@ Tree-sitter grammar for GRUE (Game Runtime for Universal Experiences), a declara
 
 ## Installation
 
-### Neovim (with nvim-treesitter)
+### Quick Install (manual)
 
-1. Add the parser to your nvim-treesitter config:
+```bash
+# Compile the parser
+cc -shared -o grue.so -I src src/parser.c -O2
+
+# Copy to nvim-treesitter directories
+cp grue.so ~/.local/share/nvim/lazy/nvim-treesitter/parser/
+cp -r queries/grue ~/.local/share/nvim/lazy/nvim-treesitter/queries/
+
+# Add filetype to your init.lua
+# vim.filetype.add({ extension = { grue = "grue" } })
+```
+
+### Via nvim-treesitter config
+
+Add to your treesitter config (e.g., `lua/plugins/treesitter.lua`):
 
 ```lua
 local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
 parser_config.grue = {
   install_info = {
-    url = "/path/to/tree-sitter-grue",  -- local path or git URL
+    url = "https://github.com/your-username/tree-sitter-grue",  -- or local path
     files = { "src/parser.c" },
-    branch = "main",
   },
   filetype = "grue",
 }
+
+vim.filetype.add({ extension = { grue = "grue" } })
 ```
 
-2. Copy the queries to your Neovim config:
+Then run `:TSInstall grue`.
 
-```bash
-# Create the queries directory
-mkdir -p ~/.config/nvim/queries/grue
-
-# Copy the query files
-cp queries/grue/*.scm ~/.config/nvim/queries/grue/
-```
-
-3. Set up the filetype (add to your init.lua):
-
-```lua
-vim.filetype.add({
-  extension = {
-    grue = "grue",
-  },
-})
-```
-
-4. Install the parser:
-
-```vim
-:TSInstall grue
-```
-
-### Manual Build
+### Build from source
 
 ```bash
 npm install

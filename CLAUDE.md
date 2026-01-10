@@ -12,6 +12,8 @@ bd close <id>                         # Mark complete
 bd sync                               # Sync with git remote
 ```
 
+Do NOT start work on a bead without claiming it.
+
 # Session Completion Workflow
 
 When ending a work session, complete ALL steps. Work is NOT complete until `git push` succeeds.
