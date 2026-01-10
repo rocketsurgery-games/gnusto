@@ -35,8 +35,8 @@ to the east the basement area continues."
   :flags (ONBIT)
   :exits
     (
-      (down :to AERO-STAIRS)
       (south :to INF-1)
+      (down :to AERO-STAIRS)
     )
 
   ; --- Room ACTION Routine ---
@@ -58,33 +58,21 @@ east."
   :flags (ONBIT)
   :exits
     (
+      (up :to AERO-LOBBY)
       (down :to SUB-BASEMENT)
       (east :to AERO-BASEMENT)
-      (up :to AERO-LOBBY)
     )
 )
 
-; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT: ACTION ALCHEMY-DEPT-F, PER exits
+; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT: ACTION ALCHEMY-DEPT-F
 (room ALCHEMY-DEPT
   :description "Department of Alchemy"
   :flags (ONBIT)
   :exits
     (
+      (south :to ALCHEMY-DEPT :via ALCHEMY-LAB-ENTER-BARRIER)
       (north :to CHEMISTRY-BLDG :via ALCHEMY-DOOR)
-      (south :to ALCHEMY-DEPT :per ALCHEMY-LAB-ENTER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE ALCHEMY-LAB-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<IN? ,PROFESSOR ,ALCHEMY-DEPT> <COND
-  ;         (<LAB-ENTER?> <CRLF> ,ALCHEMY-LAB)
-  ;         (ELSE <RFALSE>)>)
-  ;       (ELSE ,ALCHEMY-LAB)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE ALCHEMY-DEPT-F (RARG)
@@ -105,39 +93,34 @@ east."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room ALCHEMY-LAB: ACTION ALCHEMY-LAB-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-DEPT south exit
+; Synthesized from PER routine: ALCHEMY-LAB-ENTER
+; ZIL Source:
+; <ROUTINE ALCHEMY-LAB-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<IN? ,PROFESSOR ,ALCHEMY-DEPT> <COND
+;         (<LAB-ENTER?> <CRLF> ,ALCHEMY-LAB)
+;         (ELSE <RFALSE>)>)
+;       (ELSE ,ALCHEMY-LAB)>
+; >
+(object ALCHEMY-LAB-ENTER-BARRIER
+  :location ALCHEMY-DEPT
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room ALCHEMY-LAB: ACTION ALCHEMY-LAB-F
 (room ALCHEMY-LAB
   :description "Lab"
   :exits
     (
-      (down :to UNDER-ALCHEMY-LAB :per ALCHEMY-LAB-DOWN-EXIT)
-      (north :to ALCHEMY-DEPT :per ALCHEMY-LAB-EXIT)
+      (down :to UNDER-ALCHEMY-LAB :via ALCHEMY-LAB-DOWN-EXIT-BARRIER)
+      (north :to ALCHEMY-DEPT :via ALCHEMY-LAB-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
-  ;   <COND
-  ;       (<AND
-  ;         ,LAB-BENCH-MOVED?
-  ;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
-  ;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
-  ;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
-  ; >
-  ;
-  ; <ROUTINE ALCHEMY-LAB-EXIT ()
-  ;   <COND
-  ;       (,TIED-UP? <COND
-  ;         (<FSET? ,PENTAGRAM ,RMUNGBIT> <TELL
-  ;           "You find the archway barred by a force you can't push through."
-  ;           CR>)
-  ;         (ELSE <TELL
-  ;           "You find it very hard to move. Your feet reach the chalk line and then
-  ;   seem to meet resistance, though there is nothing there but the chalk."
-  ;           CR>)> <RFALSE>)
-  ;       (ELSE <MOVE ,WINNER ,HERE> ,ALCHEMY-DEPT)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE ALCHEMY-LAB-F (RARG)
@@ -181,6 +164,50 @@ east."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-LAB down exit
+; Synthesized from PER routine: ALCHEMY-LAB-DOWN-EXIT
+; ZIL Source:
+; <ROUTINE ALCHEMY-LAB-DOWN-EXIT ()
+;   <COND
+;       (<AND
+;         ,LAB-BENCH-MOVED?
+;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <MOVE ,WINNER ,HERE> ,UNDER-ALCHEMY-LAB)
+;       (,LAB-BENCH-MOVED? <TELL "The trapdoor bars your way." CR> <RFALSE>)
+;       (ELSE <TELL "There is no obvious way down from here." CR> <RFALSE>)>
+; >
+(object ALCHEMY-LAB-DOWN-EXIT-BARRIER
+  :location ALCHEMY-LAB
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Barrier object for ALCHEMY-LAB north exit
+; Synthesized from PER routine: ALCHEMY-LAB-EXIT
+; ZIL Source:
+; <ROUTINE ALCHEMY-LAB-EXIT ()
+;   <COND
+;       (,TIED-UP? <COND
+;         (<FSET? ,PENTAGRAM ,RMUNGBIT> <TELL
+;           "You find the archway barred by a force you can't push through."
+;           CR>)
+;         (ELSE <TELL
+;           "You find it very hard to move. Your feet reach the chalk line and then
+;   seem to meet resistance, though there is nothing there but the chalk."
+;           CR>)> <RFALSE>)
+;       (ELSE <MOVE ,WINNER ,HERE> ,ALCHEMY-DEPT)>
+; >
+(object ALCHEMY-LAB-EXIT-BARRIER
+  :location ALCHEMY-LAB
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 ; [NEEDS-TRANSLATION] Room BOWL-ROOM: ACTION RANDOM-YUGGOTH-F
 (room BOWL-ROOM
   :description "Basalt Bowl"
@@ -190,9 +217,9 @@ a rock platform."
   :flags (ONBIT)
   :exits
     (
-      (down :to PLATFORM-ROOM)
       (in :to PLATFORM-ROOM)
       (up :to YUGGOTH)
+      (down :to PLATFORM-ROOM)
     )
 
   ; --- Room ACTION Routine ---
@@ -207,25 +234,15 @@ a rock platform."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room BRICK-TUNNEL: ACTION BRICK-TUNNEL-F, PER exits
+; [NEEDS-TRANSLATION] Room BRICK-TUNNEL: ACTION BRICK-TUNNEL-F
 (room BRICK-TUNNEL
   :description "Brick Tunnel"
   :exits
     (
-      (north :to CAVE-ROOM)
       (south :to UNDER-ALCHEMY-LAB)
-      (up :to STORAGE-ROOM :per BRICK-TUNNEL-EXIT)
+      (up :to STORAGE-ROOM :via BRICK-TUNNEL-EXIT-BARRIER)
+      (north :to CAVE-ROOM)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE BRICK-TUNNEL-EXIT ()
-  ;   <COND
-  ;       (<NOT
-  ;         <IN? ,MANHOLE-COVER ,MANHOLE>> ,STORAGE-ROOM)
-  ;       (ELSE <TELL S "There is a " 'MANHOLE-COVER " blocking your way." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE BRICK-TUNNEL-F (RARG)
@@ -255,6 +272,24 @@ a rock platform."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for BRICK-TUNNEL up exit
+; Synthesized from PER routine: BRICK-TUNNEL-EXIT
+; ZIL Source:
+; <ROUTINE BRICK-TUNNEL-EXIT ()
+;   <COND
+;       (<NOT
+;         <IN? ,MANHOLE-COVER ,MANHOLE>> ,STORAGE-ROOM)
+;       (ELSE <TELL S "There is a " 'MANHOLE-COVER " blocking your way." CR> <RFALSE>)>
+; >
+(object BRICK-TUNNEL-EXIT-BARRIER
+  :location BRICK-TUNNEL
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 (room BROWN-BASEMENT
   :description "Brown Basement"
   :ldesc "This is a cluttered basement below the Brown Building. Discarded equipment
@@ -263,8 +298,8 @@ up. The passage itself continues northwest."
   :flags (ONBIT)
   :exits
     (
-      (nw :to BROWN-TUNNEL)
       (up :to BROWN-BUILDING)
+      (nw :to BROWN-TUNNEL)
     )
 )
 
@@ -274,10 +309,10 @@ up. The passage itself continues northwest."
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-BASEMENT)
       (south :to COURTYARD)
       (out :to COURTYARD)
       (up :to BROWN-TOP-FLOOR)
+      (down :to BROWN-BASEMENT)
     )
 
   ; --- Room ACTION Routine ---
@@ -295,7 +330,7 @@ up. The passage itself continues northwest."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room BROWN-ROOF: ACTION BROWN-ROOF-F, PER exits
+; [NEEDS-TRANSLATION] Room BROWN-ROOF: ACTION BROWN-ROOF-F
 (room BROWN-ROOF
   :description "Skyscraper Roof"
   :ldesc "A low parapet surrounds a small roof here. The air conditioning cooling
@@ -305,22 +340,10 @@ all detail of the city across the river to the south."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (in :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
-      (east :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
+      (in :to BROWN-TOP-FLOOR :via BROWN-ROOF-EXIT-BARRIER)
       (up :to INSIDE-DOME)
+      (east :to BROWN-TOP-FLOOR :via BROWN-ROOF-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE BROWN-ROOF-EXIT ()
-  ;   <COND
-  ;       (<IN? ,FLIER ,HERE> <TELL
-  ;         "The dark shape, its foul stench overpowering the wind, "> <COND
-  ;         (<IN? ,FLIER-SHAPE ,HERE> <REMOVE ,FLIER-SHAPE> <SETG FLIER-COUNT 3> <TELL "drops from the dome and ">)> <TELL "blocks your escape." CR> <RFALSE>)
-  ;       (<FSET? ,ROOF-DOOR ,OPENBIT> ,BROWN-TOP-FLOOR)
-  ;       (ELSE <TELL "The door leading inside is closed." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE BROWN-ROOF-F (RARG)
@@ -332,6 +355,26 @@ all detail of the city across the river to the south."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for BROWN-ROOF in exit
+; Synthesized from PER routine: BROWN-ROOF-EXIT
+; ZIL Source:
+; <ROUTINE BROWN-ROOF-EXIT ()
+;   <COND
+;       (<IN? ,FLIER ,HERE> <TELL
+;         "The dark shape, its foul stench overpowering the wind, "> <COND
+;         (<IN? ,FLIER-SHAPE ,HERE> <REMOVE ,FLIER-SHAPE> <SETG FLIER-COUNT 3> <TELL "drops from the dome and ">)> <TELL "blocks your escape." CR> <RFALSE>)
+;       (<FSET? ,ROOF-DOOR ,OPENBIT> ,BROWN-TOP-FLOOR)
+;       (ELSE <TELL "The door leading inside is closed." CR> <RFALSE>)>
+; >
+(object BROWN-ROOF-EXIT-BARRIER
+  :location BROWN-ROOF
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 (room BROWN-TOP-FLOOR
   :description "Top Floor"
   :ldesc "This is the top of the stairway. A door leads out to the roof here, and
@@ -339,9 +382,9 @@ you can hear the wind blowing beyond. There is a sign on the door."
   :flags (ONBIT)
   :exits
     (
+      (out :to BROWN-ROOF :via ROOF-DOOR)
       (west :to BROWN-ROOF :via ROOF-DOOR)
       (down :to BROWN-BUILDING)
-      (out :to BROWN-ROOF :via ROOF-DOOR)
     )
 )
 
@@ -353,8 +396,8 @@ also leads up."
   :flags (ONBIT)
   :exits
     (
-      (up :to NUTRITION-BLDG)
       (se :to BROWN-BASEMENT)
+      (up :to NUTRITION-BLDG)
     )
 )
 
@@ -400,8 +443,8 @@ also leads up."
   :description "Renovated Cave"
   :exits
     (
-      (down :to CAVE-ALTAR)
       (south :to BRICK-TUNNEL)
+      (down :to CAVE-ALTAR)
     )
 
   ; --- Room ACTION Routine ---
@@ -426,8 +469,8 @@ also leads up."
   :flags (ONBIT)
   :exits
     (
-      (north :to INF-5)
       (south :to ALCHEMY-DEPT :via ALCHEMY-DOOR)
+      (north :to INF-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -446,42 +489,18 @@ also leads up."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room COMP-CENTER: ACTION COMP-CENTER-F, PER exits
+; [NEEDS-TRANSLATION] Room COMP-CENTER: ACTION COMP-CENTER-F
 (room COMP-CENTER
   :description "Computer Center"
   :flags (ONBIT)
   :exits
     (
+      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (up :to CS-2ND)
       (down :to CS-BASEMENT)
       (north :to SMITH-ST)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to CS-2ND)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE CS-ELEVATOR-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<AND
-  ;         ,ELEVATOR-STOPPED?
-  ;         <EQUAL?
-  ;           ,ELEVATOR-LOC
-  ;           <GETP ,HERE ,P?FLOOR>>> <COND
-  ;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
-  ;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
-  ;       (<AND
-  ;         <HERE? ,CS-BASEMENT>
-  ;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
-  ;       (<AND
-  ;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
-  ;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
-  ;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
-  ;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
-  ;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE COMP-CENTER-F (RARG)
@@ -492,6 +511,38 @@ also leads up."
   ; >
   ; --- End Room ACTION Routine ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for COMP-CENTER south exit
+; Synthesized from PER routine: CS-ELEVATOR-ENTER
+; ZIL Source:
+; <ROUTINE CS-ELEVATOR-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<AND
+;         ,ELEVATOR-STOPPED?
+;         <EQUAL?
+;           ,ELEVATOR-LOC
+;           <GETP ,HERE ,P?FLOOR>>> <COND
+;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
+;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
+;       (<AND
+;         <HERE? ,CS-BASEMENT>
+;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
+;       (<AND
+;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
+;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
+;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
+;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
+;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
+; >
+(object CS-ELEVATOR-ENTER-BARRIER
+  :location COMP-CENTER
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 ; [NEEDS-TRANSLATION] Room COURTYARD: ACTION COURTYARD-F
 (room COURTYARD
@@ -504,8 +555,8 @@ featureless skyscraper is to the north."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (north :to BROWN-BUILDING)
       (in :to BROWN-BUILDING)
+      (north :to BROWN-BUILDING)
     )
 
   ; --- Room ACTION Routine ---
@@ -517,43 +568,19 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-2ND: ACTION CS-2ND-F, PER exits
+; [NEEDS-TRANSLATION] Room CS-2ND: ACTION CS-2ND-F
 (room CS-2ND
   :description "Second Floor"
   :flags (ONBIT)
   :exits
     (
+      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
       (west :to KITCHEN)
+      (up :to CS-3RD)
       (down :to COMP-CENTER)
       (north :to TERMINAL-ROOM)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to CS-3RD)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE CS-ELEVATOR-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<AND
-  ;         ,ELEVATOR-STOPPED?
-  ;         <EQUAL?
-  ;           ,ELEVATOR-LOC
-  ;           <GETP ,HERE ,P?FLOOR>>> <COND
-  ;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
-  ;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
-  ;       (<AND
-  ;         <HERE? ,CS-BASEMENT>
-  ;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
-  ;       (<AND
-  ;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
-  ;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
-  ;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
-  ;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
-  ;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE CS-2ND-F (RARG)
@@ -565,42 +592,50 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-3RD: ACTION CS-3RD-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for CS-2ND south exit
+; Synthesized from PER routine: CS-ELEVATOR-ENTER
+; ZIL Source:
+; <ROUTINE CS-ELEVATOR-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<AND
+;         ,ELEVATOR-STOPPED?
+;         <EQUAL?
+;           ,ELEVATOR-LOC
+;           <GETP ,HERE ,P?FLOOR>>> <COND
+;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
+;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
+;       (<AND
+;         <HERE? ,CS-BASEMENT>
+;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
+;       (<AND
+;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
+;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
+;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
+;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
+;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
+; >
+(object CS-ELEVATOR-ENTER-BARRIER
+  :location CS-2ND
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room CS-3RD: ACTION CS-3RD-F
 (room CS-3RD
   :description "Third Floor"
   :flags (ONBIT)
   :exits
     (
-      (down :to CS-2ND)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
       (out :to CS-ROOF)
       (up :to CS-ROOF)
+      (down :to CS-2ND)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE CS-ELEVATOR-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<AND
-  ;         ,ELEVATOR-STOPPED?
-  ;         <EQUAL?
-  ;           ,ELEVATOR-LOC
-  ;           <GETP ,HERE ,P?FLOOR>>> <COND
-  ;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
-  ;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
-  ;       (<AND
-  ;         <HERE? ,CS-BASEMENT>
-  ;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
-  ;       (<AND
-  ;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
-  ;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
-  ;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
-  ;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
-  ;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE CS-3RD-F (RARG)
@@ -617,55 +652,51 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-BASEMENT: ACTION CS-BASEMENT-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for CS-3RD south exit
+; Synthesized from PER routine: CS-ELEVATOR-ENTER
+; ZIL Source:
+; <ROUTINE CS-ELEVATOR-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<AND
+;         ,ELEVATOR-STOPPED?
+;         <EQUAL?
+;           ,ELEVATOR-LOC
+;           <GETP ,HERE ,P?FLOOR>>> <COND
+;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
+;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
+;       (<AND
+;         <HERE? ,CS-BASEMENT>
+;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
+;       (<AND
+;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
+;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
+;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
+;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
+;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
+; >
+(object CS-ELEVATOR-ENTER-BARRIER
+  :location CS-3RD
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room CS-BASEMENT: ACTION CS-BASEMENT-F
 (room CS-BASEMENT
   :description "Basement"
   :flags (ONBIT)
   :exits
     (
+      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
       (west :to AERO-BASEMENT)
-      (down :to ELEVATOR-PIT :per CS-PIT-ENTER)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (east :to TEMPORARY-BASEMENT)
-      (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (up :to COMP-CENTER)
+      (down :to ELEVATOR-PIT :via CS-PIT-ENTER-BARRIER)
+      (east :to TEMPORARY-BASEMENT)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE CS-PIT-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<AND
-  ;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>
-  ;         <NOT <ZERO? ,ELEVATOR-LOC>>> <TELL
-  ;         "You drop to the floor below, which isn't all that far down."> <COND
-  ;         (,HOLDING-DOORS? <SETG HOLDING-DOORS? <>> <FCLEAR ,ELEVATOR-DOOR-B ,OPENBIT> <ELEVATOR-WANTED?> <TELL " The doors shut as soon as you release them"> <IN-DARK?>)
-  ;         (ELSE <CRLF>)> <CRLF> ,ELEVATOR-PIT)
-  ;       (ELSE <CANT-GO> <RFALSE>)>
-  ; >
-  ;
-  ; <ROUTINE CS-ELEVATOR-ENTER ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<AND
-  ;         ,ELEVATOR-STOPPED?
-  ;         <EQUAL?
-  ;           ,ELEVATOR-LOC
-  ;           <GETP ,HERE ,P?FLOOR>>> <COND
-  ;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
-  ;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
-  ;       (<AND
-  ;         <HERE? ,CS-BASEMENT>
-  ;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
-  ;       (<AND
-  ;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
-  ;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
-  ;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
-  ;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
-  ;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE CS-BASEMENT-F (RARG)
@@ -679,30 +710,70 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM: ACTION CS-ELEVATOR-ROOM-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for CS-BASEMENT south exit
+; Synthesized from PER routine: CS-ELEVATOR-ENTER
+; ZIL Source:
+; <ROUTINE CS-ELEVATOR-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<AND
+;         ,ELEVATOR-STOPPED?
+;         <EQUAL?
+;           ,ELEVATOR-LOC
+;           <GETP ,HERE ,P?FLOOR>>> <COND
+;         (<FSET? <DOOR-AT-ELEVATOR> ,OPENBIT> <COND (<END-OF-CHAIN?> <RFALSE>) (ELSE ,CS-ELEVATOR-ROOM)>)
+;         (ELSE <TELL CTHE ,ELEVATOR-DOOR " aren't open." CR> <RFALSE>)>)
+;       (<AND
+;         <HERE? ,CS-BASEMENT>
+;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>> <CS-PIT-ENTER>)
+;       (<AND
+;         <FSET? <THIS-FLOOR-DOOR> ,OPENBIT>
+;         <FIRST? <THIS-FLOOR-DOOR>>> <TELL "You would fall "> <COND
+;         (<IN? ,ELEVATOR-FLOOR ,HERE> <TELL "onto the machinery">)
+;         (ELSE <TELL ,INTO-THE-SHAFT>)> <TELL ". Not a pretty fate." CR> <RFALSE>)
+;       (ELSE <TELL "The elevator isn't here." CR> <RFALSE>)>
+; >
+(object CS-ELEVATOR-ENTER-BARRIER
+  :location CS-BASEMENT
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Barrier object for CS-BASEMENT down exit
+; Synthesized from PER routine: CS-PIT-ENTER
+; ZIL Source:
+; <ROUTINE CS-PIT-ENTER ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<AND
+;         <FSET? ,ELEVATOR-DOOR-B ,OPENBIT>
+;         <NOT <ZERO? ,ELEVATOR-LOC>>> <TELL
+;         "You drop to the floor below, which isn't all that far down."> <COND
+;         (,HOLDING-DOORS? <SETG HOLDING-DOORS? <>> <FCLEAR ,ELEVATOR-DOOR-B ,OPENBIT> <ELEVATOR-WANTED?> <TELL " The doors shut as soon as you release them"> <IN-DARK?>)
+;         (ELSE <CRLF>)> <CRLF> ,ELEVATOR-PIT)
+;       (ELSE <CANT-GO> <RFALSE>)>
+; >
+(object CS-PIT-ENTER-BARRIER
+  :location CS-BASEMENT
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM: ACTION CS-ELEVATOR-ROOM-F
 (room CS-ELEVATOR-ROOM
   :description "Elevator"
   :flags (ONBIT)
   :exits
     (
-      (north :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
-      (out :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
+      (out :to CS-BASEMENT :via CS-ELEVATOR-EXIT-BARRIER)
+      (north :to CS-BASEMENT :via CS-ELEVATOR-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE CS-ELEVATOR-EXIT ()
-  ;   <COND
-  ;       (,ELEVATOR-STOPPED? <COND
-  ;         (<NOT
-  ;           <FSET? <DOOR-AT-ELEVATOR> ,OPENBIT>> <TELL CTHE ,ELEVATOR-DOOR " are closed." CR> <RFALSE>)
-  ;         (<ZERO? ,ELEVATOR-LOC> ,CS-BASEMENT)
-  ;         (<EQUAL? ,ELEVATOR-LOC 1> ,COMP-CENTER)
-  ;         (<EQUAL? ,ELEVATOR-LOC 2> ,CS-2ND)
-  ;         (<EQUAL? ,ELEVATOR-LOC 3> ,CS-3RD)>)
-  ;       (ELSE <TELL ,STILL-MOVING CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE CS-ELEVATOR-ROOM-F (RARG)
@@ -728,14 +799,37 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for CS-ELEVATOR-ROOM out exit
+; Synthesized from PER routine: CS-ELEVATOR-EXIT
+; ZIL Source:
+; <ROUTINE CS-ELEVATOR-EXIT ()
+;   <COND
+;       (,ELEVATOR-STOPPED? <COND
+;         (<NOT
+;           <FSET? <DOOR-AT-ELEVATOR> ,OPENBIT>> <TELL CTHE ,ELEVATOR-DOOR " are closed." CR> <RFALSE>)
+;         (<ZERO? ,ELEVATOR-LOC> ,CS-BASEMENT)
+;         (<EQUAL? ,ELEVATOR-LOC 1> ,COMP-CENTER)
+;         (<EQUAL? ,ELEVATOR-LOC 2> ,CS-2ND)
+;         (<EQUAL? ,ELEVATOR-LOC 3> ,CS-3RD)>)
+;       (ELSE <TELL ,STILL-MOVING CR> <RFALSE>)>
+; >
+(object CS-ELEVATOR-EXIT-BARRIER
+  :location CS-ELEVATOR-ROOM
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 ; [NEEDS-TRANSLATION] Room CS-ROOF: ACTION CS-ROOF-F
 (room CS-ROOF
   :description "Roof"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (down :to CS-3RD)
       (in :to CS-3RD)
+      (down :to CS-3RD)
     )
 
   ; --- Room ACTION Routine ---
@@ -756,33 +850,15 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room DEAD-STORAGE: ACTION DEAD-STORAGE-F, PER exits
+; [NEEDS-TRANSLATION] Room DEAD-STORAGE: ACTION DEAD-STORAGE-F
 (room DEAD-STORAGE
   :description "Dead Storage"
   :exits
     (
+      (in :to STORAGE-ROOM :via STORAGE-EXIT-BARRIER)
       (west :to TEMPORARY-BASEMENT)
-      (in :to STORAGE-ROOM :per STORAGE-EXIT)
-      (east :to STORAGE-ROOM :per STORAGE-EXIT)
+      (east :to STORAGE-ROOM :via STORAGE-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE STORAGE-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (<G? ,JUNK-MOVED? ,JUNK-MOVES-NEEDED> ,STORAGE-ROOM)
-  ;       (,JUNK-MOVED? <TELL
-  ;         "There is still no path all the way through the junk, but you can now
-  ;   tell for sure that there's a room to the east."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <TELL
-  ;         "You climb around on the junk for a while, and you get the impression that
-  ;   there is an opening 'way on the east wall, but there is so much stuff in
-  ;   the way that you can't get to it."
-  ;         CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE DEAD-STORAGE-F (RARG)
@@ -801,6 +877,32 @@ featureless skyscraper is to the north."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for DEAD-STORAGE in exit
+; Synthesized from PER routine: STORAGE-EXIT
+; ZIL Source:
+; <ROUTINE STORAGE-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (<G? ,JUNK-MOVED? ,JUNK-MOVES-NEEDED> ,STORAGE-ROOM)
+;       (,JUNK-MOVED? <TELL
+;         "There is still no path all the way through the junk, but you can now
+;   tell for sure that there's a room to the east."
+;         CR> <RFALSE>)
+;       (ELSE <TELL
+;         "You climb around on the junk for a while, and you get the impression that
+;   there is an opening 'way on the east wall, but there is so much stuff in
+;   the way that you can't get to it."
+;         CR> <RFALSE>)>
+; >
+(object STORAGE-EXIT-BARRIER
+  :location DEAD-STORAGE
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 ; [NEEDS-TRANSLATION] Room DOME-ROOF: ACTION DOME-ROOF-F
 (room DOME-ROOF
   :description "Roof of Great Dome"
@@ -810,8 +912,8 @@ tip-top of the dome."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (in :to TOP-OF-DOME :via DOME-DOOR)
       (south :to TOP-OF-DOME :via DOME-DOOR)
+      (in :to TOP-OF-DOME :via DOME-DOOR)
       (up :to ON-DOME)
     )
 
@@ -823,42 +925,15 @@ tip-top of the dome."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room ELEVATOR-PIT: ACTION ELEVATOR-PIT-F, PER exits
+; [NEEDS-TRANSLATION] Room ELEVATOR-PIT: ACTION ELEVATOR-PIT-F
 (room ELEVATOR-PIT
   :description "Concrete Box"
   :exits
     (
+      (out :to CS-BASEMENT :via PIT-DOOR-EXIT-BARRIER)
+      (up :to CS-BASEMENT :via PIT-DOOR-EXIT-BARRIER)
       (north :to STEAM-TUNNEL-EAST)
-      (out :to CS-BASEMENT :per PIT-DOOR-EXIT)
-      (up :to CS-BASEMENT :per PIT-DOOR-EXIT)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE PIT-DOOR-EXIT ()
-  ;   <COND
-  ;       (<FIRST? ,ELEVATOR-DOOR-B> <COND
-  ;         (,RATS-HERE <COND (<L? ,RATS-HERE 2> <SETG RATS-HERE 2>)> <TELL
-  ;           "You leap up the wall towards the basement, but the rats are faster!
-  ;   They bite your fingers"> <THROUGH-THE ,GLOVES> <TELL
-  ;           ", and you release your hold, tumbling back to
-  ;   the pit!"
-  ;           CR> <RFALSE>)
-  ;         (ELSE <TELL
-  ;           "You climb up the gritty wall and out into the basement."
-  ;           CR
-  ;           CR> ,CS-BASEMENT)>)
-  ;       (<FSET? ,ELEVATOR-DOOR-B ,OPENBIT> <TELL
-  ;         "You try to climb up while holding the doors open, but it's just
-  ;   outside the realm of possibility."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <TELL
-  ;         "There is no apparent way through the closed "
-  ;         'ELEVATOR-DOOR
-  ;         "."
-  ;         CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE ELEVATOR-PIT-F (RARG)
@@ -901,6 +976,41 @@ tip-top of the dome."
   ; >
   ; --- End Room ACTION Routine ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for ELEVATOR-PIT out exit
+; Synthesized from PER routine: PIT-DOOR-EXIT
+; ZIL Source:
+; <ROUTINE PIT-DOOR-EXIT ()
+;   <COND
+;       (<FIRST? ,ELEVATOR-DOOR-B> <COND
+;         (,RATS-HERE <COND (<L? ,RATS-HERE 2> <SETG RATS-HERE 2>)> <TELL
+;           "You leap up the wall towards the basement, but the rats are faster!
+;   They bite your fingers"> <THROUGH-THE ,GLOVES> <TELL
+;           ", and you release your hold, tumbling back to
+;   the pit!"
+;           CR> <RFALSE>)
+;         (ELSE <TELL
+;           "You climb up the gritty wall and out into the basement."
+;           CR
+;           CR> ,CS-BASEMENT)>)
+;       (<FSET? ,ELEVATOR-DOOR-B ,OPENBIT> <TELL
+;         "You try to climb up while holding the doors open, but it's just
+;   outside the realm of possibility."
+;         CR> <RFALSE>)
+;       (ELSE <TELL
+;         "There is no apparent way through the closed "
+;         'ELEVATOR-DOOR
+;         "."
+;         CR> <RFALSE>)>
+; >
+(object PIT-DOOR-EXIT-BARRIER
+  :location ELEVATOR-PIT
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 (room ENGINEERING-BLDG
   :description "Engineering Building"
@@ -967,54 +1077,18 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-1: ACTION INF-F, PER exits
+; [NEEDS-TRANSLATION] Room INF-1: ACTION INF-F
 (room INF-1
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (west :to MASS-AVE)
-      (north :to AERO-LOBBY)
-      (east :to ? :per WAXER-EXIT)
       (south :to ENGINEERING-BLDG)
       (out :to MASS-AVE)
+      (west :to MASS-AVE)
+      (north :to AERO-LOBBY)
+      (east :to ? :via WAXER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INF-F (RARG "AUX" L)
@@ -1052,51 +1126,59 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-2: ACTION INF-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for INF-1 east exit
+; Synthesized from PER routine: WAXER-EXIT
+; ZIL Source:
+; <ROUTINE WAXER-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+;       (<AND
+;         <IN? ,FLOOR-WAXER ,HERE>
+;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+;         (ELSE <TELL
+;           "In a deft maneuver, "
+;           THE
+;           ,MAINTENANCE-MAN
+;           " steers the "
+;           'FLOOR-WAXER
+;           " into
+;   your path, blocking your advance."
+;           CR>)> <RFALSE>)
+;       (<AND
+;         ,CORD-SEVERED?
+;         <IN? ,MAINTENANCE-MAN ,HERE>
+;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+;         <NOT
+;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+;         CTHE
+;         ,MAINTENANCE-MAN
+;         S
+;         " lurches toward you"
+;         ", grasping and panting. There is
+;   no way to go around him."
+;         CR> <RFALSE>)
+;       (ELSE <INF-EAST-EXIT ,HERE>)>
+; >
+(object WAXER-EXIT-BARRIER
+  :location INF-1
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room INF-2: ACTION INF-F
 (room INF-2
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
       (west :to INF-1)
-      (east :to ? :per WAXER-EXIT)
+      (east :to ? :via WAXER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INF-F (RARG "AUX" L)
@@ -1134,64 +1216,62 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-3: ACTION INF-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for INF-2 east exit
+; Synthesized from PER routine: WAXER-EXIT
+; ZIL Source:
+; <ROUTINE WAXER-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+;       (<AND
+;         <IN? ,FLOOR-WAXER ,HERE>
+;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+;         (ELSE <TELL
+;           "In a deft maneuver, "
+;           THE
+;           ,MAINTENANCE-MAN
+;           " steers the "
+;           'FLOOR-WAXER
+;           " into
+;   your path, blocking your advance."
+;           CR>)> <RFALSE>)
+;       (<AND
+;         ,CORD-SEVERED?
+;         <IN? ,MAINTENANCE-MAN ,HERE>
+;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+;         <NOT
+;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+;         CTHE
+;         ,MAINTENANCE-MAN
+;         S
+;         " lurches toward you"
+;         ", grasping and panting. There is
+;   no way to go around him."
+;         CR> <RFALSE>)
+;       (ELSE <INF-EAST-EXIT ,HERE>)>
+; >
+(object WAXER-EXIT-BARRIER
+  :location INF-2
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room INF-3: ACTION INF-F
 (room INF-3
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
+      (south :to GREAT-COURT :via GREAT-COURT-EXIT-BARRIER)
+      (out :to GREAT-COURT :via GREAT-COURT-EXIT-BARRIER)
       (west :to INF-2)
-      (east :to ? :per WAXER-EXIT)
-      (south :to GREAT-COURT :per GREAT-COURT-EXIT)
-      (out :to GREAT-COURT :per GREAT-COURT-EXIT)
       (up :to GREAT-DOME)
+      (east :to ? :via WAXER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
-  ; <ROUTINE GREAT-COURT-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (,DOOR-WARNING ,GREAT-COURT)
-  ;       (ELSE <SETG DOOR-WARNING T> <TELL
-  ;         "Remember, this is one of the doors that's always locked at night.
-  ;   You won't be able to get back in if you go out."
-  ;         CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INF-F (RARG "AUX" L)
@@ -1229,51 +1309,80 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-4: ACTION INF-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for INF-3 south exit
+; Synthesized from PER routine: GREAT-COURT-EXIT
+; ZIL Source:
+; <ROUTINE GREAT-COURT-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <RFALSE>)
+;       (,DOOR-WARNING ,GREAT-COURT)
+;       (ELSE <SETG DOOR-WARNING T> <TELL
+;         "Remember, this is one of the doors that's always locked at night.
+;   You won't be able to get back in if you go out."
+;         CR> <RFALSE>)>
+; >
+(object GREAT-COURT-EXIT-BARRIER
+  :location INF-3
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Barrier object for INF-3 east exit
+; Synthesized from PER routine: WAXER-EXIT
+; ZIL Source:
+; <ROUTINE WAXER-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+;       (<AND
+;         <IN? ,FLOOR-WAXER ,HERE>
+;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+;         (ELSE <TELL
+;           "In a deft maneuver, "
+;           THE
+;           ,MAINTENANCE-MAN
+;           " steers the "
+;           'FLOOR-WAXER
+;           " into
+;   your path, blocking your advance."
+;           CR>)> <RFALSE>)
+;       (<AND
+;         ,CORD-SEVERED?
+;         <IN? ,MAINTENANCE-MAN ,HERE>
+;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+;         <NOT
+;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+;         CTHE
+;         ,MAINTENANCE-MAN
+;         S
+;         " lurches toward you"
+;         ", grasping and panting. There is
+;   no way to go around him."
+;         CR> <RFALSE>)
+;       (ELSE <INF-EAST-EXIT ,HERE>)>
+; >
+(object WAXER-EXIT-BARRIER
+  :location INF-3
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room INF-4: ACTION INF-F
 (room INF-4
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
       (west :to INF-3)
-      (east :to ? :per WAXER-EXIT)
+      (east :to ? :via WAXER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INF-F (RARG "AUX" L)
@@ -1311,52 +1420,60 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INF-5: ACTION INF-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for INF-4 east exit
+; Synthesized from PER routine: WAXER-EXIT
+; ZIL Source:
+; <ROUTINE WAXER-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+;       (<AND
+;         <IN? ,FLOOR-WAXER ,HERE>
+;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+;         (ELSE <TELL
+;           "In a deft maneuver, "
+;           THE
+;           ,MAINTENANCE-MAN
+;           " steers the "
+;           'FLOOR-WAXER
+;           " into
+;   your path, blocking your advance."
+;           CR>)> <RFALSE>)
+;       (<AND
+;         ,CORD-SEVERED?
+;         <IN? ,MAINTENANCE-MAN ,HERE>
+;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+;         <NOT
+;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+;         CTHE
+;         ,MAINTENANCE-MAN
+;         S
+;         " lurches toward you"
+;         ", grasping and panting. There is
+;   no way to go around him."
+;         CR> <RFALSE>)
+;       (ELSE <INF-EAST-EXIT ,HERE>)>
+; >
+(object WAXER-EXIT-BARRIER
+  :location INF-4
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room INF-5: ACTION INF-F
 (room INF-5
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
+      (south :to ? :via WAXER-EXIT-BARRIER)
       (west :to INF-4)
-      (north :to ? :per WAXER-EXIT)
-      (south :to ? :per WAXER-EXIT)
+      (north :to ? :via WAXER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE WAXER-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
-  ;       (<AND
-  ;         <IN? ,FLOOR-WAXER ,HERE>
-  ;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
-  ;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
-  ;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
-  ;         (ELSE <TELL
-  ;           "In a deft maneuver, "
-  ;           THE
-  ;           ,MAINTENANCE-MAN
-  ;           " steers the "
-  ;           'FLOOR-WAXER
-  ;           " into
-  ;   your path, blocking your advance."
-  ;           CR>)> <RFALSE>)
-  ;       (<AND
-  ;         ,CORD-SEVERED?
-  ;         <IN? ,MAINTENANCE-MAN ,HERE>
-  ;         <FSET? ,MAINTENANCE-MAN ,PERSON>
-  ;         <NOT
-  ;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
-  ;         CTHE
-  ;         ,MAINTENANCE-MAN
-  ;         S
-  ;         " lurches toward you"
-  ;         ", grasping and panting. There is
-  ;   no way to go around him."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <INF-EAST-EXIT ,HERE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INF-F (RARG "AUX" L)
@@ -1393,6 +1510,50 @@ way to the north."
   ; >
   ; --- End Room ACTION Routine ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for INF-5 south exit
+; Synthesized from PER routine: WAXER-EXIT
+; ZIL Source:
+; <ROUTINE WAXER-EXIT ()
+;   <COND
+;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
+;       (<AND
+;         <IN? ,FLOOR-WAXER ,HERE>
+;         <IN? ,MAINTENANCE-MAN ,FLOOR-WAXER>> <THIS-IS-IT ,MAINTENANCE-MAN> <COND
+;         (,CORD-SEVERED? <MAINT-DESCENDS> <COND
+;           (<IN? ,FLOOR-WAX <LOC ,MAINTENANCE-MAN>> <INF-EAST-EXIT ,HERE>)>)
+;         (ELSE <TELL
+;           "In a deft maneuver, "
+;           THE
+;           ,MAINTENANCE-MAN
+;           " steers the "
+;           'FLOOR-WAXER
+;           " into
+;   your path, blocking your advance."
+;           CR>)> <RFALSE>)
+;       (<AND
+;         ,CORD-SEVERED?
+;         <IN? ,MAINTENANCE-MAN ,HERE>
+;         <FSET? ,MAINTENANCE-MAN ,PERSON>
+;         <NOT
+;           <IN? ,FLOOR-WAX ,HERE>>> <THIS-IS-IT ,MAINTENANCE-MAN> <TELL
+;         CTHE
+;         ,MAINTENANCE-MAN
+;         S
+;         " lurches toward you"
+;         ", grasping and panting. There is
+;   no way to go around him."
+;         CR> <RFALSE>)
+;       (ELSE <INF-EAST-EXIT ,HERE>)>
+; >
+(object WAXER-EXIT-BARRIER
+  :location INF-5
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 ; [NEEDS-TRANSLATION] Room INNER-LAIR: ACTION INNER-LAIR-F
 (room INNER-LAIR
@@ -1426,7 +1587,7 @@ way to the north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room INSIDE-DOME: ACTION INSIDE-DOME-F, PER exits
+; [NEEDS-TRANSLATION] Room INSIDE-DOME: ACTION INSIDE-DOME-F
 (room INSIDE-DOME
   :description "Inside Dome"
   :ldesc "You are inside a large domed area. The dome contains equipment that
@@ -1436,18 +1597,9 @@ blasts against the semitransparent material of the dome."
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-ROOF :per INSIDE-DOME-EXIT)
-      (out :to BROWN-ROOF :per INSIDE-DOME-EXIT)
+      (out :to BROWN-ROOF :via INSIDE-DOME-EXIT-BARRIER)
+      (down :to BROWN-ROOF :via INSIDE-DOME-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE INSIDE-DOME-EXIT ()
-  ;   <COND
-  ;       (<IN? ,FLIER ,HERE> <TELL "The creature is blocking your exit." CR> <RFALSE>)
-  ;       (ELSE ,BROWN-ROOF)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE INSIDE-DOME-F (RARG)
@@ -1461,6 +1613,23 @@ blasts against the semitransparent material of the dome."
   ; >
   ; --- End Room ACTION Routine ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for INSIDE-DOME out exit
+; Synthesized from PER routine: INSIDE-DOME-EXIT
+; ZIL Source:
+; <ROUTINE INSIDE-DOME-EXIT ()
+;   <COND
+;       (<IN? ,FLIER ,HERE> <TELL "The creature is blocking your exit." CR> <RFALSE>)
+;       (ELSE ,BROWN-ROOF)>
+; >
+(object INSIDE-DOME-EXIT-BARRIER
+  :location INSIDE-DOME
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 (room KITCHEN
   :description "Kitchen"
@@ -1478,10 +1647,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (north :to LAIR-2)
-      (east :to LAIR-1)
       (south :to LAIR-6)
       (up :to LARGE-CHAMBER)
+      (north :to LAIR-2)
+      (east :to LAIR-1)
     )
 
   ; --- Room ACTION Routine ---
@@ -1517,8 +1686,8 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (west :to LAIR-7)
-      (north :to LAIR-10)
       (up :to LAIR-9)
+      (north :to LAIR-10)
     )
 
   ; --- Room ACTION Routine ---
@@ -1553,9 +1722,9 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (east :to LAIR-9)
       (south :to LAIR-11)
       (up :to LAIR-11)
+      (east :to LAIR-9)
     )
 
   ; --- Room ACTION Routine ---
@@ -1591,9 +1760,9 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (west :to LAIR-7)
+      (up :to LAIR-8)
       (down :to LAIR-3)
       (east :to LAIR-1)
-      (up :to LAIR-8)
     )
 
   ; --- Room ACTION Routine ---
@@ -1628,10 +1797,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
+      (south :to LAIR-4)
       (west :to LAIR-7)
       (north :to LAIR-6)
       (east :to LAIR-2)
-      (south :to LAIR-4)
     )
 
   ; --- Room ACTION Routine ---
@@ -1666,11 +1835,11 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
+      (south :to LAIR-5)
       (west :to LAIR-11)
+      (up :to LAIR-3)
       (down :to LAIR-10)
       (east :to LAIR-10)
-      (south :to LAIR-5)
-      (up :to LAIR-3)
     )
 
   ; --- Room ACTION Routine ---
@@ -1706,10 +1875,10 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (west :to LAIR-3)
+      (up :to LAIR-5)
       (down :to OUTER-LAIR)
       (north :to LAIR-4)
       (east :to LAIR-11)
-      (up :to LAIR-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -1782,11 +1951,11 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
+      (south :to LAIR-2)
       (west :to LAIR-1)
+      (up :to LAIR-10)
       (down :to LAIR-7)
       (east :to LAIR-3)
-      (south :to LAIR-2)
-      (up :to LAIR-10)
     )
 
   ; --- Room ACTION Routine ---
@@ -1821,9 +1990,9 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
+      (up :to LAIR-6)
       (down :to LAIR-9)
       (east :to LAIR-2)
-      (up :to LAIR-6)
     )
 
   ; --- Room ACTION Routine ---
@@ -1858,10 +2027,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
+      (up :to LAIR-2)
       (down :to LAIR-10)
       (north :to LAIR-6)
       (east :to LAIR-8)
-      (up :to LAIR-2)
     )
 
   ; --- Room ACTION Routine ---
@@ -1891,35 +2060,14 @@ counter are a refrigerator and a microwave."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room LARGE-CHAMBER: ACTION LARGE-CHAMBER-F, PER exits
+; [NEEDS-TRANSLATION] Room LARGE-CHAMBER: ACTION LARGE-CHAMBER-F
 (room LARGE-CHAMBER
   :description "Large Chamber"
   :exits
     (
-      (down :to LAIR-1 :per LAIR-EXIT)
       (up :to MUDDY-TUNNEL)
+      (down :to LAIR-1 :via LAIR-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE LAIR-EXIT ()
-  ;   <COND
-  ;       (<FSET? ,URCHINS ,RMUNGBIT> <TELL
-  ;         "A few of the urchins grab feebly at you as you pass, but none is a
-  ;   serious barrier."
-  ;         CR
-  ;         CR> ,LAIR-1)
-  ;       (<IN? ,URCHINS ,SLOTS> <TELL
-  ;         "Something is blocking the downward passage. It's moving, slowly and
-  ;   painfully, trying to climb up."
-  ;         CR> <RFALSE>)
-  ;       (ELSE <TELL
-  ;         "The urchins lurch, almost as one, into your way, grabbing at you feebly
-  ;   but effectively. Their pale, limp hands can't grab you, but they can
-  ;   stop you. There is no way past."
-  ;         CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE LARGE-CHAMBER-F (RARG)
@@ -1964,6 +2112,35 @@ counter are a refrigerator and a microwave."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for LARGE-CHAMBER down exit
+; Synthesized from PER routine: LAIR-EXIT
+; ZIL Source:
+; <ROUTINE LAIR-EXIT ()
+;   <COND
+;       (<FSET? ,URCHINS ,RMUNGBIT> <TELL
+;         "A few of the urchins grab feebly at you as you pass, but none is a
+;   serious barrier."
+;         CR
+;         CR> ,LAIR-1)
+;       (<IN? ,URCHINS ,SLOTS> <TELL
+;         "Something is blocking the downward passage. It's moving, slowly and
+;   painfully, trying to climb up."
+;         CR> <RFALSE>)
+;       (ELSE <TELL
+;         "The urchins lurch, almost as one, into your way, grabbing at you feebly
+;   but effectively. Their pale, limp hands can't grab you, but they can
+;   stop you. There is no way past."
+;         CR> <RFALSE>)>
+; >
+(object LAIR-EXIT-BARRIER
+  :location LARGE-CHAMBER
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 ; [NEEDS-TRANSLATION] Room MASS-AVE: ACTION MASS-AVE-F
 (room MASS-AVE
   :description "Mass. Ave."
@@ -1991,9 +2168,9 @@ enter. It is made of sticky gelatinous mud that's been pushed by
 something into a semblance of a passage."
   :exits
     (
+      (up :to TUNNEL-ENTRANCE)
       (down :to LARGE-CHAMBER)
       (east :to TUNNEL-ENTRANCE)
-      (up :to TUNNEL-ENTRANCE)
     )
 )
 
@@ -2005,8 +2182,8 @@ down."
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-TUNNEL)
       (south :to INF-5)
+      (down :to BROWN-TUNNEL)
     )
 )
 
@@ -2047,8 +2224,8 @@ accumulating here. The only way off is down."
   :flags (ONBIT)
   :exits
     (
-      (in :to INNER-LAIR :via CURTAIN-DOOR)
       (south :to INNER-LAIR :via CURTAIN-DOOR)
+      (in :to INNER-LAIR :via CURTAIN-DOOR)
       (up :to LAIR-5)
     )
 
@@ -2120,9 +2297,9 @@ pushed against the pile by the crowd around you."
   :flags (ONBIT OUTSIDE)
   :exits
     (
+      (south :to COMP-CENTER)
       (in :to COMP-CENTER)
       (east :to SMITH-ST-2)
-      (south :to COMP-CENTER)
     )
 
   ; --- Room ACTION Routine ---
@@ -2148,9 +2325,9 @@ pushed against the pile by the crowd around you."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (west :to SMITH-ST)
-      (in :to TEMPORARY-LAB)
       (south :to TEMPORARY-LAB)
+      (in :to TEMPORARY-LAB)
+      (west :to SMITH-ST)
     )
 
   ; --- Room ACTION Routine ---
@@ -2167,7 +2344,7 @@ pushed against the pile by the crowd around you."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STEAM-TUNNEL: ACTION STEAM-TUNNEL-F, PER exits
+; [NEEDS-TRANSLATION] Room STEAM-TUNNEL: ACTION STEAM-TUNNEL-F
 (room STEAM-TUNNEL
   :description "Steam Tunnel"
   :ldesc "The steam tunnel is narrow here, and its construction is more archaic.
@@ -2176,29 +2353,9 @@ and coaxial cable continue along their appointed paths. The tunnel is
 damp and even a little muddy."
   :exits
     (
-      (west :to TUNNEL-WEST :per RATS-EXIT)
+      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
       (east :to STEAM-TUNNEL-EAST)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE STEAM-TUNNEL-F (RARG)
@@ -2207,42 +2364,42 @@ damp and even a little muddy."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STEAM-TUNNEL-EAST: ACTION STEAM-TUNNEL-EAST-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL west exit
+; Synthesized from PER routine: RATS-EXIT
+; ZIL Source:
+; <ROUTINE RATS-EXIT ("AUX" H)
+;   <COND
+;       (<AND
+;         <IN? ,RATS ,HERE>
+;         <NOT ,ON-CABLE?>> <SETG
+;         RATS-HERE
+;         <+ ,RATS-HERE 1>> <TELL
+;         "You plunge into the mass of rats, but there are too many of them, and
+;   you can't force your way past."
+;         CR> <RFALSE>)
+;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+; >
+(object RATS-EXIT-BARRIER
+  :location STEAM-TUNNEL
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room STEAM-TUNNEL-EAST: ACTION STEAM-TUNNEL-EAST-F
 (room STEAM-TUNNEL-EAST
   :description "Steam Tunnel"
   :exits
     (
-      (west :to TUNNEL-WEST :per RATS-EXIT)
-      (south :to ELEVATOR-PIT :per ELEVATOR-PIT-ENTER)
+      (south :to ELEVATOR-PIT :via ELEVATOR-PIT-ENTER-BARRIER)
+      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
-  ; <ROUTINE ELEVATOR-PIT-ENTER ()
-  ;   <COND
-  ;       (,BRICK-WALL-FLAG <COND
-  ;         (<ZERO? ,ELEVATOR-LOC> <TELL "A " 'ELEVATOR-FLOOR " blocks your way." CR> <RFALSE>)
-  ;         (ELSE ,ELEVATOR-PIT)>)
-  ;       (ELSE <TELL "You are trying to walk through a brick wall." CR> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE STEAM-TUNNEL-EAST-F (RARG)
@@ -2271,7 +2428,54 @@ damp and even a little muddy."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room STORAGE-ROOM: ACTION STORAGE-ROOM-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL-EAST south exit
+; Synthesized from PER routine: ELEVATOR-PIT-ENTER
+; ZIL Source:
+; <ROUTINE ELEVATOR-PIT-ENTER ()
+;   <COND
+;       (,BRICK-WALL-FLAG <COND
+;         (<ZERO? ,ELEVATOR-LOC> <TELL "A " 'ELEVATOR-FLOOR " blocks your way." CR> <RFALSE>)
+;         (ELSE ,ELEVATOR-PIT)>)
+;       (ELSE <TELL "You are trying to walk through a brick wall." CR> <RFALSE>)>
+; >
+(object ELEVATOR-PIT-ENTER-BARRIER
+  :location STEAM-TUNNEL-EAST
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Barrier object for STEAM-TUNNEL-EAST west exit
+; Synthesized from PER routine: RATS-EXIT
+; ZIL Source:
+; <ROUTINE RATS-EXIT ("AUX" H)
+;   <COND
+;       (<AND
+;         <IN? ,RATS ,HERE>
+;         <NOT ,ON-CABLE?>> <SETG
+;         RATS-HERE
+;         <+ ,RATS-HERE 1>> <TELL
+;         "You plunge into the mass of rats, but there are too many of them, and
+;   you can't force your way past."
+;         CR> <RFALSE>)
+;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+; >
+(object RATS-EXIT-BARRIER
+  :location STEAM-TUNNEL-EAST
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room STORAGE-ROOM: ACTION STORAGE-ROOM-F
 (room STORAGE-ROOM
   :description "Ancient Storage"
   :ldesc "What's deader than dead storage? That's what's in this room. Most of the
@@ -2282,21 +2486,8 @@ foundations are said to be."
   :exits
     (
       (west :to DEAD-STORAGE)
-      (down :to BRICK-TUNNEL :per MANHOLE-EXIT)
+      (down :to BRICK-TUNNEL :via MANHOLE-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE MANHOLE-EXIT ()
-  ;   <COND
-  ;       (<NOT
-  ;         <IN? ,MANHOLE-COVER ,MANHOLE>> <SETG
-  ;         SCORE
-  ;         <+ ,SCORE ,MANHOLE-SCORE>> <SETG MANHOLE-SCORE 0> ,BRICK-TUNNEL)
-  ;       (ELSE <COND
-  ;         (<WINNER? ,PLAYER> <TELL S "There is a " "steel cover on the manhole." CR>)> <RFALSE>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE STORAGE-ROOM-F (RARG)
@@ -2306,7 +2497,27 @@ foundations are said to be."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room SUB-BASEMENT: PER exits
+; [NEEDS-TRANSLATION] Barrier object for STORAGE-ROOM down exit
+; Synthesized from PER routine: MANHOLE-EXIT
+; ZIL Source:
+; <ROUTINE MANHOLE-EXIT ()
+;   <COND
+;       (<NOT
+;         <IN? ,MANHOLE-COVER ,MANHOLE>> <SETG
+;         SCORE
+;         <+ ,SCORE ,MANHOLE-SCORE>> <SETG MANHOLE-SCORE 0> ,BRICK-TUNNEL)
+;       (ELSE <COND
+;         (<WINNER? ,PLAYER> <TELL S "There is a " "steel cover on the manhole." CR>)> <RFALSE>)>
+; >
+(object MANHOLE-EXIT-BARRIER
+  :location STORAGE-ROOM
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 (room SUB-BASEMENT
   :description "Subbasement"
   :ldesc "This is the subbasement of the Aeronautical Engineering Building. A
@@ -2316,22 +2527,30 @@ space."
   :flags (ONBIT)
   :exits
     (
-      (nw :to TOMB :per TOMB-SQUEEZE)
       (up :to AERO-STAIRS)
+      (nw :to TOMB :via TOMB-SQUEEZE-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE TOMB-SQUEEZE ("AUX" TMP)
-  ;   <COND
-  ;       (<WINNER? ,PLAYER> <COND
-  ;         (<SET TMP <HEAVY-JUNK? ,WINNER>> <TELL "It's too tight a fit carrying " THE .TMP ,PERIOD> <THIS-IS-IT .TMP> <>)
-  ;         (<HERE? ,TOMB> ,SUB-BASEMENT)
-  ;         (ELSE ,TOMB)>)
-  ;       (ELSE <COND (<IN? ,WINNER ,TOMB> ,SUB-BASEMENT) (ELSE ,TOMB)>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for SUB-BASEMENT nw exit
+; Synthesized from PER routine: TOMB-SQUEEZE
+; ZIL Source:
+; <ROUTINE TOMB-SQUEEZE ("AUX" TMP)
+;   <COND
+;       (<WINNER? ,PLAYER> <COND
+;         (<SET TMP <HEAVY-JUNK? ,WINNER>> <TELL "It's too tight a fit carrying " THE .TMP ,PERIOD> <THIS-IS-IT .TMP> <>)
+;         (<HERE? ,TOMB> ,SUB-BASEMENT)
+;         (ELSE ,TOMB)>)
+;       (ELSE <COND (<IN? ,WINNER ,TOMB> ,SUB-BASEMENT) (ELSE ,TOMB)>)>
+; >
+(object TOMB-SQUEEZE-BARRIER
+  :location SUB-BASEMENT
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 (room TEMPORARY-BASEMENT
   :description "Temporary Basement"
@@ -2343,8 +2562,8 @@ extends west, a stairway leads up, and a large passage is to the east."
   :exits
     (
       (west :to CS-BASEMENT)
-      (east :to DEAD-STORAGE)
       (up :to TEMPORARY-LAB)
+      (east :to DEAD-STORAGE)
     )
 )
 
@@ -2358,9 +2577,9 @@ flexibility: no one cares if they get more or less destroyed.) A stairway
 leads down, and a door leads north."
   :exits
     (
+      (out :to SMITH-ST-2)
       (down :to TEMPORARY-BASEMENT)
       (north :to SMITH-ST-2)
-      (out :to SMITH-ST-2)
     )
 
   ; --- Room ACTION Routine ---
@@ -2372,7 +2591,7 @@ leads down, and a door leads north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F, PER exits
+; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F
 (room TERMINAL-ROOM
   :description "Terminal Room"
   :ldesc "This is a large room crammed with computer terminals, small
@@ -2383,23 +2602,9 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-2ND :per HACKER-EXIT)
-      (out :to CS-2ND :per HACKER-EXIT)
+      (south :to CS-2ND :via HACKER-EXIT-BARRIER)
+      (out :to CS-2ND :via HACKER-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE HACKER-EXIT ()
-  ;   <COND
-  ;       (<OR <HELD? ,PC> <HELD? ,CHAIR>> <TELL
-  ;         ,HACKER-PREVENTS
-  ;         ,YOU-CANT
-  ;         "walk off with that!
-  ;   It's Tech property!\""
-  ;         CR> <RFALSE>)
-  ;       (ELSE ,CS-2ND)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TERMINAL-ROOM-F (RARG)
@@ -2437,28 +2642,38 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for TERMINAL-ROOM south exit
+; Synthesized from PER routine: HACKER-EXIT
+; ZIL Source:
+; <ROUTINE HACKER-EXIT ()
+;   <COND
+;       (<OR <HELD? ,PC> <HELD? ,CHAIR>> <TELL
+;         ,HACKER-PREVENTS
+;         ,YOU-CANT
+;         "walk off with that!
+;   It's Tech property!\""
+;         CR> <RFALSE>)
+;       (ELSE ,CS-2ND)>
+; >
+(object HACKER-EXIT-BARRIER
+  :location TERMINAL-ROOM
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F
 (room TOMB
   :description "Tomb"
   :flags (ONBIT)
   :exits
     (
+      (out :to TOMB :via TOMB-SQUEEZE-BARRIER)
+      (se :to TOMB :via TOMB-SQUEEZE-BARRIER)
       (down :to TUNNEL :via ACCESS-HATCH)
-      (out :to TOMB :per TOMB-SQUEEZE)
-      (se :to TOMB :per TOMB-SQUEEZE)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE TOMB-SQUEEZE ("AUX" TMP)
-  ;   <COND
-  ;       (<WINNER? ,PLAYER> <COND
-  ;         (<SET TMP <HEAVY-JUNK? ,WINNER>> <TELL "It's too tight a fit carrying " THE .TMP ,PERIOD> <THIS-IS-IT .TMP> <>)
-  ;         (<HERE? ,TOMB> ,SUB-BASEMENT)
-  ;         (ELSE ,TOMB)>)
-  ;       (ELSE <COND (<IN? ,WINNER ,TOMB> ,SUB-BASEMENT) (ELSE ,TOMB)>)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TOMB-F (RARG)
@@ -2480,14 +2695,34 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for TOMB out exit
+; Synthesized from PER routine: TOMB-SQUEEZE
+; ZIL Source:
+; <ROUTINE TOMB-SQUEEZE ("AUX" TMP)
+;   <COND
+;       (<WINNER? ,PLAYER> <COND
+;         (<SET TMP <HEAVY-JUNK? ,WINNER>> <TELL "It's too tight a fit carrying " THE .TMP ,PERIOD> <THIS-IS-IT .TMP> <>)
+;         (<HERE? ,TOMB> ,SUB-BASEMENT)
+;         (ELSE ,TOMB)>)
+;       (ELSE <COND (<IN? ,WINNER ,TOMB> ,SUB-BASEMENT) (ELSE ,TOMB)>)>
+; >
+(object TOMB-SQUEEZE-BARRIER
+  :location TOMB
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 ; [NEEDS-TRANSLATION] Room TOP-OF-DOME: ACTION TOP-OF-DOME-F
 (room TOP-OF-DOME
   :description "Top of Dome"
   :flags (ONBIT)
   :exits
     (
-      (north :to DOME-ROOF :via DOME-DOOR)
       (out :to DOME-ROOF :via DOME-DOOR)
+      (north :to DOME-ROOF :via DOME-DOOR)
     )
 
   ; --- Room ACTION Routine ---
@@ -2523,46 +2758,15 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL: ACTION TUNNEL-F, PER exits
+; [NEEDS-TRANSLATION] Room TUNNEL: ACTION TUNNEL-F
 (room TUNNEL
   :description "Steam Tunnel"
   :exits
     (
-      (west :to TUNNEL-WEST :per RATS-EXIT)
-      (east :to TUNNEL :per STEAM-EXIT)
+      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
       (up :to TOMB :via ACCESS-HATCH)
+      (east :to TUNNEL :via STEAM-EXIT-BARRIER)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
-  ; <ROUTINE STEAM-EXIT ()
-  ;   <COND
-  ;       (<FSET? ,PRESSURE-VALVE ,OPENBIT> <COND
-  ;         (<WINNER? ,PLAYER> <TELL
-  ;           "You would be plunging into scalding steam. Not such a smart idea, if
-  ;   you ask me."
-  ;           CR>)> <RFALSE>)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-EAST)
-  ;       (ELSE ,TUNNEL)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TUNNEL-F (RARG)
@@ -2594,34 +2798,64 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL-EAST: ACTION TUNNEL-EAST-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for TUNNEL west exit
+; Synthesized from PER routine: RATS-EXIT
+; ZIL Source:
+; <ROUTINE RATS-EXIT ("AUX" H)
+;   <COND
+;       (<AND
+;         <IN? ,RATS ,HERE>
+;         <NOT ,ON-CABLE?>> <SETG
+;         RATS-HERE
+;         <+ ,RATS-HERE 1>> <TELL
+;         "You plunge into the mass of rats, but there are too many of them, and
+;   you can't force your way past."
+;         CR> <RFALSE>)
+;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+; >
+(object RATS-EXIT-BARRIER
+  :location TUNNEL
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Barrier object for TUNNEL east exit
+; Synthesized from PER routine: STEAM-EXIT
+; ZIL Source:
+; <ROUTINE STEAM-EXIT ()
+;   <COND
+;       (<FSET? ,PRESSURE-VALVE ,OPENBIT> <COND
+;         (<WINNER? ,PLAYER> <TELL
+;           "You would be plunging into scalding steam. Not such a smart idea, if
+;   you ask me."
+;           CR>)> <RFALSE>)
+;       (<HERE? ,TUNNEL> ,TUNNEL-EAST)
+;       (ELSE ,TUNNEL)>
+; >
+(object STEAM-EXIT-BARRIER
+  :location TUNNEL
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room TUNNEL-EAST: ACTION TUNNEL-EAST-F
 (room TUNNEL-EAST
   :description "Steam Tunnel"
   :exits
     (
-      (west :to TUNNEL-WEST :per RATS-EXIT)
+      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
       (east :to STEAM-TUNNEL)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TUNNEL-EAST-F (RARG)
@@ -2636,6 +2870,34 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Barrier object for TUNNEL-EAST west exit
+; Synthesized from PER routine: RATS-EXIT
+; ZIL Source:
+; <ROUTINE RATS-EXIT ("AUX" H)
+;   <COND
+;       (<AND
+;         <IN? ,RATS ,HERE>
+;         <NOT ,ON-CABLE?>> <SETG
+;         RATS-HERE
+;         <+ ,RATS-HERE 1>> <TELL
+;         "You plunge into the mass of rats, but there are too many of them, and
+;   you can't force your way past."
+;         CR> <RFALSE>)
+;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+; >
+(object RATS-EXIT-BARRIER
+  :location TUNNEL-EAST
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
 (room TUNNEL-ENTRANCE
   :description "Tunnel Entrance"
   :ldesc "The tunnel continues west from here, becoming narrow, muddy, and
@@ -2644,41 +2906,21 @@ The steam pipe and coaxial cable disappear into the ceiling at this
 point. The temperature has dropped considerably, as well."
   :exits
     (
+      (in :to MUDDY-TUNNEL)
       (west :to MUDDY-TUNNEL)
       (down :to MUDDY-TUNNEL)
-      (in :to MUDDY-TUNNEL)
       (east :to TUNNEL-WEST)
     )
 )
 
-; [NEEDS-TRANSLATION] Room TUNNEL-WEST: ACTION TUNNEL-WEST-F, PER exits
+; [NEEDS-TRANSLATION] Room TUNNEL-WEST: ACTION TUNNEL-WEST-F
 (room TUNNEL-WEST
   :description "Steam Tunnel"
   :exits
     (
-      (west :to TUNNEL-WEST :per RATS-EXIT)
+      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
       (east :to TUNNEL)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE RATS-EXIT ("AUX" H)
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,HERE>
-  ;         <NOT ,ON-CABLE?>> <SETG
-  ;         RATS-HERE
-  ;         <+ ,RATS-HERE 1>> <TELL
-  ;         "You plunge into the mass of rats, but there are too many of them, and
-  ;   you can't force your way past."
-  ;         CR> <RFALSE>)
-  ;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
-  ;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
-  ;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
-  ;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
-  ;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TUNNEL-WEST-F (RARG)
@@ -2696,25 +2938,42 @@ point. The temperature has dropped considerably, as well."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room UNDER-ALCHEMY-LAB: ACTION UNDER-ALCHEMY-LAB-F, PER exits
+; [NEEDS-TRANSLATION] Barrier object for TUNNEL-WEST west exit
+; Synthesized from PER routine: RATS-EXIT
+; ZIL Source:
+; <ROUTINE RATS-EXIT ("AUX" H)
+;   <COND
+;       (<AND
+;         <IN? ,RATS ,HERE>
+;         <NOT ,ON-CABLE?>> <SETG
+;         RATS-HERE
+;         <+ ,RATS-HERE 1>> <TELL
+;         "You plunge into the mass of rats, but there are too many of them, and
+;   you can't force your way past."
+;         CR> <RFALSE>)
+;       (<HERE? ,TUNNEL-WEST> ,TUNNEL-ENTRANCE)
+;       (<HERE? ,TUNNEL> ,TUNNEL-WEST)
+;       (<HERE? ,TUNNEL-EAST> <STEAM-EXIT>)
+;       (<HERE? ,STEAM-TUNNEL> ,TUNNEL-EAST)
+;       (<HERE? ,STEAM-TUNNEL-EAST> ,STEAM-TUNNEL)>
+; >
+(object RATS-EXIT-BARRIER
+  :location TUNNEL-WEST
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
+
+; [NEEDS-TRANSLATION] Room UNDER-ALCHEMY-LAB: ACTION UNDER-ALCHEMY-LAB-F
 (room UNDER-ALCHEMY-LAB
   :description "Cinderblock Tunnel"
   :exits
     (
+      (up :to ALCHEMY-LAB :via UNDER-ALCHEMY-LAB-EXIT-BARRIER)
       (north :to BRICK-TUNNEL)
-      (up :to ALCHEMY-LAB :per UNDER-ALCHEMY-LAB-EXIT)
     )
-
-  ; --- PER Exit Routines ---
-  ; <ROUTINE UNDER-ALCHEMY-LAB-EXIT ()
-  ;   <COND
-  ;       (<NOT
-  ;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <COND
-  ;         (<WINNER? ,PLAYER> <THIS-IS-IT ,ALCHEMY-TRAP-DOOR> <TELL "The trapdoor isn't open." CR>)> <RFALSE>)
-  ;       (ELSE ,ALCHEMY-LAB)>
-  ; >
-  ;
-  ; --- End PER Exit Routines ---
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE UNDER-ALCHEMY-LAB-F (RARG)
@@ -2728,6 +2987,25 @@ point. The temperature has dropped considerably, as well."
   ; >
   ; --- End Room ACTION Routine ---
 )
+
+; [NEEDS-TRANSLATION] Barrier object for UNDER-ALCHEMY-LAB up exit
+; Synthesized from PER routine: UNDER-ALCHEMY-LAB-EXIT
+; ZIL Source:
+; <ROUTINE UNDER-ALCHEMY-LAB-EXIT ()
+;   <COND
+;       (<NOT
+;         <FSET? ,ALCHEMY-TRAP-DOOR ,OPENBIT>> <COND
+;         (<WINNER? ,PLAYER> <THIS-IS-IT ,ALCHEMY-TRAP-DOOR> <TELL "The trapdoor isn't open." CR>)> <RFALSE>)
+;       (ELSE ,ALCHEMY-LAB)>
+; >
+(object UNDER-ALCHEMY-LAB-EXIT-BARRIER
+  :location UNDER-ALCHEMY-LAB
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    (through
+      (case true
+        :outcome success))))
 
 ; [NEEDS-TRANSLATION] Room YUGGOTH: ACTION RANDOM-YUGGOTH-F
 (room YUGGOTH

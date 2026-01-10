@@ -110,8 +110,8 @@ class ExitInfo:
     """Information about a room exit."""
     direction: str
     to: str
-    via: str | None = None  # Door object for IF X IS OPEN
-    per: str | None = None  # PER routine name
+    via: str | None = None  # Object with (through) behavior
+    via_routine: str | None = None  # Source routine name (for synthesized barriers)  # PER routine name
 
 
 @dataclass
@@ -237,17 +237,13 @@ class ZILtoGRUEConverter:
     def _convert_room(self, room: ZILObject) -> None:
         """Convert a room to GRUE."""
         exits = self._extract_exits(room)
-        per_routines = [e.per for e in exits if e.per]
+        barrier_exits = [e for e in exits if e.via_routine]
         action_routine = room.get_property_value("ACTION")
 
-        # Add [NEEDS-TRANSLATION] marker if room has ACTION or PER exits
-        needs_translation = []
+        # Add [NEEDS-TRANSLATION] marker if room has ACTION routine
+        # (barrier objects handle their own NEEDS-TRANSLATION markers)
         if action_routine:
-            needs_translation.append(f"ACTION {action_routine}")
-        if per_routines:
-            needs_translation.append("PER exits")
-        if needs_translation:
-            self._emit(f"; [NEEDS-TRANSLATION] Room {room.name}: {', '.join(needs_translation)}")
+            self._emit(f"; [NEEDS-TRANSLATION] Room {room.name}: ACTION {action_routine}")
 
         self._emit(f"(room {room.name}")
 
@@ -275,25 +271,8 @@ class ZILtoGRUEConverter:
                 exit_parts = [f"{exit_info.direction} :to {exit_info.to}"]
                 if exit_info.via:
                     exit_parts.append(f":via {exit_info.via}")
-                if exit_info.per:
-                    exit_parts.append(f":per {exit_info.per}")
                 self._emit(f"      ({' '.join(exit_parts)})")
             self._emit("    )")
-
-        # Include PER routine sources as comments (deduplicated)
-        if per_routines:
-            unique_routines = list(dict.fromkeys(per_routines))  # Preserve order, dedupe
-            self._emit("")
-            self._emit("  ; --- PER Exit Routines ---")
-            for routine_name in unique_routines:
-                self.referenced_routines.add(routine_name)
-                routine = self.data.routines.get(routine_name)
-                if routine:
-                    zil_source = routine_to_zil(routine)
-                    for line in zil_source.split("\n"):
-                        self._emit(f"  ; {line}")
-                    self._emit("  ;")
-            self._emit("  ; --- End PER Exit Routines ---")
 
         # Include room ACTION routine source as comment
         if action_routine and action_routine in self.data.routines:
@@ -308,6 +287,13 @@ class ZILtoGRUEConverter:
 
         self._emit(")")
         self._emit("")
+
+        # Emit barrier objects for PER exits (deduplicated by routine name)
+        emitted_routines = set()
+        for exit_info in barrier_exits:
+            if exit_info.via_routine not in emitted_routines:
+                emitted_routines.add(exit_info.via_routine)
+                self._emit_barrier_object(room.name, exit_info)
 
     def _extract_exits(self, room: ZILObject) -> list[ExitInfo]:
         """Extract exits from a room, including conditional and PER exits."""
@@ -356,7 +342,14 @@ class ZILtoGRUEConverter:
                 routine_name = str(values[1])
                 # Try to find destination from routine if it's simple
                 dest = self._infer_per_destination(routine_name)
-                exits.append(ExitInfo(direction=direction_lower, to=dest, per=routine_name))
+                # Create barrier object name from routine
+                barrier_name = f"{routine_name}-BARRIER"
+                exits.append(ExitInfo(
+                    direction=direction_lower,
+                    to=dest,
+                    via=barrier_name,
+                    via_routine=routine_name
+                ))
 
             # Pattern: (DIRECTION NEXIT) - blocked exit
             elif first_val == "NEXIT":
@@ -415,6 +408,33 @@ class ZILtoGRUEConverter:
                 if result:
                     return result
         return None
+
+
+    def _emit_barrier_object(self, room_name: str, exit_info: ExitInfo) -> None:
+        """Emit a synthesized barrier object for a PER exit."""
+        routine_name = exit_info.via_routine
+        barrier_name = exit_info.via
+
+        # Track this routine as referenced
+        self.referenced_routines.add(routine_name)
+
+        routine = self.data.routines.get(routine_name)
+        zil_source = routine_to_zil(routine) if routine else "; (routine not found)"
+
+        self._emit(f"; [NEEDS-TRANSLATION] Barrier object for {room_name} {exit_info.direction} exit")
+        self._emit(f"; Synthesized from PER routine: {routine_name}")
+        self._emit(f"; ZIL Source:")
+        for line in zil_source.split("\n"):
+            self._emit(f"; {line}")
+        self._emit(f"(object {barrier_name}")
+        self._emit(f'  :location {room_name}')
+        self._emit(f'  :description "passage"')
+        self._emit(f'  :flags (INVISIBLE)')
+        self._emit(f'  :behaviors (')
+        self._emit(f'    (through')
+        self._emit(f'      (case true')
+        self._emit(f'        :outcome success))))')
+        self._emit("")
 
     def _convert_object(self, obj: ZILObject) -> bool:
         """Convert an object to GRUE. Returns True if it has an ACTION routine."""

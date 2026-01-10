@@ -125,7 +125,11 @@ class GrueStateAdapter:
         obj = self._resolve_symbol(obj)
         if obj not in self.state.objects:
             return False
-        loc = self.state.objects[obj].location
+        obj_state = self.state.objects[obj]
+        # Check INVISIBLE flag
+        if "INVISIBLE" in obj_state.flags:
+            return False
+        loc = obj_state.location
         if loc is None:
             return False
         if loc == "PLAYER":
