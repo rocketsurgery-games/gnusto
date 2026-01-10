@@ -24,8 +24,9 @@ def print_location(runtime: GrueRuntime) -> None:
     print(f"\n=== {room} ===")
     print(desc)
 
-    # Show visible objects
-    visible = runtime.get_visible_objects()
+    # Show objects in the room (not in inventory)
+    inventory = set(runtime.get_inventory())
+    visible = [obj for obj in runtime.get_visible_objects() if obj not in inventory]
     if visible:
         print(f"\nYou can see: {', '.join(visible)}")
 
