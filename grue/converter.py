@@ -117,7 +117,8 @@ class ExitInfo:
 @dataclass
 class ConversionResult:
     """Result of ZIL to GRUE conversion."""
-    grue_source: str
+    grue_source: str  # Combined source (for backwards compat)
+    files: dict[str, str] = field(default_factory=dict)  # filename -> content
     warnings: list[str] = field(default_factory=list)
     stats: dict[str, int] = field(default_factory=dict)
 
@@ -128,8 +129,19 @@ class ZILtoGRUEConverter:
     def __init__(self, game_data: GameData):
         self.data = game_data
         self.warnings: list[str] = []
-        self.out: TextIO = io.StringIO()
+        self.out: TextIO = io.StringIO()  # Current output buffer
         self.referenced_routines: set[str] = set()  # Track routines we've emitted
+        # Separate output buffers for multi-file output
+        self.buffers: dict[str, io.StringIO] = {
+            "world.grue": io.StringIO(),
+            "rooms.grue": io.StringIO(),
+            "objects.grue": io.StringIO(),
+            "barriers.grue": io.StringIO(),
+            "reference/routines.grue": io.StringIO(),
+            "reference/syntax.grue": io.StringIO(),
+            "reference/globals.grue": io.StringIO(),
+            "reference/constants.grue": io.StringIO(),
+        }  # Track routines we've emitted
 
     def convert(
         self,
@@ -145,10 +157,10 @@ class ZILtoGRUEConverter:
             description: Game description
             starting_room: Starting room (auto-detected if None)
         """
-        self.out = io.StringIO()
         self.warnings = []
 
-        # Header
+        # === world.grue ===
+        self._use_buffer("world.grue")
         self._write_header(name, description)
 
         # World form
@@ -169,31 +181,46 @@ class ZILtoGRUEConverter:
         self._emit("  :flags (PERSON))")
         self._emit("")
 
-        # Rooms
+        # === rooms.grue ===
+        self._use_buffer("rooms.grue")
         self._emit("; === ROOMS ===")
+        self._emit(f"; Generated from {len(self.data.rooms)} ZIL rooms")
         self._emit("")
         rooms_count = 0
-        for name, room in sorted(self.data.rooms.items()):
-            self._convert_room(room)
+        for room_name, room in sorted(self.data.rooms.items()):
+            self._convert_room_only(room)
             rooms_count += 1
 
-        # Objects
+        # === barriers.grue (emitted during room conversion) ===
+        # Barrier objects are emitted separately now
+
+        # === objects.grue ===
+        self._use_buffer("objects.grue")
         self._emit("; === OBJECTS ===")
+        self._emit(f"; Generated from {len(self.data.objects)} ZIL objects")
         self._emit("")
         objects_count = 0
         objects_with_actions = 0
-        for name, obj in sorted(self.data.objects.items()):
+        for obj_name, obj in sorted(self.data.objects.items()):
             has_action = self._convert_object(obj)
             objects_count += 1
             if has_action:
                 objects_with_actions += 1
 
-        # Unreferenced routines
+        # === reference/routines.grue ===
+        self._use_buffer("reference/routines.grue")
         unreferenced_count = self._emit_unreferenced_routines()
 
-        # Reference sections (syntax, globals, constants)
+        # === reference/syntax.grue ===
+        self._use_buffer("reference/syntax.grue")
         self._emit_syntax_reference()
+
+        # === reference/globals.grue ===
+        self._use_buffer("reference/globals.grue")
         self._emit_globals_reference()
+
+        # === reference/constants.grue ===
+        self._use_buffer("reference/constants.grue")
         self._emit_constants_reference()
 
         # Collect stats
@@ -205,14 +232,39 @@ class ZILtoGRUEConverter:
         }
 
         return ConversionResult(
-            grue_source=self.out.getvalue(),
+            grue_source=self._get_combined_output(),
+            files=self._get_files(),
             warnings=self.warnings,
             stats=stats,
         )
 
     def _emit(self, line: str) -> None:
-        """Emit a line to the output."""
+        """Emit a line to the current output buffer."""
         self.out.write(line + "\n")
+
+    def _use_buffer(self, name: str) -> None:
+        """Switch to a named output buffer."""
+        self.out = self.buffers[name]
+
+    def _get_combined_output(self) -> str:
+        """Get combined output from all buffers in order."""
+        parts = []
+        for name in ["world.grue", "rooms.grue", "objects.grue", "barriers.grue",
+                     "reference/routines.grue", "reference/syntax.grue",
+                     "reference/globals.grue", "reference/constants.grue"]:
+            content = self.buffers[name].getvalue()
+            if content.strip():
+                parts.append(content)
+        return "\n".join(parts)
+
+    def _get_files(self) -> dict[str, str]:
+        """Get dictionary of filename -> content for all non-empty buffers."""
+        files = {}
+        for name, buf in self.buffers.items():
+            content = buf.getvalue()
+            if content.strip():
+                files[name] = content
+        return files
 
     def _write_header(self, name: str, description: str) -> None:
         """Write file header comment."""
@@ -235,7 +287,19 @@ class ZILtoGRUEConverter:
         return "START"
 
     def _convert_room(self, room: ZILObject) -> None:
-        """Convert a room to GRUE."""
+        """Convert a room to GRUE (legacy - emits room and barriers together)."""
+        self._convert_room_only(room)
+        # Emit barriers inline (for backwards compat with single-file output)
+        exits = self._extract_exits(room)
+        barrier_exits = [e for e in exits if e.via_routine]
+        emitted_routines = set()
+        for exit_info in barrier_exits:
+            if exit_info.via_routine not in emitted_routines:
+                emitted_routines.add(exit_info.via_routine)
+                self._emit_barrier_object(room.name, exit_info)
+
+    def _convert_room_only(self, room: ZILObject) -> None:
+        """Convert a room to GRUE (room definition only, barriers emitted separately)."""
         exits = self._extract_exits(room)
         barrier_exits = [e for e in exits if e.via_routine]
         action_routine = room.get_property_value("ACTION")
@@ -288,12 +352,16 @@ class ZILtoGRUEConverter:
         self._emit(")")
         self._emit("")
 
-        # Emit barrier objects for PER exits (deduplicated by routine name)
+        # Queue barrier objects for separate emission
         emitted_routines = set()
         for exit_info in barrier_exits:
             if exit_info.via_routine not in emitted_routines:
                 emitted_routines.add(exit_info.via_routine)
+                # Switch to barriers buffer temporarily
+                saved_out = self.out
+                self._use_buffer("barriers.grue")
                 self._emit_barrier_object(room.name, exit_info)
+                self.out = saved_out
 
     def _extract_exits(self, room: ZILObject) -> list[ExitInfo]:
         """Extract exits from a room, including conditional and PER exits."""

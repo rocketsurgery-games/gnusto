@@ -1,0 +1,16 @@
+; Lurkinghorror
+; Converted from ZIL source
+;
+; Objects marked [NEEDS-TRANSLATION] have ZIL source that needs
+; to be converted to GRUE behaviors by an LLM or human.
+
+(world
+  :name "Lurkinghorror"
+)
+
+; === PLAYER ===
+
+(object PLAYER
+  :location TERMINAL-ROOM
+  :flags (PERSON))
+

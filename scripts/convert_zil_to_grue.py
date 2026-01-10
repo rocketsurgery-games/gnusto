@@ -4,6 +4,7 @@ Convert ZIL game data to GRUE format.
 
 Usage:
     python scripts/convert_zil_to_grue.py infocom/lurkinghorror -o lurking_horror.grue
+    python scripts/convert_zil_to_grue.py infocom/lurkinghorror --dir games/lurkinghorror
     python scripts/convert_zil_to_grue.py infocom/zork1 --stdout
 """
 
@@ -21,7 +22,8 @@ from grue.converter import convert_zil_to_grue
 def main():
     parser = argparse.ArgumentParser(description="Convert ZIL to GRUE format")
     parser.add_argument("game_path", help="Path to ZIL game directory")
-    parser.add_argument("-o", "--output", help="Output file path")
+    parser.add_argument("-o", "--output", help="Output file path (single file)")
+    parser.add_argument("-d", "--dir", help="Output directory (multi-file)")
     parser.add_argument("--stdout", action="store_true", help="Print to stdout")
     parser.add_argument("--name", help="Game name override")
     parser.add_argument("--starting-room", help="Starting room override")
@@ -68,14 +70,40 @@ def main():
     # Output
     if args.stdout:
         print(result.grue_source)
+    elif args.dir:
+        # Multi-file output to directory
+        out_dir = Path(args.dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        files_written = []
+        for filename, content in result.files.items():
+            file_path = out_dir / filename
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content)
+            files_written.append(str(file_path))
+
+        print(f"\nWrote {len(files_written)} files to {out_dir}/", file=sys.stderr)
+        for f in files_written:
+            print(f"  {f}", file=sys.stderr)
     elif args.output:
         Path(args.output).write_text(result.grue_source)
         print(f"\nWrote {args.output}", file=sys.stderr)
     else:
-        # Default output name
-        output_path = f"{Path(args.game_path).name}.grue"
-        Path(output_path).write_text(result.grue_source)
-        print(f"\nWrote {output_path}", file=sys.stderr)
+        # Default: multi-file output to games/<game>/
+        game_id = Path(args.game_path).name
+        out_dir = Path("games") / game_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        files_written = []
+        for filename, content in result.files.items():
+            file_path = out_dir / filename
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content)
+            files_written.append(str(file_path))
+
+        print(f"\nWrote {len(files_written)} files to {out_dir}/", file=sys.stderr)
+        for f in files_written:
+            print(f"  {f}", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -416,9 +416,35 @@ class GrueParser:
 
 
 def load_grue(path: str | Path) -> GrueWorld:
-    """Load a GRUE world definition from a .grue file."""
-    parser = GrueParser()
-    return parser.parse_file(path)
+    """Load a GRUE world definition from a file or directory.
+    
+    If path is a file, parse it as a single GRUE source.
+    If path is a directory, load and combine all .grue files (excluding reference/).
+    """
+    path = Path(path)
+    
+    if path.is_file():
+        parser = GrueParser()
+        return parser.parse_file(path)
+    
+    if path.is_dir():
+        # Load main files in order, skip reference/ directory
+        main_files = ["world.grue", "rooms.grue", "objects.grue", "barriers.grue"]
+        combined_source = []
+        
+        for filename in main_files:
+            file_path = path / filename
+            if file_path.exists():
+                combined_source.append(file_path.read_text())
+        
+        # Also load any other .grue files in the root (for custom additions)
+        for file_path in sorted(path.glob("*.grue")):
+            if file_path.name not in main_files:
+                combined_source.append(file_path.read_text())
+        
+        return parse_grue("\n".join(combined_source))
+    
+    raise FileNotFoundError(f"Path not found: {path}")
 
 
 def parse_grue(source: str) -> GrueWorld:
