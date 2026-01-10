@@ -4,3 +4,6 @@
 [submodule "infocom/lurkinghorror"]
 	path = infocom/lurkinghorror
 	url = https://github.com/the-infocom-files/lurkinghorror.git
+[submodule "games/zork1/zork1"]
+	path = games/zork1/zork1
+	url = https://github.com/the-infocom-files/zork1
