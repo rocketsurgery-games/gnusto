@@ -145,6 +145,9 @@ class GrueParser:
         elif name == "defeat":
             defeat = self._parse_defeat(expr)
             world.defeat[defeat.name] = defeat
+        elif name in ("test", "defn"):
+            # Skip test-related forms (handled by test_dsl module)
+            pass
         else:
             raise GrueParseError(f"Unknown top-level form: {name}")
 
@@ -491,8 +494,9 @@ def load_grue(path: str | Path) -> GrueWorld:
                 combined_source.append(file_path.read_text())
         
         # Also load any other .grue files in the root (for custom additions)
+        # Skip test files (*.test.grue)
         for file_path in sorted(path.glob("*.grue")):
-            if file_path.name not in main_files:
+            if file_path.name not in main_files and not file_path.name.endswith(".test.grue"):
                 combined_source.append(file_path.read_text())
         
         return parse_grue("\n".join(combined_source))
