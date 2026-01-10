@@ -129,6 +129,7 @@ class ZILtoGRUEConverter:
         self.data = game_data
         self.warnings: list[str] = []
         self.out: TextIO = io.StringIO()
+        self.referenced_routines: set[str] = set()  # Track routines we've emitted
 
     def convert(
         self,
@@ -187,11 +188,20 @@ class ZILtoGRUEConverter:
             if has_action:
                 objects_with_actions += 1
 
+        # Unreferenced routines
+        unreferenced_count = self._emit_unreferenced_routines()
+
+        # Reference sections (syntax, globals, constants)
+        self._emit_syntax_reference()
+        self._emit_globals_reference()
+        self._emit_constants_reference()
+
         # Collect stats
         stats = {
             "rooms": rooms_count,
             "objects": objects_count,
             "objects_with_actions": objects_with_actions,
+            "unreferenced_routines": unreferenced_count,
         }
 
         return ConversionResult(
@@ -276,6 +286,7 @@ class ZILtoGRUEConverter:
             self._emit("")
             self._emit("  ; --- PER Exit Routines ---")
             for routine_name in unique_routines:
+                self.referenced_routines.add(routine_name)
                 routine = self.data.routines.get(routine_name)
                 if routine:
                     zil_source = routine_to_zil(routine)
@@ -286,6 +297,7 @@ class ZILtoGRUEConverter:
 
         # Include room ACTION routine source as comment
         if action_routine and action_routine in self.data.routines:
+            self.referenced_routines.add(action_routine)
             routine = self.data.routines[action_routine]
             zil_source = routine_to_zil(routine)
             self._emit("")
@@ -463,6 +475,7 @@ class ZILtoGRUEConverter:
 
         # If has action routine, include ZIL source as comment
         if has_action and action_routine in self.data.routines:
+            self.referenced_routines.add(action_routine)
             routine = self.data.routines[action_routine]
             zil_source = routine_to_zil(routine)
 
@@ -480,6 +493,83 @@ class ZILtoGRUEConverter:
         self._emit("")
 
         return has_action
+
+    def _emit_unreferenced_routines(self) -> int:
+        """Emit unreferenced routines as comments. Returns count."""
+        unreferenced = [
+            name for name in self.data.routines.keys()
+            if name not in self.referenced_routines
+        ]
+
+        if not unreferenced:
+            return 0
+
+        self._emit("; === UNREFERENCED ROUTINES ===")
+        self._emit("; These routines are not directly tied to rooms or objects.")
+        self._emit("; They may be utility functions, event handlers, or game logic.")
+        self._emit("")
+
+        for routine_name in sorted(unreferenced):
+            routine = self.data.routines[routine_name]
+            zil_source = routine_to_zil(routine)
+            self._emit(f"; --- {routine_name} ---")
+            for line in zil_source.split("\n"):
+                self._emit(f"; {line}")
+            self._emit("")
+
+        return len(unreferenced)
+
+    def _emit_syntax_reference(self) -> None:
+        """Emit syntax definitions as reference comments."""
+        if not self.data.syntax:
+            return
+
+        self._emit("; === SYNTAX REFERENCE ===")
+        self._emit("; Verb patterns defining valid command structures.")
+        self._emit("")
+
+        for syn in self.data.syntax:
+            # Format: VERB pattern -> ACTION
+            pattern_str = " ".join(str(p) for p in syn.pattern) if syn.pattern else "(no args)"
+            filters_str = f" [{', '.join(str(f) for f in syn.filters)}]" if syn.filters else ""
+            pre_str = f" PRE={syn.pre_action}" if syn.pre_action else ""
+            self._emit(f"; {syn.verb} {pattern_str}{filters_str} -> {syn.action}{pre_str}")
+
+        self._emit("")
+
+    def _emit_globals_reference(self) -> None:
+        """Emit global variables as reference comments."""
+        if not self.data.globals:
+            return
+
+        self._emit("; === GLOBALS REFERENCE ===")
+        self._emit("; Game state variables.")
+        self._emit("")
+
+        for name, glob in sorted(self.data.globals.items()):
+            if glob.value is None:
+                value_str = "(uninitialized)"
+            elif isinstance(glob.value, list):
+                value_str = " ".join(str(v) for v in glob.value) if glob.value else "(empty)"
+            else:
+                value_str = str(glob.value)
+            self._emit(f"; {name} = {value_str}")
+
+        self._emit("")
+
+    def _emit_constants_reference(self) -> None:
+        """Emit constants as reference comments."""
+        if not self.data.constants:
+            return
+
+        self._emit("; === CONSTANTS REFERENCE ===")
+        self._emit("; Named constant values.")
+        self._emit("")
+
+        for name, const in sorted(self.data.constants.items()):
+            self._emit(f"; {name} = {const.value}")
+
+        self._emit("")
 
     def _escape_string(self, s: str) -> str:
         """Escape a string for GRUE output."""
