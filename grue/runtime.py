@@ -356,7 +356,25 @@ class GrueRuntime:
         # Check if exit has a :via door
         if exit_def.via:
             # Dispatch to door's "through" behavior
-            return self.do("through", exit_def.via, direction=direction, to=exit_def.to)
+            result = self.do("through", exit_def.via, direction=direction, to=exit_def.to)
+
+            # If door blocks passage, return that result
+            if result.outcome == "blocked":
+                return result
+
+            # If door allows passage (success or redirect), complete the movement
+            # The redirect indicates "yes, go that way" - we handle it here
+            if result.outcome in ("success", "redirect"):
+                self.state.objects["PLAYER"].location = exit_def.to
+                self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+                return ActionResult(
+                    outcome="success",
+                    effects_applied=[f"PLAYER moved to {exit_def.to} (via {exit_def.via})"],
+                    context=result.context,
+                )
+
+            # Pass through errors
+            return result
 
         # Simple exit - just move
         self.state.objects["PLAYER"].location = exit_def.to

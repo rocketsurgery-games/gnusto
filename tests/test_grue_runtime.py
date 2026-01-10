@@ -205,7 +205,7 @@ class TestMovementViaDoors:
     """Test movement through doors."""
 
     def test_door_with_through_behavior(self):
-        """Exit via door triggers through behavior."""
+        """Exit via door triggers through behavior and completes movement."""
         source = """
         (room OUTSIDE
           :description "Outside"
@@ -223,11 +223,12 @@ class TestMovementViaDoors:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        # Going "in" should trigger DOOR's through behavior
+        assert runtime.get_player_location() == "OUTSIDE"
+
+        # Going "in" triggers DOOR's through behavior, which allows passage
         result = runtime.do("go", direction="in")
-        # The redirect means we need to handle it
-        # For now, the runtime returns redirect
-        assert result.outcome == "redirect"
+        assert result.outcome == "success"
+        assert runtime.get_player_location() == "LOBBY"
 
 
 class TestVictoryDefeat:
