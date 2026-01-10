@@ -81,12 +81,25 @@ def parse_command(line: str) -> tuple[str, str | None, dict]:
         "u": "up", "d": "down",
     }
 
-    # Handle movement shortcuts
+    # All valid directions
+    all_directions = {
+        "north", "south", "east", "west", "up", "down", "in", "out",
+        "northeast", "northwest", "southeast", "southwest",
+    }
+
+    # Handle movement shortcuts (just direction word)
     if verb in dir_map:
         return "go", None, {"direction": dir_map[verb]}
-    if verb in ("north", "south", "east", "west", "up", "down", "in", "out",
-                "northeast", "northwest", "southeast", "southwest"):
+    if verb in all_directions:
         return "go", None, {"direction": verb}
+
+    # Handle "go <direction>"
+    if verb == "go" and len(parts) > 1:
+        direction = parts[1]
+        if direction in dir_map:
+            return "go", None, {"direction": dir_map[direction]}
+        if direction in all_directions:
+            return "go", None, {"direction": direction}
 
     if len(parts) == 1:
         return verb, None, {}
