@@ -62,6 +62,14 @@ from .converter import (
     routine_to_zil,
 )
 
+from .testing import (
+    GrueTestHarness,
+    GrueTestCase,
+    StateSnapshot,
+    ActionTrace,
+    pytest_harness,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -105,4 +113,10 @@ __all__ = [
     "ConversionResult",
     "ast_to_zil",
     "routine_to_zil",
+    # Testing
+    "GrueTestHarness",
+    "GrueTestCase",
+    "StateSnapshot",
+    "ActionTrace",
+    "pytest_harness",
 ]
