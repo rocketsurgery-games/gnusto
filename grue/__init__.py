@@ -54,6 +54,14 @@ from .runtime import (
     GrueStateAdapter,
 )
 
+from .converter import (
+    ZILtoGRUEConverter,
+    convert_zil_to_grue,
+    ConversionResult,
+    ast_to_zil,
+    routine_to_zil,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -91,4 +99,10 @@ __all__ = [
     "ObjectState",
     "ActionResult",
     "GrueStateAdapter",
+    # Converter
+    "ZILtoGRUEConverter",
+    "convert_zil_to_grue",
+    "ConversionResult",
+    "ast_to_zil",
+    "routine_to_zil",
 ]
