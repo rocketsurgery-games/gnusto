@@ -59,8 +59,8 @@ east."
   :exits
     (
       (down :to SUB-BASEMENT)
-      (up :to AERO-LOBBY)
       (east :to AERO-BASEMENT)
+      (up :to AERO-LOBBY)
     )
 )
 
@@ -212,9 +212,9 @@ a rock platform."
   :description "Brick Tunnel"
   :exits
     (
-      (up :to STORAGE-ROOM :per BRICK-TUNNEL-EXIT)
       (north :to CAVE-ROOM)
       (south :to UNDER-ALCHEMY-LAB)
+      (up :to STORAGE-ROOM :per BRICK-TUNNEL-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -263,8 +263,8 @@ up. The passage itself continues northwest."
   :flags (ONBIT)
   :exits
     (
-      (up :to BROWN-BUILDING)
       (nw :to BROWN-TUNNEL)
+      (up :to BROWN-BUILDING)
     )
 )
 
@@ -274,10 +274,10 @@ up. The passage itself continues northwest."
   :flags (ONBIT)
   :exits
     (
-      (out :to COURTYARD)
       (down :to BROWN-BASEMENT)
-      (up :to BROWN-TOP-FLOOR)
       (south :to COURTYARD)
+      (out :to COURTYARD)
+      (up :to BROWN-TOP-FLOOR)
     )
 
   ; --- Room ACTION Routine ---
@@ -306,8 +306,8 @@ all detail of the city across the river to the south."
   :exits
     (
       (in :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
-      (up :to INSIDE-DOME)
       (east :to BROWN-TOP-FLOOR :per BROWN-ROOF-EXIT)
+      (up :to INSIDE-DOME)
     )
 
   ; --- PER Exit Routines ---
@@ -339,9 +339,9 @@ you can hear the wind blowing beyond. There is a sign on the door."
   :flags (ONBIT)
   :exits
     (
-      (out :to BROWN-ROOF :via ROOF-DOOR)
-      (down :to BROWN-BUILDING)
       (west :to BROWN-ROOF :via ROOF-DOOR)
+      (down :to BROWN-BUILDING)
+      (out :to BROWN-ROOF :via ROOF-DOOR)
     )
 )
 
@@ -353,8 +353,8 @@ also leads up."
   :flags (ONBIT)
   :exits
     (
-      (se :to BROWN-BASEMENT)
       (up :to NUTRITION-BLDG)
+      (se :to BROWN-BASEMENT)
     )
 )
 
@@ -453,10 +453,10 @@ also leads up."
   :exits
     (
       (down :to CS-BASEMENT)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to CS-2ND)
       (north :to SMITH-ST)
+      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (up :to CS-2ND)
     )
 
   ; --- PER Exit Routines ---
@@ -504,8 +504,8 @@ featureless skyscraper is to the north."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (in :to BROWN-BUILDING)
       (north :to BROWN-BUILDING)
+      (in :to BROWN-BUILDING)
     )
 
   ; --- Room ACTION Routine ---
@@ -523,12 +523,12 @@ featureless skyscraper is to the north."
   :flags (ONBIT)
   :exits
     (
-      (down :to COMP-CENTER)
       (west :to KITCHEN)
-      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to CS-3RD)
+      (down :to COMP-CENTER)
       (north :to TERMINAL-ROOM)
+      (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
       (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (up :to CS-3RD)
     )
 
   ; --- PER Exit Routines ---
@@ -571,11 +571,11 @@ featureless skyscraper is to the north."
   :flags (ONBIT)
   :exits
     (
-      (out :to CS-ROOF)
       (down :to CS-2ND)
       (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to CS-ROOF)
       (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (out :to CS-ROOF)
+      (up :to CS-ROOF)
     )
 
   ; --- PER Exit Routines ---
@@ -623,12 +623,12 @@ featureless skyscraper is to the north."
   :flags (ONBIT)
   :exits
     (
-      (down :to ELEVATOR-PIT :per CS-PIT-ENTER)
       (west :to AERO-BASEMENT)
+      (down :to ELEVATOR-PIT :per CS-PIT-ENTER)
       (in :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
-      (up :to COMP-CENTER)
       (east :to TEMPORARY-BASEMENT)
       (south :to CS-ELEVATOR-ROOM :per CS-ELEVATOR-ENTER)
+      (up :to COMP-CENTER)
     )
 
   ; --- PER Exit Routines ---
@@ -685,8 +685,8 @@ featureless skyscraper is to the north."
   :flags (ONBIT)
   :exits
     (
-      (out :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
       (north :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
+      (out :to CS-BASEMENT :per CS-ELEVATOR-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -811,8 +811,8 @@ tip-top of the dome."
   :exits
     (
       (in :to TOP-OF-DOME :via DOME-DOOR)
-      (up :to ON-DOME)
       (south :to TOP-OF-DOME :via DOME-DOOR)
+      (up :to ON-DOME)
     )
 
   ; --- Room ACTION Routine ---
@@ -828,9 +828,9 @@ tip-top of the dome."
   :description "Concrete Box"
   :exits
     (
+      (north :to STEAM-TUNNEL-EAST)
       (out :to CS-BASEMENT :per PIT-DOOR-EXIT)
       (up :to CS-BASEMENT :per PIT-DOOR-EXIT)
-      (north :to STEAM-TUNNEL-EAST)
     )
 
   ; --- PER Exit Routines ---
@@ -973,11 +973,11 @@ way to the north."
   :flags (ONBIT)
   :exits
     (
-      (out :to MASS-AVE)
       (west :to MASS-AVE)
-      (east :to ? :per WAXER-EXIT)
       (north :to AERO-LOBBY)
+      (east :to ? :per WAXER-EXIT)
       (south :to ENGINEERING-BLDG)
+      (out :to MASS-AVE)
     )
 
   ; --- PER Exit Routines ---
@@ -1140,24 +1140,14 @@ way to the north."
   :flags (ONBIT)
   :exits
     (
-      (out :to GREAT-COURT :per GREAT-COURT-EXIT)
       (west :to INF-2)
-      (up :to GREAT-DOME)
       (east :to ? :per WAXER-EXIT)
       (south :to GREAT-COURT :per GREAT-COURT-EXIT)
+      (out :to GREAT-COURT :per GREAT-COURT-EXIT)
+      (up :to GREAT-DOME)
     )
 
   ; --- PER Exit Routines ---
-  ; <ROUTINE GREAT-COURT-EXIT ()
-  ;   <COND
-  ;       (<WINNER? ,URCHIN> <RFALSE>)
-  ;       (,DOOR-WARNING ,GREAT-COURT)
-  ;       (ELSE <SETG DOOR-WARNING T> <TELL
-  ;         "Remember, this is one of the doors that's always locked at night.
-  ;   You won't be able to get back in if you go out."
-  ;         CR> <RFALSE>)>
-  ; >
-  ;
   ; <ROUTINE WAXER-EXIT ()
   ;   <COND
   ;       (<WINNER? ,URCHIN> <INF-EAST-EXIT <LOC ,URCHIN>>)
@@ -1189,6 +1179,16 @@ way to the north."
   ;   no way to go around him."
   ;         CR> <RFALSE>)
   ;       (ELSE <INF-EAST-EXIT ,HERE>)>
+  ; >
+  ;
+  ; <ROUTINE GREAT-COURT-EXIT ()
+  ;   <COND
+  ;       (<WINNER? ,URCHIN> <RFALSE>)
+  ;       (,DOOR-WARNING ,GREAT-COURT)
+  ;       (ELSE <SETG DOOR-WARNING T> <TELL
+  ;         "Remember, this is one of the doors that's always locked at night.
+  ;   You won't be able to get back in if you go out."
+  ;         CR> <RFALSE>)>
   ; >
   ;
   ; --- End PER Exit Routines ---
@@ -1436,8 +1436,8 @@ blasts against the semitransparent material of the dome."
   :flags (ONBIT)
   :exits
     (
-      (out :to BROWN-ROOF :per INSIDE-DOME-EXIT)
       (down :to BROWN-ROOF :per INSIDE-DOME-EXIT)
+      (out :to BROWN-ROOF :per INSIDE-DOME-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -1478,10 +1478,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (up :to LARGE-CHAMBER)
-      (east :to LAIR-1)
       (north :to LAIR-2)
+      (east :to LAIR-1)
       (south :to LAIR-6)
+      (up :to LARGE-CHAMBER)
     )
 
   ; --- Room ACTION Routine ---
@@ -1517,8 +1517,8 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (west :to LAIR-7)
-      (up :to LAIR-9)
       (north :to LAIR-10)
+      (up :to LAIR-9)
     )
 
   ; --- Room ACTION Routine ---
@@ -1553,9 +1553,9 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (up :to LAIR-11)
       (east :to LAIR-9)
       (south :to LAIR-11)
+      (up :to LAIR-11)
     )
 
   ; --- Room ACTION Routine ---
@@ -1590,10 +1590,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-3)
       (west :to LAIR-7)
-      (up :to LAIR-8)
+      (down :to LAIR-3)
       (east :to LAIR-1)
+      (up :to LAIR-8)
     )
 
   ; --- Room ACTION Routine ---
@@ -1629,8 +1629,8 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (west :to LAIR-7)
-      (east :to LAIR-2)
       (north :to LAIR-6)
+      (east :to LAIR-2)
       (south :to LAIR-4)
     )
 
@@ -1666,11 +1666,11 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-10)
       (west :to LAIR-11)
-      (up :to LAIR-3)
+      (down :to LAIR-10)
       (east :to LAIR-10)
       (south :to LAIR-5)
+      (up :to LAIR-3)
     )
 
   ; --- Room ACTION Routine ---
@@ -1705,11 +1705,11 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (down :to OUTER-LAIR)
       (west :to LAIR-3)
-      (up :to LAIR-5)
-      (east :to LAIR-11)
+      (down :to OUTER-LAIR)
       (north :to LAIR-4)
+      (east :to LAIR-11)
+      (up :to LAIR-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -1744,10 +1744,10 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-8)
       (west :to LAIR-3)
-      (east :to LAIR-1)
+      (down :to LAIR-8)
       (north :to LAIR-6)
+      (east :to LAIR-1)
     )
 
   ; --- Room ACTION Routine ---
@@ -1782,11 +1782,11 @@ counter are a refrigerator and a microwave."
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-7)
       (west :to LAIR-1)
-      (up :to LAIR-10)
+      (down :to LAIR-7)
       (east :to LAIR-3)
       (south :to LAIR-2)
+      (up :to LAIR-10)
     )
 
   ; --- Room ACTION Routine ---
@@ -1822,8 +1822,8 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (down :to LAIR-9)
-      (up :to LAIR-6)
       (east :to LAIR-2)
+      (up :to LAIR-6)
     )
 
   ; --- Room ACTION Routine ---
@@ -1859,9 +1859,9 @@ counter are a refrigerator and a microwave."
   :exits
     (
       (down :to LAIR-10)
-      (up :to LAIR-2)
-      (east :to LAIR-8)
       (north :to LAIR-6)
+      (east :to LAIR-8)
+      (up :to LAIR-2)
     )
 
   ; --- Room ACTION Routine ---
@@ -1992,8 +1992,8 @@ something into a semblance of a passage."
   :exits
     (
       (down :to LARGE-CHAMBER)
-      (up :to TUNNEL-ENTRANCE)
       (east :to TUNNEL-ENTRANCE)
+      (up :to TUNNEL-ENTRANCE)
     )
 )
 
@@ -2048,8 +2048,8 @@ accumulating here. The only way off is down."
   :exits
     (
       (in :to INNER-LAIR :via CURTAIN-DOOR)
-      (up :to LAIR-5)
       (south :to INNER-LAIR :via CURTAIN-DOOR)
+      (up :to LAIR-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -2281,8 +2281,8 @@ puddles of water pollute the floor. You can now believe how old some of these
 foundations are said to be."
   :exits
     (
-      (down :to BRICK-TUNNEL :per MANHOLE-EXIT)
       (west :to DEAD-STORAGE)
+      (down :to BRICK-TUNNEL :per MANHOLE-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -2316,8 +2316,8 @@ space."
   :flags (ONBIT)
   :exits
     (
-      (up :to AERO-STAIRS)
       (nw :to TOMB :per TOMB-SQUEEZE)
+      (up :to AERO-STAIRS)
     )
 
   ; --- PER Exit Routines ---
@@ -2343,8 +2343,8 @@ extends west, a stairway leads up, and a large passage is to the east."
   :exits
     (
       (west :to CS-BASEMENT)
-      (up :to TEMPORARY-LAB)
       (east :to DEAD-STORAGE)
+      (up :to TEMPORARY-LAB)
     )
 )
 
@@ -2358,9 +2358,9 @@ flexibility: no one cares if they get more or less destroyed.) A stairway
 leads down, and a door leads north."
   :exits
     (
-      (out :to SMITH-ST-2)
       (down :to TEMPORARY-BASEMENT)
       (north :to SMITH-ST-2)
+      (out :to SMITH-ST-2)
     )
 
   ; --- Room ACTION Routine ---
@@ -2383,8 +2383,8 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     (
-      (out :to CS-2ND :per HACKER-EXIT)
       (south :to CS-2ND :per HACKER-EXIT)
+      (out :to CS-2ND :per HACKER-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -2443,9 +2443,9 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     (
-      (se :to TOMB :per TOMB-SQUEEZE)
-      (out :to TOMB :per TOMB-SQUEEZE)
       (down :to TUNNEL :via ACCESS-HATCH)
+      (out :to TOMB :per TOMB-SQUEEZE)
+      (se :to TOMB :per TOMB-SQUEEZE)
     )
 
   ; --- PER Exit Routines ---
@@ -2486,8 +2486,8 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     (
-      (out :to DOME-ROOF :via DOME-DOOR)
       (north :to DOME-ROOF :via DOME-DOOR)
+      (out :to DOME-ROOF :via DOME-DOOR)
     )
 
   ; --- Room ACTION Routine ---
@@ -2529,8 +2529,8 @@ people here, but tonight it's almost deserted."
   :exits
     (
       (west :to TUNNEL-WEST :per RATS-EXIT)
-      (up :to TOMB :via ACCESS-HATCH)
       (east :to TUNNEL :per STEAM-EXIT)
+      (up :to TOMB :via ACCESS-HATCH)
     )
 
   ; --- PER Exit Routines ---
@@ -2644,8 +2644,8 @@ The steam pipe and coaxial cable disappear into the ceiling at this
 point. The temperature has dropped considerably, as well."
   :exits
     (
-      (down :to MUDDY-TUNNEL)
       (west :to MUDDY-TUNNEL)
+      (down :to MUDDY-TUNNEL)
       (in :to MUDDY-TUNNEL)
       (east :to TUNNEL-WEST)
     )
@@ -2701,8 +2701,8 @@ point. The temperature has dropped considerably, as well."
   :description "Cinderblock Tunnel"
   :exits
     (
-      (up :to ALCHEMY-LAB :per UNDER-ALCHEMY-LAB-EXIT)
       (north :to BRICK-TUNNEL)
+      (up :to ALCHEMY-LAB :per UNDER-ALCHEMY-LAB-EXIT)
     )
 
   ; --- PER Exit Routines ---
@@ -18817,7 +18817,7 @@ label affixed to the container. Below is written in pencil
 ; SEEN-PIT? = (empty)
 ; SEEN-SYMBOL? = (empty)
 ; SHAPE-TWITCHES = The dark shape moves. Above the howl of the wind you
-hear a high-pitched keening noise.
+;   hear a high-pitched keening noise.
 ; SLIME-CNT = 0
 ; SLIMES = {'_form': 'LTABLE', '_args': [['PURE'], 'wrist', 'elbow', 'bicep', 'shoulder', 'neck']}
 ; SOUND-FLAG = {'_form': 'TABLE', '_args': [-1, 0]}
@@ -18835,19 +18835,19 @@ hear a high-pitched keening noise.
 ; TOO-DARK = It's too dark to see!|
 ; TOTALLY-UNRESPONSIVE = He is totally unresponsive.|
 ; TOUCHING-MASS =  Immediately, your mind is
-overwhelmed with visions and vistas it cannot assimilate. As the mass
-pulls you into itself, it all becomes clearer, but it's much too late
-by then.
+;   overwhelmed with visions and vistas it cannot assimilate. As the mass
+;   pulls you into itself, it all becomes clearer, but it's much too late
+;   by then.
 ; UNABLE = You find yourself unable to 
 ; URCHIN-CNT = 0
 ; URCHIN-LDESC = a youngish teenager wearing a ski hat, running shoes,
-and a bulky, suspiciously bumpy, threadbare parka
+;   and a bulky, suspiciously bumpy, threadbare parka
 ; URCHIN-TABLE = {'_form': 'TABLE', '_args': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
 ; USERNAME? = (empty)
 ; VALVE-OPENED? = 0
 ; VERBOSITY = 1
 ; WALL-YIELDS = The wall grudgingly yields to your efforts. A brick, less well mortared than
-its fellows, 
+;   its fellows, 
 ; WAS-HIM? = (empty)
 ; WAS-IT? = (empty)
 ; WASTE-OF-TIME = That would be a waste of time.|

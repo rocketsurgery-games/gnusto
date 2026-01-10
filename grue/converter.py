@@ -553,7 +553,14 @@ class ZILtoGRUEConverter:
                 value_str = " ".join(str(v) for v in glob.value) if glob.value else "(empty)"
             else:
                 value_str = str(glob.value)
-            self._emit(f"; {name} = {value_str}")
+            # Handle multi-line values by commenting each line
+            lines = value_str.split("\n")
+            if len(lines) == 1:
+                self._emit(f"; {name} = {value_str}")
+            else:
+                self._emit(f"; {name} = {lines[0]}")
+                for line in lines[1:]:
+                    self._emit(f";   {line}")
 
         self._emit("")
 
