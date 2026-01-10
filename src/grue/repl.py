@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Pure Grue REPL - Execute Grue S-expressions directly.
 
@@ -35,21 +34,18 @@ Effects (modify state directly):
     (set-prop! OBJ PROP VAL)              - Set property
 
 Usage:
-    python scripts/grue_repl.py game.grue
-    python scripts/grue_repl.py examples/outside-door.grue
+    grue-repl game.grue
+    grue-repl examples/outside-door.grue
 """
 
 import sys
-import readline  # For command history
+import readline  # noqa: F401 - For command history
 from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from grue import load_grue, GrueRuntime
-from grue.sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
-from grue.expr import ExprEvaluator, EffectExecutor, EvalError
-from grue.runtime import GrueStateAdapter
+from . import load_grue, GrueRuntime
+from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
+from .expr import ExprEvaluator, EffectExecutor, EvalError
+from .runtime import GrueStateAdapter
 
 
 def print_location(runtime: GrueRuntime) -> None:
@@ -301,8 +297,8 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python scripts/grue_repl.py <file.grue>")
-        print("\nExample: python scripts/grue_repl.py examples/outside-door.grue")
+        print("Usage: grue-repl <file.grue>")
+        print("\nExample: grue-repl examples/outside-door.grue")
         sys.exit(1)
 
     path = Path(sys.argv[1])
