@@ -4,29 +4,27 @@ Tree-sitter grammar for GRUE (Game Runtime for Universal Experiences), a declara
 
 ## Installation
 
-### Quick Install (manual)
+### As a Neovim plugin (recommended)
 
-```bash
-# Compile the parser
-cc -shared -o grue.so -I src src/parser.c -O2
+Add to your plugin manager (e.g., lazy.nvim):
 
-# Copy to nvim-treesitter directories
-cp grue.so ~/.local/share/nvim/lazy/nvim-treesitter/parser/
-cp -r queries/grue ~/.local/share/nvim/lazy/nvim-treesitter/queries/
-
-# Add filetype to your init.lua
-# vim.filetype.add({ extension = { grue = "grue" } })
+```lua
+{ "joelgwebber/tree-sitter-grue" }
 ```
 
-### Via nvim-treesitter config
+Then run `:TSInstall grue`.
 
-Add to your treesitter config (e.g., `lua/plugins/treesitter.lua`):
+The plugin auto-registers the parser and filetype on load.
+
+### Manual config
+
+If you prefer explicit configuration:
 
 ```lua
 local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
 parser_config.grue = {
   install_info = {
-    url = "https://github.com/your-username/tree-sitter-grue",  -- or local path
+    url = "https://github.com/joelgwebber/tree-sitter-grue",
     files = { "src/parser.c" },
   },
   filetype = "grue",
@@ -36,6 +34,22 @@ vim.filetype.add({ extension = { grue = "grue" } })
 ```
 
 Then run `:TSInstall grue`.
+
+### Quick Install (no plugin manager)
+
+```bash
+# Compile the parser
+cc -shared -o grue.so -I src src/parser.c -O2
+
+# Copy to nvim-treesitter directories
+cp grue.so ~/.local/share/nvim/lazy/nvim-treesitter/parser/
+cp -r queries/grue ~/.local/share/nvim/lazy/nvim-treesitter/queries/
+```
+
+Add to your init.lua:
+```lua
+vim.filetype.add({ extension = { grue = "grue" } })
+```
 
 ### Build from source
 
