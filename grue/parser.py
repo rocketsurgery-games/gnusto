@@ -145,7 +145,7 @@ class GrueParser:
         elif name == "defeat":
             defeat = self._parse_defeat(expr)
             world.defeat[defeat.name] = defeat
-        elif name in ("test", "defn"):
+        elif name in ("test", "test-sequence", "defn"):
             # Skip test-related forms (handled by test_dsl module)
             pass
         else:

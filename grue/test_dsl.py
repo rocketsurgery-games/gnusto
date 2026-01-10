@@ -17,6 +17,12 @@ Tests are S-expressions that exercise the full Grue stack:
 Test forms:
     (test NAME :setup EFFECTS :action ACTION :expect PREDICATES)
 
+    (test-sequence NAME
+      :setup EFFECTS              ; optional, runs once at start
+      (step :action A :expect P)  ; first step
+      (step :action A :expect P)  ; second step, state persists
+      ...)
+
 Special predicates for :expect:
     (outcome? OUTCOME)        - Check action outcome (success, blocked, error, redirect)
     (reason? REASON)          - Check blocked/error reason
@@ -172,6 +178,133 @@ class TestRunner:
                 name=test_name,
                 passed=len(failures) == 0,
                 failures=failures
+            )
+
+        except Exception as e:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                error=str(e)
+            )
+
+    def run_test_sequence(self, seq_form: SList) -> TestResult:
+        """
+        Run a (test-sequence ...) form.
+
+        Format:
+            (test-sequence NAME
+              :setup EFFECTS
+              (step :action ACTION :expect PREDICATES)
+              (step :action ACTION :expect PREDICATES)
+              ...)
+
+        State persists across steps within the sequence.
+        """
+        if len(seq_form) < 2:
+            return TestResult(
+                name="<invalid>",
+                passed=False,
+                error="Test-sequence form too short"
+            )
+
+        name = seq_form[1]
+        if isinstance(name, str):
+            test_name = name
+        elif isinstance(name, Symbol):
+            test_name = name.name
+        else:
+            test_name = to_string(name)
+
+        # Parse initial :setup and collect steps
+        setup_effects: list[SExpr] = []
+        steps: list[SList] = []
+
+        i = 2
+        while i < len(seq_form):
+            item = seq_form[i]
+
+            if isinstance(item, Keyword):
+                if i + 1 >= len(seq_form):
+                    return TestResult(
+                        name=test_name,
+                        passed=False,
+                        error=f"Missing value for :{item.name}"
+                    )
+                value = seq_form[i + 1]
+
+                if item.name == "setup":
+                    if isinstance(value, SList):
+                        setup_effects = list(value.items)
+                i += 2
+
+            elif isinstance(item, SList) and len(item) > 0:
+                head = item[0]
+                if isinstance(head, Symbol) and head.name == "step":
+                    steps.append(item)
+                i += 1
+            else:
+                i += 1
+
+        if not steps:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                error="Test-sequence has no steps"
+            )
+
+        # Create ONE runtime for the whole sequence - state persists!
+        runtime = GrueRuntime(self.world)
+        state_adapter = GrueStateAdapter(runtime.state)
+        executor = EffectExecutor(state_adapter, self._functions)
+
+        all_failures: list[str] = []
+
+        try:
+            # Run setup effects once
+            for effect in setup_effects:
+                executor.execute(effect)
+
+            # Run each step in sequence
+            for step_idx, step in enumerate(steps, 1):
+                step_action = None
+                step_expects: list[SExpr] = []
+
+                # Parse step form: (step :action A :expect P)
+                j = 1
+                while j < len(step):
+                    item = step[j]
+                    if isinstance(item, Keyword):
+                        if j + 1 >= len(step):
+                            all_failures.append(f"Step {step_idx}: Missing value for :{item.name}")
+                            break
+                        value = step[j + 1]
+
+                        if item.name == "action":
+                            step_action = value
+                        elif item.name == "expect":
+                            if isinstance(value, SList):
+                                step_expects = list(value.items)
+                        j += 2
+                    else:
+                        j += 1
+
+                if step_action is None:
+                    all_failures.append(f"Step {step_idx}: Missing :action")
+                    continue
+
+                # Execute this step's action
+                result = self._execute_action(runtime, step_action)
+
+                # Check this step's expectations
+                step_failures = self._check_expectations(runtime, result, step_expects)
+
+                for failure in step_failures:
+                    all_failures.append(f"Step {step_idx}: {failure}")
+
+            return TestResult(
+                name=test_name,
+                passed=len(all_failures) == 0,
+                failures=all_failures
             )
 
         except Exception as e:
@@ -390,6 +523,8 @@ class TestRunner:
 
             if head.name == "test":
                 results.append(self.run_test(form))
+            elif head.name == "test-sequence":
+                results.append(self.run_test_sequence(form))
             elif head.name == "defn":
                 # Global function definition for tests
                 try:

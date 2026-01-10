@@ -102,3 +102,27 @@
   :action (go :direction east)
   :expect ((outcome? success)
            (player-at? SMITH-ST)))
+
+; === Multi-step sequences ===
+
+(test-sequence "unlock and enter from inside"
+  :setup ((move! PLAYER LOBBY))
+  (step :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+        :expect ((outcome? success)
+                 (no-flag? OUTSIDE-DOOR LOCKED)))
+  (step :action (do :verb open :object OUTSIDE-DOOR)
+        :expect ((outcome? success)))
+  (step :action (go :direction out)
+        :expect ((outcome? success)
+                 (player-at? MASS-AVE))))
+
+(test-sequence "round trip through door"
+  (step :action (go :direction in)
+        :expect ((outcome? success)
+                 (player-at? LOBBY)))
+  (step :action (go :direction out)
+        :expect ((outcome? success)
+                 (player-at? MASS-AVE)))
+  (step :action (go :direction east)
+        :expect ((outcome? success)
+                 (player-at? SMITH-ST))))
