@@ -7,6 +7,12 @@
   :name "Terminal Room Test"
   :description "Test world for @terminal-room conversion")
 
+; === Globals ===
+; State variables for hacker interactions
+(globals
+  :hacker-trade false   ; Set when player proposes food-for-key trade
+  :lair-cnt 0)          ; Possession counter (0-7+) - affects hacker responses
+
 ; === Player ===
 
 (object @player
@@ -225,6 +231,48 @@ people here, but tonight it's almost deserted."
       (true
         (blocked :reason not-in-vehicle :message "You're not in the chair.")))))
 
+; === Puzzle Objects ===
+; These are stub definitions for testing the hacker trade puzzle.
+; Full definitions would come from converted/objects.grue
+
+(object @master-key
+  :description "master key"
+  :location @hacker  ; On hacker's keyring initially
+  :flags (TAKEBIT KEYBIT)
+  :properties ())
+
+(object @keyring
+  :description "keyring"
+  :location @hacker
+  :flags (CONTBIT)
+  :properties ())
+
+(object @carton
+  :description "white carton"
+  :location @player  ; Player starts with it for testing
+  :flags (TAKEBIT CONTBIT OPENBIT)
+  :properties ())
+
+(object @chinese-food
+  :description "chinese food"
+  :location @carton  ; Inside the carton
+  :flags (FOODBIT)
+  :properties (:heat 0))  ; 0=cold, 12+=hot, higher=overcooked
+
+(object @snack
+  :description "snack"
+  :location @terminal-room
+  :flags (TAKEBIT FOODBIT)
+  :properties ())
+
+(object @coke
+  :description "coke"
+  :location @terminal-room
+  :flags (TAKEBIT)
+  :properties ())
+
+; === Main Characters ===
+
 (object @hacker
   :description "hacker"
   :location @terminal-room
@@ -234,13 +282,16 @@ people here, but tonight it's almost deserted."
   ; Translated from ZIL HACKER-F and HACKER-DESC routines.
   ; See games/lurkinghorror/source/hacker.zil for full ZIL source.
   ;
-  ; MISSING FEATURES requiring globals/event system:
-  ; - LAIR-CNT global: When > 6, hacker is possessed (different responses)
+  ; IMPLEMENTED:
+  ; - hacker-trade global: Set when player offers trade for master key
+  ; - :give, :show, :trade, :ask-for, :hello behaviors
+  ;
+  ; MISSING FEATURES requiring further work:
+  ; - LAIR-CNT global checks: When > 6, hacker is possessed (different responses)
   ; - HACKER-HELP global: Tracks help interaction state (0=not asked, 1+=helping)
-  ; - HACKER-TRADE? global: Set when player offers trade for master key
   ; - I-HACKER-HELPS interrupt: Queued event for hacker helping with PC
   ; - I-FOOD-HINT interrupt: Hint about feeding the hacker
-  ; - WINNER/conversation system: "hacker, tell me about X" conversations
+  ; - Conversation system: "hacker, tell me about X"
 
   :behaviors (
     ; === ROOM DESCRIPTION ===
@@ -303,7 +354,12 @@ people here, but tonight it's almost deserted."
         (success
           :effects ((move! @carton nil))
           :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away."))))
-      ; Give hot chinese food (heat >= 12)
+      ; Give hot chinese food (heat >= 12) - if trade was proposed, loan the key
+      ((and (= ?object @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) hacker-trade)
+        (success
+          :effects ((move! @carton @hacker) (move! @chinese-food nil) (set! hacker-trade false) (move! @master-key @player))
+          :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+      ; Give hot chinese food (heat >= 12) - no trade proposed
       ((and (= ?object @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12))
         (success
           :effects ((move! @carton @hacker) (move! @chinese-food nil))
@@ -325,6 +381,55 @@ people here, but tonight it's almost deserted."
       ; Default give
       (true
         (blocked :reason not-interested :context ((response "\"No thanks, keep it for now.\"")))))
+
+    ; === TRADE ===
+    ; "trade food for key" - sets up the trade, food must be given afterward
+    :trade (cond
+      ; Valid trade: food for key (either direction)
+      ((or (and (= ?object @chinese-food) (= ?indirect @master-key))
+           (and (= ?object @carton) (= ?indirect @master-key))
+           (and (= ?object @master-key) (= ?indirect @chinese-food))
+           (and (= ?object @master-key) (= ?indirect @carton)))
+        (success
+          :effects ((set! hacker-trade true))
+          :context ((response "\"You give me the food first.\""))))
+      ; Invalid trade
+      (true
+        (blocked :reason bad-trade :context ((response "\"That's not a good trade.\"")))))
+
+    ; === ASK-FOR (give me X) ===
+    ; Player asking hacker for things
+    :ask-for (cond
+      ; Ask for keyring (with carton given - slightly different wording)
+      ((and (= ?object @keyring) (in? @carton @hacker))
+        (blocked :reason needs-keys :context ((response "\"Well, I can't give you all my keys, I need them.\" He fondles his keyring proudly."))))
+      ; Ask for keyring (without carton given)
+      ((= ?object @keyring)
+        (blocked :reason needs-keys :context ((response "\"Well, I can't give you my keys, I need them.\" He fondles his keyring proudly."))))
+      ; Ask for master key - key not visible (suspicious)
+      ((and (= ?object @master-key) (not (visible? @master-key)))
+        (blocked :reason suspicious :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
+      ; Ask for master key - player already fed hacker (loan it)
+      ((and (= ?object @master-key) (in? @carton @hacker))
+        (success
+          :effects ((set! hacker-trade false) (move! @master-key @player))
+          :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+      ; Ask for master key - no food given yet
+      ((= ?object @master-key)
+        (blocked :reason quid-pro-quo :context ((response "\"Fat chance! This is a master key! What have you done for me lately?\""))))
+      ; Ask for other keys
+      ((has-flag ?object KEYBIT)
+        (blocked :reason boring-keys :context ((response "\"Those are boring old keys. They don't open anything interesting.\""))))
+      ; Ask for anything else
+      (true
+        (blocked :reason no-have :context ((response "\"I don't have that.\"")))))
+
+    ; === HELLO ===
+    :hello (cond
+      ((here? @terminal-room)
+        (success :context ((response "\"Greetingage.\" He turns back to his hacking."))))
+      (true
+        (success :context ((response "\"Greetingage.\"")))))
 
     ; === HOSTILE ACTIONS ===
     :attack (cond
