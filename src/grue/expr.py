@@ -159,6 +159,8 @@ class ExprEvaluator:
             "held?": self._eval_held,
             "here?": self._eval_here,
             "in?": self._eval_in,
+            "held-by?": self._eval_held_by,
+            "at?": self._eval_at,
             "room?": self._eval_room,
             "in-room?": self._eval_in_room,
             "room-has-flag?": self._eval_room_has_flag,
@@ -370,6 +372,24 @@ class ExprEvaluator:
         obj = self.eval(form[1])
         container = self.eval(form[2])
         return self.state.get_object_location(obj) == container
+
+    def _eval_held_by(self, form: SList) -> bool:
+        """(held-by? OBJ ACTOR) - check if OBJ's location is ACTOR."""
+        if len(form) != 3:
+            raise EvalError(f"'held-by?' expects 2 arguments, got {len(form) - 1}")
+        obj = self.eval(form[1])
+        actor = self.eval(form[2])
+        return self.state.get_object_location(obj) == actor
+
+    def _eval_at(self, form: SList) -> bool:
+        """(at? OBJ ACTOR) - check if OBJ is at ACTOR's location (same room)."""
+        if len(form) != 3:
+            raise EvalError(f"'at?' expects 2 arguments, got {len(form) - 1}")
+        obj = self.eval(form[1])
+        actor = self.eval(form[2])
+        obj_loc = self.state.get_object_location(obj)
+        actor_loc = self.state.get_object_location(actor)
+        return obj_loc == actor_loc
 
     def _eval_room(self, form: SList) -> bool:
         """(room? LOC)"""

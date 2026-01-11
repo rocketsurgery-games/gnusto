@@ -1,0 +1,46 @@
+; GRUE Default Behaviors
+;
+; These behaviors apply when an object doesn't define its own behavior
+; for a verb. They implement the standard IF game mechanics.
+;
+; Bindings available in all behaviors:
+;   self    - the target object
+;   ?actor  - who is performing the action (usually PLAYER)
+
+; === take ===
+; Default take behavior - requires TAKEBIT flag, object must be accessible
+
+(default take
+  (case (not (has-flag self TAKEBIT))
+    :outcome blocked
+    :reason not-takeable
+    :context ((message "That's not something you can take.")))
+
+  (case (held-by? self ?actor)
+    :outcome blocked
+    :reason already-held
+    :context ((message "You're already carrying that.")))
+
+  (case (not (or (at? self ?actor) (held-by? self ?actor)))
+    :outcome blocked
+    :reason not-here
+    :context ((message "You don't see that here.")))
+
+  (case true
+    :outcome success
+    :effects ((move! self ?actor))
+    :context ((message "Taken."))))
+
+; === drop ===
+; Default drop behavior - must be holding the object
+
+(default drop
+  (case (not (held-by? self ?actor))
+    :outcome blocked
+    :reason not-held
+    :context ((message "You're not carrying that.")))
+
+  (case true
+    :outcome success
+    :effects ((move! self (loc ?actor)))
+    :context ((message "Dropped."))))

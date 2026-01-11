@@ -101,6 +101,7 @@ class GrueWorld:
     objects: dict[str, GrueObject] = field(default_factory=dict)
     victory: GrueVictory | None = None
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
+    defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
 
 
 class GrueParser:
@@ -145,6 +146,9 @@ class GrueParser:
         elif name == "defeat":
             defeat = self._parse_defeat(expr)
             world.defeat[defeat.name] = defeat
+        elif name == "default":
+            behavior = self._parse_default(expr)
+            world.defaults[behavior.verb] = behavior
         elif name in ("test", "test-sequence", "defn"):
             # Skip test-related forms (handled by test_dsl module)
             pass
@@ -303,6 +307,30 @@ class GrueParser:
                 props[key] = value
 
         return props
+
+    def _parse_default(self, expr: SExpr) -> GrueBehavior:
+        """Parse (default VERB (case ...) (case ...)).
+
+        Defines a default behavior for a verb that applies when an object
+        doesn't define its own behavior for that verb.
+        """
+        if not isinstance(expr, SList) or len(expr) < 3:
+            raise GrueParseError(f"Expected (default VERB (case ...)), got {expr}")
+
+        verb = self._expect_symbol(expr[1], "default verb")
+        behavior = GrueBehavior(verb=verb)
+
+        # Rest of items are case forms
+        for case_expr in expr.items[2:]:
+            if isinstance(case_expr, SList) and len(case_expr) >= 1:
+                if isinstance(case_expr[0], Symbol) and case_expr[0].name == "case":
+                    case = self._parse_case(case_expr)
+                    behavior.cases.append(case)
+
+        if not behavior.cases:
+            raise GrueParseError(f"Default behavior for '{verb}' has no cases")
+
+        return behavior
 
     def _parse_behaviors(self, expr: SExpr) -> list[GrueBehavior]:
         """Parse behaviors list.
@@ -471,37 +499,64 @@ class GrueParser:
             return expr
 
 
-def load_grue(path: str | Path) -> GrueWorld:
+def _load_defaults() -> GrueWorld:
+    """Load the built-in defaults.grue file."""
+    defaults_path = Path(__file__).parent / "defaults.grue"
+    if defaults_path.exists():
+        parser = GrueParser()
+        return parser.parse_file(defaults_path)
+    return GrueWorld()
+
+
+def _merge_defaults(world: GrueWorld, defaults: GrueWorld) -> None:
+    """Merge default behaviors into a world (in place).
+
+    Only adds defaults for verbs not already defined in world.defaults.
+    """
+    for verb, behavior in defaults.defaults.items():
+        if verb not in world.defaults:
+            world.defaults[verb] = behavior
+
+
+def load_grue(path: str | Path, include_defaults: bool = True) -> GrueWorld:
     """Load a GRUE world definition from a file or directory.
-    
+
     If path is a file, parse it as a single GRUE source.
     If path is a directory, load and combine all .grue files (excluding reference/).
+
+    Args:
+        path: File or directory to load
+        include_defaults: If True, merge built-in defaults.grue (default: True)
     """
     path = Path(path)
-    
+
     if path.is_file():
         parser = GrueParser()
-        return parser.parse_file(path)
-    
-    if path.is_dir():
+        world = parser.parse_file(path)
+    elif path.is_dir():
         # Load main files in order, skip reference/ directory
         main_files = ["world.grue", "rooms.grue", "objects.grue", "barriers.grue"]
         combined_source = []
-        
+
         for filename in main_files:
             file_path = path / filename
             if file_path.exists():
                 combined_source.append(file_path.read_text())
-        
+
         # Also load any other .grue files in the root (for custom additions)
         # Skip test files (*.test.grue)
         for file_path in sorted(path.glob("*.grue")):
             if file_path.name not in main_files and not file_path.name.endswith(".test.grue"):
                 combined_source.append(file_path.read_text())
-        
-        return parse_grue("\n".join(combined_source))
-    
-    raise FileNotFoundError(f"Path not found: {path}")
+
+        world = parse_grue("\n".join(combined_source))
+    else:
+        raise FileNotFoundError(f"Path not found: {path}")
+
+    if include_defaults:
+        _merge_defaults(world, _load_defaults())
+
+    return world
 
 
 def parse_grue(source: str) -> GrueWorld:
