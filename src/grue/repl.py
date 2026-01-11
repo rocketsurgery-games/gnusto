@@ -275,8 +275,14 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
                     print(f"  {k}: {v}")
             elif result.outcome == "default":
                 print(f"[DEFAULT: {result.default_action}]")
-            else:
+            elif result.outcome == "redirect":
+                print(f"[REDIRECT: {to_string(result.default_action)}]")
+                for k, v in result.context:
+                    print(f"  {k}: {v}")
+            elif result.outcome == "error":
                 print(f"[ERROR: {result.error}]")
+            else:
+                print(f"[UNKNOWN OUTCOME: {result.outcome}]")
 
         except EvalError as e:
             print(f"[Error: {e}]")
