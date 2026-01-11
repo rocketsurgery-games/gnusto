@@ -467,6 +467,13 @@ class GrueRuntime:
                             context=case.context
                         )
 
+                    if case.outcome == "redirect":
+                        return ActionResult(
+                            outcome="redirect",
+                            default_action=case.action,
+                            context=case.context
+                        )
+
                     if case.outcome == "blocked":
                         return ActionResult(
                             outcome="blocked",

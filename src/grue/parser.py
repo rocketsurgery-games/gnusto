@@ -427,7 +427,7 @@ class GrueParser:
             raise GrueParseError(f"Expected outcome type (success/blocked/default), got {outcome_type}")
 
         outcome = outcome_type.name
-        if outcome not in ("success", "blocked", "default"):
+        if outcome not in ("success", "blocked", "default", "redirect"):
             raise GrueParseError(f"Unknown outcome type: {outcome}")
 
         # Parse the outcome form's keyword arguments

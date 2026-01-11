@@ -78,83 +78,120 @@ people here, but tonight it's almost deserted."
   :fdesc "A really whiz-bang pc is right inside the door."
   :location TERMINAL-ROOM
   :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties (:size 30)
-
-  ; --- ZIL Source ---
-  ; <ROUTINE PC-F ("AUX" TMP)
-  ;   <COND
-  ;       (<VERB? EXAMINE> <COND
-  ;         (<EQUAL?
-  ;           <GET ,P-NAMW 0>
-  ;           ,W?SCREEN> <NEW-VERB ,V?READ> <RTRUE>)
-  ;         (ELSE <TELL
-  ;           "This is a beyond-state-of-the-art personal computer. It has a
-  ;   1024 by 1024 pixel color monitor, a mouse, an attached hard disk,
-  ;   and a local area network connection. Fortunately, one of its features
-  ;   is a prominent HELP key."> <COND
-  ;           (<NOT
-  ;             <FSET? ,PC ,POWERBIT>> <TELL S " It is currently " "turned off.">)
-  ;           (<FIRST? ,PC> <TELL " On the screen you see " A <FIRST? ,PC> ".">)> <CRLF>)>)
-  ;       (<AND
-  ;         <VERB? LISTEN>
-  ;         <FSET? ,PC ,POWERBIT>> <TELL "It hums contentedly." CR>)
-  ;       (<VERB? TAKE> <COND
-  ;         (<QUEUED? I-HACKER-HELPS> <NEW-VERB ,V?UNPLUG> <RTRUE>)
-  ;         (<EQUAL? <ITAKE> T> <TELL "You take it"> <COND
-  ;           (<NOT ,PC-UNPLUGGED?> <TELL ", "> <COND
-  ;             (<FSET? ,PC ,POWERBIT> <INIT-PC> <TELL "turning it off and ">)> <SETG PC-UNPLUGGED? T> <TELL "unplugging it first">)> <TELL ,PERIOD>)
-  ;         (ELSE <RTRUE>)>)
-  ;       (<P? (PUT PUT-ON) * PC> <NO-GOOD-SURFACE>)
-  ;       (<VERB? READ> <COND
-  ;         (<AND
-  ;           <QUEUED? I-HACKER-HELPS>
-  ;           <L? ,HACKER-HELP 3>> <TELL S "There's nothing " "recognizable on the screen." CR> <RTRUE>)> <SET
-  ;         TMP
-  ;         <COND
-  ;           (<IN? ,ODD-PAPER ,PC> ,ODD-PAPER)
-  ;           (<IN? ,MENU-BOX ,PC> ,MENU-BOX)
-  ;           (<IN? ,MORE-BOX ,PC> ,MORE-BOX)
-  ;           (<IN? ,YAK-WINDOW ,PC> ,YAK-WINDOW)>> <COND
-  ;         (.TMP <NEW-PRSO .TMP> <RTRUE>)
-  ;         (ELSE <TELL S "There's nothing " "to read on the screen now." CR>)>)
-  ;       (<VERB? LAMP-ON> <COND
-  ;         (,PC-UNPLUGGED? <TELL "It's unplugged. You should plug it in first." CR>)
-  ;         (<NOT
-  ;           <FSET? ,PC ,POWERBIT>> <FSET ,PC ,POWERBIT> <TELL
-  ;           ,COMPUTER-POWERS
-  ;           "up, goes through a remarkably fast self-check,
-  ;   and greets you, requesting "
-  ;           ,LOGIN-PLEASE
-  ;           " The only sound you hear is
-  ;   a very low hum."
-  ;           CR>)
-  ;         (ELSE <TELL "It's on. Maybe you didn't notice." CR>)>)
-  ;       (<VERB? PLUG-IN> <COND
-  ;         (,PC-UNPLUGGED? <SETG PC-UNPLUGGED? <>> <TELL "You plug in the computer." CR>)
-  ;         (ELSE <TELL ,IT-ALREADY-IS>)>)
-  ;       (<VERB? UNPLUG> <COND
-  ;         (,PC-UNPLUGGED? <TELL ,IT-ALREADY-IS> <RTRUE>)
-  ;         (<QUEUED? I-HACKER-HELPS> <TELL
-  ;           S
-  ;           "The hacker stops you. \"You'll mung the bits, chomper!\"|">)
-  ;         (ELSE <INIT-PC> <SETG PC-UNPLUGGED? T> <TELL "Okay, it's unplugged now." CR>)>)
-  ;       (<VERB? LAMP-OFF> <COND
-  ;         (<QUEUED? I-HACKER-HELPS> <TELL
-  ;           S
-  ;           "The hacker stops you. \"You'll mung the bits, chomper!\"|">)
-  ;         (<FSET? ,PC ,POWERBIT> <INIT-PC> <COMPUTER-POWERS-OFF>)
-  ;         (ELSE <ITS-ALREADY-X "off">)>)
-  ;       (<VERB? READ> <COND
-  ;         (<IN? ,ODD-PAPER ,PC> <NEW-PRSO ,ODD-PAPER> <RTRUE>)>)
-  ;       (<AND
-  ;         <VERB? SIT-AT>
-  ;         <IN? ,CHAIR ,HERE>> <PERFORM ,V?SIT ,CHAIR> <RTRUE>)>
-  ; >
-  ; --- End ZIL Source ---
+  :properties (:size 30 :unplugged false)
 
   :behaviors (
-    ; TODO: Translate from ZIL source above
-  ))
+    ; EXAMINE - Show PC description with power state and screen contents
+    :examine (cond
+      ((has-flag self POWER)
+        (success :context ((power on) (screen-contents (first-in self)))
+                 :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
+      (true
+        (success :context ((power off))
+                 :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off.")))
+
+    ; LISTEN - Hums when powered on
+    :listen (cond
+      ((has-flag self POWER)
+        (success :message "It hums contentedly."))
+      (true
+        (blocked :reason not-powered :message "It's silent.")))
+
+    ; TAKE - When hacker helps, redirect to unplug; otherwise auto-unplug
+    :take (cond
+      ((queued? HACKER-HELPS)
+        (redirect :action (unplug PC)
+                  :context ((hacker-blocks true))))
+      ((prop self unplugged)
+        (default))  ; Normal take when already unplugged
+      ((has-flag self POWER)
+        ; Taking while on: turn off and unplug
+        (success :effects ((clear-flag! self POWER) (set-prop! self unplugged true) (move! self PLAYER))
+                 :context ((auto-unplug true) (was-powered true))
+                 :message "You take it, turning it off and unplugging it first."))
+      (true
+        ; Taking while off but plugged in: just unplug
+        (success :effects ((set-prop! self unplugged true) (move! self PLAYER))
+                 :context ((auto-unplug true))
+                 :message "You take it, unplugging it first.")))
+
+    ; PUT-ON / PUT - Not a good surface
+    :put-on (cond
+      (true
+        (blocked :reason not-a-surface :message "That's not a good surface for that.")))
+
+    ; READ - Show screen contents
+    :read (cond
+      ((and (queued? HACKER-HELPS) (< (prop PLAYER hacker-help-stage) 3))
+        (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
+      ((not (has-flag self POWER))
+        (blocked :reason not-powered :message "The screen is dark."))
+      ; Check for objects on screen (in PC container)
+      ((contained-in? ODD-PAPER self)
+        (redirect :action (read ODD-PAPER)))
+      ((contained-in? MENU-BOX self)
+        (redirect :action (read MENU-BOX)))
+      ((contained-in? MORE-BOX self)
+        (redirect :action (read MORE-BOX)))
+      ((contained-in? YAK-WINDOW self)
+        (redirect :action (read YAK-WINDOW)))
+      (true
+        (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now.")))
+
+    ; TURN-ON (LAMP-ON) - Power up computer
+    :turn-on (cond
+      ((prop self unplugged)
+        (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
+      ((has-flag self POWER)
+        (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
+      (true
+        (success :effects ((set-flag! self POWER))
+                 :context ((booting true))
+                 :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum.")))
+
+    ; TURN-OFF (LAMP-OFF) - Power down computer
+    :turn-off (cond
+      ((queued? HACKER-HELPS)
+        (blocked :reason hacker-interference
+                 :context ((blocker HACKER))
+                 :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+      ((not (has-flag self POWER))
+        (blocked :reason already-off :message "It's already off."))
+      (true
+        (success :effects ((clear-flag! self POWER))
+                 :message "The computer powers off.")))
+
+    ; PLUG-IN - Plug in computer
+    :plug-in (cond
+      ((not (prop self unplugged))
+        (blocked :reason already-plugged :message "It's already plugged in."))
+      (true
+        (success :effects ((set-prop! self unplugged false))
+                 :message "You plug in the computer.")))
+
+    ; UNPLUG - Unplug computer
+    :unplug (cond
+      ((prop self unplugged)
+        (blocked :reason already-unplugged :message "It's already unplugged."))
+      ((queued? HACKER-HELPS)
+        (blocked :reason hacker-interference
+                 :context ((blocker HACKER))
+                 :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+      ((has-flag self POWER)
+        ; Unplug while on: turn off first
+        (success :effects ((clear-flag! self POWER) (set-prop! self unplugged true))
+                 :context ((was-powered true))
+                 :message "Okay, it's unplugged now."))
+      (true
+        (success :effects ((set-prop! self unplugged true))
+                 :message "Okay, it's unplugged now.")))
+
+    ; SIT-AT - Redirect to sitting in chair if present
+    :sit-at (cond
+      ((here? CHAIR)
+        (redirect :action (sit CHAIR)))
+      (true
+        (blocked :reason no-chair :message "There's no chair here.")))))
 
 (object CHAIR
   :description "chair"
