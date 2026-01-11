@@ -25,6 +25,9 @@ Built-in Predicates:
     (in-room? OBJ ROOM ...)   - Is object in any of listed rooms
     (any COLL PRED)           - Any element satisfies predicate
     (all COLL PRED)           - All elements satisfy predicate
+    (exit? ACTOR DIR)         - Check if exit exists from actor's room
+    (exit-to ACTOR DIR)       - Get destination room for exit
+    (exit-via ACTOR DIR)      - Get door object for exit (if any)
 
 Built-in Effects:
     (move! OBJ DEST)          - Move object to destination
@@ -86,6 +89,10 @@ class WorldState(Protocol):
 
     def get_contents(self, container: str) -> list[str]:
         """Get contents of container/room."""
+        ...
+
+    def get_exit(self, actor: str, direction: str) -> tuple[str, str | None] | None:
+        """Get exit info for direction from actor's room. Returns (destination, via) or None."""
         ...
 
 
@@ -170,6 +177,11 @@ class ExprEvaluator:
             "all": self._eval_all,
             "inventory": self._eval_inventory,
             "contents": self._eval_contents,
+
+            # Exit queries (for movement)
+            "exit?": self._eval_exit_exists,
+            "exit-to": self._eval_exit_to,
+            "exit-via": self._eval_exit_via,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -443,6 +455,35 @@ class ExprEvaluator:
             raise EvalError(f"'contents' expects 1 argument, got {len(form) - 1}")
         container = self.eval(form[1])
         return self.state.get_contents(container)
+
+    # === Exit queries (for movement) ===
+
+    def _eval_exit_exists(self, form: SList) -> bool:
+        """(exit? ACTOR DIRECTION) - check if exit exists from actor's room."""
+        if len(form) != 3:
+            raise EvalError(f"'exit?' expects 2 arguments, got {len(form) - 1}")
+        actor = self.eval(form[1])
+        direction = self.eval(form[2])
+        result = self.state.get_exit(actor, direction)
+        return result is not None
+
+    def _eval_exit_to(self, form: SList) -> str | None:
+        """(exit-to ACTOR DIRECTION) - get destination room for exit."""
+        if len(form) != 3:
+            raise EvalError(f"'exit-to' expects 2 arguments, got {len(form) - 1}")
+        actor = self.eval(form[1])
+        direction = self.eval(form[2])
+        result = self.state.get_exit(actor, direction)
+        return result[0] if result else None
+
+    def _eval_exit_via(self, form: SList) -> str | None:
+        """(exit-via ACTOR DIRECTION) - get door object for exit (if any)."""
+        if len(form) != 3:
+            raise EvalError(f"'exit-via' expects 2 arguments, got {len(form) - 1}")
+        actor = self.eval(form[1])
+        direction = self.eval(form[2])
+        result = self.state.get_exit(actor, direction)
+        return result[1] if result else None
 
     def _eval_any(self, form: SList) -> bool:
         """(any COLLECTION (lambda (x) PRED))"""

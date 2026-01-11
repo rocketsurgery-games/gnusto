@@ -196,6 +196,18 @@ class GrueRuntime:
             if obj.location == container
         ]
 
+    def get_exit(self, actor: str, direction: str) -> tuple[str, str | None] | None:
+        """Get exit info for direction from actor's room. Returns (destination, via) or None."""
+        actor = self._resolve_symbol(actor)
+        actor_loc = self.get_object_location(actor)
+        room = self.world.rooms.get(actor_loc) if actor_loc else None
+        if not room:
+            return None
+        for exit_def in room.exits:
+            if exit_def.direction == direction:
+                return (exit_def.to, exit_def.via)
+        return None
+
     def set_object_flag(self, obj: str, flag: str) -> None:
         obj = self._resolve_symbol(obj)
         if obj in self.state.objects:
@@ -370,58 +382,37 @@ class GrueRuntime:
 
     def _do_go(self, direction: str, actor: str = "PLAYER") -> ActionResult:
         """Handle movement."""
-        actor_loc = self.get_object_location(actor)
-        room = self.world.rooms.get(actor_loc) if actor_loc else None
-        if not room:
-            return ActionResult(
-                outcome="error",
-                error=f"{actor} is not in a valid room"
-            )
-
-        # Find the exit
-        exit_def = None
-        for e in room.exits:
-            if e.direction == direction:
-                exit_def = e
-                break
-
-        if exit_def is None:
+        exit_info = self.get_exit(actor, direction)
+        if exit_info is None:
             return ActionResult(
                 outcome="blocked",
                 reason="no-exit",
                 context=[("direction", direction)]
             )
 
-        # Check if exit has a :via door
-        if exit_def.via:
-            # Dispatch to door's "through" behavior
-            result = self.do("through", exit_def.via, actor=actor, direction=direction, to=exit_def.to)
+        dest, via = exit_info
 
-            # If door blocks passage, return that result
+        # Check if exit has a :via door
+        if via:
+            result = self.do("through", via, actor=actor, direction=direction, to=dest)
             if result.outcome == "blocked":
                 return result
+            if result.outcome not in ("success", "default"):
+                return result  # Pass through errors
+            # Door approved - continue to movement below
+            context = result.context
+        else:
+            context = []
 
-            # If door allows passage (success or default), complete the movement
-            # The default indicates "yes, go that way" - we handle it here
-            if result.outcome in ("success", "default"):
-                self.state.objects[actor].location = exit_def.to
-                self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
-                return ActionResult(
-                    outcome="success",
-                    effects_applied=[f"{actor} moved to {exit_def.to} (via {exit_def.via})"],
-                    context=result.context,
-                )
-
-            # Pass through errors
-            return result
-
-        # Simple exit - just move
-        self.state.objects[actor].location = exit_def.to
+        # Move actor
+        self.state.objects[actor].location = dest
         self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
 
+        via_note = f" (via {via})" if via else ""
         return ActionResult(
             outcome="success",
-            effects_applied=[f"{actor} moved to {exit_def.to}"]
+            effects_applied=[f"{actor} moved to {dest}{via_note}"],
+            context=context,
         )
 
     def _evaluate_behavior(
