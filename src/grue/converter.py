@@ -176,8 +176,8 @@ class ZILtoGRUEConverter:
         start = starting_room or self._detect_starting_room()
         self._emit("; === PLAYER ===")
         self._emit("")
-        self._emit("(object PLAYER")
-        self._emit(f"  :location {start}")
+        self._emit("(object @player")
+        self._emit(f"  :location {self._entity_name(start)}")
         self._emit("  :flags (PERSON))")
         self._emit("")
 
@@ -296,7 +296,7 @@ class ZILtoGRUEConverter:
         for exit_info in barrier_exits:
             if exit_info.via_routine not in emitted_routines:
                 emitted_routines.add(exit_info.via_routine)
-                self._emit_barrier_object(room.name, exit_info)
+                self._emit_barrier_object(self._entity_name(room.name), exit_info)
 
     def _convert_room_only(self, room: ZILObject) -> None:
         """Convert a room to GRUE (room definition only, barriers emitted separately)."""
@@ -309,7 +309,7 @@ class ZILtoGRUEConverter:
         if action_routine:
             self._emit(f"; [NEEDS-TRANSLATION] Room {room.name}: ACTION {action_routine}")
 
-        self._emit(f"(room {room.name}")
+        self._emit(f"(room {self._entity_name(room.name)}")
 
         # Description
         desc = room.get_property_value("DESC")
@@ -332,9 +332,10 @@ class ZILtoGRUEConverter:
             self._emit("  :exits")
             self._emit("    (")
             for exit_info in exits:
-                exit_parts = [f"{exit_info.direction} :to {exit_info.to}"]
+                dest = self._entity_name(exit_info.to) if exit_info.to != "?" else "?"
+                exit_parts = [f"{exit_info.direction} :to {dest}"]
                 if exit_info.via:
-                    exit_parts.append(f":via {exit_info.via}")
+                    exit_parts.append(f":via {self._entity_name(exit_info.via)}")
                 self._emit(f"      ({' '.join(exit_parts)})")
             self._emit("    )")
 
@@ -360,7 +361,7 @@ class ZILtoGRUEConverter:
                 # Switch to barriers buffer temporarily
                 saved_out = self.out
                 self._use_buffer("barriers.grue")
-                self._emit_barrier_object(room.name, exit_info)
+                self._emit_barrier_object(self._entity_name(room.name), exit_info)
                 self.out = saved_out
 
     def _extract_exits(self, room: ZILObject) -> list[ExitInfo]:
@@ -479,9 +480,12 @@ class ZILtoGRUEConverter:
 
 
     def _emit_barrier_object(self, room_name: str, exit_info: ExitInfo) -> None:
-        """Emit a synthesized barrier object for a PER exit."""
+        """Emit a synthesized barrier object for a PER exit.
+
+        Note: room_name should already be in @lowercase format.
+        """
         routine_name = exit_info.via_routine
-        barrier_name = exit_info.via
+        barrier_name = self._entity_name(exit_info.via)
 
         # Track this routine as referenced
         self.referenced_routines.add(routine_name)
@@ -510,7 +514,7 @@ class ZILtoGRUEConverter:
         if has_action:
             self._emit(f"; [NEEDS-TRANSLATION] {obj.name}")
 
-        self._emit(f"(object {obj.name}")
+        self._emit(f"(object {self._entity_name(obj.name)}")
 
         # Description
         desc = obj.get_property_value("DESC")
@@ -530,7 +534,7 @@ class ZILtoGRUEConverter:
         # Location
         loc = obj.get_property_value("IN")
         if loc and loc not in ("ROOMS", "LOCAL-GLOBALS", "GLOBAL-OBJECTS"):
-            self._emit(f"  :location {loc}")
+            self._emit(f"  :location {self._entity_name(loc)}")
 
         # Flags
         flags = obj.get_property_values("FLAGS")
@@ -667,6 +671,16 @@ class ZILtoGRUEConverter:
     def _escape_string(self, s: str) -> str:
         """Escape a string for GRUE output."""
         return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _entity_name(self, name: str) -> str:
+        """Convert a ZIL name to @lowercase GRUE entity name.
+        
+        Examples:
+            TERMINAL-ROOM -> @terminal-room
+            PLAYER -> @player
+            FRONT-DOOR-BARRIER -> @front-door-barrier
+        """
+        return f"@{name.lower()}"
 
 
 def convert_zil_to_grue(

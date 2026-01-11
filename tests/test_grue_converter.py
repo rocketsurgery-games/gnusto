@@ -87,5 +87,5 @@ class TestConversion:
 
         assert result.grue_source
         assert "Test Game" in result.grue_source
-        assert "TEST-ROOM" in result.grue_source
+        assert "@test-room" in result.grue_source  # Now uses @lowercase naming
         assert result.stats["rooms"] == 1
