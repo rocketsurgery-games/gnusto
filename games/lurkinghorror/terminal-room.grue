@@ -11,7 +11,61 @@
 ; State variables for hacker interactions
 (globals
   :hacker-trade false   ; Set when player proposes food-for-key trade
-  :lair-cnt 0)          ; Possession counter (0-7+) - affects hacker responses
+  :lair-cnt 0           ; Possession counter (0-7+) - affects hacker responses
+  :hacker-help 0        ; Help stage counter (0-4) for I-HACKER-HELPS
+  :food-hint 0)         ; Food hint counter for I-FOOD-HINT
+
+; === Turn-Based Events ===
+
+; I-HACKER-HELPS: Multi-stage cutscene when hacker helps with PC
+; Queued by :help behavior, advances each turn player is in terminal-room
+(event hacker-helps
+  :location @terminal-room
+  :on-turn (cond
+    ((= hacker-help 0)
+      (success
+        :effects ((inc! hacker-help))
+        :context ((stage 1)
+                  (description "The hacker wanders over, trying to look nonchalant. \"Losing, huh?\" he asks wittily. He glances at your terminal, which displays a pattern of snow and unusual characters. He appears somewhat excited."))))
+    ((= hacker-help 1)
+      (success
+        :effects ((inc! hacker-help))
+        :context ((stage 2)
+                  (description "The hacker, mumbling under his breath, begins a flurry of activity. First the screen returns to something nearly normal, then windows begin popping up like toadstools after a rain."))))
+    ((= hacker-help 2)
+      (success
+        :effects ((inc! hacker-help))
+        :context ((stage 3)
+                  (description "The hacker types furiously. After a while he says, \"Chomping file system. Your directory has gone seriously west. I fixed it.\" He checks the screen. \"It was mixed up on the file server with some files from the Department of Alchemy.\" He grunts. \"People's names for their nodes are getting weird. This one is called 'Lovecraft.'\" He pauses. \"Your paper is gone, though. Sorry. Maybe they could help you down there.\""))))
+    (true
+      (success
+        :effects ((dequeue! hacker-helps) (move! @hacker @terminal-room))
+        :context ((stage 4)
+                  (description "The hacker wanders back to his terminal and returns to his hacking."))))))
+
+; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
+; Queued when player asks for something and hasn't fed hacker yet
+(event food-hint
+  :location @terminal-room
+  :on-turn (cond
+    ((= food-hint 1)
+      (success
+        :effects ((inc! food-hint) (queue! food-hint 2))
+        :context ((hint "I could stand a little snack, though."))))
+    ((= food-hint 2)
+      (success
+        :effects ((inc! food-hint) (queue! food-hint 2))
+        :context ((hint "I don't know where I can get something to eat, what with all the snow."))))
+    ((= food-hint 3)
+      (success
+        :effects ((inc! food-hint) (queue! food-hint 2))
+        :context ((hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving."))))
+    ((>= food-hint 4)
+      (success
+        :effects ((set! food-hint 0) (dequeue! food-hint))
+        :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you."))))
+    (true
+      (success :effects ((dequeue! food-hint))))))
 
 ; === Player ===
 
