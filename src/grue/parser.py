@@ -309,23 +309,36 @@ class GrueParser:
         return props
 
     def _parse_default(self, expr: SExpr) -> GrueBehavior:
-        """Parse (default VERB (case ...) (case ...)).
+        """Parse (default VERB (cond ...)) or (default VERB (case ...) (case ...)).
 
         Defines a default behavior for a verb that applies when an object
         doesn't define its own behavior for that verb.
+
+        Preferred syntax:
+            (default take (cond
+              ((not (has-flag self TAKEBIT)) (blocked :reason not-takeable))
+              (true (success :effects ((move! self ?actor))))))
         """
         if not isinstance(expr, SList) or len(expr) < 3:
-            raise GrueParseError(f"Expected (default VERB (case ...)), got {expr}")
+            raise GrueParseError(f"Expected (default VERB (cond ...)), got {expr}")
 
         verb = self._expect_symbol(expr[1], "default verb")
         behavior = GrueBehavior(verb=verb)
 
-        # Rest of items are case forms
-        for case_expr in expr.items[2:]:
-            if isinstance(case_expr, SList) and len(case_expr) >= 1:
-                if isinstance(case_expr[0], Symbol) and case_expr[0].name == "case":
-                    case = self._parse_case(case_expr)
-                    behavior.cases.append(case)
+        # Check if using cond syntax or legacy case syntax
+        third = expr[2]
+        if isinstance(third, SList) and len(third) >= 1:
+            first = third[0]
+            if isinstance(first, Symbol) and first.name == "cond":
+                # New cond syntax: (default VERB (cond ...))
+                behavior.cases = self._parse_cond(third)
+            elif isinstance(first, Symbol) and first.name == "case":
+                # Legacy case syntax: (default VERB (case ...) (case ...))
+                for case_expr in expr.items[2:]:
+                    if isinstance(case_expr, SList) and len(case_expr) >= 1:
+                        if isinstance(case_expr[0], Symbol) and case_expr[0].name == "case":
+                            case = self._parse_case(case_expr)
+                            behavior.cases.append(case)
 
         if not behavior.cases:
             raise GrueParseError(f"Default behavior for '{verb}' has no cases")
@@ -335,9 +348,10 @@ class GrueParser:
     def _parse_behaviors(self, expr: SExpr) -> list[GrueBehavior]:
         """Parse behaviors list.
 
-        Supports two formats:
-        - New (Clojure-style): (:verb (case ...) (case ...))
-        - Legacy: ((verb (case ...) (case ...)))
+        Supports three formats:
+        - Cond (preferred): :verb (cond (CONDITION (outcome ...)) ...)
+        - Case (legacy): :verb (case CONDITION :outcome ...) (case ...)
+        - Tuple (legacy): ((verb (case ...) (case ...)))
         """
         if not isinstance(expr, SList):
             raise GrueParseError(f"Expected behaviors list, got {expr}")
@@ -349,33 +363,50 @@ class GrueParser:
         while i < len(items):
             item = items[i]
 
-            # New format: :keyword followed by case(s)
+            # Keyword format: :verb followed by (cond ...) or (case ...) forms
             if isinstance(item, Keyword):
                 verb = item.name
                 behavior = GrueBehavior(verb=verb)
                 i += 1
 
-                # Collect all case forms until next keyword or end
-                while i < len(items) and isinstance(items[i], SList):
-                    # Check if it's a case form
-                    if len(items[i]) >= 1 and isinstance(items[i][0], Symbol) and items[i][0].name == "case":
-                        case = self._parse_case(items[i])
-                        behavior.cases.append(case)
+                # Check what follows the keyword
+                if i < len(items) and isinstance(items[i], SList) and len(items[i]) >= 1:
+                    first = items[i][0]
+                    if isinstance(first, Symbol) and first.name == "cond":
+                        # New cond format: :verb (cond ...)
+                        behavior.cases = self._parse_cond(items[i])
                         i += 1
                     else:
-                        break
+                        # Legacy case format: :verb (case ...) (case ...)
+                        while i < len(items) and isinstance(items[i], SList):
+                            if len(items[i]) >= 1 and isinstance(items[i][0], Symbol) and items[i][0].name == "case":
+                                case = self._parse_case(items[i])
+                                behavior.cases.append(case)
+                                i += 1
+                            else:
+                                break
 
                 behaviors.append(behavior)
 
-            # Legacy format: (verb (case ...) ...)
+            # Legacy tuple format: (verb (case ...) ...)
             elif isinstance(item, SList) and len(item) >= 2:
                 verb = self._expect_symbol(item[0], "behavior verb")
                 behavior = GrueBehavior(verb=verb)
 
-                # Rest of items are case forms
-                for case_expr in item.items[1:]:
-                    case = self._parse_case(case_expr)
-                    behavior.cases.append(case)
+                # Check if second element is a cond
+                if len(item) >= 2 and isinstance(item[1], SList) and len(item[1]) >= 1:
+                    first = item[1][0]
+                    if isinstance(first, Symbol) and first.name == "cond":
+                        behavior.cases = self._parse_cond(item[1])
+                    else:
+                        # Legacy case forms
+                        for case_expr in item.items[1:]:
+                            case = self._parse_case(case_expr)
+                            behavior.cases.append(case)
+                else:
+                    for case_expr in item.items[1:]:
+                        case = self._parse_case(case_expr)
+                        behavior.cases.append(case)
 
                 behaviors.append(behavior)
                 i += 1
@@ -383,6 +414,87 @@ class GrueParser:
                 i += 1  # Skip unknown items (e.g., comments)
 
         return behaviors
+
+    def _parse_cond(self, expr: SExpr) -> list[GrueCase]:
+        """Parse (cond (CONDITION (outcome ...)) (CONDITION (outcome ...)) ...).
+
+        New syntax using standard Lisp cond form. Each clause is:
+            (CONDITION (success :effects ... :message ...))
+            (CONDITION (blocked :reason ... :message ...))
+            (CONDITION (default :action ...))
+        """
+        if not isinstance(expr, SList) or len(expr) < 2:
+            raise GrueParseError(f"Expected (cond ...), got {expr}")
+
+        if not isinstance(expr[0], Symbol) or expr[0].name != "cond":
+            raise GrueParseError(f"Expected 'cond', got {expr[0]}")
+
+        cases = []
+        for clause in expr.items[1:]:
+            case = self._parse_cond_clause(clause)
+            cases.append(case)
+
+        return cases
+
+    def _parse_cond_clause(self, expr: SExpr) -> GrueCase:
+        """Parse a cond clause: (CONDITION (outcome :key val ...)).
+
+        Examples:
+            ((not (has-flag self TAKEBIT)) (blocked :reason not-takeable))
+            (true (success :effects ((move! self ?actor))))
+        """
+        if not isinstance(expr, SList) or len(expr) < 2:
+            raise GrueParseError(f"Expected (CONDITION (outcome ...)), got {expr}")
+
+        condition = expr[0]
+        outcome_form = expr[1]
+
+        if not isinstance(outcome_form, SList) or len(outcome_form) < 1:
+            raise GrueParseError(f"Expected outcome form like (success ...), got {outcome_form}")
+
+        outcome_type = outcome_form[0]
+        if not isinstance(outcome_type, Symbol):
+            raise GrueParseError(f"Expected outcome type (success/blocked/default), got {outcome_type}")
+
+        outcome = outcome_type.name
+        if outcome not in ("success", "blocked", "default"):
+            raise GrueParseError(f"Unknown outcome type: {outcome}")
+
+        # Parse the outcome form's keyword arguments
+        kwargs = self._parse_kwargs(list(outcome_form.items[1:]))
+
+        effects: list[SExpr] = []
+        if "effects" in kwargs:
+            effects_expr = kwargs["effects"]
+            if isinstance(effects_expr, SList):
+                effects = list(effects_expr.items)
+
+        reason = None
+        if "reason" in kwargs:
+            reason = self._expect_symbol(kwargs["reason"], "clause reason")
+
+        # Build context from various keyword args
+        context: list[tuple[str, Any]] = []
+        if "context" in kwargs:
+            context = self._parse_context(kwargs["context"])
+        # Also support :message as shorthand for context
+        if "message" in kwargs:
+            msg = kwargs["message"]
+            if isinstance(msg, str):
+                context.append(("message", msg))
+            else:
+                context.append(("message", str(msg)))
+
+        action = kwargs.get("action")
+
+        return GrueCase(
+            when=condition,
+            outcome=outcome,
+            effects=effects,
+            reason=reason,
+            context=context,
+            action=action,
+        )
 
     def _parse_case(self, expr: SExpr) -> GrueCase:
         """Parse (case CONDITION :outcome ... :effects ... :reason ... :context ...)."""

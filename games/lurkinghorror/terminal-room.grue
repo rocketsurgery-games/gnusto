@@ -164,43 +164,29 @@ people here, but tonight it's almost deserted."
   :properties (:size 100)
 
   :behaviors (
-    (examine
-      (case true
-        :outcome success
-        :context ((description "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable."))))
+    :examine (cond
+      (true
+        (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.")))
 
-    (take
-      (case (in? HACKER CHAIR)
-        :outcome blocked
-        :reason in-use
-        :context ((message "It's in use.")))
-      (case true
-        :outcome default))
+    :take (cond
+      ((in? HACKER CHAIR)
+        (blocked :reason in-use :message "It's in use."))
+      (true
+        (default)))
 
-    (sit
-      (case (in? HACKER CHAIR)
-        :outcome blocked
-        :reason occupied
-        :context ((message "The hacker is already using it.")))
-      (case (in? PLAYER CHAIR)
-        :outcome blocked
-        :reason already-there
-        :context ((message "You are.")))
-      (case true
-        :outcome success
-        :effects ((move! PLAYER CHAIR))
-        :context ((message "You are now sitting in the chair."))))
+    :sit (cond
+      ((in? HACKER CHAIR)
+        (blocked :reason occupied :message "The hacker is already using it."))
+      ((in? PLAYER CHAIR)
+        (blocked :reason already-there :message "You are."))
+      (true
+        (success :effects ((move! PLAYER CHAIR)) :message "You are now sitting in the chair.")))
 
-    (stand
-      (case (in? PLAYER CHAIR)
-        :outcome success
-        :effects ((move! PLAYER (loc CHAIR)))
-        :context ((message "You get out of the chair.")))
-      (case true
-        :outcome blocked
-        :reason not-in-vehicle
-        :context ((message "You're not in the chair."))))
-  ))
+    :stand (cond
+      ((in? PLAYER CHAIR)
+        (success :effects ((move! PLAYER (loc CHAIR))) :message "You get out of the chair."))
+      (true
+        (blocked :reason not-in-vehicle :message "You're not in the chair.")))))
 
 ; [NEEDS-TRANSLATION] HACKER
 (object HACKER
@@ -430,11 +416,10 @@ people here, but tonight it's almost deserted."
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    (through
-      (case (or (held? PC) (held? CHAIR))
-        :outcome blocked
-        :reason tech-property
-        :context ((blocker HACKER)
-                  (message "You can't walk off with that! It's Tech property!")))
-      (case true
-        :outcome success))))
+    :through (cond
+      ((or (held? PC) (held? CHAIR))
+        (blocked :reason tech-property
+                 :context ((blocker HACKER))
+                 :message "You can't walk off with that! It's Tech property!"))
+      (true
+        (success)))))

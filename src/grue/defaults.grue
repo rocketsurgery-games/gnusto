@@ -10,37 +10,25 @@
 ; === take ===
 ; Default take behavior - requires TAKEBIT flag, object must be accessible
 
-(default take
-  (case (not (has-flag self TAKEBIT))
-    :outcome blocked
-    :reason not-takeable
-    :context ((message "That's not something you can take.")))
+(default take (cond
+  ((not (has-flag self TAKEBIT))
+    (blocked :reason not-takeable :message "That's not something you can take."))
 
-  (case (held-by? self ?actor)
-    :outcome blocked
-    :reason already-held
-    :context ((message "You're already carrying that.")))
+  ((held-by? self ?actor)
+    (blocked :reason already-held :message "You're already carrying that."))
 
-  (case (not (or (at? self ?actor) (held-by? self ?actor)))
-    :outcome blocked
-    :reason not-here
-    :context ((message "You don't see that here.")))
+  ((not (or (at? self ?actor) (held-by? self ?actor)))
+    (blocked :reason not-here :message "You don't see that here."))
 
-  (case true
-    :outcome success
-    :effects ((move! self ?actor))
-    :context ((message "Taken."))))
+  (true
+    (success :effects ((move! self ?actor)) :message "Taken."))))
 
 ; === drop ===
 ; Default drop behavior - must be holding the object
 
-(default drop
-  (case (not (held-by? self ?actor))
-    :outcome blocked
-    :reason not-held
-    :context ((message "You're not carrying that.")))
+(default drop (cond
+  ((not (held-by? self ?actor))
+    (blocked :reason not-held :message "You're not carrying that."))
 
-  (case true
-    :outcome success
-    :effects ((move! self (loc ?actor)))
-    :context ((message "Dropped."))))
+  (true
+    (success :effects ((move! self (loc ?actor))) :message "Dropped."))))
