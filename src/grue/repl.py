@@ -40,265 +40,408 @@ Usage:
 
 import sys
 import readline  # noqa: F401 - For command history
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from . import load_grue, GrueRuntime
 from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
 from .expr import ExprEvaluator, EffectExecutor, EvalError
 
 
-def print_location(runtime: GrueRuntime) -> None:
-    """Print current location details."""
-    room = runtime.get_player_location()
-    desc = runtime.get_room_description()
-    print(f"\n=== {room} ===")
-    print(desc)
+# === REPL Result Types ===
+# These types know how to display themselves in the REPL
 
-    # Show objects in the room (not in inventory)
-    inventory = set(runtime.get_inventory())
-    visible = [obj for obj in runtime.get_visible_objects() if obj not in inventory]
-    if visible:
-        print(f"\nVisible: {', '.join(visible)}")
-
-    # Show exits
-    exits = runtime.get_exits()
-    if exits:
-        exit_list = [f"{d} -> {r}" for d, r in exits.items()]
-        print(f"Exits: {', '.join(exit_list)}")
+@dataclass
+class QuitResult:
+    """Signal to quit the REPL."""
+    pass
 
 
-def print_inventory(runtime: GrueRuntime) -> None:
-    """Print player inventory."""
-    inv = runtime.get_inventory()
-    if inv:
-        print(f"Inventory: {', '.join(inv)}")
-    else:
-        print("Inventory: (empty)")
+@dataclass
+class HelpResult:
+    """Signal to show help."""
+    pass
 
 
-def print_exits(runtime: GrueRuntime) -> None:
-    """Print available exits."""
-    exits = runtime.get_exits()
-    if exits:
-        for direction, dest in exits.items():
-            print(f"  {direction} -> {dest}")
-    else:
-        print("  (no exits)")
+@dataclass
+class ResetResult:
+    """Signal that reset completed."""
+    pass
 
 
-def print_state(runtime: GrueRuntime) -> None:
-    """Print full game state."""
-    print("\n=== Game State ===")
-    print(f"Player location: {runtime.get_player_location()}")
-    print(f"Score: {runtime.state.globals.get('score', 0)}")
-    print(f"Moves: {runtime.state.globals.get('moves', 0)}")
-    print(f"\nObjects:")
-    for name, obj_state in sorted(runtime.state.objects.items()):
-        if name not in runtime.state.rooms:
-            flags_str = ", ".join(sorted(obj_state.flags)) if obj_state.flags else "(none)"
-            print(f"  {name}: loc={obj_state.location}, flags=[{flags_str}]")
+@dataclass
+class LocationResult:
+    """Display location info."""
+    room: str
+    description: str
+    visible: list[str]
+    exits: dict[str, str]
 
 
-def print_help() -> None:
-    """Print help message."""
-    print(__doc__)
+@dataclass
+class InventoryResult:
+    """Display inventory."""
+    items: list[str]
 
 
-def extract_keyword_args(expr: SList) -> dict[str, SExpr]:
-    """Extract keyword arguments from an S-expression list.
+@dataclass
+class ExitsResult:
+    """Display exits."""
+    exits: dict[str, str]
 
-    E.g., (do :verb open :object DOOR) -> {"verb": Symbol("open"), "object": Symbol("DOOR")}
+
+@dataclass
+class StateResult:
+    """Display full game state."""
+    runtime: GrueRuntime
+
+
+@dataclass
+class ActionDone:
+    """Result of a successful action (go/do)."""
+    message: str
+    context: list[tuple[str, Any]]
+    effects: list[str]
+    redirects: list[SExpr]
+    location: LocationResult | None = None  # For movement
+
+
+@dataclass
+class ActionBlocked:
+    """Result of a blocked action."""
+    reason: str
+    context: list[tuple[str, Any]]
+    redirects: list[SExpr]
+
+
+@dataclass
+class ActionError:
+    """Result of an error during action."""
+    message: str
+
+
+@dataclass
+class EffectDone:
+    """Result of executing an effect."""
+    expr: str
+
+
+@dataclass
+class QueryValue:
+    """Result of a query."""
+    value: Any
+
+
+# === REPL Evaluator ===
+
+class ReplEvaluator:
+    """Evaluate REPL expressions.
+
+    Extends ExprEvaluator with REPL-specific commands that interact
+    with the runtime.
     """
-    kwargs = {}
-    items = expr.items[1:]  # Skip the function name
-    i = 0
-    while i < len(items):
-        if isinstance(items[i], Keyword):
-            key = items[i].name
-            if i + 1 < len(items):
-                kwargs[key] = items[i + 1]
-                i += 2
+
+    def __init__(self, runtime: GrueRuntime):
+        self.runtime = runtime
+        self._base_eval = ExprEvaluator(runtime)
+        self._effect_exec = EffectExecutor(runtime)
+
+        # REPL-specific commands
+        self._repl_commands = {
+            "quit": self._cmd_quit,
+            "help": self._cmd_help,
+            "look": self._cmd_look,
+            "inventory": self._cmd_inventory,
+            "exits": self._cmd_exits,
+            "state": self._cmd_state,
+            "reset": self._cmd_reset,
+            "go": self._cmd_go,
+            "do": self._cmd_do,
+        }
+
+        # Effect commands
+        self._effects = {"move!", "set-flag!", "clear-flag!", "set-prop!", "set!", "inc!"}
+
+    def eval(self, expr: SExpr) -> Any:
+        """Evaluate an expression and return a result."""
+        if not isinstance(expr, SList) or len(expr) == 0:
+            raise EvalError("Expected S-expression list")
+
+        head = expr[0]
+        if not isinstance(head, Symbol):
+            raise EvalError(f"Expected command name, got {head}")
+
+        cmd = head.name.lower()
+
+        # Check REPL commands first
+        if cmd in self._repl_commands:
+            return self._repl_commands[cmd](expr)
+
+        # Check effects
+        if cmd in self._effects:
+            self._effect_exec.execute(expr)
+            return EffectDone(expr=to_string(expr))
+
+        # Fall back to base evaluator (queries)
+        result = self._base_eval.eval(expr)
+        return QueryValue(value=result)
+
+    # === Helper Methods ===
+
+    def _extract_kwargs(self, expr: SList) -> dict[str, SExpr]:
+        """Extract keyword arguments from an S-expression list."""
+        kwargs = {}
+        items = list(expr.items[1:])  # Skip the function name
+        i = 0
+        while i < len(items):
+            if isinstance(items[i], Keyword):
+                key = items[i].name
+                if i + 1 < len(items):
+                    kwargs[key] = items[i + 1]
+                    i += 2
+                else:
+                    raise EvalError(f"Keyword :{key} has no value")
             else:
-                raise EvalError(f"Keyword :{key} has no value")
-        else:
-            raise EvalError(f"Expected keyword, got: {items[i]}")
-    return kwargs
+                raise EvalError(f"Expected keyword, got: {items[i]}")
+        return kwargs
 
+    def _to_string(self, expr: SExpr) -> str:
+        """Convert expression to string value."""
+        if isinstance(expr, Symbol):
+            return expr.name
+        if isinstance(expr, str):
+            return expr
+        return str(self._base_eval.eval(expr))
 
-def eval_to_string(expr: SExpr, evaluator: ExprEvaluator) -> str:
-    """Evaluate expression and return string form."""
-    if isinstance(expr, Symbol):
-        return expr.name
-    if isinstance(expr, str):
-        return expr
-    return str(evaluator.eval(expr))
+    def _make_location_result(self) -> LocationResult:
+        """Create a LocationResult from current state."""
+        room = self.runtime.get_player_location()
+        desc = self.runtime.get_room_description()
+        inv_set = set(self.runtime.get_inventory())
+        visible = [obj for obj in self.runtime.get_visible_objects() if obj not in inv_set]
+        exits = self.runtime.get_exits()
+        return LocationResult(room=room, description=desc, visible=visible, exits=exits)
 
+    # === REPL Commands ===
 
-def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
-    """Execute a REPL command. Returns True if should continue, False to quit."""
-    evaluator = ExprEvaluator(runtime)
+    def _cmd_quit(self, expr: SList) -> QuitResult:
+        return QuitResult()
 
-    if not isinstance(expr, SList) or len(expr) == 0:
-        print(f"[Error: Expected S-expression list]")
-        return True
+    def _cmd_help(self, expr: SList) -> HelpResult:
+        return HelpResult()
 
-    head = expr[0]
-    if not isinstance(head, Symbol):
-        print(f"[Error: Expected command name, got {head}]")
-        return True
+    def _cmd_look(self, expr: SList) -> LocationResult:
+        return self._make_location_result()
 
-    cmd = head.name.lower()
+    def _cmd_inventory(self, expr: SList) -> InventoryResult:
+        return InventoryResult(items=self.runtime.get_inventory())
 
-    # Meta commands
-    if cmd == "quit":
-        print("Goodbye!")
-        return False
+    def _cmd_exits(self, expr: SList) -> ExitsResult:
+        return ExitsResult(exits=self.runtime.get_exits())
 
-    if cmd == "help":
-        print_help()
-        return True
+    def _cmd_state(self, expr: SList) -> StateResult:
+        return StateResult(runtime=self.runtime)
 
-    if cmd == "look":
-        print_location(runtime)
-        return True
+    def _cmd_reset(self, expr: SList) -> ResetResult:
+        self.runtime.reset()
+        return ResetResult()
 
-    if cmd == "inventory":
-        print_inventory(runtime)
-        return True
-
-    if cmd == "exits":
-        print_exits(runtime)
-        return True
-
-    if cmd == "state":
-        print_state(runtime)
-        return True
-
-    if cmd == "reset":
-        runtime.reset()
-        print("[Reset]")
-        print_location(runtime)
-        return True
-
-    # Movement command: (go :direction DIR)
-    if cmd == "go":
+    def _cmd_go(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
+        """Execute (go :direction DIR)."""
         try:
-            kwargs = extract_keyword_args(expr)
+            kwargs = self._extract_kwargs(expr)
             direction = kwargs.get("direction")
             if direction is None:
-                print("[Error: (go) requires :direction]")
-                return True
+                return ActionError(message="(go) requires :direction")
 
-            dir_str = eval_to_string(direction, evaluator)
-            result = runtime.do("go", direction=dir_str)
+            dir_str = self._to_string(direction)
+            result = self.runtime.do("go", direction=dir_str)
 
             if result.outcome == "success":
-                print(f"[OK: moved {dir_str}]")
-                print_location(runtime)
+                return ActionDone(
+                    message=f"moved {dir_str}",
+                    context=list(result.context) if result.context else [],
+                    effects=[str(e) for e in result.effects_applied],
+                    redirects=list(result.redirects) if result.redirects else [],
+                    location=self._make_location_result(),
+                )
             elif result.outcome == "blocked":
-                ctx = dict(result.context) if result.context else {}
-                print(f"[BLOCKED: {result.reason}]")
-                for k, v in ctx.items():
-                    print(f"  {k}: {v}")
+                return ActionBlocked(
+                    reason=result.reason or "unknown",
+                    context=list(result.context) if result.context else [],
+                    redirects=list(result.redirects) if result.redirects else [],
+                )
             else:
-                print(f"[{result.outcome.upper()}: {result.error or result.reason}]")
+                return ActionError(message=result.error or result.reason or result.outcome)
         except EvalError as e:
-            print(f"[Error: {e}]")
-        return True
+            return ActionError(message=str(e))
 
-    # Action command: (do :verb V :object O [:with W])
-    if cmd == "do":
+    def _cmd_do(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
+        """Execute (do :verb V :object O [:with W])."""
         try:
-            kwargs = extract_keyword_args(expr)
+            kwargs = self._extract_kwargs(expr)
             verb = kwargs.get("verb")
             obj = kwargs.get("object")
 
             if verb is None:
-                print("[Error: (do) requires :verb]")
-                return True
+                return ActionError(message="(do) requires :verb")
 
-            verb_str = eval_to_string(verb, evaluator)
+            verb_str = self._to_string(verb)
 
             # Build runtime kwargs
             runtime_kwargs = {}
-            if "with" in kwargs:
-                runtime_kwargs["with"] = eval_to_string(kwargs["with"], evaluator)
-            if "on" in kwargs:
-                runtime_kwargs["on"] = eval_to_string(kwargs["on"], evaluator)
-            if "direction" in kwargs:
-                runtime_kwargs["direction"] = eval_to_string(kwargs["direction"], evaluator)
-            if "to" in kwargs:
-                runtime_kwargs["to"] = eval_to_string(kwargs["to"], evaluator)
+            for key in ("with", "on", "direction", "to"):
+                if key in kwargs:
+                    runtime_kwargs[key] = self._to_string(kwargs[key])
 
             if obj:
-                obj_str = eval_to_string(obj, evaluator)
-                result = runtime.do(verb_str, obj_str, **runtime_kwargs)
+                obj_str = self._to_string(obj)
+                result = self.runtime.do(verb_str, obj_str, **runtime_kwargs)
             else:
-                result = runtime.do(verb_str, **runtime_kwargs)
-
-            # Show redirects if any occurred (for user awareness)
-            if result.redirects:
-                redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
-                print(f"[via {redirect_chain}]")
+                result = self.runtime.do(verb_str, **runtime_kwargs)
 
             if result.outcome == "success":
-                ctx_info = ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
-                if ctx_info:
-                    print(f"[OK: {ctx_info}]")
-                else:
-                    print("[OK]")
-                for effect in result.effects_applied:
-                    print(f"  Effect: {effect}")
+                return ActionDone(
+                    message="",
+                    context=list(result.context) if result.context else [],
+                    effects=[str(e) for e in result.effects_applied],
+                    redirects=list(result.redirects) if result.redirects else [],
+                )
             elif result.outcome == "blocked":
-                print(f"[BLOCKED: {result.reason}]")
-                for k, v in result.context:
-                    print(f"  {k}: {v}")
+                return ActionBlocked(
+                    reason=result.reason or "unknown",
+                    context=list(result.context) if result.context else [],
+                    redirects=list(result.redirects) if result.redirects else [],
+                )
             elif result.outcome == "default":
-                print(f"[DEFAULT: {result.default_action}]")
-            elif result.outcome == "error":
-                print(f"[ERROR: {result.error}]")
+                return ActionDone(
+                    message=f"default: {result.default_action}",
+                    context=list(result.context) if result.context else [],
+                    effects=[],
+                    redirects=list(result.redirects) if result.redirects else [],
+                )
             else:
-                print(f"[UNKNOWN OUTCOME: {result.outcome}]")
-
+                return ActionError(message=result.error or result.outcome)
         except EvalError as e:
-            print(f"[Error: {e}]")
+            return ActionError(message=str(e))
+
+
+# === Result Printer ===
+
+def print_result(result: Any) -> bool:
+    """Print a result. Returns False if should quit."""
+    if isinstance(result, QuitResult):
+        print("Goodbye!")
+        return False
+
+    if isinstance(result, HelpResult):
+        print(__doc__)
         return True
 
-    # State mutation effects
-    if cmd in ("move!", "set-flag!", "clear-flag!", "set-prop!", "set!", "inc!"):
-        try:
-            executor = EffectExecutor(runtime)
-            executor.execute(expr)
-            print(f"[OK: {to_string(expr)}]")
-        except EvalError as e:
-            print(f"[Error: {e}]")
+    if isinstance(result, ResetResult):
+        print("[Reset]")
         return True
 
-    # Query expressions - evaluate and print result
-    try:
-        result = evaluator.eval(expr)
-        # Format result nicely
-        if isinstance(result, bool):
-            print(f"=> {str(result).lower()}")
-        elif isinstance(result, set):
-            if result:
-                print(f"=> ({' '.join(sorted(result))})")
+    if isinstance(result, LocationResult):
+        print(f"\n=== {result.room} ===")
+        print(result.description)
+        if result.visible:
+            print(f"\nVisible: {', '.join(result.visible)}")
+        if result.exits:
+            exit_list = [f"{d} -> {r}" for d, r in result.exits.items()]
+            print(f"Exits: {', '.join(exit_list)}")
+        return True
+
+    if isinstance(result, InventoryResult):
+        if result.items:
+            print(f"Inventory: {', '.join(result.items)}")
+        else:
+            print("Inventory: (empty)")
+        return True
+
+    if isinstance(result, ExitsResult):
+        if result.exits:
+            for direction, dest in result.exits.items():
+                print(f"  {direction} -> {dest}")
+        else:
+            print("  (no exits)")
+        return True
+
+    if isinstance(result, StateResult):
+        rt = result.runtime
+        print("\n=== Game State ===")
+        print(f"Player location: {rt.get_player_location()}")
+        print(f"Score: {rt.state.globals.get('score', 0)}")
+        print(f"Moves: {rt.state.globals.get('moves', 0)}")
+        print(f"\nObjects:")
+        for name, obj_state in sorted(rt.state.objects.items()):
+            if name not in rt.state.rooms:
+                flags_str = ", ".join(sorted(obj_state.flags)) if obj_state.flags else "(none)"
+                print(f"  {name}: loc={obj_state.location}, flags=[{flags_str}]")
+        return True
+
+    if isinstance(result, ActionDone):
+        if result.redirects:
+            redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
+            print(f"[via {redirect_chain}]")
+        ctx_info = ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
+        if result.message:
+            msg = f"{result.message}" + (f", {ctx_info}" if ctx_info else "")
+            print(f"[OK: {msg}]")
+        elif ctx_info:
+            print(f"[OK: {ctx_info}]")
+        else:
+            print("[OK]")
+        for effect in result.effects:
+            print(f"  Effect: {effect}")
+        if result.location:
+            print_result(result.location)
+        return True
+
+    if isinstance(result, ActionBlocked):
+        if result.redirects:
+            redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
+            print(f"[via {redirect_chain}]")
+        print(f"[BLOCKED: {result.reason}]")
+        for k, v in result.context:
+            print(f"  {k}: {v}")
+        return True
+
+    if isinstance(result, ActionError):
+        print(f"[ERROR: {result.message}]")
+        return True
+
+    if isinstance(result, EffectDone):
+        print(f"[OK: {result.expr}]")
+        return True
+
+    if isinstance(result, QueryValue):
+        value = result.value
+        if isinstance(value, bool):
+            print(f"=> {str(value).lower()}")
+        elif isinstance(value, set):
+            if value:
+                print(f"=> ({' '.join(sorted(value))})")
             else:
                 print("=> ()")
-        elif isinstance(result, list):
-            if result:
-                print(f"=> ({' '.join(result)})")
+        elif isinstance(value, list):
+            if value:
+                print(f"=> ({' '.join(value)})")
             else:
                 print("=> ()")
-        elif result is None:
+        elif value is None:
             print("=> nil")
         else:
-            print(f"=> {result}")
-    except EvalError as e:
-        print(f"[Error: {e}]")
+            print(f"=> {value}")
+        return True
 
+    # Unknown result type - just print it
+    print(f"=> {result}")
     return True
 
+
+# === Main ===
 
 def main():
     if len(sys.argv) < 2:
@@ -314,6 +457,7 @@ def main():
     print(f"Loading {path}...")
     world = load_grue(path)
     runtime = GrueRuntime(world)
+    evaluator = ReplEvaluator(runtime)
 
     print(f"\n{'='*50}")
     print(f"  {world.name or path.stem}")
@@ -323,7 +467,8 @@ def main():
     print("\nGrue REPL")
     print("Type (help) for commands.\n")
 
-    print_location(runtime)
+    # Initial look
+    print_result(evaluator.eval(parse("(look)")))
     print()
 
     while True:
@@ -336,13 +481,16 @@ def main():
         if not line:
             continue
 
-        # Allow multiple expressions on one line
         try:
             expr = parse(line)
-            if not execute_repl_command(expr, runtime):
+            result = evaluator.eval(expr)
+            if not print_result(result):
                 break
         except SExprError as e:
             print(f"[Parse error: {e}]")
+            continue
+        except EvalError as e:
+            print(f"[Error: {e}]")
             continue
 
         # Check win/lose
