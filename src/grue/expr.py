@@ -182,6 +182,7 @@ class ExprEvaluator:
             "held?": self._eval_held,
             "here?": self._eval_here,
             "in?": self._eval_in,
+            "contained-in?": self._eval_in,  # alias for in?
             "held-by?": self._eval_held_by,
             "at?": self._eval_at,
             "room?": self._eval_room,
