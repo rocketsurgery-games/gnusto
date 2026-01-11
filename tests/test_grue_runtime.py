@@ -102,11 +102,9 @@ class TestBehaviorExecution:
         (object DOOR
           :location LOBBY
           :flags (DOOR)
-          :behaviors
-            ((open
-               (case true
-                 :outcome success
-                 :effects ()))))
+          :behaviors (
+            :open (cond
+              (true (success)))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -122,14 +120,10 @@ class TestBehaviorExecution:
         (object DOOR
           :location LOBBY
           :flags (DOOR LOCKED)
-          :behaviors
-            ((open
-               (case (not (has-flag self LOCKED))
-                 :outcome success
-                 :effects ())
-               (case true
-                 :outcome blocked
-                 :reason locked))))
+          :behaviors (
+            :open (cond
+              ((not (has-flag self LOCKED)) (success))
+              (true (blocked :reason locked)))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -147,11 +141,10 @@ class TestBehaviorExecution:
         (object DOOR
           :location LOBBY
           :flags (DOOR LOCKED)
-          :behaviors
-            ((unlock
-               (case (has-flag self LOCKED)
-                 :outcome success
-                 :effects ((clear-flag! self LOCKED))))))
+          :behaviors (
+            :unlock (cond
+              ((has-flag self LOCKED)
+                (success :effects ((clear-flag! self LOCKED)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -172,12 +165,9 @@ class TestBehaviorExecution:
         (object PLAYER :location LOBBY)
         (object DOOR
           :location LOBBY
-          :behaviors
-            ((open
-               (case true
-                 :outcome success
-                 :effects ()
-                 :context ((mechanism push-bar))))))
+          :behaviors (
+            :open (cond
+              (true (success :context ((mechanism push-bar)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -214,11 +204,9 @@ class TestMovementViaDoors:
         (object PLAYER :location OUTSIDE)
         (object DOOR
           :location OUTSIDE
-          :behaviors
-            ((through
-               (case true
-                 :outcome redirect
-                 :action (go :direction in)))))
+          :behaviors (
+            :through (cond
+              (true (default :action (go :direction in))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)

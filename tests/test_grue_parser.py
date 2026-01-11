@@ -114,11 +114,9 @@ class TestBehaviorParsing:
           :description "A door"
           :location LOBBY
           :flags (DOOR)
-          :behaviors
-            ((open
-               (case true
-                 :outcome success
-                 :effects ()))))
+          :behaviors (
+            :open (cond
+              (true (success)))))
         """
         world = parse_grue(source)
 
@@ -140,14 +138,10 @@ class TestBehaviorParsing:
           :description "A door"
           :location LOBBY
           :flags (DOOR LOCKED)
-          :behaviors
-            ((open
-               (case (not (has-flag self LOCKED))
-                 :outcome success
-                 :effects ())
-               (case true
-                 :outcome blocked
-                 :reason locked))))
+          :behaviors (
+            :open (cond
+              ((not (has-flag self LOCKED)) (success))
+              (true (blocked :reason locked)))))
         """
         world = parse_grue(source)
 
@@ -172,11 +166,9 @@ class TestBehaviorParsing:
           :description "A door"
           :location LOBBY
           :flags (DOOR LOCKED)
-          :behaviors
-            ((unlock
-               (case (= ?with KEY)
-                 :outcome success
-                 :effects ((clear-flag! self LOCKED))))))
+          :behaviors (
+            :unlock (cond
+              ((= ?with KEY) (success :effects ((clear-flag! self LOCKED)))))))
         """
         world = parse_grue(source)
 
@@ -190,13 +182,10 @@ class TestBehaviorParsing:
         (object DOOR
           :description "A door"
           :location LOBBY
-          :behaviors
-            ((open
-               (case true
-                 :outcome success
-                 :effects ()
-                 :context ((mechanism push-bar)
-                           (note auto-closing))))))
+          :behaviors (
+            :open (cond
+              (true (success :context ((mechanism push-bar)
+                                       (note auto-closing)))))))
         """
         world = parse_grue(source)
 
@@ -205,22 +194,20 @@ class TestBehaviorParsing:
         assert ("mechanism", "push-bar") in case.context
         assert ("note", "auto-closing") in case.context
 
-    def test_behavior_with_redirect(self):
-        """Parse a behavior with redirect action."""
+    def test_behavior_with_default(self):
+        """Parse a behavior with default action."""
         source = """
         (object DOOR
           :description "A door"
           :location LOBBY
-          :behaviors
-            ((through
-               (case true
-                 :outcome redirect
-                 :action (go :direction in)))))
+          :behaviors (
+            :through (cond
+              (true (default :action (go :direction in))))))
         """
         world = parse_grue(source)
 
         case = world.objects["DOOR"].behaviors[0].cases[0]
-        assert case.outcome == "redirect"
+        assert case.outcome == "default"
         assert isinstance(case.action, SList)
 
 
