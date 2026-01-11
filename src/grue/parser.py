@@ -542,8 +542,8 @@ class GrueParser:
 
 
 def _load_defaults() -> GrueWorld:
-    """Load the built-in defaults.grue file."""
-    defaults_path = Path(__file__).parent / "defaults.grue"
+    """Load the built-in builtins.grue file."""
+    defaults_path = Path(__file__).parent / "builtins.grue"
     if defaults_path.exists():
         parser = GrueParser()
         return parser.parse_file(defaults_path)
@@ -568,7 +568,7 @@ def load_grue(path: str | Path, include_defaults: bool = True) -> GrueWorld:
 
     Args:
         path: File or directory to load
-        include_defaults: If True, merge built-in defaults.grue (default: True)
+        include_defaults: If True, merge built-in builtins.grue (default: True)
     """
     path = Path(path)
 
