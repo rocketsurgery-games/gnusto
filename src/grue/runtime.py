@@ -322,6 +322,11 @@ class GrueRuntime:
                 break
 
         if behavior is None:
+            # Try default behaviors based on flags
+            default_result = self._try_default_behavior(verb, direct_object, obj_def)
+            if default_result is not None:
+                return default_result
+
             return ActionResult(
                 outcome="blocked",
                 reason="no-behavior",
@@ -336,6 +341,73 @@ class GrueRuntime:
 
         # Evaluate behavior cases
         return self._evaluate_behavior(behavior, bindings)
+
+    def _try_default_behavior(
+        self,
+        verb: str,
+        obj_name: str,
+        obj_def: GrueObject
+    ) -> ActionResult | None:
+        """
+        Try default behaviors based on object flags.
+
+        Returns ActionResult if a default applies, None otherwise.
+        """
+        obj_state = self.state.objects.get(obj_name)
+        if obj_state is None:
+            return None
+
+        player_loc = self.get_player_location()
+
+        if verb == "take":
+            # Check TAKEBIT flag
+            if "TAKEBIT" not in obj_state.flags:
+                return ActionResult(
+                    outcome="blocked",
+                    reason="not-takeable",
+                    context=[("object", obj_name)]
+                )
+
+            # Check if object is here or visible
+            if obj_state.location != player_loc and obj_state.location != "PLAYER":
+                return ActionResult(
+                    outcome="blocked",
+                    reason="not-here",
+                    context=[("object", obj_name), ("location", obj_state.location)]
+                )
+
+            # Already holding it?
+            if obj_state.location == "PLAYER":
+                return ActionResult(
+                    outcome="blocked",
+                    reason="already-held",
+                    context=[("object", obj_name)]
+                )
+
+            # Take it
+            obj_state.location = "PLAYER"
+            return ActionResult(
+                outcome="success",
+                effects_applied=[f"{obj_name} moved to PLAYER"]
+            )
+
+        if verb == "drop":
+            # Must be holding it
+            if obj_state.location != "PLAYER":
+                return ActionResult(
+                    outcome="blocked",
+                    reason="not-held",
+                    context=[("object", obj_name)]
+                )
+
+            # Drop it in current room
+            obj_state.location = player_loc
+            return ActionResult(
+                outcome="success",
+                effects_applied=[f"{obj_name} moved to {player_loc}"]
+            )
+
+        return None
 
     def _do_go(self, direction: str) -> ActionResult:
         """Handle movement."""

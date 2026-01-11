@@ -686,26 +686,6 @@
   :behaviors (
     :through (case true :outcome success)))
 
-; [NEEDS-TRANSLATION] Barrier object for TERMINAL-ROOM south exit
-; Synthesized from PER routine: HACKER-EXIT
-; ZIL Source:
-; <ROUTINE HACKER-EXIT ()
-;   <COND
-;       (<OR <HELD? ,PC> <HELD? ,CHAIR>> <TELL
-;         ,HACKER-PREVENTS
-;         ,YOU-CANT
-;         "walk off with that!
-;   It's Tech property!\""
-;         CR> <RFALSE>)
-;       (ELSE ,CS-2ND)>
-; >
-(object HACKER-EXIT-BARRIER
-  :location TERMINAL-ROOM
-  :description "passage"
-  :flags (INVISIBLE)
-  :behaviors (
-    :through (case true :outcome success)))
-
 ; [NEEDS-TRANSLATION] Barrier object for TOMB se exit
 ; Synthesized from PER routine: TOMB-SQUEEZE
 ; ZIL Source:

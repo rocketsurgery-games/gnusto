@@ -1,0 +1,105 @@
+; Tests for TERMINAL-ROOM and HACKER-EXIT barrier
+;
+; The HACKER-EXIT barrier prevents the player from leaving
+; the terminal room while carrying "Tech property" (PC or CHAIR).
+; The hacker stops you with "You can't walk off with that!"
+
+; === Basic movement (no tech property) ===
+
+(test "can exit south without carrying anything"
+  :action (go :direction south)
+  :expect ((outcome? success)
+           (player-at? CS-2ND)))
+
+(test "can exit out without carrying anything"
+  :setup ((move! PLAYER TERMINAL-ROOM))
+  :action (go :direction out)
+  :expect ((outcome? success)
+           (player-at? CS-2ND)))
+
+; === Blocked when carrying PC ===
+
+(test "blocked when carrying PC - south"
+  :setup ((move! PC PLAYER))
+  :action (go :direction south)
+  :expect ((outcome? blocked)
+           (reason? tech-property)))
+
+(test "blocked when carrying PC - out"
+  :setup ((move! PC PLAYER))
+  :action (go :direction out)
+  :expect ((outcome? blocked)
+           (reason? tech-property)))
+
+; === Blocked when carrying CHAIR ===
+
+(test "blocked when carrying chair - south"
+  :setup ((move! CHAIR PLAYER))
+  :action (go :direction south)
+  :expect ((outcome? blocked)
+           (reason? tech-property)))
+
+; === Can leave after putting down tech property ===
+
+(test "can leave after putting PC back"
+  :setup ((move! PC PLAYER)
+          (move! PC TERMINAL-ROOM))
+  :action (go :direction south)
+  :expect ((outcome? success)
+           (player-at? CS-2ND)))
+
+; === Take/drop behavior ===
+
+(test "take PC"
+  :action (do :verb take :object PC)
+  :expect ((outcome? success)
+           (held? PC)))
+
+(test "cannot take object not here"
+  :setup ((move! PC CS-2ND))
+  :action (do :verb take :object PC)
+  :expect ((outcome? blocked)
+           (reason? not-here)))
+
+(test "cannot take object already held"
+  :setup ((move! PC PLAYER))
+  :action (do :verb take :object PC)
+  :expect ((outcome? blocked)
+           (reason? already-held)))
+
+(test "cannot take non-takeable object"
+  :action (do :verb take :object HACKER)
+  :expect ((outcome? blocked)
+           (reason? not-takeable)))
+
+(test "drop PC"
+  :setup ((move! PC PLAYER))
+  :action (do :verb drop :object PC)
+  :expect ((outcome? success)
+           (loc? PC TERMINAL-ROOM)))
+
+(test "cannot drop object not held"
+  :action (do :verb drop :object PC)
+  :expect ((outcome? blocked)
+           (reason? not-held)))
+
+; === Take/drop with barrier ===
+
+(test-sequence "take PC then blocked at exit"
+  (step :action (do :verb take :object PC)
+        :expect ((outcome? success)
+                 (held? PC)))
+  (step :action (go :direction south)
+        :expect ((outcome? blocked)
+                 (reason? tech-property))))
+
+(test-sequence "take PC, drop PC, then exit"
+  (step :action (do :verb take :object PC)
+        :expect ((outcome? success)))
+  (step :action (do :verb drop :object PC)
+        :expect ((outcome? success)
+                 (loc? PC TERMINAL-ROOM)))
+  (step :action (go :direction south)
+        :expect ((outcome? success)
+                 (player-at? CS-2ND))))
+

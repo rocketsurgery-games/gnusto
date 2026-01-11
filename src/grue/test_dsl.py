@@ -500,7 +500,8 @@ class TestRunner:
             else:
                 # Try evaluating as a general predicate
                 try:
-                    evaluator = ExprEvaluator(runtime.state, self._functions)
+                    state_adapter = GrueStateAdapter(runtime.state)
+                    evaluator = ExprEvaluator(state_adapter, self._functions)
                     if not evaluator.eval(pred):
                         failures.append(f"Predicate failed: {to_string(pred)}")
                 except Exception as e:

@@ -1836,57 +1836,6 @@ leads down, and a door leads north."
   ; --- End Room ACTION Routine ---
 )
 
-; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F
-(room TERMINAL-ROOM
-  :description "Terminal Room"
-  :ldesc "This is a large room crammed with computer terminals, small
-computers, and printers. An exit leads south. Banners, posters, and
-signs festoon the walls. Most of the tables are covered with waste
-paper, old pizza boxes, and empty Coke cans. There are usually a lot of
-people here, but tonight it's almost deserted."
-  :flags (ONBIT)
-  :exits
-    (
-      (south :to CS-2ND :via HACKER-EXIT-BARRIER)
-      (out :to CS-2ND :via HACKER-EXIT-BARRIER)
-    )
-
-  ; --- Room ACTION Routine ---
-  ; <ROUTINE TERMINAL-ROOM-F (RARG)
-  ;   <COND
-  ;       (<RARG? BEG> <COND
-  ;         (<AND <NOT <VERB? TELL>> <GAME-VERB?>> <RFALSE>)
-  ;         (<QUEUED? I-HACKER-HELPS> <COND
-  ;           (<P?
-  ;             (RUB POINT CLICK HELP)
-  ;             (MENU-BOX MORE-BOX <>)> <TELL
-  ;             ,HACKER-PREVENTS
-  ;             "Who's the hacker here?\" he snarls."
-  ;             CR>)>)
-  ;         (<QUEUED? I-COMPULSION> <COND
-  ;           (<P?
-  ;             (RUB POINT CLICK PUSH ATTACK)
-  ;             MORE-BOX> <RFALSE>)
-  ;           (<P? READ ,ODD-PAPER> <RFALSE>)
-  ;           (ELSE <COND
-  ;             (<VERB? TELL HELLO> <TELL "Your throat tightens, and no sound issues forth. ">)
-  ;             (<VERB? INVENTORY LAMP-OFF> <TELL "Your body refuses to obey your brain's command. ">)> <TELL
-  ;             "Instead, you find your finger moving towards the MORE box, and you touch
-  ;   it. The screen feels oddly cold."
-  ;             CR> <COND (<VERB? TELL> <END-QUOTE>) (ELSE <RTRUE>)>)>)>)
-  ;       (<AND
-  ;         <RARG? ENTER>
-  ;         <EQUAL? ,OHERE ,PLATFORM-ROOM>> <QUEUE I-HACKER-HELPS -1> <TELL
-  ;         "You are awakened by the thump of your head hitting the terminal
-  ;   in front of you. Falling asleep over term papers! It must have been a
-  ;   nightmare. Embarrassed, you glance around. Yes, the hacker is looking
-  ;   in your direction. He must have heard the thump."
-  ;         CR
-  ;         CR>)>
-  ; >
-  ; --- End Room ACTION Routine ---
-)
-
 ; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F
 (room TOMB
   :description "Tomb"
