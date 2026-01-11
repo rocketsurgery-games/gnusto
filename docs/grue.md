@@ -56,8 +56,9 @@ and generates narrative from outcomes. This separation allows:
 
 ```scheme
 ; Atoms
-SYMBOL          ; uppercase by convention for game entities
-keyword         ; lowercase for structural keywords
+@entity         ; entities (objects, rooms) - @ prefix, lowercase
+?binding        ; context bindings - ? prefix
+FLAG            ; flags/constants - UPPERCASE
 :keyword        ; keyword arguments
 "string"        ; string literals
 42              ; numbers
@@ -77,30 +78,30 @@ true false      ; booleans
 
 ```scheme
 ; Object queries
-(has-flag OBJ FLAG)           ; does object have flag?
-(prop OBJ property)           ; get property value (falsy if missing)
-(loc OBJ)                     ; get object's location
-(= A B)                       ; equality
+(has-flag @door LOCKED)       ; does object have flag?
+(prop @player score)          ; get property value (nil if missing)
+(loc @key)                    ; get object's location
+(= ?with @master-key)         ; equality
 
 ; Location predicates
-(in-room? OBJ ROOM1 ROOM2 ...)  ; is object in any listed room?
-(room-has-flag? FLAG)           ; does player's current room have flag?
-(here? OBJ)                     ; is object in player's room?
-(held? OBJ)                     ; is object in player's inventory?
-(visible? OBJ)                  ; can player see object?
-(contained-in? OBJ CONTAINER)   ; is object inside container?
+(in-room? @player @lobby @hallway)  ; is object in any listed room?
+(room-has-flag? OUTSIDE)            ; does player's current room have flag?
+(here? @chest)                      ; is object in player's room?
+(held? @key)                        ; is object in player's inventory?
+(visible? @door)                    ; can player see object?
+(in? @coin @chest)                  ; is object inside container?
 
 ; Boolean logic
 (and EXPR ...)
 (or EXPR ...)
 (not EXPR)
 
-; Quantifiers
-(any COLLECTION PRED)         ; any element satisfies predicate
-(all COLLECTION PRED)         ; all elements satisfy predicate
+; Quantifiers (see Formal Semantics for details)
+(any (inventory) (lambda (x) (has-flag x LIGHT)))
+(all (contents @chest) (lambda (x) (has-flag x SMALL)))
 
 ; Event queue
-(queued? EVENT)               ; is event currently active?
+(queued? HACKER-HELPS)        ; is event currently active?
 ```
 
 ### Effects (State Deltas)
@@ -108,37 +109,35 @@ true false      ; booleans
 Effects describe how state changes. They don't mutate - they declare the delta.
 
 ```scheme
-(move! OBJ DEST)              ; object moves to destination
-(set-flag! OBJ FLAG)          ; add flag to object
-(clear-flag! OBJ FLAG)        ; remove flag from object
-(set! OBJ :prop VALUE)        ; set property on object
+(move! @key @player)          ; object moves to destination
+(set-flag! @door LOCKED)      ; add flag to object
+(clear-flag! @door LOCKED)    ; remove flag from object
+(set-prop! @player score 10)  ; set property on object
 
 ; Compound effects
 (seq EFFECT ...)              ; apply effects in order
 (when COND EFFECT)            ; conditional effect
 
 ; Event queue
-(queue! EVENT)                ; activate event (indefinite)
-(queue! EVENT N)              ; activate event with countdown
-(dequeue! EVENT)              ; deactivate event
+(queue! HACKER-HELPS)         ; activate event (indefinite)
+(queue! LANTERN 200)          ; activate event with countdown
+(dequeue! HACKER-HELPS)       ; deactivate event
 ```
 
 ### Objects
 
-Everything in the game world is an object, including PLAYER and rooms.
+Everything in the game world is an object, including the player and rooms.
 
 ```scheme
-(object OUTSIDE-DOOR
+(object @outside-door
   :description "A heavy exterior door with an electronic lock"
-  :location MASS-AVE           ; where object is (or nil for abstract objects)
+  :location @mass-ave           ; where object is (or nil for abstract objects)
   :flags (DOOR LOCKED OPENABLE FIXED)
-  :properties
-    ((lock-type electronic)
-     (key-required MASTER-KEY))
-  :behaviors
-    ((open ...)
-     (unlock ...)
-     (through ...)))
+  :properties (:lock-type electronic :key-required @master-key)
+  :behaviors (
+    :open (cond ...)
+    :unlock (cond ...)
+    :through (cond ...)))
 ```
 
 **Flags vs Properties:**
@@ -148,21 +147,19 @@ Everything in the game world is an object, including PLAYER and rooms.
 
 ### Rooms
 
-Rooms are objects with exits. The PLAYER's location is always a room.
+Rooms are objects with exits. The player's location is always a room.
 
 ```scheme
-(room MASS-AVE
+(room @mass-ave
   :description "The intersection of Mass Ave and Memorial Drive"
   :flags (OUTSIDE LIT)
-  :exits
-    ((in :to LOBBY :via OUTSIDE-DOOR)))
+  :exits ((in :to @lobby :via @outside-door)))
 
-(room LOBBY
+(room @lobby
   :description "The building's main lobby"
   :flags (INSIDE LIT)
-  :exits
-    ((out :to MASS-AVE :via OUTSIDE-DOOR)
-     (north :to HALLWAY)))
+  :exits ((out :to @mass-ave :via @outside-door)
+          (north :to @hallway)))
 ```
 
 **Exit structure:**
@@ -181,21 +178,18 @@ unusual configurations are the author's responsibility to keep consistent.
 
 ### The Player
 
-PLAYER is an object. "Global" state is just player properties.
+The player is an object identified by the `PERSON` flag. "Global" state is just player properties.
 
 ```scheme
-(object PLAYER
-  :location TERMINAL-ROOM      ; starting room
+(object @player
+  :location @terminal-room      ; starting room
   :flags (PERSON)
-  :properties
-    ((score 0)
-     (moves 0)
-     (game-phase beginning)))
+  :properties (:score 0 :moves 0 :game-phase beginning))
 ```
 
-Inventory is just objects whose location is PLAYER:
+Inventory is just objects whose location is the player:
 ```scheme
-(held? KEY)  ; equivalent to (= (loc KEY) PLAYER)
+(held? @key)  ; equivalent to (= (loc @key) @player)
 ```
 
 ### Containers
@@ -203,17 +197,16 @@ Inventory is just objects whose location is PLAYER:
 Objects can contain other objects. An object's location can be another object.
 
 ```scheme
-(object CHEST
+(object @chest
   :description "An old wooden chest"
-  :location ATTIC
+  :location @attic
   :flags (CONTAINER OPENABLE LOCKED)
-  :properties
-    ((key-required BRASS-KEY)))
+  :properties (:key-required @brass-key))
 
-(object COIN
+(object @coin
   :description "A gold coin"
-  :location CHEST              ; inside the chest
-  :flags (TAKEABLE))
+  :location @chest              ; inside the chest
+  :flags (TAKEBIT))
 ```
 
 Visibility rules:
@@ -226,72 +219,59 @@ Behaviors define how objects respond to actions. They are evaluated when
 an action targets the object (or references it via `:with`, etc.).
 
 ```scheme
-(object OUTSIDE-DOOR
-  :behaviors
-    ((open
-       (case (and (room-has-flag? OUTSIDE)
-                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD))
-         :outcome success
-         :effects ())  ; door auto-closes, no state change
+(object @outside-door
+  :behaviors (
+    :open (cond
+      ((and (room-has-flag? OUTSIDE)
+            (in-room? @player @mass-ave @smith-st @courtyard))
+        (success :effects ()))  ; door auto-closes, no state change
 
-       (case (room-has-flag? OUTSIDE)
-         :outcome blocked
-         :reason locked-from-outside)
+      ((room-has-flag? OUTSIDE)
+        (blocked :reason locked-from-outside))
 
-       (case true
-         :outcome success
-         :effects ()
-         :context ((note auto-closing))))
+      (true
+        (success :context ((note auto-closing)))))
 
-     (unlock
-       (case (and (room-has-flag? OUTSIDE)
-                  (= ?with MASTER-KEY))
-         :outcome blocked
-         :reason wrong-key-type
-         :context ((detail electronic-lock)))
+    :unlock (cond
+      ((and (room-has-flag? OUTSIDE) (= ?with @master-key))
+        (blocked :reason wrong-key-type
+                 :context ((detail electronic-lock))))
 
-       (case (room-has-flag? OUTSIDE)
-         :outcome blocked
-         :reason locked-from-outside)
+      ((room-has-flag? OUTSIDE)
+        (blocked :reason locked-from-outside))
 
-       (case (and (has-flag self LOCKED)
-                  (= ?with MASTER-KEY))
-         :outcome success
-         :effects ((clear-flag! self LOCKED)))
+      ((and (has-flag ?self LOCKED) (= ?with @master-key))
+        (success :effects ((clear-flag! ?self LOCKED))))
 
-       (case (has-flag self LOCKED)
-         :outcome blocked
-         :reason need-key)
+      ((has-flag ?self LOCKED)
+        (blocked :reason need-key))
 
-       (case true
-         :outcome blocked
-         :reason not-locked))
+      (true
+        (blocked :reason not-locked)))
 
-     (through
-       (case (room-has-flag? OUTSIDE)
-         :outcome redirect
-         :action (go :direction in))
+    :through (cond
+      ((room-has-flag? OUTSIDE)
+        (redirect :action (go :direction in)))
 
-       (case true
-         :outcome redirect
-         :action (go :direction out)))))
+      (true
+        (redirect :action (go :direction out))))))
 ```
 
-**Case structure:**
-- First element is the condition (predicate)
-- `:outcome` - result type: `success`, `blocked`, `redirect`
-- `:effects` - state changes on success (list of effects)
-- `:reason` - semantic failure reason (for LLM interpretation)
-- `:context` - additional hints for LLM narrative
-- `:action` - for redirects, the action to perform instead
+**Clause structure:**
+Each `cond` clause is `(CONDITION OUTCOME-FORM)` where OUTCOME-FORM is one of:
+- `(success :effects (...) :context (...))` - action succeeds
+- `(blocked :reason SYMBOL :context (...))` - action fails with semantic reason
+- `(redirect :action EXPR)` - delegate to another action
+- `(default :action EXPR)` - fall through to default behavior
 
-**Special variables in behaviors:**
-- `self` - the object being acted upon (direct object)
+**Dynamic bindings in behaviors:**
+- `?self` - the object being acted upon (direct object)
+- `?actor` - who is performing the action (defaults to player)
 - `?with` - the instrument (e.g., "unlock X with Y")
 - `?on` - surface/target (e.g., "put X on Y")
 - `?in` - container (e.g., "put X in Y")
-- `?actor` - who is performing the action (defaults to PLAYER)
-- Other slots as needed, dynamically bound from action
+- `?to` - recipient (e.g., "give X to Y")
+- `?direction` - movement direction
 
 **Note on EXAMINE:** Examining an object is a behavior like any other - the object
 is the direct object of the action. The behavior returns context about what's
@@ -303,10 +283,10 @@ logic in behaviors.
 The LLM sends structured actions to the world model:
 
 ```scheme
-(open DOOR)
-(unlock DOOR :with KEY)
-(put COIN :in CHEST)
-(give ASSIGNMENT :to HACKER)
+(do :verb open :object @door)
+(do :verb unlock :object @door :with @key)
+(do :verb put :object @coin :in @chest)
+(do :verb give :object @assignment :to @hacker)
 (go :direction north)
 ```
 
@@ -320,7 +300,7 @@ The world model:
 ```scheme
 ; Success
 (result :outcome success
-        :effects ((moved KEY PLAYER))
+        :effects ((moved @key @player))
         :context ((first-time true)))
 
 ; Blocked
@@ -328,12 +308,11 @@ The world model:
         :reason locked
         :context ((lock-type electronic)))
 
-; Unknown slot
-(result :outcome failed
-        :slot with
-        :reason not-applicable)
+; Error (unknown object, etc.)
+(result :outcome error
+        :error "Unknown object: foo")
 
-; Redirect
+; Redirect (internal, then followed automatically)
 (result :outcome redirect
         :action (go :direction in))
 ```
@@ -361,16 +340,16 @@ Event queues track ongoing situations that affect behavior. They map to ZIL's
 Events are commonly used to alter behavior based on ongoing situations:
 
 ```scheme
-(object PC
+(object @pc
   :behaviors (
     :turn-off (cond
       ; Hacker blocks turning off PC while helping
       ((queued? HACKER-HELPS)
         (blocked :reason hacker-interference
-                 :context ((blocker HACKER)
+                 :context ((blocker @hacker)
                            (message "You'll mung the bits, chomper!"))))
       (true
-        (success :effects ((clear-flag! self POWER)))))))
+        (success :effects ((clear-flag! ?self POWER)))))))
 ```
 
 **Note:** The current implementation provides queue flags for behavior conditions.
@@ -393,20 +372,20 @@ For static analysis, we model time as part of state: each turn increments
 
 ```scheme
 (victory
-  :when (and (>= (prop PLAYER score) 100)
-             (prop PLAYER defeated-evil))
+  :when (and (>= (prop @player score) 100)
+             (prop @player defeated-evil))
   :context ((ending good)))
 
-(defeat EATEN-BY-GRUE
+(defeat eaten-by-grue
   :when (and (not (room-has-flag? LIT))
-             (not (any (inventory PLAYER)
+             (not (any (inventory)
                        (lambda (obj) (and (has-flag obj LIGHT)
                                           (has-flag obj ON))))))
   :context ((death-type grue)))
 
-(defeat FELL-IN-PIT
-  :when (and (= (loc PLAYER) DARK-PIT)
-             (not (has-flag ROPE TIED)))
+(defeat fell-in-pit
+  :when (and (= (loc @player) @dark-pit)
+             (not (has-flag @rope TIED)))
   :context ((death-type falling)))
 ```
 
@@ -417,9 +396,9 @@ For static analysis, we model time as part of state: each turn increments
 User: "I want to get into the building"
 
 LLM considers:
-- Current location (MASS-AVE, has exit `:to LOBBY :via OUTSIDE-DOOR`)
-- OUTSIDE-DOOR has LOCKED flag
-- Player has KEY in inventory
+- Current location (`@mass-ave`, has exit `:to @lobby :via @outside-door`)
+- `@outside-door` has LOCKED flag
+- Player has `@key` in inventory
 
 LLM tries: `(go :direction in)`
 
@@ -429,7 +408,7 @@ LLM: "The door is locked from the outside."
 
 User: "Can I unlock it?"
 
-LLM tries: `(unlock OUTSIDE-DOOR :with KEY)`
+LLM tries: `(do :verb unlock :object @outside-door :with @key)`
 
 World returns: `(result :outcome blocked :reason wrong-key-type :context ((detail electronic-lock)))`
 
@@ -479,6 +458,236 @@ Find: States S where:
 Verify: ∀ reachable states S, ∀ actions A:
   invariants(apply(A, S)) = true OR defeat triggered
 ```
+
+## Formal Semantics
+
+This section provides a precise reference for GRUE language semantics, distinguishing
+between different categories of constructs and their evaluation rules.
+
+### Categories of Constructs
+
+GRUE has three categories of constructs, each with different evaluation semantics:
+
+| Category | Examples | Evaluation |
+|----------|----------|------------|
+| **Declarative Forms** | `world`, `room`, `object`, `victory`, `defeat`, `default` | Data definitions, not evaluated at runtime |
+| **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `any`, `all` | Custom evaluation rules |
+| **Functions** | `has-flag`, `loc`, `move!`, `set-flag!` | Uniform evaluation (all arguments evaluated) |
+
+### Declarative Forms (Data Definitions)
+
+Declarative forms define the static structure of the game world. They are processed
+at parse time to build the `GrueWorld` datastructure and are not evaluated at runtime.
+
+#### `(world :name "..." :description "...")`
+Game metadata. Both `:name` and `:description` are optional.
+
+#### `(room NAME :description "..." :flags (...) :exits (...))`
+Room definition. Rooms are named entities with:
+- `:description` / `:ldesc` - Short/long descriptions
+- `:flags` - Boolean markers (e.g., `OUTSIDE`, `LIT`)
+- `:exits` - List of exit forms `(DIRECTION :to ROOM [:via OBJECT] [:when EXPR])`
+- `:properties` - Key-value properties
+
+#### `(object NAME :location LOC :flags (...) :behaviors (...))`
+Object definition. Objects are named entities with:
+- `:description` / `:fdesc` / `:ldesc` - Descriptions
+- `:location` - Where the object is (room, container, or entity name)
+- `:flags` - Boolean markers (e.g., `TAKEBIT`, `LOCKED`, `PERSON`)
+- `:properties` - Key-value properties
+- `:behaviors` - Verb-to-handler mappings (see Behaviors section)
+
+#### `(victory :when EXPR :context (...))`
+Win condition. The `:when` expression is evaluated each turn.
+
+#### `(defeat NAME :when EXPR :context (...))`
+Lose condition. Named for narrative purposes.
+
+#### `(default VERB (cond ...))`
+Default behavior for a verb, applied when an object lacks its own handler.
+
+### Special Forms (Custom Evaluation)
+
+Special forms have custom evaluation rules - they control when and whether their
+arguments are evaluated.
+
+#### `(cond CLAUSE ...)`
+Conditional evaluation. Each clause is `(CONDITION OUTCOME-FORM)`. Conditions are
+evaluated in order until one is truthy; its outcome form is then returned.
+
+```scheme
+(cond
+  ((has-flag ?self LOCKED) (blocked :reason locked))
+  (true (success :effects ((set-flag! ?self OPENBIT)))))
+```
+
+#### Outcome Forms: `(success ...)`, `(blocked ...)`, `(redirect ...)`, `(default ...)`
+Outcome declarations within `cond` clauses. Not evaluated - they declare the
+result structure:
+- `(success :effects (...) :context (...))` - Action succeeds
+- `(blocked :reason SYMBOL :context (...))` - Action fails with semantic reason
+- `(redirect :action EXPR)` - Delegate to another action
+- `(default :action EXPR)` - Fall through to default, optionally with explicit action
+
+#### `(and EXPR ...)`
+Short-circuit logical AND. Returns false at first falsy value, otherwise returns
+last value. Arguments evaluated left-to-right, stopping at first false.
+
+#### `(or EXPR ...)`
+Short-circuit logical OR. Returns first truthy value, or false if all falsy.
+Arguments evaluated left-to-right, stopping at first true.
+
+#### `(when COND EFFECT)`
+Conditional effect. Only executes EFFECT if COND is truthy.
+```scheme
+(when (has-flag ?self FIRSTTIME)
+  (seq (clear-flag! ?self FIRSTTIME)
+       (set! score (+ score 10))))
+```
+
+#### `(seq EFFECT ...)`
+Sequential effect execution. Effects are executed in order.
+```scheme
+(seq (move! ?self ?actor)
+     (set-flag! ?self MOVEDBIT))
+```
+
+#### `(any COLLECTION (lambda (VAR) PRED))`
+Existential quantifier. Returns true if PRED is true for any element.
+```scheme
+(any (inventory) (lambda (x) (has-flag x LIGHT)))
+```
+
+#### `(all COLLECTION (lambda (VAR) PRED))`
+Universal quantifier. Returns true if PRED is true for all elements.
+```scheme
+(all (contents @chest) (lambda (x) (has-flag x SMALL)))
+```
+
+### Functions (Uniform Evaluation)
+
+Functions have uniform evaluation: all arguments are evaluated before the function
+is called. Functions are pure (no side effects) unless their name ends with `!`.
+
+#### Predicates (Return Boolean or Value)
+
+| Function | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `has-flag` | OBJ FLAG | bool | Does object have flag? |
+| `loc` | OBJ | string | Object's location |
+| `prop` | OBJ PROP | any | Property value (nil if missing) |
+| `flags` | OBJ | set | All flags on object |
+| `visible?` | OBJ | bool | Is object visible to player? |
+| `held?` | OBJ | bool | Is object in player's inventory? |
+| `here?` | OBJ | bool | Is object in player's room? |
+| `in?` | OBJ CONTAINER | bool | Is object inside container? |
+| `held-by?` | OBJ ENTITY | bool | Is object held by entity? |
+| `at?` | OBJ ROOM | bool | Is object at room? |
+| `room?` | NAME | bool | Is this a room? |
+| `in-room?` | OBJ ROOM... | bool | Is object in any listed room? |
+| `room-has-flag?` | FLAG | bool | Does player's room have flag? |
+| `inventory` | - | list | Player's inventory objects |
+| `contents` | CONTAINER | list | Objects inside container |
+| `exit?` | DIRECTION | bool | Does exit exist from current room? |
+| `exit-to` | DIRECTION | string | Destination room for direction |
+| `exit-via` | DIRECTION | string | Via object for direction (or nil) |
+| `queued?` | EVENT | bool | Is event currently queued? |
+
+#### Comparison Functions
+
+| Function | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `=` | A B | bool | Equality |
+| `>` | A B | bool | Greater than |
+| `<` | A B | bool | Less than |
+| `>=` | A B | bool | Greater or equal |
+| `<=` | A B | bool | Less or equal |
+| `not` | EXPR | bool | Boolean negation |
+
+#### Effects (State Mutations)
+
+Effects describe state changes. By convention, their names end with `!`.
+
+| Effect | Arguments | Description |
+|--------|-----------|-------------|
+| `move!` | OBJ DEST | Move object to destination |
+| `set-flag!` | OBJ FLAG | Add flag to object |
+| `clear-flag!` | OBJ FLAG | Remove flag from object |
+| `set-prop!` | OBJ PROP VAL | Set property on object |
+| `set!` | NAME VAL | Set global variable |
+| `inc!` | NAME [AMOUNT] | Increment global (default +1) |
+| `queue!` | EVENT [COUNT] | Queue event (indefinite or countdown) |
+| `dequeue!` | EVENT | Remove event from queue |
+
+### Binding Model
+
+GRUE uses dynamic scoping for action bindings and lexical scoping for lambda parameters.
+
+#### Dynamic Bindings (Action Context)
+
+When a behavior is evaluated, these bindings are available:
+
+| Binding | Description |
+|---------|-------------|
+| `?self` | The direct object of the action (target object) |
+| `?actor` | Who is performing the action (defaults to player) |
+| `?with` | Instrument ("unlock X with Y") |
+| `?on` | Surface ("put X on Y") |
+| `?in` | Container ("put X in Y") |
+| `?to` | Recipient ("give X to Y") |
+| `?direction` | Movement direction |
+
+Bindings are accessed with the `?` prefix:
+```scheme
+(has-flag ?self LOCKED)      ; is target object locked?
+(= ?with @master-key)        ; was master-key used as instrument?
+(move! ?self ?actor)         ; move target to actor
+```
+
+The `?` prefix retrieves the binding value. If a binding is not set, it returns `nil`.
+
+#### Lexical Bindings (Lambda Parameters)
+
+In `any` and `all` quantifiers, the lambda parameter is lexically scoped:
+```scheme
+(any (inventory) (lambda (x) (has-flag x LIGHT)))
+```
+Here `x` is bound to each inventory item in turn, shadowing any outer `x`.
+
+#### User-Defined Functions (defn)
+
+Functions defined with `defn` use lexical scoping for parameters:
+```scheme
+(defn is-lit (obj)
+  (and (has-flag obj LIGHT)
+       (has-flag obj ON)))
+```
+
+### Naming Conventions
+
+GRUE uses a consistent naming scheme for different types of identifiers:
+
+| Pattern | Category | Examples |
+|---------|----------|----------|
+| `@lowercase` | Entities (objects, rooms) | `@player`, `@terminal-room`, `@brass-key` |
+| `?binding` | Dynamic bindings | `?self`, `?actor`, `?with` |
+| `UPPERCASE` | Flags (constants) | `LOCKED`, `TAKEBIT`, `PERSON` |
+| `lowercase` | Keywords, verbs | `:description`, `open`, `take` |
+
+Entity names use lowercase with hyphens (`@outside-door`), while flags use uppercase
+(`LOCKED`, `OPENBIT`). This distinguishes runtime entity references from static flags.
+
+### Evaluation Order
+
+1. **Parse time**: Declarative forms are processed to build `GrueWorld`
+2. **Runtime**: Actions are evaluated:
+   - Verb and arguments are resolved
+   - Object's behavior is looked up (or default behavior)
+   - Bindings are established (`?self`, `?actor`, etc.)
+   - Behavior's `cond` clauses are evaluated in order
+   - First matching clause's outcome determines result
+   - Effects (if any) are executed in order
+   - Result is returned
 
 ## Open Questions
 
