@@ -1,5 +1,5 @@
 """
-Pure Grue REPL - Execute Grue S-expressions directly.
+Grue REPL - Execute Grue S-expressions directly.
 
 This REPL accepts raw Grue syntax for precise game logic validation.
 No natural language parsing - just S-expressions.
@@ -45,31 +45,6 @@ from pathlib import Path
 from . import load_grue, GrueRuntime
 from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
 from .expr import ExprEvaluator, EffectExecutor, EvalError
-
-
-def normalize_case(expr: SExpr, runtime: GrueRuntime) -> SExpr:
-    """Normalize symbol names to match known objects (case-insensitive).
-
-    This allows typing 'chair' instead of 'CHAIR' in the REPL.
-    """
-    # Build lookup of known names (objects, rooms)
-    known_names: dict[str, str] = {}
-    for name in runtime.state.objects:
-        known_names[name.upper()] = name
-    for name in runtime.state.rooms:
-        known_names[name.upper()] = name
-
-    def normalize(e: SExpr) -> SExpr:
-        if isinstance(e, Symbol):
-            upper = e.name.upper()
-            if upper in known_names:
-                return Symbol(known_names[upper])
-            return e
-        if isinstance(e, SList):
-            return SList([normalize(item) for item in e.items])
-        return e
-
-    return normalize(expr)
 
 
 def print_location(runtime: GrueRuntime) -> None:
@@ -345,7 +320,7 @@ def main():
     if world.description:
         print(f"  {world.description}")
     print(f"{'='*50}")
-    print("\nPure Grue REPL - enter S-expressions directly")
+    print("\nGrue REPL")
     print("Type (help) for commands.\n")
 
     print_location(runtime)
@@ -364,7 +339,6 @@ def main():
         # Allow multiple expressions on one line
         try:
             expr = parse(line)
-            expr = normalize_case(expr, runtime)  # Allow lowercase object names
             if not execute_repl_command(expr, runtime):
                 break
         except SExprError as e:

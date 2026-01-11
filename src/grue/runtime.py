@@ -111,20 +111,12 @@ class GrueRuntime:
     # MutableWorldState interface - used by ExprEvaluator and EffectExecutor
     # -------------------------------------------------------------------------
 
-    def _resolve_symbol(self, name: str) -> str:
-        """Resolve 'self' and other special symbols via bindings."""
-        if name == "self" and "self" in self.bindings:
-            return self.bindings["self"]
-        return name
-
     def get_object_flag(self, obj: str, flag: str) -> bool:
-        obj = self._resolve_symbol(obj)
         if obj not in self.state.objects:
             return False
         return flag in self.state.objects[obj].flags
 
     def get_object_location(self, obj: str) -> str | None:
-        obj = self._resolve_symbol(obj)
         if obj == "PLAYER":
             return self.get_player_location()
         if obj not in self.state.objects:
@@ -132,19 +124,17 @@ class GrueRuntime:
         return self.state.objects[obj].location
 
     def get_object_property(self, obj: str, prop: str) -> Any:
-        obj = self._resolve_symbol(obj)
         if obj not in self.state.objects:
             return None
         return self.state.objects[obj].properties.get(prop)
 
     def get_object_flags(self, obj: str) -> set[str]:
-        obj = self._resolve_symbol(obj)
         if obj not in self.state.objects:
             return set()
         return self.state.objects[obj].flags
 
     def get_global(self, name: str) -> Any:
-        # Check bindings first (for ?with, ?on, etc.)
+        # Check bindings first (for ?self, ?actor, ?with, ?on, etc.)
         if name.startswith("?"):
             binding_name = name[1:]  # Remove ?
             if binding_name in self.bindings:
@@ -173,7 +163,6 @@ class GrueRuntime:
         ]
 
     def is_visible(self, obj: str) -> bool:
-        obj = self._resolve_symbol(obj)
         if obj not in self.state.objects:
             return False
         obj_state = self.state.objects[obj]
@@ -188,11 +177,9 @@ class GrueRuntime:
         return loc == self.get_player_location()
 
     def is_room(self, loc: str) -> bool:
-        loc = self._resolve_symbol(loc)
         return loc in self.state.rooms
 
     def get_contents(self, container: str) -> list[str]:
-        container = self._resolve_symbol(container)
         return [
             name for name, obj in self.state.objects.items()
             if obj.location == container
@@ -200,7 +187,6 @@ class GrueRuntime:
 
     def get_exit(self, actor: str, direction: str) -> tuple[str, str | None] | None:
         """Get exit info for direction from actor's room. Returns (destination, via) or None."""
-        actor = self._resolve_symbol(actor)
         actor_loc = self.get_object_location(actor)
         room = self.world.rooms.get(actor_loc) if actor_loc else None
         if not room:
@@ -211,17 +197,14 @@ class GrueRuntime:
         return None
 
     def set_object_flag(self, obj: str, flag: str) -> None:
-        obj = self._resolve_symbol(obj)
         if obj in self.state.objects:
             self.state.objects[obj].flags.add(flag)
 
     def clear_object_flag(self, obj: str, flag: str) -> None:
-        obj = self._resolve_symbol(obj)
         if obj in self.state.objects:
             self.state.objects[obj].flags.discard(flag)
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
-        obj = self._resolve_symbol(obj)
         if obj in self.state.objects:
             self.state.objects[obj].properties[prop] = value
 
@@ -229,8 +212,6 @@ class GrueRuntime:
         self.state.globals[name.lower() if name.lower() in ("score", "moves") else name] = value
 
     def move_object(self, obj: str, dest: str) -> None:
-        obj = self._resolve_symbol(obj)
-        dest = self._resolve_symbol(dest)
         if obj in self.state.objects:
             self.state.objects[obj].location = dest
 

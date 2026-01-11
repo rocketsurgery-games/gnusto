@@ -316,8 +316,8 @@ class GrueParser:
 
         Example:
             (default take (cond
-              ((not (has-flag self TAKEBIT)) (blocked :reason not-takeable))
-              (true (success :effects ((move! self ?actor))))))
+              ((not (has-flag ?self TAKEBIT)) (blocked :reason not-takeable))
+              (true (success :effects ((move! ?self ?actor))))))
         """
         if not isinstance(expr, SList) or len(expr) < 3:
             raise GrueParseError(f"Expected (default VERB (cond ...)), got {expr}")
@@ -346,8 +346,8 @@ class GrueParser:
         Example:
             :behaviors (
               :open (cond
-                ((has-flag self LOCKED) (blocked :reason locked))
-                (true (success :effects ((set-flag! self OPENBIT)))))
+                ((has-flag ?self LOCKED) (blocked :reason locked))
+                (true (success :effects ((set-flag! ?self OPENBIT)))))
               :close (cond
                 (true (success))))
         """
@@ -410,8 +410,8 @@ class GrueParser:
         """Parse a cond clause: (CONDITION (outcome :key val ...)).
 
         Examples:
-            ((not (has-flag self TAKEBIT)) (blocked :reason not-takeable))
-            (true (success :effects ((move! self ?actor))))
+            ((not (has-flag ?self TAKEBIT)) (blocked :reason not-takeable))
+            (true (success :effects ((move! ?self ?actor))))
         """
         if not isinstance(expr, SList) or len(expr) < 2:
             raise GrueParseError(f"Expected (CONDITION (outcome ...)), got {expr}")

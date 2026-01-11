@@ -122,7 +122,7 @@ class TestBehaviorExecution:
           :flags (DOOR LOCKED)
           :behaviors (
             :open (cond
-              ((not (has-flag self LOCKED)) (success))
+              ((not (has-flag ?self LOCKED)) (success))
               (true (blocked :reason locked)))))
         """
         world = parse_grue(source)
@@ -143,8 +143,8 @@ class TestBehaviorExecution:
           :flags (DOOR LOCKED)
           :behaviors (
             :unlock (cond
-              ((has-flag self LOCKED)
-                (success :effects ((clear-flag! self LOCKED)))))))
+              ((has-flag ?self LOCKED)
+                (success :effects ((clear-flag! ?self LOCKED)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -535,7 +535,7 @@ class TestRedirectFollowing:
         (object DOOR :location LOBBY :flags (LOCKED)
           :behaviors (
             :open (cond
-              ((has-flag self LOCKED) (blocked :reason locked))
+              ((has-flag ?self LOCKED) (blocked :reason locked))
               (true (success)))
             :enter (cond
               (true (redirect :action (open DOOR))))))

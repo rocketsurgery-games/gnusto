@@ -5,7 +5,7 @@ Grammar (EBNF):
     sexpr      ::= atom | string | number | list
     list       ::= '(' sexpr* ')'
     atom       ::= symbol | keyword
-    symbol     ::= [a-zA-Z_][a-zA-Z0-9_!?-]*
+    symbol     ::= [@a-zA-Z_][@a-zA-Z0-9_!?-]*
     keyword    ::= ':' symbol
     string     ::= '"' [^"]* '"'
     number     ::= '-'? [0-9]+
@@ -172,13 +172,14 @@ class Tokenizer:
         return (
             ch.isalpha() or
             ch == "_" or
+            ch == "@" or  # Entity prefix
             ch in "=<>!?+-*/" or
             ch == ":"
         )
 
     def is_symbol_char(self, ch: str) -> bool:
         """Check if character can be part of a symbol."""
-        return ch.isalnum() or ch in "_!?-+*/<>="
+        return ch.isalnum() or ch in "_!?-+*/<>=@"
 
     def read_symbol_or_number(self) -> Token:
         """Read a symbol, keyword, number, or boolean."""

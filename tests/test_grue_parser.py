@@ -140,7 +140,7 @@ class TestBehaviorParsing:
           :flags (DOOR LOCKED)
           :behaviors (
             :open (cond
-              ((not (has-flag self LOCKED)) (success))
+              ((not (has-flag ?self LOCKED)) (success))
               (true (blocked :reason locked)))))
         """
         world = parse_grue(source)
@@ -168,7 +168,7 @@ class TestBehaviorParsing:
           :flags (DOOR LOCKED)
           :behaviors (
             :unlock (cond
-              ((= ?with KEY) (success :effects ((clear-flag! self LOCKED)))))))
+              ((= ?with KEY) (success :effects ((clear-flag! ?self LOCKED)))))))
         """
         world = parse_grue(source)
 
