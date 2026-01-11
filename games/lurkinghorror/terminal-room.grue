@@ -418,11 +418,11 @@ people here, but tonight it's almost deserted."
   ; - :follow - follow hacker (busy/location-dependent)
   ; - :attack, :kill - hostile actions (blocked)
   ;
-  ; MISSING FEATURES requiring turn-based events (frotzlm-ppy.7):
-  ; - HACKER-HELP global: Full help interaction state (0=not asked, 1+=helping)
-  ; - I-HACKER-HELPS interrupt: Queued event for hacker helping with PC
-  ; - I-FOOD-HINT interrupt: Hint about feeding the hacker
-  ; - :help behavior: State-dependent responses
+  ; TURN-BASED EVENTS (implemented in events section above):
+  ; - hacker-help global: Help stage counter (0-4)
+  ; - hacker-helps event: 4-stage cutscene when helping with PC
+  ; - food-hint event: Progressive hints about feeding hacker
+  ; - :help behavior: Queues hacker-helps event
 
   :behaviors (
     ; === ROOM DESCRIPTION ===
@@ -623,6 +623,24 @@ people here, but tonight it's almost deserted."
         (success :context ((response "\"I'm here, aren't I?\""))))
       (true
         (blocked :reason busy :context ((response "\"I haven't got time. I have new versions of the system, the assembler, the editor, and the debugger to finish hacking.\"")))))
+
+    ; === HELP (ask hacker for help with PC) ===
+    ; ZIL: VERB? HELP with various state checks
+    :help (cond
+      ; Already helping
+      ((queued? hacker-helps)
+        (success :context ((response "\"I'm looking at it. Be patient. This isn't some little micro. We're on a hairy OS on a hairy net.\""))))
+      ; Already helped (hacker-help >= 3 means stage 3 was reached)
+      ((>= hacker-help 3)
+        (success :context ((response "\"I already looked at it. The bug is fixed in the sources. Your paper is gone, unless those Alchemy chompers have a copy.\""))))
+      ; In terminal room - start helping
+      ((= (loc @player) @terminal-room)
+        (success
+          :effects ((queue! hacker-helps) (set! hacker-help 0))
+          :context ((response "\"Be patient!\""))))
+      ; Not in terminal room
+      (true
+        (blocked :reason busy :context ((response "\"Help? I'm not a T.A. I've got work to do.\"")))))
 
     ; === HOSTILE ACTIONS ===
     :attack (cond
