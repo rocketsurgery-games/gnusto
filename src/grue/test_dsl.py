@@ -49,7 +49,7 @@ from typing import Any
 
 from .sexpr import SExpr, Symbol, Keyword, SList, parse, parse_all, to_string
 from .parser import load_grue, GrueWorld
-from .runtime import GrueRuntime, ActionResult, GrueStateAdapter
+from .runtime import GrueRuntime, ActionResult
 from .expr import ExprEvaluator, EffectExecutor, EvalError
 
 
@@ -158,10 +158,8 @@ class TestRunner:
 
         # Create fresh runtime for this test
         runtime = GrueRuntime(self.world)
-        # Use adapter for mutable state operations
-        state_adapter = GrueStateAdapter(runtime.state)
-        # Share function definitions
-        executor = EffectExecutor(state_adapter, self._functions)
+        # Share function definitions - runtime implements MutableWorldState
+        executor = EffectExecutor(runtime, self._functions)
 
         try:
             # Run setup effects
@@ -254,8 +252,7 @@ class TestRunner:
 
         # Create ONE runtime for the whole sequence - state persists!
         runtime = GrueRuntime(self.world)
-        state_adapter = GrueStateAdapter(runtime.state)
-        executor = EffectExecutor(state_adapter, self._functions)
+        executor = EffectExecutor(runtime, self._functions)
 
         all_failures: list[str] = []
 
@@ -500,8 +497,7 @@ class TestRunner:
             else:
                 # Try evaluating as a general predicate
                 try:
-                    state_adapter = GrueStateAdapter(runtime.state)
-                    evaluator = ExprEvaluator(state_adapter, self._functions)
+                    evaluator = ExprEvaluator(runtime, self._functions)
                     if not evaluator.eval(pred):
                         failures.append(f"Predicate failed: {to_string(pred)}")
                 except Exception as e:

@@ -51,7 +51,6 @@ from .runtime import (
     GameState,
     ObjectState,
     ActionResult,
-    GrueStateAdapter,
 )
 
 from .converter import (
@@ -114,7 +113,6 @@ __all__ = [
     "GameState",
     "ObjectState",
     "ActionResult",
-    "GrueStateAdapter",
     # Converter
     "ZILtoGRUEConverter",
     "convert_zil_to_grue",

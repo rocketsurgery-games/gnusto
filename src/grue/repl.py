@@ -45,7 +45,6 @@ from pathlib import Path
 from . import load_grue, GrueRuntime
 from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
 from .expr import ExprEvaluator, EffectExecutor, EvalError
-from .runtime import GrueStateAdapter
 
 
 def print_location(runtime: GrueRuntime) -> None:
@@ -137,8 +136,7 @@ def eval_to_string(expr: SExpr, evaluator: ExprEvaluator) -> str:
 
 def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
     """Execute a REPL command. Returns True if should continue, False to quit."""
-    adapter = GrueStateAdapter(runtime.state)
-    evaluator = ExprEvaluator(adapter)
+    evaluator = ExprEvaluator(runtime)
 
     if not isinstance(expr, SList) or len(expr) == 0:
         print(f"[Error: Expected S-expression list]")
@@ -262,7 +260,7 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
     # State mutation effects
     if cmd in ("move!", "set-flag!", "clear-flag!", "set-prop!", "set!", "inc!"):
         try:
-            executor = EffectExecutor(adapter)
+            executor = EffectExecutor(runtime)
             executor.execute(expr)
             print(f"[OK: {to_string(expr)}]")
         except EvalError as e:

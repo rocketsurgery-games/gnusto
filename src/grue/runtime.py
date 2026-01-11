@@ -22,7 +22,7 @@ from typing import Any
 from copy import deepcopy
 
 from .parser import GrueWorld, GrueObject, GrueBehavior, GrueCase
-from .expr import ExprEvaluator, EffectExecutor, MutableWorldState
+from .expr import ExprEvaluator, EffectExecutor
 from .sexpr import SExpr, Symbol, SList
 
 
@@ -58,15 +58,62 @@ class ActionResult:
     error: str | None = None  # For errors
 
 
-class GrueStateAdapter:
+class GrueRuntime:
     """
-    Adapter that provides the MutableWorldState interface
-    over GameState for the expression evaluator.
+    Runtime for executing GRUE world definitions.
+
+    Manages game state and dispatches actions to object behaviors.
+    Implements MutableWorldState interface for ExprEvaluator/EffectExecutor.
     """
 
-    def __init__(self, state: GameState, bindings: dict[str, Any] | None = None):
-        self.state = state
-        self.bindings = bindings or {}
+    def __init__(self, world: GrueWorld):
+        self.world = world
+        self.state = self._init_state()
+        self.bindings: dict[str, Any] = {}  # Current action bindings (?with, ?on, self, etc.)
+
+    def _init_state(self) -> GameState:
+        """Initialize game state from world definition."""
+        state = GameState()
+
+        # Initialize rooms (as objects with flags)
+        for room_name, room in self.world.rooms.items():
+            state.rooms.add(room_name)
+            state.objects[room_name] = ObjectState(
+                name=room_name,
+                location=None,  # Rooms don't have locations
+                flags=set(room.flags),
+                properties=dict(room.properties),
+            )
+
+        # Initialize objects
+        for name, obj in self.world.objects.items():
+            state.objects[name] = ObjectState(
+                name=name,
+                location=obj.location,
+                flags=set(obj.flags),
+                properties=dict(obj.properties),
+            )
+
+        # Initialize globals
+        state.globals["score"] = 0
+        state.globals["moves"] = 0
+
+        return state
+
+    def reset(self) -> None:
+        """Reset game state to initial state."""
+        self.state = self._init_state()
+        self.bindings = {}
+
+    # -------------------------------------------------------------------------
+    # MutableWorldState interface - used by ExprEvaluator and EffectExecutor
+    # -------------------------------------------------------------------------
+
+    def _resolve_symbol(self, name: str) -> str:
+        """Resolve 'self' and other special symbols via bindings."""
+        if name == "self" and "self" in self.bindings:
+            return self.bindings["self"]
+        return name
 
     def get_object_flag(self, obj: str, flag: str) -> bool:
         obj = self._resolve_symbol(obj)
@@ -110,12 +157,14 @@ class GrueStateAdapter:
         raise KeyError(f"Unknown global: {name}")
 
     def get_player_location(self) -> str:
+        """Get the player's current room."""
         player = self.state.objects.get("PLAYER")
         if player:
             return player.location or ""
         return ""
 
     def get_inventory(self) -> list[str]:
+        """Get objects the player is carrying."""
         return [
             name for name, obj in self.state.objects.items()
             if obj.location == "PLAYER" and name != "PLAYER"
@@ -147,8 +196,6 @@ class GrueStateAdapter:
             if obj.location == container
         ]
 
-    # Mutable operations
-
     def set_object_flag(self, obj: str, flag: str) -> None:
         obj = self._resolve_symbol(obj)
         if obj in self.state.objects:
@@ -173,63 +220,9 @@ class GrueStateAdapter:
         if obj in self.state.objects:
             self.state.objects[obj].location = dest
 
-    def _resolve_symbol(self, name: str) -> str:
-        """Resolve 'self' and other special symbols."""
-        if name == "self" and "self" in self.bindings:
-            return self.bindings["self"]
-        return name
-
-
-class GrueRuntime:
-    """
-    Runtime for executing GRUE world definitions.
-
-    Manages game state and dispatches actions to object behaviors.
-    """
-
-    def __init__(self, world: GrueWorld):
-        self.world = world
-        self.state = self._init_state()
-
-    def _init_state(self) -> GameState:
-        """Initialize game state from world definition."""
-        state = GameState()
-
-        # Initialize rooms (as objects with flags)
-        for room_name, room in self.world.rooms.items():
-            state.rooms.add(room_name)
-            state.objects[room_name] = ObjectState(
-                name=room_name,
-                location=None,  # Rooms don't have locations
-                flags=set(room.flags),
-                properties=dict(room.properties),
-            )
-
-        # Initialize objects
-        for name, obj in self.world.objects.items():
-            state.objects[name] = ObjectState(
-                name=name,
-                location=obj.location,
-                flags=set(obj.flags),
-                properties=dict(obj.properties),
-            )
-
-        # Initialize globals
-        state.globals["score"] = 0
-        state.globals["moves"] = 0
-
-        return state
-
-    def reset(self) -> None:
-        """Reset game state to initial state."""
-        self.state = self._init_state()
-
-    def get_player_location(self) -> str:
-        """Get the player's current room."""
-        player = self.state.objects.get("PLAYER")
-        if player:
-            return player.location or ""
-        return ""
+    # -------------------------------------------------------------------------
+    # High-level convenience methods
+    # -------------------------------------------------------------------------
 
     def get_room_description(self, room_name: str | None = None) -> str:
         """Get a room's description. Returns ldesc if available, otherwise description."""
@@ -252,17 +245,9 @@ class GrueRuntime:
 
     def get_visible_objects(self) -> list[str]:
         """Get objects visible to the player."""
-        adapter = GrueStateAdapter(self.state)
         return [
             name for name in self.state.objects
-            if name != "PLAYER" and adapter.is_visible(name)
-        ]
-
-    def get_inventory(self) -> list[str]:
-        """Get objects the player is carrying."""
-        return [
-            name for name, obj in self.state.objects.items()
-            if obj.location == "PLAYER" and name != "PLAYER"
+            if name != "PLAYER" and self.is_visible(name)
         ]
 
     def get_exits(self) -> dict[str, str]:
@@ -470,70 +455,74 @@ class GrueRuntime:
         bindings: dict[str, Any]
     ) -> ActionResult:
         """Evaluate a behavior's cases and return the result."""
-        adapter = GrueStateAdapter(self.state, bindings)
-        evaluator = ExprEvaluator(adapter)
+        # Set bindings for this evaluation (restored after)
+        old_bindings = self.bindings
+        self.bindings = bindings
+        try:
+            evaluator = ExprEvaluator(self)
 
-        for case in behavior.cases:
-            # Evaluate the condition
-            try:
-                condition_met = evaluator.eval(case.when)
-            except Exception as e:
-                return ActionResult(
-                    outcome="error",
-                    error=f"Error evaluating condition: {e}"
-                )
-
-            if condition_met:
-                # This case matches
-                if case.outcome == "redirect":
+            for case in behavior.cases:
+                # Evaluate the condition
+                try:
+                    condition_met = evaluator.eval(case.when)
+                except Exception as e:
                     return ActionResult(
-                        outcome="redirect",
-                        redirect_action=case.action,
-                        context=case.context
+                        outcome="error",
+                        error=f"Error evaluating condition: {e}"
                     )
 
-                if case.outcome == "blocked":
+                if condition_met:
+                    # This case matches
+                    if case.outcome == "redirect":
+                        return ActionResult(
+                            outcome="redirect",
+                            redirect_action=case.action,
+                            context=case.context
+                        )
+
+                    if case.outcome == "blocked":
+                        return ActionResult(
+                            outcome="blocked",
+                            reason=case.reason,
+                            context=case.context
+                        )
+
+                    # Success - execute effects
+                    effects_applied = []
+                    if case.effects:
+                        executor = EffectExecutor(self)
+                        for effect in case.effects:
+                            try:
+                                executor.execute(effect)
+                                effects_applied.append(str(effect))
+                            except Exception as e:
+                                return ActionResult(
+                                    outcome="error",
+                                    error=f"Error executing effect: {e}"
+                                )
+
+                    self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+
                     return ActionResult(
-                        outcome="blocked",
-                        reason=case.reason,
-                        context=case.context
+                        outcome="success",
+                        context=case.context,
+                        effects_applied=effects_applied
                     )
 
-                # Success - execute effects
-                effects_applied = []
-                if case.effects:
-                    executor = EffectExecutor(adapter)
-                    for effect in case.effects:
-                        try:
-                            executor.execute(effect)
-                            effects_applied.append(str(effect))
-                        except Exception as e:
-                            return ActionResult(
-                                outcome="error",
-                                error=f"Error executing effect: {e}"
-                            )
-
-                self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
-
-                return ActionResult(
-                    outcome="success",
-                    context=case.context,
-                    effects_applied=effects_applied
-                )
-
-        # No case matched - shouldn't happen if behaviors have a (case true ...) fallback
-        return ActionResult(
-            outcome="blocked",
-            reason="no-matching-case"
-        )
+            # No case matched - shouldn't happen if behaviors have a (case true ...) fallback
+            return ActionResult(
+                outcome="blocked",
+                reason="no-matching-case"
+            )
+        finally:
+            self.bindings = old_bindings
 
     def check_victory(self) -> bool:
         """Check if victory condition is met."""
         if self.world.victory is None:
             return False
 
-        adapter = GrueStateAdapter(self.state)
-        evaluator = ExprEvaluator(adapter)
+        evaluator = ExprEvaluator(self)
 
         try:
             return bool(evaluator.eval(self.world.victory.when))
@@ -542,8 +531,7 @@ class GrueRuntime:
 
     def check_defeat(self) -> str | None:
         """Check if any defeat condition is met. Returns defeat name or None."""
-        adapter = GrueStateAdapter(self.state)
-        evaluator = ExprEvaluator(adapter)
+        evaluator = ExprEvaluator(self)
 
         for name, defeat in self.world.defeat.items():
             try:
