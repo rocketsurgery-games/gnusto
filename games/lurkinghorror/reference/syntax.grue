@@ -1,6 +1,15 @@
 ; === SYNTAX REFERENCE ===
 ; Verb patterns defining valid command structures.
 
+; $SOUND (no args) -> V-$SOUND
+; LOGIN OBJECT -> V-LOGIN
+; LOGIN ON OBJECT -> V-LOGIN
+; LOGIN AS OBJECT -> V-LOGIN
+; PASSWORD OBJECT -> V-PASSWORD
+; #RANDOM OBJECT -> V-$RANDOM
+; #COMMAND (no args) -> V-$COMMAND
+; #RECORD (no args) -> V-$RECORD
+; #UNRECORD (no args) -> V-$UNRECORD
 ; VERBOSE (no args) -> V-VERBOSE
 ; BRIEF (no args) -> V-BRIEF
 ; SUPER (no args) -> V-SUPER-BRIEF
@@ -373,13 +382,4 @@
 ; HACK (no args) -> V-HACK
 ; HACK OBJECT -> V-HACK
 ; COOK OBJECT -> V-COOK
-; #RANDOM OBJECT -> V-$RANDOM
-; #COMMAND (no args) -> V-$COMMAND
-; #RECORD (no args) -> V-$RECORD
-; #UNRECORD (no args) -> V-$UNRECORD
-; $SOUND (no args) -> V-$SOUND
-; LOGIN OBJECT -> V-LOGIN
-; LOGIN ON OBJECT -> V-LOGIN
-; LOGIN AS OBJECT -> V-LOGIN
-; PASSWORD OBJECT -> V-PASSWORD
 

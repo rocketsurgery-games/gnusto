@@ -1,7 +1,7 @@
 ; === ROOMS ===
 ; Generated from 71 ZIL rooms
 
-(room AERO-BASEMENT
+(room @aero-basement
   :description "Aero Basement"
   :ldesc "This basement level room is made of smooth, damp-seeming concrete.
 Fluorescent lights cast harsh shadows. To the west is a stairway, and
@@ -9,19 +9,19 @@ to the east the basement area continues."
   :flags (ONBIT)
   :exits
     (
-      (east :to CS-BASEMENT)
-      (west :to AERO-STAIRS)
+      (west :to @aero-stairs)
+      (east :to @cs-basement)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room AERO-LOBBY: ACTION AERO-LOBBY-F
-(room AERO-LOBBY
+(room @aero-lobby
   :description "Aero Lobby"
   :flags (ONBIT)
   :exits
     (
-      (south :to INF-1)
-      (down :to AERO-STAIRS)
+      (south :to @inf-1)
+      (down :to @aero-stairs)
     )
 
   ; --- Room ACTION Routine ---
@@ -36,27 +36,27 @@ to the east the basement area continues."
   ; --- End Room ACTION Routine ---
 )
 
-(room AERO-STAIRS
+(room @aero-stairs
   :description "Stairway"
   :ldesc "A dimly lit stairway leads up and down from here. A corridor continues
 east."
   :flags (ONBIT)
   :exits
     (
-      (down :to SUB-BASEMENT)
-      (east :to AERO-BASEMENT)
-      (up :to AERO-LOBBY)
+      (east :to @aero-basement)
+      (down :to @sub-basement)
+      (up :to @aero-lobby)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT: ACTION ALCHEMY-DEPT-F
-(room ALCHEMY-DEPT
+(room @alchemy-dept
   :description "Department of Alchemy"
   :flags (ONBIT)
   :exits
     (
-      (south :to ALCHEMY-DEPT :via ALCHEMY-LAB-ENTER-BARRIER)
-      (north :to CHEMISTRY-BLDG :via ALCHEMY-DOOR)
+      (north :to @chemistry-bldg :via @alchemy-door)
+      (south :to @alchemy-dept :via @alchemy-lab-enter-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -79,12 +79,12 @@ east."
 )
 
 ; [NEEDS-TRANSLATION] Room ALCHEMY-LAB: ACTION ALCHEMY-LAB-F
-(room ALCHEMY-LAB
+(room @alchemy-lab
   :description "Lab"
   :exits
     (
-      (down :to UNDER-ALCHEMY-LAB :via ALCHEMY-LAB-DOWN-EXIT-BARRIER)
-      (north :to ALCHEMY-DEPT :via ALCHEMY-LAB-EXIT-BARRIER)
+      (north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
+      (down :to @under-alchemy-lab :via @alchemy-lab-down-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -130,7 +130,7 @@ east."
 )
 
 ; [NEEDS-TRANSLATION] Room BOWL-ROOM: ACTION RANDOM-YUGGOTH-F
-(room BOWL-ROOM
+(room @bowl-room
   :description "Basalt Bowl"
   :ldesc "You are at the bottom of a deeply cut, smooth basalt bowl. Dimly seen
 shapes crowd you on all sides. Ahead, in the focus of the movement, is
@@ -138,9 +138,9 @@ a rock platform."
   :flags (ONBIT)
   :exits
     (
-      (down :to PLATFORM-ROOM)
-      (up :to YUGGOTH)
-      (in :to PLATFORM-ROOM)
+      (in :to @platform-room)
+      (down :to @platform-room)
+      (up :to @yuggoth)
     )
 
   ; --- Room ACTION Routine ---
@@ -156,13 +156,13 @@ a rock platform."
 )
 
 ; [NEEDS-TRANSLATION] Room BRICK-TUNNEL: ACTION BRICK-TUNNEL-F
-(room BRICK-TUNNEL
+(room @brick-tunnel
   :description "Brick Tunnel"
   :exits
     (
-      (south :to UNDER-ALCHEMY-LAB)
-      (north :to CAVE-ROOM)
-      (up :to STORAGE-ROOM :via BRICK-TUNNEL-EXIT-BARRIER)
+      (north :to @cave-room)
+      (south :to @under-alchemy-lab)
+      (up :to @storage-room :via @brick-tunnel-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -193,7 +193,7 @@ a rock platform."
   ; --- End Room ACTION Routine ---
 )
 
-(room BROWN-BASEMENT
+(room @brown-basement
   :description "Brown Basement"
   :ldesc "This is a cluttered basement below the Brown Building. Discarded equipment
 nearly blocks an already narrow hallway that terminates in a stairway leading
@@ -201,21 +201,21 @@ up. The passage itself continues northwest."
   :flags (ONBIT)
   :exits
     (
-      (up :to BROWN-BUILDING)
-      (nw :to BROWN-TUNNEL)
+      (nw :to @brown-tunnel)
+      (up :to @brown-building)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room BROWN-BUILDING: ACTION BROWN-BUILDING-F
-(room BROWN-BUILDING
+(room @brown-building
   :description "Brown Building"
   :flags (ONBIT)
   :exits
     (
-      (south :to COURTYARD)
-      (down :to BROWN-BASEMENT)
-      (out :to COURTYARD)
-      (up :to BROWN-TOP-FLOOR)
+      (south :to @courtyard)
+      (out :to @courtyard)
+      (down :to @brown-basement)
+      (up :to @brown-top-floor)
     )
 
   ; --- Room ACTION Routine ---
@@ -234,7 +234,7 @@ up. The passage itself continues northwest."
 )
 
 ; [NEEDS-TRANSLATION] Room BROWN-ROOF: ACTION BROWN-ROOF-F
-(room BROWN-ROOF
+(room @brown-roof
   :description "Skyscraper Roof"
   :ldesc "A low parapet surrounds a small roof here. The air conditioning cooling
 tower and the small protrusion containing the stairs are dwarfed by a
@@ -243,9 +243,9 @@ all detail of the city across the river to the south."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (east :to BROWN-TOP-FLOOR :via BROWN-ROOF-EXIT-BARRIER)
-      (up :to INSIDE-DOME)
-      (in :to BROWN-TOP-FLOOR :via BROWN-ROOF-EXIT-BARRIER)
+      (east :to @brown-top-floor :via @brown-roof-exit-barrier)
+      (in :to @brown-top-floor :via @brown-roof-exit-barrier)
+      (up :to @inside-dome)
     )
 
   ; --- Room ACTION Routine ---
@@ -258,20 +258,20 @@ all detail of the city across the river to the south."
   ; --- End Room ACTION Routine ---
 )
 
-(room BROWN-TOP-FLOOR
+(room @brown-top-floor
   :description "Top Floor"
   :ldesc "This is the top of the stairway. A door leads out to the roof here, and
 you can hear the wind blowing beyond. There is a sign on the door."
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-BUILDING)
-      (west :to BROWN-ROOF :via ROOF-DOOR)
-      (out :to BROWN-ROOF :via ROOF-DOOR)
+      (west :to @brown-roof :via @roof-door)
+      (out :to @brown-roof :via @roof-door)
+      (down :to @brown-building)
     )
 )
 
-(room BROWN-TUNNEL
+(room @brown-tunnel
   :description "Cluttered Passage"
   :ldesc "This cluttered passage leads southeast. It is full of apparently discarded
 electronic equipment, old rusty file cabinets, and other detritus. A stairway
@@ -279,17 +279,17 @@ also leads up."
   :flags (ONBIT)
   :exits
     (
-      (se :to BROWN-BASEMENT)
-      (up :to NUTRITION-BLDG)
+      (se :to @brown-basement)
+      (up :to @nutrition-bldg)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room CAVE-ALTAR: ACTION CAVE-ALTAR-F
-(room CAVE-ALTAR
+(room @cave-altar
   :description "Before the Altar"
   :exits
     (
-      (up :to CAVE-ROOM)
+      (up :to @cave-room)
     )
 
   ; --- Room ACTION Routine ---
@@ -322,12 +322,12 @@ also leads up."
 )
 
 ; [NEEDS-TRANSLATION] Room CAVE-ROOM: ACTION CAVE-ROOM-F
-(room CAVE-ROOM
+(room @cave-room
   :description "Renovated Cave"
   :exits
     (
-      (south :to BRICK-TUNNEL)
-      (down :to CAVE-ALTAR)
+      (south :to @brick-tunnel)
+      (down :to @cave-altar)
     )
 
   ; --- Room ACTION Routine ---
@@ -347,13 +347,13 @@ also leads up."
 )
 
 ; [NEEDS-TRANSLATION] Room CHEMISTRY-BLDG: ACTION CHEMISTRY-BLDG-F
-(room CHEMISTRY-BLDG
+(room @chemistry-bldg
   :description "Chemistry Building"
   :flags (ONBIT)
   :exits
     (
-      (south :to ALCHEMY-DEPT :via ALCHEMY-DOOR)
-      (north :to INF-5)
+      (north :to @inf-5)
+      (south :to @alchemy-dept :via @alchemy-door)
     )
 
   ; --- Room ACTION Routine ---
@@ -373,16 +373,16 @@ also leads up."
 )
 
 ; [NEEDS-TRANSLATION] Room COMP-CENTER: ACTION COMP-CENTER-F
-(room COMP-CENTER
+(room @comp-center
   :description "Computer Center"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
-      (down :to CS-BASEMENT)
-      (north :to SMITH-ST)
-      (up :to CS-2ND)
-      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (north :to @smith-st)
+      (south :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (in :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (down :to @cs-basement)
+      (up :to @cs-2nd)
     )
 
   ; --- Room ACTION Routine ---
@@ -396,7 +396,7 @@ also leads up."
 )
 
 ; [NEEDS-TRANSLATION] Room COURTYARD: ACTION COURTYARD-F
-(room COURTYARD
+(room @courtyard
   :description "Small Courtyard"
   :ldesc "This courtyard is a triumph of modern architecture. It is spare,
 cold, angular, overwhelming in size, and bears a striking resemblance
@@ -406,8 +406,8 @@ featureless skyscraper is to the north."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (north :to BROWN-BUILDING)
-      (in :to BROWN-BUILDING)
+      (north :to @brown-building)
+      (in :to @brown-building)
     )
 
   ; --- Room ACTION Routine ---
@@ -420,17 +420,17 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room CS-2ND: ACTION CS-2ND-F
-(room CS-2ND
+(room @cs-2nd
   :description "Second Floor"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
-      (down :to COMP-CENTER)
-      (north :to TERMINAL-ROOM)
-      (west :to KITCHEN)
-      (up :to CS-3RD)
-      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (west :to @kitchen)
+      (north :to @terminal-room)
+      (south :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (in :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (down :to @comp-center)
+      (up :to @cs-3rd)
     )
 
   ; --- Room ACTION Routine ---
@@ -444,16 +444,16 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room CS-3RD: ACTION CS-3RD-F
-(room CS-3RD
+(room @cs-3rd
   :description "Third Floor"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
-      (down :to CS-2ND)
-      (out :to CS-ROOF)
-      (up :to CS-ROOF)
-      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (south :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (out :to @cs-roof)
+      (in :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (down :to @cs-2nd)
+      (up :to @cs-roof)
     )
 
   ; --- Room ACTION Routine ---
@@ -472,17 +472,17 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room CS-BASEMENT: ACTION CS-BASEMENT-F
-(room CS-BASEMENT
+(room @cs-basement
   :description "Basement"
   :flags (ONBIT)
   :exits
     (
-      (south :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
-      (down :to ELEVATOR-PIT :via CS-PIT-ENTER-BARRIER)
-      (east :to TEMPORARY-BASEMENT)
-      (west :to AERO-BASEMENT)
-      (up :to COMP-CENTER)
-      (in :to CS-ELEVATOR-ROOM :via CS-ELEVATOR-ENTER-BARRIER)
+      (west :to @aero-basement)
+      (east :to @temporary-basement)
+      (south :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (in :to @cs-elevator-room :via @cs-elevator-enter-barrier)
+      (down :to @elevator-pit :via @cs-pit-enter-barrier)
+      (up :to @comp-center)
     )
 
   ; --- Room ACTION Routine ---
@@ -498,13 +498,13 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM: ACTION CS-ELEVATOR-ROOM-F
-(room CS-ELEVATOR-ROOM
+(room @cs-elevator-room
   :description "Elevator"
   :flags (ONBIT)
   :exits
     (
-      (north :to CS-BASEMENT :via CS-ELEVATOR-EXIT-BARRIER)
-      (out :to CS-BASEMENT :via CS-ELEVATOR-EXIT-BARRIER)
+      (north :to @cs-basement :via @cs-elevator-exit-barrier)
+      (out :to @cs-basement :via @cs-elevator-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -532,13 +532,13 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room CS-ROOF: ACTION CS-ROOF-F
-(room CS-ROOF
+(room @cs-roof
   :description "Roof"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (down :to CS-3RD)
-      (in :to CS-3RD)
+      (in :to @cs-3rd)
+      (down :to @cs-3rd)
     )
 
   ; --- Room ACTION Routine ---
@@ -560,13 +560,13 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room DEAD-STORAGE: ACTION DEAD-STORAGE-F
-(room DEAD-STORAGE
+(room @dead-storage
   :description "Dead Storage"
   :exits
     (
-      (east :to STORAGE-ROOM :via STORAGE-EXIT-BARRIER)
-      (west :to TEMPORARY-BASEMENT)
-      (in :to STORAGE-ROOM :via STORAGE-EXIT-BARRIER)
+      (west :to @temporary-basement)
+      (east :to @storage-room :via @storage-exit-barrier)
+      (in :to @storage-room :via @storage-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -587,7 +587,7 @@ featureless skyscraper is to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room DOME-ROOF: ACTION DOME-ROOF-F
-(room DOME-ROOF
+(room @dome-roof
   :description "Roof of Great Dome"
   :ldesc "You are perched precariously on the roof of the Great Dome. A set of
 narrow indentations in the dome provides a dangerous route to the very
@@ -595,9 +595,9 @@ tip-top of the dome."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to TOP-OF-DOME :via DOME-DOOR)
-      (up :to ON-DOME)
-      (in :to TOP-OF-DOME :via DOME-DOOR)
+      (south :to @top-of-dome :via @dome-door)
+      (in :to @top-of-dome :via @dome-door)
+      (up :to @on-dome)
     )
 
   ; --- Room ACTION Routine ---
@@ -609,13 +609,13 @@ tip-top of the dome."
 )
 
 ; [NEEDS-TRANSLATION] Room ELEVATOR-PIT: ACTION ELEVATOR-PIT-F
-(room ELEVATOR-PIT
+(room @elevator-pit
   :description "Concrete Box"
   :exits
     (
-      (north :to STEAM-TUNNEL-EAST)
-      (out :to CS-BASEMENT :via PIT-DOOR-EXIT-BARRIER)
-      (up :to CS-BASEMENT :via PIT-DOOR-EXIT-BARRIER)
+      (north :to @steam-tunnel-east)
+      (out :to @cs-basement :via @pit-door-exit-barrier)
+      (up :to @cs-basement :via @pit-door-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -660,19 +660,19 @@ tip-top of the dome."
   ; --- End Room ACTION Routine ---
 )
 
-(room ENGINEERING-BLDG
+(room @engineering-bldg
   :description "Engineering Building"
   :ldesc "This building extends a long way south from the Infinite Corridor. It
 too is full of closed, locked offices."
   :flags (ONBIT)
   :exits
     (
-      (north :to INF-1)
+      (north :to @inf-1)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room GREAT-COURT: ACTION GREAT-COURT-F
-(room GREAT-COURT
+(room @great-court
   :description "Great Court"
   :ldesc "In the spring and summer, this cheery green court is a haven from
 classwork. Right now, the majestic buildings of the main campus are
@@ -689,12 +689,12 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room GREAT-DOME: ACTION GREAT-DOME-F
-(room GREAT-DOME
+(room @great-dome
   :description "Great Dome"
   :flags (ONBIT)
   :exits
     (
-      (down :to INF-3)
+      (down :to @inf-3)
     )
 
   ; --- Room ACTION Routine ---
@@ -726,16 +726,16 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INF-1: ACTION INF-F
-(room INF-1
+(room @inf-1
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to ENGINEERING-BLDG)
-      (north :to AERO-LOBBY)
-      (east :to ? :via WAXER-EXIT-BARRIER)
-      (west :to MASS-AVE)
-      (out :to MASS-AVE)
+      (west :to @mass-ave)
+      (north :to @aero-lobby)
+      (east :to ? :via @waxer-exit-barrier)
+      (south :to @engineering-bldg)
+      (out :to @mass-ave)
     )
 
   ; --- Room ACTION Routine ---
@@ -775,13 +775,13 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INF-2: ACTION INF-F
-(room INF-2
+(room @inf-2
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (east :to ? :via WAXER-EXIT-BARRIER)
-      (west :to INF-1)
+      (west :to @inf-1)
+      (east :to ? :via @waxer-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -821,16 +821,16 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INF-3: ACTION INF-F
-(room INF-3
+(room @inf-3
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to GREAT-COURT :via GREAT-COURT-EXIT-BARRIER)
-      (east :to ? :via WAXER-EXIT-BARRIER)
-      (west :to INF-2)
-      (out :to GREAT-COURT :via GREAT-COURT-EXIT-BARRIER)
-      (up :to GREAT-DOME)
+      (west :to @inf-2)
+      (east :to ? :via @waxer-exit-barrier)
+      (south :to @great-court :via @great-court-exit-barrier)
+      (out :to @great-court :via @great-court-exit-barrier)
+      (up :to @great-dome)
     )
 
   ; --- Room ACTION Routine ---
@@ -870,13 +870,13 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INF-4: ACTION INF-F
-(room INF-4
+(room @inf-4
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (east :to ? :via WAXER-EXIT-BARRIER)
-      (west :to INF-3)
+      (west :to @inf-3)
+      (east :to ? :via @waxer-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -916,14 +916,14 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INF-5: ACTION INF-F
-(room INF-5
+(room @inf-5
   :description "Infinite Corridor"
   :flags (ONBIT)
   :exits
     (
-      (south :to ? :via WAXER-EXIT-BARRIER)
-      (north :to ? :via WAXER-EXIT-BARRIER)
-      (west :to INF-4)
+      (west :to @inf-4)
+      (north :to ? :via @waxer-exit-barrier)
+      (south :to ? :via @waxer-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -963,12 +963,12 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INNER-LAIR: ACTION INNER-LAIR-F
-(room INNER-LAIR
+(room @inner-lair
   :description "Inner Lair"
   :flags (ONBIT)
   :exits
     (
-      (up :to OUTER-LAIR :via CURTAIN-DOOR)
+      (up :to @outer-lair :via @curtain-door)
     )
 
   ; --- Room ACTION Routine ---
@@ -995,7 +995,7 @@ way to the north."
 )
 
 ; [NEEDS-TRANSLATION] Room INSIDE-DOME: ACTION INSIDE-DOME-F
-(room INSIDE-DOME
+(room @inside-dome
   :description "Inside Dome"
   :ldesc "You are inside a large domed area. The dome contains equipment that
 makes it clear it is a weather observation station. For some reason,
@@ -1004,8 +1004,8 @@ blasts against the semitransparent material of the dome."
   :flags (ONBIT)
   :exits
     (
-      (down :to BROWN-ROOF :via INSIDE-DOME-EXIT-BARRIER)
-      (out :to BROWN-ROOF :via INSIDE-DOME-EXIT-BARRIER)
+      (out :to @brown-roof :via @inside-dome-exit-barrier)
+      (down :to @brown-roof :via @inside-dome-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -1021,26 +1021,26 @@ blasts against the semitransparent material of the dome."
   ; --- End Room ACTION Routine ---
 )
 
-(room KITCHEN
+(room @kitchen
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
 counter are a refrigerator and a microwave."
   :flags (RLANDBIT ONBIT)
   :exits
     (
-      (east :to CS-2ND)
+      (east :to @cs-2nd)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-1: ACTION LAIR-F
-(room LAIR-1
+(room @lair-1
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-6)
-      (north :to LAIR-2)
-      (east :to LAIR-1)
-      (up :to LARGE-CHAMBER)
+      (north :to @lair-2)
+      (east :to @lair-1)
+      (south :to @lair-6)
+      (up :to @large-chamber)
     )
 
   ; --- Room ACTION Routine ---
@@ -1071,13 +1071,13 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-10: ACTION LAIR-F
-(room LAIR-10
+(room @lair-10
   :description "Wet Tunnel"
   :exits
     (
-      (north :to LAIR-10)
-      (west :to LAIR-7)
-      (up :to LAIR-9)
+      (west :to @lair-7)
+      (north :to @lair-10)
+      (up :to @lair-9)
     )
 
   ; --- Room ACTION Routine ---
@@ -1108,13 +1108,13 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-11: ACTION LAIR-F
-(room LAIR-11
+(room @lair-11
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-11)
-      (east :to LAIR-9)
-      (up :to LAIR-11)
+      (east :to @lair-9)
+      (south :to @lair-11)
+      (up :to @lair-11)
     )
 
   ; --- Room ACTION Routine ---
@@ -1145,14 +1145,14 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-2: ACTION LAIR-F
-(room LAIR-2
+(room @lair-2
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-3)
-      (east :to LAIR-1)
-      (west :to LAIR-7)
-      (up :to LAIR-8)
+      (west :to @lair-7)
+      (east :to @lair-1)
+      (down :to @lair-3)
+      (up :to @lair-8)
     )
 
   ; --- Room ACTION Routine ---
@@ -1183,14 +1183,14 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-3: ACTION LAIR-F
-(room LAIR-3
+(room @lair-3
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-4)
-      (north :to LAIR-6)
-      (east :to LAIR-2)
-      (west :to LAIR-7)
+      (west :to @lair-7)
+      (north :to @lair-6)
+      (east :to @lair-2)
+      (south :to @lair-4)
     )
 
   ; --- Room ACTION Routine ---
@@ -1221,15 +1221,15 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-4: ACTION LAIR-F
-(room LAIR-4
+(room @lair-4
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-5)
-      (down :to LAIR-10)
-      (east :to LAIR-10)
-      (west :to LAIR-11)
-      (up :to LAIR-3)
+      (west :to @lair-11)
+      (east :to @lair-10)
+      (south :to @lair-5)
+      (down :to @lair-10)
+      (up :to @lair-3)
     )
 
   ; --- Room ACTION Routine ---
@@ -1260,15 +1260,15 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-5: ACTION LAIR-F
-(room LAIR-5
+(room @lair-5
   :description "Wet Tunnel"
   :exits
     (
-      (down :to OUTER-LAIR)
-      (north :to LAIR-4)
-      (east :to LAIR-11)
-      (west :to LAIR-3)
-      (up :to LAIR-5)
+      (west :to @lair-3)
+      (north :to @lair-4)
+      (east :to @lair-11)
+      (down :to @outer-lair)
+      (up :to @lair-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -1299,14 +1299,14 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-6: ACTION LAIR-F
-(room LAIR-6
+(room @lair-6
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-8)
-      (north :to LAIR-6)
-      (east :to LAIR-1)
-      (west :to LAIR-3)
+      (west :to @lair-3)
+      (north :to @lair-6)
+      (east :to @lair-1)
+      (down :to @lair-8)
     )
 
   ; --- Room ACTION Routine ---
@@ -1337,15 +1337,15 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-7: ACTION LAIR-F
-(room LAIR-7
+(room @lair-7
   :description "Wet Tunnel"
   :exits
     (
-      (south :to LAIR-2)
-      (down :to LAIR-7)
-      (east :to LAIR-3)
-      (west :to LAIR-1)
-      (up :to LAIR-10)
+      (west :to @lair-1)
+      (east :to @lair-3)
+      (south :to @lair-2)
+      (down :to @lair-7)
+      (up :to @lair-10)
     )
 
   ; --- Room ACTION Routine ---
@@ -1376,13 +1376,13 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-8: ACTION LAIR-F
-(room LAIR-8
+(room @lair-8
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-9)
-      (east :to LAIR-2)
-      (up :to LAIR-6)
+      (east :to @lair-2)
+      (down :to @lair-9)
+      (up :to @lair-6)
     )
 
   ; --- Room ACTION Routine ---
@@ -1413,14 +1413,14 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LAIR-9: ACTION LAIR-F
-(room LAIR-9
+(room @lair-9
   :description "Wet Tunnel"
   :exits
     (
-      (down :to LAIR-10)
-      (north :to LAIR-6)
-      (east :to LAIR-8)
-      (up :to LAIR-2)
+      (north :to @lair-6)
+      (east :to @lair-8)
+      (down :to @lair-10)
+      (up :to @lair-2)
     )
 
   ; --- Room ACTION Routine ---
@@ -1451,12 +1451,12 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room LARGE-CHAMBER: ACTION LARGE-CHAMBER-F
-(room LARGE-CHAMBER
+(room @large-chamber
   :description "Large Chamber"
   :exits
     (
-      (down :to LAIR-1 :via LAIR-EXIT-BARRIER)
-      (up :to MUDDY-TUNNEL)
+      (down :to @lair-1 :via @lair-exit-barrier)
+      (up :to @muddy-tunnel)
     )
 
   ; --- Room ACTION Routine ---
@@ -1503,14 +1503,14 @@ counter are a refrigerator and a microwave."
 )
 
 ; [NEEDS-TRANSLATION] Room MASS-AVE: ACTION MASS-AVE-F
-(room MASS-AVE
+(room @mass-ave
   :description "Mass. Ave."
   :ldesc "%"
   :flags (OUTSIDE ONBIT)
   :exits
     (
-      (east :to INF-1)
-      (in :to INF-1)
+      (east :to @inf-1)
+      (in :to @inf-1)
     )
 
   ; --- Room ACTION Routine ---
@@ -1522,20 +1522,20 @@ counter are a refrigerator and a microwave."
   ; --- End Room ACTION Routine ---
 )
 
-(room MUDDY-TUNNEL
+(room @muddy-tunnel
   :description "Muddy Tunnel"
   :ldesc "The tunnel you came through continues down, barely large enough to
 enter. It is made of sticky gelatinous mud that's been pushed by
 something into a semblance of a passage."
   :exits
     (
-      (down :to LARGE-CHAMBER)
-      (east :to TUNNEL-ENTRANCE)
-      (up :to TUNNEL-ENTRANCE)
+      (east :to @tunnel-entrance)
+      (down :to @large-chamber)
+      (up :to @tunnel-entrance)
     )
 )
 
-(room NUTRITION-BLDG
+(room @nutrition-bldg
   :description "Fruits and Nuts"
   :ldesc "This is the central corridor of the
 Nutrition Building. The main building is south, and a stairway leads
@@ -1543,13 +1543,13 @@ down."
   :flags (ONBIT)
   :exits
     (
-      (south :to INF-5)
-      (down :to BROWN-TUNNEL)
+      (south :to @inf-5)
+      (down :to @brown-tunnel)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room ON-DOME: ACTION ON-DOME-F
-(room ON-DOME
+(room @on-dome
   :description "On the Great Dome"
   :ldesc "This is the very top of the Great Dome, a favorite place for Tech
 fraternities to install cows, Volkswagen Beetles, giant birthday candles,
@@ -1559,7 +1559,7 @@ accumulating here. The only way off is down."
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (down :to DOME-ROOF)
+      (down :to @dome-roof)
     )
 
   ; --- Room ACTION Routine ---
@@ -1580,14 +1580,14 @@ accumulating here. The only way off is down."
 )
 
 ; [NEEDS-TRANSLATION] Room OUTER-LAIR: ACTION LAIR-F
-(room OUTER-LAIR
+(room @outer-lair
   :description "Wet Tunnel"
   :flags (ONBIT)
   :exits
     (
-      (south :to INNER-LAIR :via CURTAIN-DOOR)
-      (up :to LAIR-5)
-      (in :to INNER-LAIR :via CURTAIN-DOOR)
+      (south :to @inner-lair :via @curtain-door)
+      (in :to @inner-lair :via @curtain-door)
+      (up :to @lair-5)
     )
 
   ; --- Room ACTION Routine ---
@@ -1618,7 +1618,7 @@ accumulating here. The only way off is down."
 )
 
 ; [NEEDS-TRANSLATION] Room PLATFORM-ROOM: ACTION PLATFORM-ROOM-F
-(room PLATFORM-ROOM
+(room @platform-room
   :description "At Platform"
   :ldesc "You stand before a low rock platform, more like an afterthought of
 piled rocks or a glacial moraine than a work of artifice. You are
@@ -1653,14 +1653,14 @@ pushed against the pile by the crowd around you."
 )
 
 ; [NEEDS-TRANSLATION] Room SMITH-ST: ACTION SMITH-ST-F
-(room SMITH-ST
+(room @smith-st
   :description "Smith Street"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to COMP-CENTER)
-      (east :to SMITH-ST-2)
-      (in :to COMP-CENTER)
+      (east :to @smith-st-2)
+      (south :to @comp-center)
+      (in :to @comp-center)
     )
 
   ; --- Room ACTION Routine ---
@@ -1681,14 +1681,14 @@ pushed against the pile by the crowd around you."
 )
 
 ; [NEEDS-TRANSLATION] Room SMITH-ST-2: ACTION SMITH-ST-2-F
-(room SMITH-ST-2
+(room @smith-st-2
   :description "Smith Street"
   :flags (ONBIT OUTSIDE)
   :exits
     (
-      (south :to TEMPORARY-LAB)
-      (west :to SMITH-ST)
-      (in :to TEMPORARY-LAB)
+      (west :to @smith-st)
+      (south :to @temporary-lab)
+      (in :to @temporary-lab)
     )
 
   ; --- Room ACTION Routine ---
@@ -1706,7 +1706,7 @@ pushed against the pile by the crowd around you."
 )
 
 ; [NEEDS-TRANSLATION] Room STEAM-TUNNEL: ACTION STEAM-TUNNEL-F
-(room STEAM-TUNNEL
+(room @steam-tunnel
   :description "Steam Tunnel"
   :ldesc "The steam tunnel is narrow here, and its construction is more archaic.
 It's now mostly brick, although the floor is concrete. The steam pipe
@@ -1714,8 +1714,8 @@ and coaxial cable continue along their appointed paths. The tunnel is
 damp and even a little muddy."
   :exits
     (
-      (east :to STEAM-TUNNEL-EAST)
-      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
+      (west :to @tunnel-west :via @rats-exit-barrier)
+      (east :to @steam-tunnel-east)
     )
 
   ; --- Room ACTION Routine ---
@@ -1726,12 +1726,12 @@ damp and even a little muddy."
 )
 
 ; [NEEDS-TRANSLATION] Room STEAM-TUNNEL-EAST: ACTION STEAM-TUNNEL-EAST-F
-(room STEAM-TUNNEL-EAST
+(room @steam-tunnel-east
   :description "Steam Tunnel"
   :exits
     (
-      (south :to ELEVATOR-PIT :via ELEVATOR-PIT-ENTER-BARRIER)
-      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
+      (west :to @tunnel-west :via @rats-exit-barrier)
+      (south :to @elevator-pit :via @elevator-pit-enter-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -1762,7 +1762,7 @@ damp and even a little muddy."
 )
 
 ; [NEEDS-TRANSLATION] Room STORAGE-ROOM: ACTION STORAGE-ROOM-F
-(room STORAGE-ROOM
+(room @storage-room
   :description "Ancient Storage"
   :ldesc "What's deader than dead storage? That's what's in this room. Most of the
 contents have collapsed or rusted back to the primordial ooze. There is
@@ -1771,8 +1771,8 @@ puddles of water pollute the floor. You can now believe how old some of these
 foundations are said to be."
   :exits
     (
-      (down :to BRICK-TUNNEL :via MANHOLE-EXIT-BARRIER)
-      (west :to DEAD-STORAGE)
+      (west :to @dead-storage)
+      (down :to @brick-tunnel :via @manhole-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -1783,7 +1783,7 @@ foundations are said to be."
   ; --- End Room ACTION Routine ---
 )
 
-(room SUB-BASEMENT
+(room @sub-basement
   :description "Subbasement"
   :ldesc "This is the subbasement of the Aeronautical Engineering Building. A
 stairway leads up. A narrow
@@ -1792,12 +1792,12 @@ space."
   :flags (ONBIT)
   :exits
     (
-      (up :to AERO-STAIRS)
-      (nw :to TOMB :via TOMB-SQUEEZE-BARRIER)
+      (nw :to @tomb :via @tomb-squeeze-barrier)
+      (up :to @aero-stairs)
     )
 )
 
-(room TEMPORARY-BASEMENT
+(room @temporary-basement
   :description "Temporary Basement"
   :ldesc "During the Second World War, some temporary buildings were built to house
 war-related research. Naturally, these buildings, though flimsy and ugly,
@@ -1806,14 +1806,14 @@ extends west, a stairway leads up, and a large passage is to the east."
   :flags (ONBIT)
   :exits
     (
-      (east :to DEAD-STORAGE)
-      (west :to CS-BASEMENT)
-      (up :to TEMPORARY-LAB)
+      (west :to @cs-basement)
+      (east :to @dead-storage)
+      (up :to @temporary-lab)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room TEMPORARY-LAB: ACTION TEMPORARY-LAB-F
-(room TEMPORARY-LAB
+(room @temporary-lab
   :description "Temporary Lab"
   :ldesc "This is a laboratory of some sort. It takes up most of the building on
 this level, all the interior walls having been knocked down. (One reason
@@ -1822,9 +1822,9 @@ flexibility: no one cares if they get more or less destroyed.) A stairway
 leads down, and a door leads north."
   :exits
     (
-      (down :to TEMPORARY-BASEMENT)
-      (north :to SMITH-ST-2)
-      (out :to SMITH-ST-2)
+      (north :to @smith-st-2)
+      (out :to @smith-st-2)
+      (down :to @temporary-basement)
     )
 
   ; --- Room ACTION Routine ---
@@ -1836,15 +1836,66 @@ leads down, and a door leads north."
   ; --- End Room ACTION Routine ---
 )
 
+; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F
+(room @terminal-room
+  :description "Terminal Room"
+  :ldesc "This is a large room crammed with computer terminals, small
+computers, and printers. An exit leads south. Banners, posters, and
+signs festoon the walls. Most of the tables are covered with waste
+paper, old pizza boxes, and empty Coke cans. There are usually a lot of
+people here, but tonight it's almost deserted."
+  :flags (ONBIT)
+  :exits
+    (
+      (south :to @cs-2nd :via @hacker-exit-barrier)
+      (out :to @cs-2nd :via @hacker-exit-barrier)
+    )
+
+  ; --- Room ACTION Routine ---
+  ; <ROUTINE TERMINAL-ROOM-F (RARG)
+  ;   <COND
+  ;       (<RARG? BEG> <COND
+  ;         (<AND <NOT <VERB? TELL>> <GAME-VERB?>> <RFALSE>)
+  ;         (<QUEUED? I-HACKER-HELPS> <COND
+  ;           (<P?
+  ;             (RUB POINT CLICK HELP)
+  ;             (MENU-BOX MORE-BOX <>)> <TELL
+  ;             ,HACKER-PREVENTS
+  ;             "Who's the hacker here?\" he snarls."
+  ;             CR>)>)
+  ;         (<QUEUED? I-COMPULSION> <COND
+  ;           (<P?
+  ;             (RUB POINT CLICK PUSH ATTACK)
+  ;             MORE-BOX> <RFALSE>)
+  ;           (<P? READ ,ODD-PAPER> <RFALSE>)
+  ;           (ELSE <COND
+  ;             (<VERB? TELL HELLO> <TELL "Your throat tightens, and no sound issues forth. ">)
+  ;             (<VERB? INVENTORY LAMP-OFF> <TELL "Your body refuses to obey your brain's command. ">)> <TELL
+  ;             "Instead, you find your finger moving towards the MORE box, and you touch
+  ;   it. The screen feels oddly cold."
+  ;             CR> <COND (<VERB? TELL> <END-QUOTE>) (ELSE <RTRUE>)>)>)>)
+  ;       (<AND
+  ;         <RARG? ENTER>
+  ;         <EQUAL? ,OHERE ,PLATFORM-ROOM>> <QUEUE I-HACKER-HELPS -1> <TELL
+  ;         "You are awakened by the thump of your head hitting the terminal
+  ;   in front of you. Falling asleep over term papers! It must have been a
+  ;   nightmare. Embarrassed, you glance around. Yes, the hacker is looking
+  ;   in your direction. He must have heard the thump."
+  ;         CR
+  ;         CR>)>
+  ; >
+  ; --- End Room ACTION Routine ---
+)
+
 ; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F
-(room TOMB
+(room @tomb
   :description "Tomb"
   :flags (ONBIT)
   :exits
     (
-      (se :to TOMB :via TOMB-SQUEEZE-BARRIER)
-      (down :to TUNNEL :via ACCESS-HATCH)
-      (out :to TOMB :via TOMB-SQUEEZE-BARRIER)
+      (out :to @tomb :via @tomb-squeeze-barrier)
+      (down :to @tunnel :via @access-hatch)
+      (se :to @tomb :via @tomb-squeeze-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -1868,13 +1919,13 @@ leads down, and a door leads north."
 )
 
 ; [NEEDS-TRANSLATION] Room TOP-OF-DOME: ACTION TOP-OF-DOME-F
-(room TOP-OF-DOME
+(room @top-of-dome
   :description "Top of Dome"
   :flags (ONBIT)
   :exits
     (
-      (north :to DOME-ROOF :via DOME-DOOR)
-      (out :to DOME-ROOF :via DOME-DOOR)
+      (north :to @dome-roof :via @dome-door)
+      (out :to @dome-roof :via @dome-door)
     )
 
   ; --- Room ACTION Routine ---
@@ -1911,13 +1962,13 @@ leads down, and a door leads north."
 )
 
 ; [NEEDS-TRANSLATION] Room TUNNEL: ACTION TUNNEL-F
-(room TUNNEL
+(room @tunnel
   :description "Steam Tunnel"
   :exits
     (
-      (east :to TUNNEL :via STEAM-EXIT-BARRIER)
-      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
-      (up :to TOMB :via ACCESS-HATCH)
+      (west :to @tunnel-west :via @rats-exit-barrier)
+      (east :to @tunnel :via @steam-exit-barrier)
+      (up :to @tomb :via @access-hatch)
     )
 
   ; --- Room ACTION Routine ---
@@ -1951,12 +2002,12 @@ leads down, and a door leads north."
 )
 
 ; [NEEDS-TRANSLATION] Room TUNNEL-EAST: ACTION TUNNEL-EAST-F
-(room TUNNEL-EAST
+(room @tunnel-east
   :description "Steam Tunnel"
   :exits
     (
-      (east :to STEAM-TUNNEL)
-      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
+      (west :to @tunnel-west :via @rats-exit-barrier)
+      (east :to @steam-tunnel)
     )
 
   ; --- Room ACTION Routine ---
@@ -1972,7 +2023,7 @@ leads down, and a door leads north."
   ; --- End Room ACTION Routine ---
 )
 
-(room TUNNEL-ENTRANCE
+(room @tunnel-entrance
   :description "Tunnel Entrance"
   :ldesc "The tunnel continues west from here, becoming narrow, muddy, and
 forbidding. The walls no longer seem to be as finished as they were.
@@ -1980,20 +2031,20 @@ The steam pipe and coaxial cable disappear into the ceiling at this
 point. The temperature has dropped considerably, as well."
   :exits
     (
-      (down :to MUDDY-TUNNEL)
-      (east :to TUNNEL-WEST)
-      (west :to MUDDY-TUNNEL)
-      (in :to MUDDY-TUNNEL)
+      (west :to @muddy-tunnel)
+      (east :to @tunnel-west)
+      (in :to @muddy-tunnel)
+      (down :to @muddy-tunnel)
     )
 )
 
 ; [NEEDS-TRANSLATION] Room TUNNEL-WEST: ACTION TUNNEL-WEST-F
-(room TUNNEL-WEST
+(room @tunnel-west
   :description "Steam Tunnel"
   :exits
     (
-      (east :to TUNNEL)
-      (west :to TUNNEL-WEST :via RATS-EXIT-BARRIER)
+      (west :to @tunnel-west :via @rats-exit-barrier)
+      (east :to @tunnel)
     )
 
   ; --- Room ACTION Routine ---
@@ -2013,12 +2064,12 @@ point. The temperature has dropped considerably, as well."
 )
 
 ; [NEEDS-TRANSLATION] Room UNDER-ALCHEMY-LAB: ACTION UNDER-ALCHEMY-LAB-F
-(room UNDER-ALCHEMY-LAB
+(room @under-alchemy-lab
   :description "Cinderblock Tunnel"
   :exits
     (
-      (north :to BRICK-TUNNEL)
-      (up :to ALCHEMY-LAB :via UNDER-ALCHEMY-LAB-EXIT-BARRIER)
+      (north :to @brick-tunnel)
+      (up :to @alchemy-lab :via @under-alchemy-lab-exit-barrier)
     )
 
   ; --- Room ACTION Routine ---
@@ -2035,7 +2086,7 @@ point. The temperature has dropped considerably, as well."
 )
 
 ; [NEEDS-TRANSLATION] Room YUGGOTH: ACTION RANDOM-YUGGOTH-F
-(room YUGGOTH
+(room @yuggoth
   :description "Place"
   :ldesc "This is a place. Things move about on a broken, rocky surface.
 Harsh sounds split the air. Something sticky grabs at your feet.
@@ -2044,7 +2095,7 @@ lifeless. A path descends into a shallow bowl of black basalt."
   :flags (ONBIT)
   :exits
     (
-      (down :to BOWL-ROOM)
+      (down :to @bowl-room)
     )
 
   ; --- Room ACTION Routine ---

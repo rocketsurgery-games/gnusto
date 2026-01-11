@@ -2,7 +2,7 @@
 ; Generated from 181 ZIL objects
 
 ; [NEEDS-TRANSLATION] ACCESS-HATCH
-(object ACCESS-HATCH
+(object @access-hatch
   :description "hatch"
   :flags (DOORBIT OPENABLE NDESCBIT LOCKED SEARCHBIT SURFACEBIT CONTBIT)
 
@@ -59,9 +59,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ACCESS-PANEL
-(object ACCESS-PANEL
+(object @access-panel
   :description "access panel"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT AN CONTBIT SEARCHBIT OPENABLE)
   :properties (:capacity 20)
 
@@ -86,15 +86,15 @@
   )
 )
 
-(object AIR
+(object @air
   :description "air"
   :flags (AN NOABIT)
 )
 
 ; [NEEDS-TRANSLATION] ALARM-BUTTON
-(object ALARM-BUTTON
+(object @alarm-button
   :description "alarm button"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT AN)
 
   ; --- ZIL Source ---
@@ -113,7 +113,7 @@
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-DOOR
-(object ALCHEMY-DOOR
+(object @alchemy-door
   :description "Alchemy Department door"
   :flags (DOORBIT OPENABLE NDESCBIT READBIT LOCKED)
 
@@ -170,7 +170,7 @@
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-TRAP-DOOR
-(object ALCHEMY-TRAP-DOOR
+(object @alchemy-trap-door
   :description "metal plate"
   :flags (DOORBIT NDESCBIT OPENABLE)
 
@@ -214,7 +214,7 @@
 )
 
 ; [NEEDS-TRANSLATION] ALCHEMY-WINDOW
-(object ALCHEMY-WINDOW
+(object @alchemy-window
   :description "frosted glass window"
   :flags (NDESCBIT READBIT TRANSBIT)
 
@@ -249,7 +249,7 @@
 )
 
 ; [NEEDS-TRANSLATION] ARCHWAY
-(object ARCHWAY
+(object @archway
   :description "archway"
   :flags (NDESCBIT)
 
@@ -278,9 +278,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ASSIGNMENT
-(object ASSIGNMENT
+(object @assignment
   :description "assignment"
-  :location PLAYER
+  :location @player
   :flags (AN READBIT TAKEBIT)
   :properties (:size 1)
 
@@ -305,17 +305,17 @@
   )
 )
 
-(object AXE
+(object @axe
   :description "fire axe"
-  :location EMERGENCY-CABINET
+  :location @emergency-cabinet
   :flags (TRYTAKEBIT TAKEBIT WEAPONBIT)
   :properties (:size 10)
 )
 
 ; [NEEDS-TRANSLATION] BASEMENT-BUTTON
-(object BASEMENT-BUTTON
+(object @basement-button
   :description "B button"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -354,9 +354,9 @@
 )
 
 ; [NEEDS-TRANSLATION] BOLT-CUTTER
-(object BOLT-CUTTER
+(object @bolt-cutter
   :description "bolt cutter"
-  :location URCHIN
+  :location @urchin
   :flags (INVISIBLE TAKEBIT TOOLBIT WEAPONBIT)
   :properties (:size 10 :value 5)
 
@@ -379,9 +379,9 @@
 )
 
 ; [NEEDS-TRANSLATION] BOOTS
-(object BOOTS
+(object @boots
   :description "pair of rubber boots"
-  :location BROWN-BASEMENT
+  :location @brown-basement
   :flags (TAKEBIT)
 
   ; --- ZIL Source ---
@@ -400,7 +400,7 @@
 )
 
 ; [NEEDS-TRANSLATION] BRICK-HOLE
-(object BRICK-HOLE
+(object @brick-hole
   :description "hole"
   :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT)
 
@@ -444,9 +444,9 @@
 )
 
 ; [NEEDS-TRANSLATION] BRICK-WALL
-(object BRICK-WALL
+(object @brick-wall
   :description "brick wall"
-  :location STEAM-TUNNEL-EAST
+  :location @steam-tunnel-east
   :flags (SEARCHBIT OPENBIT CONTBIT)
   :properties (:contfcn "BRICK-WALL-CONT" :descfcn "BRICK-WALL-DESC")
 
@@ -558,7 +558,7 @@
 )
 
 ; [NEEDS-TRANSLATION] BROKEN-BRICK
-(object BROKEN-BRICK
+(object @broken-brick
   :description "broken brick"
   :flags (NDESCBIT TAKEBIT WEAPONBIT)
 
@@ -582,10 +582,10 @@
 )
 
 ; [NEEDS-TRANSLATION] BRONZE-PLUG
-(object BRONZE-PLUG
+(object @bronze-plug
   :description "bronze plug"
   :fdesc "In the exact center of the flat area is a bronze plug."
-  :location ON-DOME
+  :location @on-dome
   :flags (TAKEBIT TRYTAKEBIT WEAPONBIT)
 
   ; --- ZIL Source ---
@@ -619,9 +619,9 @@
 )
 
 ; [NEEDS-TRANSLATION] BROWN-ELEVATOR
-(object BROWN-ELEVATOR
+(object @brown-elevator
   :description "elevator doors"
-  :location BROWN-BUILDING
+  :location @brown-building
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -636,7 +636,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CABLE
-(object CABLE
+(object @cable
   :description "coaxial cable"
   :flags (NDESCBIT VEHBIT)
 
@@ -684,9 +684,9 @@
 )
 
 ; [NEEDS-TRANSLATION] CARTON
-(object CARTON
+(object @carton
   :description "cardboard carton"
-  :location REFRIGERATOR
+  :location @refrigerator
   :flags (READBIT TRYTAKEBIT TAKEBIT SEARCHBIT FOODBIT CONTBIT OPENABLE)
   :properties (:capacity 10)
 
@@ -726,9 +726,9 @@
 )
 
 ; [NEEDS-TRANSLATION] CARVING-SYMBOL
-(object CARVING-SYMBOL
+(object @carving-symbol
   :description "incised symbol"
-  :location SLAB
+  :location @slab
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -747,7 +747,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CARVINGS
-(object CARVINGS
+(object @carvings
   :description "carvings"
   :flags (NDESCBIT READBIT SEARCHBIT OPENBIT CONTBIT)
 
@@ -774,14 +774,14 @@
   )
 )
 
-(object CATWALK
+(object @catwalk
   :description "catwalk"
-  :location TOP-OF-DOME
+  :location @top-of-dome
   :flags (NDESCBIT)
 )
 
 ; [NEEDS-TRANSLATION] CEILING
-(object CEILING
+(object @ceiling
   :description "ceiling"
   :flags (NDESCBIT TOUCHBIT)
 
@@ -798,9 +798,9 @@
 )
 
 ; [NEEDS-TRANSLATION] CHAIN
-(object CHAIN
+(object @chain
   :description "greasy chain"
-  :location ELEVATOR-PIT
+  :location @elevator-pit
   :flags (TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
   :properties (:size 20 :descfcn "CHAIN-DESC")
 
@@ -923,7 +923,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CHAIN-1
-(object CHAIN-1
+(object @chain-1
   :description "greasy chain"
   :flags (NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
   :properties (:size 20 :descfcn "CHAIN-DESC")
@@ -1047,7 +1047,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CHAIN-2
-(object CHAIN-2
+(object @chain-2
   :description "greasy chain"
   :flags (INVISIBLE NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT OPENBIT)
   :properties (:size 20 :descfcn "CHAIN-DESC")
@@ -1170,10 +1170,45 @@
   )
 )
 
+; [NEEDS-TRANSLATION] CHAIR
+(object @chair
+  :description "chair"
+  :fdesc "Nearby is one of those ugly molded plastic chairs."
+  :location @terminal-room
+  :flags (TAKEBIT VEHBIT SEARCHBIT CONTBIT OPENBIT FURNITURE SURFACEBIT)
+  :properties (:size 100)
+
+  ; --- ZIL Source ---
+  ; <ROUTINE CHAIR-F ("OPT" RARG)
+  ;   <COND
+  ;       (<RARG? BEG> <COND
+  ;         (<QUEUED? I-COMPULSION> <RFALSE>)
+  ;         (<VERB? WALK> <MOVE ,WINNER <LOC ,CHAIR>> <TELL "First, you arise from the chair." CR>)
+  ;         (<P? SIT CHAIR> <TELL ,YOU-ARE ,PERIOD>)
+  ;         (<P? (STAND DISEMBARK) CHAIR> <MOVE ,WINNER <LOC ,CHAIR>> <TELL "You get out of the chair." CR>)>)
+  ;       (<RARG? <>> <COND
+  ;         (<VERB? EXAMINE> <TELL
+  ;           "It's a molded plastic chair, a cheap knock-off of a designer
+  ;   chair, and even more uncomfortable."
+  ;           CR>)
+  ;         (<AND
+  ;           <VERB? TAKE>
+  ;           <IN? ,HACKER ,CHAIR>> <TELL "It's in use." CR>)
+  ;         (<VERB? SIT BOARD> <COND
+  ;           (<IN? ,HACKER ,CHAIR> <TELL "The hacker is already using it." CR> <RTRUE>)
+  ;           (ELSE <COND (<HELD? ,CHAIR> <MOVE ,CHAIR <LOC ,WINNER>>)> <MOVE ,WINNER ,CHAIR> <TELL ,YOU-ARE-NOW "sitting in the chair." CR>)>)>)>
+  ; >
+  ; --- End ZIL Source ---
+
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
+)
+
 ; [NEEDS-TRANSLATION] CHINESE-FOOD
-(object CHINESE-FOOD
+(object @chinese-food
   :description "Chinese food"
-  :location CARTON
+  :location @carton
   :flags (NOABIT TAKEBIT TRYTAKEBIT FOODBIT)
   :properties (:heat 0)
 
@@ -1209,9 +1244,9 @@
 )
 
 ; [NEEDS-TRANSLATION] CLOSE-BUTTON
-(object CLOSE-BUTTON
+(object @close-button
   :description "close button"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -1231,9 +1266,9 @@
 )
 
 ; [NEEDS-TRANSLATION] COKE
-(object COKE
+(object @coke
   :description "two liter bottle of Classic Coke"
-  :location REFRIGERATOR
+  :location @refrigerator
   :flags (TAKEBIT FOODBIT OPENABLE)
   :properties (:size 5 :heat 0)
 
@@ -1305,9 +1340,9 @@
 )
 
 ; [NEEDS-TRANSLATION] CONTROLS
-(object CONTROLS
+(object @controls
   :description "microwave controls"
-  :location KITCHEN
+  :location @kitchen
   :flags (NDESCBIT NOABIT)
 
   ; --- ZIL Source ---
@@ -1389,7 +1424,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CORRIDOR
-(object CORRIDOR
+(object @corridor
   :description "passage"
 
   ; --- ZIL Source ---
@@ -1408,17 +1443,17 @@
   )
 )
 
-(object CROWBAR
+(object @crowbar
   :description "crowbar"
-  :location TEMPORARY-BASEMENT
+  :location @temporary-basement
   :flags (TAKEBIT WEAPONBIT)
   :properties (:size 10)
 )
 
 ; [NEEDS-TRANSLATION] CURTAIN
-(object CURTAIN
+(object @curtain
   :description "slime curtain"
-  :location OUTER-LAIR
+  :location @outer-lair
   :flags (NDESCBIT)
   :properties (:value 5)
 
@@ -1480,7 +1515,7 @@
 )
 
 ; [NEEDS-TRANSLATION] CURTAIN-DOOR
-(object CURTAIN-DOOR
+(object @curtain-door
   :description "ancient door"
   :flags (AN INVISIBLE NDESCBIT DOORBIT LOCKED OPENABLE)
 
@@ -1508,7 +1543,7 @@
 )
 
 ; [NEEDS-TRANSLATION] DEAD-RAT
-(object DEAD-RAT
+(object @dead-rat
   :description "dead rat"
   :flags (SEARCHBIT TAKEBIT OPENBIT CONTBIT)
   :properties (:heat 0)
@@ -1545,13 +1580,13 @@
   )
 )
 
-(object DIRT
+(object @dirt
   :description "dirt"
   :flags (NOABIT)
 )
 
 ; [NEEDS-TRANSLATION] DOME
-(object DOME
+(object @dome
   :description "dome"
   :flags (NDESCBIT)
 
@@ -1576,7 +1611,7 @@
 )
 
 ; [NEEDS-TRANSLATION] DOME-DOOR
-(object DOME-DOOR
+(object @dome-door
   :description "door"
   :flags (NDESCBIT DOORBIT OPENABLE)
 
@@ -1606,9 +1641,9 @@
 )
 
 ; [NEEDS-TRANSLATION] DOME-LADDER
-(object DOME-LADDER
+(object @dome-ladder
   :description "wooden ladder"
-  :location TOP-OF-DOME
+  :location @top-of-dome
   :flags (TAKEBIT)
   :properties (:size 120 :descfcn "DOME-LADDER-DESC")
 
@@ -1679,7 +1714,7 @@
 )
 
 ; [NEEDS-TRANSLATION] DOWN-BUTTON
-(object DOWN-BUTTON
+(object @down-button
   :description "down-arrow"
   :flags (NDESCBIT)
 
@@ -1695,7 +1730,7 @@
 )
 
 ; [NEEDS-TRANSLATION] EAST-WALL
-(object EAST-WALL
+(object @east-wall
   :description "east wall"
   :flags (AN)
 
@@ -1713,7 +1748,7 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR
-(object ELEVATOR
+(object @elevator
   :description "elevator"
   :flags (AN VEHBIT)
 
@@ -1751,16 +1786,16 @@
   )
 )
 
-(object ELEVATOR-CEILING
+(object @elevator-ceiling
   :description "tangle of machinery"
-  :location SHAFT-2
+  :location @shaft-2
   :flags (NDESCBIT OPENBIT SEARCHBIT CONTBIT SURFACEBIT)
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR
-(object ELEVATOR-DOOR
+(object @elevator-door
   :description "elevator doors"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT AN DOORBIT OPENABLE)
 
   ; --- ZIL Source ---
@@ -1783,9 +1818,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-1
-(object ELEVATOR-DOOR-1
+(object @elevator-door-1
   :description "elevator doors"
-  :location COMP-CENTER
+  :location @comp-center
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
   :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
@@ -1882,9 +1917,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-2
-(object ELEVATOR-DOOR-2
+(object @elevator-door-2
   :description "elevator doors"
-  :location CS-2ND
+  :location @cs-2nd
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
   :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
@@ -1981,9 +2016,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-3
-(object ELEVATOR-DOOR-3
+(object @elevator-door-3
   :description "elevator doors"
-  :location CS-3RD
+  :location @cs-3rd
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
   :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
@@ -2080,9 +2115,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR-B
-(object ELEVATOR-DOOR-B
+(object @elevator-door-b
   :description "elevator doors"
-  :location CS-BASEMENT
+  :location @cs-basement
   :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
   :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
@@ -2179,9 +2214,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-FLOOR
-(object ELEVATOR-FLOOR
+(object @elevator-floor
   :description "tangle of machinery"
-  :location SHAFT-B
+  :location @shaft-b
   :flags (NDESCBIT OPENBIT SEARCHBIT CONTBIT)
 
   ; --- ZIL Source ---
@@ -2205,9 +2240,9 @@
 )
 
 ; [NEEDS-TRANSLATION] ELIXIR
-(object ELIXIR
+(object @elixir
   :description "tarry liquid"
-  :location VAT
+  :location @vat
   :flags (TAKEBIT TRYTAKEBIT)
 
   ; --- ZIL Source ---
@@ -2244,9 +2279,9 @@
 )
 
 ; [NEEDS-TRANSLATION] EMERGENCY-CABINET
-(object EMERGENCY-CABINET
+(object @emergency-cabinet
   :description "emergency cabinet"
-  :location INF-4
+  :location @inf-4
   :flags (CONTBIT TRANSBIT READBIT AN SEARCHBIT OPENABLE)
   :properties (:capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
 
@@ -2291,7 +2326,7 @@
 )
 
 ; [NEEDS-TRANSLATION] EYES
-(object EYES
+(object @eyes
   :description "your eyes"
   :flags (NOABIT NOTHEBIT)
 
@@ -2309,15 +2344,15 @@
   )
 )
 
-(object FEET
+(object @feet
   :description "your feet"
   :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
 )
 
 ; [NEEDS-TRANSLATION] FLASHLIGHT
-(object FLASHLIGHT
+(object @flashlight
   :description "flashlight"
-  :location ACCESS-PANEL
+  :location @access-panel
   :flags (TAKEBIT LIGHTBIT)
 
   ; --- ZIL Source ---
@@ -2350,9 +2385,9 @@
 )
 
 ; [NEEDS-TRANSLATION] FLASK
-(object FLASK
+(object @flask
   :description "metal flask"
-  :location TEMPORARY-LAB
+  :location @temporary-lab
   :flags (TAKEBIT CONTBIT SEARCHBIT OPENABLE)
   :properties (:size 50 :capacity 9 :contfcn "FLASK-CONT")
 
@@ -2392,7 +2427,7 @@
 )
 
 ; [NEEDS-TRANSLATION] FLIER
-(object FLIER
+(object @flier
   :description "creature"
   :properties (:descfcn "FLIER-DESC" :value 5)
 
@@ -2439,7 +2474,7 @@
 )
 
 ; [NEEDS-TRANSLATION] FLIER-SHAPE
-(object FLIER-SHAPE
+(object @flier-shape
   :description "dark shape"
   :flags (NDESCBIT)
 
@@ -2460,9 +2495,9 @@
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-BUTTON
-(object FLOOR-BUTTON
+(object @floor-button
   :description "floor button"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -2501,9 +2536,9 @@
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-WAX
-(object FLOOR-WAX
+(object @floor-wax
   :description "floor wax"
-  :location PLASTIC-CONTAINER
+  :location @plastic-container
   :flags (NOABIT TRYTAKEBIT TAKEBIT TOUCHBIT)
   :properties (:descfcn "FLOOR-WAX-DESC")
 
@@ -2571,9 +2606,9 @@
 )
 
 ; [NEEDS-TRANSLATION] FLOOR-WAXER
-(object FLOOR-WAXER
+(object @floor-waxer
   :description "floor waxer"
-  :location INF-2
+  :location @inf-2
   :flags (VEHBIT SURFACEBIT POWERBIT OPENBIT CONTBIT SEARCHBIT)
   :properties (:descfcn "FLOOR-WAXER-DESC" :contfcn "FLOOR-WAXER-F")
 
@@ -2643,9 +2678,9 @@
 )
 
 ; [NEEDS-TRANSLATION] FORKLIFT
-(object FORKLIFT
+(object @forklift
   :description "forklift"
-  :location AERO-BASEMENT
+  :location @aero-basement
   :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
 
   ; --- ZIL Source ---
@@ -2757,7 +2792,7 @@
 )
 
 ; [NEEDS-TRANSLATION] FROB
-(object FROB
+(object @frob
   :description "thing"
   :flags (NDESCBIT PERSON)
 
@@ -2803,7 +2838,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-FLOOR-WAXER
-(object GLOBAL-FLOOR-WAXER
+(object @global-floor-waxer
   :description "floor waxer"
   :flags (NDESCBIT VEHBIT SURFACEBIT ONBIT OPENBIT CONTBIT SEARCHBIT)
 
@@ -2835,7 +2870,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-HOLE
-(object GLOBAL-HOLE
+(object @global-hole
   :description "hole"
   :flags (NDESCBIT TOUCHBIT)
 
@@ -2853,7 +2888,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-MAINTENANCE-MAN
-(object GLOBAL-MAINTENANCE-MAN
+(object @global-maintenance-man
   :description "maintenance man"
   :flags (PERSON)
 
@@ -2876,12 +2911,12 @@
   )
 )
 
-(object GLOBAL-OBJECTS
+(object @global-objects
   :flags (AN CONTBIT DOORBIT INVISIBLE LOCKED NDESCBIT NOABIT NOTHEBIT ONBIT OUTSIDE OPENBIT PERSON POWERBIT READBIT RLANDBIT RMUNGBIT SEARCHBIT SLIMEBIT SURFACEBIT TAKEBIT THE TOOLBIT TOUCHBIT TRANSBIT TRYTAKEBIT VEHBIT WEAPONBIT WEARBIT)
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-ROOM
-(object GLOBAL-ROOM
+(object @global-room
   :description "room"
 
   ; --- ZIL Source ---
@@ -2905,7 +2940,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-SLEEP
-(object GLOBAL-SLEEP
+(object @global-sleep
   :description "sleep"
   :flags (NOABIT NOTHEBIT)
 
@@ -2923,7 +2958,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-URCHINS
-(object GLOBAL-URCHINS
+(object @global-urchins
   :description "missing urchins"
   :flags (NDESCBIT PERSON)
 
@@ -2956,9 +2991,9 @@
 )
 
 ; [NEEDS-TRANSLATION] GLOVES
-(object GLOVES
+(object @gloves
   :description "pair of electrician's gloves"
-  :location TEMPORARY-BASEMENT
+  :location @temporary-basement
   :flags (TAKEBIT)
 
   ; --- ZIL Source ---
@@ -2992,7 +3027,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GRAFFITI
-(object GRAFFITI
+(object @graffiti
   :description "graffiti"
 
   ; --- ZIL Source ---
@@ -3008,7 +3043,7 @@
 )
 
 ; [NEEDS-TRANSLATION] GROUND
-(object GROUND
+(object @ground
   :description "floor"
 
   ; --- ZIL Source ---
@@ -3028,8 +3063,221 @@
   )
 )
 
+; [NEEDS-TRANSLATION] HACKER
+(object @hacker
+  :description "hacker"
+  :location @terminal-room
+  :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
+  :properties (:descfcn "HACKER-DESC" :contfcn "HACKER-F")
+
+  ; --- ZIL Source ---
+  ; <ROUTINE HACKER-F ("AUX" H "OPT" RARG)
+  ;   <COND
+  ;       (<RARG? CONTAINER> <COND
+  ;         (<VERB? TAKE MOVE> <COND
+  ;           (<G? ,LAIR-CNT 6> <TELL "You don't want to get that close to him." CR>)
+  ;           (ELSE <TELL
+  ;             "\"Hey! No snarfage, loser!\" You determine that this means, \"Stop!\""
+  ;             CR>)>)>)
+  ;       (<WINNER? ,HACKER> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL "The hacker replies, \"Meld!\"" CR>)
+  ;         (<VERB? HELP> <COND
+  ;           (<HERE? ,TERMINAL-ROOM> <TELL "\"Be patient!\"" CR>)
+  ;           (<FSET? ,SMOOTH-STONE ,TOUCHBIT> <PERFORM ,V?TELL-ME-ABOUT ,PROGRAM> <RTRUE>)
+  ;           (ELSE <TELL "\"Help? I'm not a T.A. I've got work to do.\"" CR>)>)
+  ;         (<P? WHO LOVECRAFT> <NEW-VERB ,V?WHAT> <RTRUE>)
+  ;         (<VERB? TELL-ME-ABOUT WHAT> <COND
+  ;           (<PRSO? ,HACKER> <TELL "He's reluctant to boast." CR>)
+  ;           (<PRSO? ,KEYRING ,KEY-1 ,KEY-2 ,KEY-3 ,KEY-4> <COND
+  ;             (<GETPT ,MASTER-KEY ,P?VALUE> <FSET ,MASTER-KEY ,TOUCHBIT> <MOVE ,MASTER-KEY ,KEYRING>)> <TELL
+  ;             "\"I've accumulated a few keys over the years. I'm a licensed locksmith,
+  ;   which helps. I can get into any room at Tech.\" He pulls the keyring
+  ;   out on its chain, and shows off a key you hadn't noticed before. \"This is
+  ;   a master key,\" he says."
+  ;             CR>)
+  ;           (<PRSO? ,CHINESE-FOOD ,SNACK> <TELL
+  ;             "\"Yeah! I'd love some yummy Chinese food. Szechuan style. Ummm!\""
+  ;             CR>)
+  ;           (<PRSO? ,MASTER-KEY> <COND
+  ;             (<IN? ,MASTER-KEY ,GLOBAL-OBJECTS> <TELL
+  ;               S
+  ;               "\"Who said anything about any master keys?\" he asks suspiciously.|">)
+  ;             (ELSE <THIS-IS-IT ,MASTER-KEY> <TELL
+  ;               "\"That's one of my best keys. It's a Tech master key. Not that it really
+  ;   opens every door at Tech, but I'd say three out of five, at least. Naturally,
+  ;   some labs are off-limits even to this key.\""
+  ;               CR>)>)
+  ;           (<PRSO? ,STUDENTS> <TELL
+  ;             "\"Missing students? I knew one of them slightly. Not the sort who would
+  ;   go away, you know? He was sort of hackeresque, not dumb for an undergrad,
+  ;   either. Not the type to disappear.\""
+  ;             CR>)
+  ;           (<PRSO? ,PROGRAM ,PC ,MENU-BOX ,YAK-WINDOW ,HELP-KEY> <COND
+  ;             (<ZERO? ,HACKER-HELP> <TELL
+  ;               "\"You should consult the documentation.\" He's preoccupied with his
+  ;   own debugging."
+  ;               CR>)
+  ;             (<QUEUED? I-HACKER-HELPS> <TELL
+  ;               "\"I'm looking at it. Be patient. This isn't some little micro. We're
+  ;   on a hairy OS on a hairy net.\""
+  ;               CR>)
+  ;             (ELSE <TELL
+  ;               "\"I already looked at it. The bug is fixed in the sources. Your paper
+  ;   is gone, unless those Alchemy chompers have a copy.\""
+  ;               CR>)>)
+  ;           (<PRSO? ,LOVECRAFT> <TELL "\"Wasn't he a fantasy author?\"" CR>)
+  ;           (<PRSO? ,SMOOTH-STONE> <TELL
+  ;             "\"I've never seen one like that. Pretty tasteful, I'd say.\""
+  ;             CR>)
+  ;           (<PRSO? ,GLOBAL-URCHINS> <TELL
+  ;             "\"There are always urchins around. I remember one or two who became
+  ;   hackers.\""
+  ;             CR>)
+  ;           (<PRSO? ,REPEATER ,INPUT-CABLE ,INPUT-SOCKET> <TELL "\"I'll fix it!\"" CR>)
+  ;           (ELSE <TELL
+  ;             "The hacker studiously ignores you, loath to admit there is something he
+  ;   doesn't know about."
+  ;             CR>)>)
+  ;         (<VERB? FOLLOW> <COND
+  ;           (<HERE? ,INNER-LAIR> <TELL "\"I'm here, aren't I?\"" CR>)
+  ;           (ELSE <TELL
+  ;             "\"I haven't got time. I have new versions of the system, the assembler,
+  ;   the editor, and the debugger to finish hacking.\""
+  ;             CR>)>)
+  ;         (<P? GIVE * ME> <COND
+  ;           (<NOT
+  ;             <IN? ,CARTON ,HACKER>> <QUEUE I-FOOD-HINT 2>)> <COND
+  ;           (<PRSO? ,HELP-KEY> <PERFORM ,V?HELP> <RTRUE>)
+  ;           (<PRSO? ,KEYRING> <TELL "\"Well, I can't give you "> <COND (<IN? ,CARTON ,HACKER> <TELL "all ">)> <TELL
+  ;             "my keys, I need them.\" He fondles his
+  ;   keyring proudly."
+  ;             CR>)
+  ;           (<PRSO? ,MASTER-KEY> <COND
+  ;             (<IN? ,MASTER-KEY ,GLOBAL-OBJECTS> <TELL
+  ;               S
+  ;               "\"Who said anything about any master keys?\" he asks suspiciously.|">)
+  ;             (<IN? ,CARTON ,HACKER> <HACKER-LOANS-KEY>)
+  ;             (ELSE <TELL
+  ;               "\"Fat chance! This is a master key! What have you done for me
+  ;   lately?\""
+  ;               CR>)>)
+  ;           (<PRSO? ,KEY-1 ,KEY-2 ,KEY-3 ,KEY-4> <TELL
+  ;             "\"Those are boring old keys. They don't open anything interesting.\""
+  ;             CR>)
+  ;           (ELSE <TELL "\"I don't have that.\"" CR>)>)
+  ;         (<VERB? TRADE> <COND
+  ;           (<AND
+  ;             <PRSO? ,CHINESE-FOOD ,CARTON ,MASTER-KEY>
+  ;             <PRSO? ,CHINESE-FOOD ,CARTON ,MASTER-KEY>> <SETG HACKER-TRADE? T> <TELL "\"You give me the food first.\"" CR>)
+  ;           (ELSE <TELL "\"That's not a good trade.\"" CR>)>)
+  ;         (<VERB? HELLO> <TELL "\"Greetingage.\""> <COND
+  ;           (<HERE? ,TERMINAL-ROOM> <TELL " He turns back to his hacking.">)> <CRLF>)
+  ;         (ELSE <TELL "\"Mumble. Frotz.\"" CR>)>)
+  ;       (<VERB? EXAMINE> <COND
+  ;         (<HERE? ,INNER-LAIR> <COND
+  ;           (<G? ,LAIR-CNT 6> <TELL "He looks vacant-eyed and dangerous." CR>)
+  ;           (ELSE <TELL "He's muddy, wet, and tired looking." CR>)>)
+  ;         (ELSE <TELL "The hacker "> <COND
+  ;           (<AND <NOT <ZERO? ,HACKER-HELP>> <QUEUED? I-HACKER-HELPS>> <TELL "is "> <COND
+  ;             (<EQUAL? ,HACKER-HELP 1> <TELL "star">)
+  ;             (ELSE <TELL "sitt">)> <TELL "ing at your terminal"> <COND (<G? ,HACKER-HELP 1> <TELL ", typing furiously">)> <TELL
+  ;             ". Every so
+  ;   often, he pauses briefly and twirls a lock of his hair. He is also
+  ;   humming under his breath.">)
+  ;           (ELSE <TELL
+  ;             "sits comfortably on an office chair facing a terminal table,
+  ;   or perhaps it's just a pile of old listings as tall as a terminal table.
+  ;   He is typing madly, using just two fingers, but achieves
+  ;   speeds that typists using all ten fingers only dream of. He is apparently
+  ;   debugging a large assembly language program, as the screen of his terminal
+  ;   looks like a spray of completely random characters.">)> <TELL
+  ;           " The hacker is dressed
+  ;   in blue jeans, an old work shirt, and what might once have been running
+  ;   shoes. Hanging from his belt is an enormous ring of keys. He is in need
+  ;   of a bath."
+  ;           CR>)>)
+  ;       (<VERB? THANK> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL "It doesn't impress him." CR>)
+  ;         (<OR <HELD? ,MASTER-KEY> <NOT <ZERO? ,HACKER-HELP>>> <TELL "He blushes." CR>)>)
+  ;       (<VERB? LISTEN> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL "He sounds like an insincere Moonie." CR>)
+  ;         (ELSE <TELL
+  ;           "He is humming something. It sounds classical, perhaps Bach?"
+  ;           CR>)>)
+  ;       (<VERB? SMELL> <TELL
+  ;         "Either the hacker, his clothing, or both are in need of cleaning."
+  ;         CR>)
+  ;       (<P? TELL-ABOUT HACKER> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL "He doesn't appear to be listening." CR>)
+  ;         (<PRSI? ,PROGRAM ,PC> <COND
+  ;           (,HACKER-HELP <TELL
+  ;             "He listens, more or less. The impression he gives is that non-hackers
+  ;   don't know anything about the bugs they cause."
+  ;             CR>)
+  ;           (ELSE <TELL
+  ;             "The hacker isn't too interested, and doesn't bother to get up and
+  ;   investigate more closely. He mumbles something about sending him a
+  ;   bug message, and returns to his work."
+  ;             CR>)>)
+  ;         (<IN? ,PRSI ,PLAYER> <PERFORM ,V?SHOW ,PRSI ,HACKER> <RTRUE>)
+  ;         (ELSE <TELL "The hacker shows little interest in your remarks." CR>)>)
+  ;       (<VERB? SHOW> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL ,TOTALLY-UNRESPONSIVE>)
+  ;         (<FSET? ,PRSO ,FOODBIT> <TELL "\"Winnage! I could do with some of that.\"" CR>)
+  ;         (<PRSO? ,SMOOTH-STONE> <TELL "\"Odd-looking thing. Are you a rock-jock?\"" CR>)
+  ;         (<PRSO? ,HAND> <TELL "\"Mondo grosso!\"" CR>)
+  ;         (<PRSO? ,DEAD-RAT> <TELL
+  ;           "\"I have enough of those in my basement. Get rid of it!\""
+  ;           CR>)
+  ;         (ELSE <TELL
+  ;           "He more or less grunts at you, but shows little interest in "
+  ;           THE
+  ;           ,PRSO
+  ;           ,PERIOD>)>)
+  ;       (<VERB? GIVE> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL ,TOTALLY-UNRESPONSIVE>)
+  ;         (<AND
+  ;           <PRSO? ,CARTON ,CHINESE-FOOD>
+  ;           <IN? ,CHINESE-FOOD ,CARTON>> <DEQUEUE I-FOOD-HINT> <SET
+  ;           H
+  ;           <GETP ,CHINESE-FOOD ,P?HEAT>> <COND
+  ;           (<FSET? ,CHINESE-FOOD ,RMUNGBIT> <REMOVE ,CARTON> <TELL
+  ;             "\"Ouch! This is ridiculous! You've overcooked it. Look at those
+  ;   poor shrimp! It's ruined, chomper!\" He throws it away."
+  ;             CR>)
+  ;           (<G=? .H 12> <MOVE ,CARTON ,HACKER> <REMOVE ,CHINESE-FOOD> <TELL
+  ;             "\"Ah! Serious food!\" He plunges into the food with all the delicacy
+  ;   and table manners of a shark at a feeding frenzy. Soon a satisfied
+  ;   expression appears on his face. "> <COND
+  ;             (,HACKER-TRADE? <HACKER-LOANS-KEY>)
+  ;             (ELSE <TELL "\"Now, what was it you were wanting?\" he asks." CR>)>)
+  ;           (ELSE <TELL "\"Yuck! This is"> <COND
+  ;             (<ZERO? .H> <TELL " cold">)
+  ;             (ELSE <TELL "n't warm enough">)> <TELL "!\" He
+  ;   thrusts it back into your hands." CR>)>)
+  ;         (<AND <PRSO? ,SNACK> <NOT
+  ;           <FSET? ,SNACK ,RMUNGBIT>>> <MOVE ,SNACK ,HACKER> <TELL "\"Hey, thanks!\" He stuffs it down in no time."> <AFTER-HACKER-EATS>)
+  ;         (<PRSO? ,COKE> <TELL "\"I only drink Diet Coke,\" he complains."> <AFTER-HACKER-EATS>)
+  ;         (ELSE <TELL "\"No thanks, keep it for now.\"" CR>)>)
+  ;       (<HOSTILE-VERB?> <COND
+  ;         (<VERB? THROW> <MOVE ,PRSO ,HERE> <TELL "Thrown. ">)> <COND
+  ;         (<G? ,LAIR-CNT 6> <TELL
+  ;           "He is unharmed. \"It is peaceful within,\" he remarks."
+  ;           CR>)
+  ;         (ELSE <TELL
+  ;           "The hacker retreats. \"I know karate!\" he says, somewhat
+  ;   unconvincingly."
+  ;           CR>)>)>
+  ; >
+  ; --- End ZIL Source ---
+
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
+)
+
 ; [NEEDS-TRANSLATION] HAND
-(object HAND
+(object @hand
   :description "human hand"
   :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
   :properties (:value 5 :heat 0 :contfcn "HAND-F")
@@ -3103,20 +3351,20 @@
   )
 )
 
-(object HANDS
+(object @hands
   :description "your hand"
   :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
 )
 
-(object HEAD
+(object @head
   :description "your head"
   :flags (NOABIT NOTHEBIT)
 )
 
 ; [NEEDS-TRANSLATION] HELP-KEY
-(object HELP-KEY
+(object @help-key
   :description "HELP key"
-  :location PC
+  :location @pc
   :flags (NDESCBIT READBIT)
   :properties (:text "It says \"HELP\" in reassuring blue letters.")
 
@@ -3153,7 +3401,7 @@
 )
 
 ; [NEEDS-TRANSLATION] HIGH-VOLTAGE
-(object HIGH-VOLTAGE
+(object @high-voltage
   :description "power line"
   :flags (TAKEBIT WEAPONBIT)
 
@@ -3280,15 +3528,15 @@
   )
 )
 
-(object HIM
+(object @him
   :description "him"
   :flags (NOABIT NOTHEBIT NDESCBIT TOUCHBIT)
 )
 
 ; [NEEDS-TRANSLATION] HOOK
-(object HOOK
+(object @hook
   :description "hook"
-  :location ELEVATOR-FLOOR
+  :location @elevator-floor
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -3310,9 +3558,9 @@
 )
 
 ; [NEEDS-TRANSLATION] INPUT-CABLE
-(object INPUT-CABLE
+(object @input-cable
   :description "coaxial cable"
-  :location INPUT-SOCKET
+  :location @input-socket
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -3359,9 +3607,9 @@
 )
 
 ; [NEEDS-TRANSLATION] INPUT-SOCKET
-(object INPUT-SOCKET
+(object @input-socket
   :description "socket"
-  :location REPEATER
+  :location @repeater
   :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT)
 
   ; --- ZIL Source ---
@@ -3378,16 +3626,16 @@
   )
 )
 
-(object INTDIR
+(object @intdir
   :description "direction"
 )
 
-(object INTNAME
+(object @intname
   :flags (NDESCBIT)
 )
 
 ; [NEEDS-TRANSLATION] INTNUM
-(object INTNUM
+(object @intnum
   :description "number"
 
   ; --- ZIL Source ---
@@ -3406,9 +3654,9 @@
 )
 
 ; [NEEDS-TRANSLATION] IRON-PLATE
-(object IRON-PLATE
+(object @iron-plate
   :description "iron plate"
-  :location CAVE-ALTAR
+  :location @cave-altar
   :flags (AN NDESCBIT CONTBIT TRANSBIT OPENABLE)
 
   ; --- ZIL Source ---
@@ -3467,13 +3715,13 @@
   )
 )
 
-(object IT
+(object @it
   :description "it"
   :flags (AN NOABIT NOTHEBIT NDESCBIT TOUCHBIT)
 )
 
 ; [NEEDS-TRANSLATION] JUNK
-(object JUNK
+(object @junk
   :description "junk"
   :flags (NDESCBIT NOABIT)
 
@@ -3500,34 +3748,34 @@
   )
 )
 
-(object KEY-1
+(object @key-1
   :description "red aluminum Yale key"
-  :location KEYRING
+  :location @keyring
   :flags (TAKEBIT)
 )
 
-(object KEY-2
+(object @key-2
   :description "green aluminum Yale key"
-  :location KEYRING
+  :location @keyring
   :flags (TAKEBIT)
 )
 
-(object KEY-3
+(object @key-3
   :description "green brass Yale key"
-  :location KEYRING
+  :location @keyring
   :flags (TAKEBIT)
 )
 
-(object KEY-4
+(object @key-4
   :description "green aluminum Medeco key"
-  :location KEYRING
+  :location @keyring
   :flags (TAKEBIT)
 )
 
 ; [NEEDS-TRANSLATION] KEYRING
-(object KEYRING
+(object @keyring
   :description "keyring"
-  :location HACKER
+  :location @hacker
   :flags (NDESCBIT TAKEBIT CONTBIT SURFACEBIT OPENBIT)
   :properties (:contfcn "HACKER-F")
 
@@ -3549,19 +3797,19 @@
   )
 )
 
-(object KITCHEN-COUNTER
+(object @kitchen-counter
   :description "kitchen counter"
-  :location KITCHEN
+  :location @kitchen
   :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
   :properties (:capacity 200)
 )
 
 ; [NEEDS-TRANSLATION] KNIFE
-(object KNIFE
+(object @knife
   :description "knife"
   :fdesc "Lying to one side of the altar stone is a sharp, thin-bladed
 knife."
-  :location CAVE-ALTAR
+  :location @cave-altar
   :flags (TAKEBIT WEAPONBIT TOOLBIT)
 
   ; --- ZIL Source ---
@@ -3584,7 +3832,7 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] LAB
-(object LAB
+(object @lab
   :description "laboratory"
 
   ; --- ZIL Source ---
@@ -3615,9 +3863,9 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] LAB-BENCH
-(object LAB-BENCH
+(object @lab-bench
   :description "lab bench"
-  :location ALCHEMY-LAB
+  :location @alchemy-lab
   :flags (SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
   :properties (:capacity 200)
 
@@ -3649,7 +3897,7 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] LADDER
-(object LADDER
+(object @ladder
   :description "ladder"
   :flags (NDESCBIT)
 
@@ -3674,7 +3922,7 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] LIGHT
-(object LIGHT
+(object @light
   :description "light"
 
   ; --- ZIL Source ---
@@ -3692,16 +3940,16 @@ knife."
   )
 )
 
-(object LOCAL-GLOBALS
+(object @local-globals
   :fdesc "F"
   :ldesc "F"
   :properties (:descfcn 0 :contfcn 0 :count 0 :size 0 :text "" :capacity 0)
 )
 
 ; [NEEDS-TRANSLATION] LOVECRAFT
-(object LOVECRAFT
+(object @lovecraft
   :description "Alchemy Department computer"
-  :location ALCHEMY-LAB
+  :location @alchemy-lab
   :flags (READBIT AN)
   :properties (:text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
 
@@ -3739,7 +3987,7 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] LURKER
-(object LURKER
+(object @lurker
   :description "thing"
   :flags (NDESCBIT PERSON)
 
@@ -3770,9 +4018,9 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] MAINTENANCE-MAN
-(object MAINTENANCE-MAN
+(object @maintenance-man
   :description "maintenance man"
-  :location FLOOR-WAXER
+  :location @floor-waxer
   :flags (PERSON)
 
   ; --- ZIL Source ---
@@ -3844,9 +4092,9 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] MANHOLE
-(object MANHOLE
+(object @manhole
   :description "manhole"
-  :location STORAGE-ROOM
+  :location @storage-room
   :flags (OPENBIT CONTBIT SEARCHBIT RMUNGBIT DOORBIT)
   :properties (:capacity 200 :descfcn "MANHOLE-DESC")
 
@@ -3900,11 +4148,11 @@ knife."
 )
 
 ; [NEEDS-TRANSLATION] MANHOLE-COVER
-(object MANHOLE-COVER
+(object @manhole-cover
   :description "manhole cover"
   :fdesc "In one corner of the room a manhole cover is partly buried in the dirt and
 crud."
-  :location MANHOLE
+  :location @manhole
   :flags (TAKEBIT TRYTAKEBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
   :properties (:size 200)
 
@@ -3961,9 +4209,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MASS
-(object MASS
+(object @mass
   :description "whitish mass"
-  :location INNER-LAIR
+  :location @inner-lair
   :flags (NDESCBIT PERSON)
 
   ; --- ZIL Source ---
@@ -4018,7 +4266,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MASTER-KEY
-(object MASTER-KEY
+(object @master-key
   :description "master key"
   :flags (TAKEBIT TRYTAKEBIT)
   :properties (:value 5)
@@ -4045,7 +4293,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] ME
-(object ME
+(object @me
   :description "yourself"
   :flags (PERSON TOUCHBIT NOABIT NOTHEBIT)
 
@@ -4080,7 +4328,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MENU-BOX
-(object MENU-BOX
+(object @menu-box
   :description "menu box"
   :flags (NDESCBIT READBIT)
   :properties (:text "\"Edit Classics Paper.\"")
@@ -4106,9 +4354,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MICROWAVE
-(object MICROWAVE
+(object @microwave
   :description "microwave oven"
-  :location KITCHEN
+  :location @kitchen
   :flags (NDESCBIT SEARCHBIT CONTBIT TRANSBIT OPENABLE)
   :properties (:capacity 30)
 
@@ -4138,7 +4386,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MIST
-(object MIST
+(object @mist
   :description "mist"
 
   ; --- ZIL Source ---
@@ -4159,7 +4407,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MORE-BOX
-(object MORE-BOX
+(object @more-box
   :description "more box"
   :flags (READBIT NDESCBIT)
 
@@ -4182,9 +4430,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] MOUSE
-(object MOUSE
+(object @mouse
   :description "mouse"
-  :location PC
+  :location @pc
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -4206,7 +4454,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] NEW-BRICK
-(object NEW-BRICK
+(object @new-brick
   :description "new brick"
   :flags (NDESCBIT TAKEBIT WEAPONBIT)
 
@@ -4228,9 +4476,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] NITROGEN
-(object NITROGEN
+(object @nitrogen
   :description "cold liquid"
-  :location FLASK
+  :location @flask
   :flags (TAKEBIT WEAPONBIT)
 
   ; --- ZIL Source ---
@@ -4270,12 +4518,12 @@ crud."
   )
 )
 
-(object NOISE
+(object @noise
   :description "noise"
 )
 
 ; [NEEDS-TRANSLATION] NORTH-WALL
-(object NORTH-WALL
+(object @north-wall
   :description "north wall"
 
   ; --- ZIL Source ---
@@ -4292,7 +4540,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] NOT-HERE-OBJECT
-(object NOT-HERE-OBJECT
+(object @not-here-object
   :description "it"
   :flags (NOABIT NOTHEBIT)
 
@@ -4328,9 +4576,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] NOTE
-(object NOTE
+(object @note
   :description "piece of paper"
-  :location SECRET-HOLE
+  :location @secret-hole
   :flags (TAKEBIT READBIT)
   :properties (:value 5)
 
@@ -4363,7 +4611,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] ODD-PAPER
-(object ODD-PAPER
+(object @odd-paper
   :description "classics paper"
   :flags (READBIT NDESCBIT)
 
@@ -4391,7 +4639,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] OFFICE-DOOR
-(object OFFICE-DOOR
+(object @office-door
   :description "office"
   :flags (NDESCBIT DOORBIT OPENABLE)
 
@@ -4407,9 +4655,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] OPEN-BUTTON
-(object OPEN-BUTTON
+(object @open-button
   :description "open button"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT AN)
 
   ; --- ZIL Source ---
@@ -4428,15 +4676,15 @@ crud."
   )
 )
 
-(object OUTLET
+(object @outlet
   :description "outlet"
   :flags (NDESCBIT AN)
 )
 
 ; [NEEDS-TRANSLATION] OUTPUT-CABLE
-(object OUTPUT-CABLE
+(object @output-cable
   :description "cablelike appendage"
-  :location REPEATER
+  :location @repeater
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -4477,7 +4725,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] OUTSIDE-DOOR
-(object OUTSIDE-DOOR
+(object @outside-door
   :description "outside door"
   :flags (DOORBIT LOCKED NDESCBIT OPENABLE)
 
@@ -4505,9 +4753,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PADLOCK
-(object PADLOCK
+(object @padlock
   :description "padlock"
-  :location ACCESS-HATCH
+  :location @access-hatch
   :flags (NDESCBIT TAKEBIT TRYTAKEBIT LOCKED OPENABLE)
 
   ; --- ZIL Source ---
@@ -4576,10 +4824,95 @@ crud."
   )
 )
 
+; [NEEDS-TRANSLATION] PC
+(object @pc
+  :description "pc"
+  :fdesc "A really whiz-bang pc is right inside the door."
+  :location @terminal-room
+  :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
+  :properties (:size 30)
+
+  ; --- ZIL Source ---
+  ; <ROUTINE PC-F ("AUX" TMP)
+  ;   <COND
+  ;       (<VERB? EXAMINE> <COND
+  ;         (<EQUAL?
+  ;           <GET ,P-NAMW 0>
+  ;           ,W?SCREEN> <NEW-VERB ,V?READ> <RTRUE>)
+  ;         (ELSE <TELL
+  ;           "This is a beyond-state-of-the-art personal computer. It has a
+  ;   1024 by 1024 pixel color monitor, a mouse, an attached hard disk,
+  ;   and a local area network connection. Fortunately, one of its features
+  ;   is a prominent HELP key."> <COND
+  ;           (<NOT
+  ;             <FSET? ,PC ,POWERBIT>> <TELL S " It is currently " "turned off.">)
+  ;           (<FIRST? ,PC> <TELL " On the screen you see " A <FIRST? ,PC> ".">)> <CRLF>)>)
+  ;       (<AND
+  ;         <VERB? LISTEN>
+  ;         <FSET? ,PC ,POWERBIT>> <TELL "It hums contentedly." CR>)
+  ;       (<VERB? TAKE> <COND
+  ;         (<QUEUED? I-HACKER-HELPS> <NEW-VERB ,V?UNPLUG> <RTRUE>)
+  ;         (<EQUAL? <ITAKE> T> <TELL "You take it"> <COND
+  ;           (<NOT ,PC-UNPLUGGED?> <TELL ", "> <COND
+  ;             (<FSET? ,PC ,POWERBIT> <INIT-PC> <TELL "turning it off and ">)> <SETG PC-UNPLUGGED? T> <TELL "unplugging it first">)> <TELL ,PERIOD>)
+  ;         (ELSE <RTRUE>)>)
+  ;       (<P? (PUT PUT-ON) * PC> <NO-GOOD-SURFACE>)
+  ;       (<VERB? READ> <COND
+  ;         (<AND
+  ;           <QUEUED? I-HACKER-HELPS>
+  ;           <L? ,HACKER-HELP 3>> <TELL S "There's nothing " "recognizable on the screen." CR> <RTRUE>)> <SET
+  ;         TMP
+  ;         <COND
+  ;           (<IN? ,ODD-PAPER ,PC> ,ODD-PAPER)
+  ;           (<IN? ,MENU-BOX ,PC> ,MENU-BOX)
+  ;           (<IN? ,MORE-BOX ,PC> ,MORE-BOX)
+  ;           (<IN? ,YAK-WINDOW ,PC> ,YAK-WINDOW)>> <COND
+  ;         (.TMP <NEW-PRSO .TMP> <RTRUE>)
+  ;         (ELSE <TELL S "There's nothing " "to read on the screen now." CR>)>)
+  ;       (<VERB? LAMP-ON> <COND
+  ;         (,PC-UNPLUGGED? <TELL "It's unplugged. You should plug it in first." CR>)
+  ;         (<NOT
+  ;           <FSET? ,PC ,POWERBIT>> <FSET ,PC ,POWERBIT> <TELL
+  ;           ,COMPUTER-POWERS
+  ;           "up, goes through a remarkably fast self-check,
+  ;   and greets you, requesting "
+  ;           ,LOGIN-PLEASE
+  ;           " The only sound you hear is
+  ;   a very low hum."
+  ;           CR>)
+  ;         (ELSE <TELL "It's on. Maybe you didn't notice." CR>)>)
+  ;       (<VERB? PLUG-IN> <COND
+  ;         (,PC-UNPLUGGED? <SETG PC-UNPLUGGED? <>> <TELL "You plug in the computer." CR>)
+  ;         (ELSE <TELL ,IT-ALREADY-IS>)>)
+  ;       (<VERB? UNPLUG> <COND
+  ;         (,PC-UNPLUGGED? <TELL ,IT-ALREADY-IS> <RTRUE>)
+  ;         (<QUEUED? I-HACKER-HELPS> <TELL
+  ;           S
+  ;           "The hacker stops you. \"You'll mung the bits, chomper!\"|">)
+  ;         (ELSE <INIT-PC> <SETG PC-UNPLUGGED? T> <TELL "Okay, it's unplugged now." CR>)>)
+  ;       (<VERB? LAMP-OFF> <COND
+  ;         (<QUEUED? I-HACKER-HELPS> <TELL
+  ;           S
+  ;           "The hacker stops you. \"You'll mung the bits, chomper!\"|">)
+  ;         (<FSET? ,PC ,POWERBIT> <INIT-PC> <COMPUTER-POWERS-OFF>)
+  ;         (ELSE <ITS-ALREADY-X "off">)>)
+  ;       (<VERB? READ> <COND
+  ;         (<IN? ,ODD-PAPER ,PC> <NEW-PRSO ,ODD-PAPER> <RTRUE>)>)
+  ;       (<AND
+  ;         <VERB? SIT-AT>
+  ;         <IN? ,CHAIR ,HERE>> <PERFORM ,V?SIT ,CHAIR> <RTRUE>)>
+  ; >
+  ; --- End ZIL Source ---
+
+  :behaviors (
+    ; TODO: Translate from ZIL source above
+  )
+)
+
 ; [NEEDS-TRANSLATION] PEACH-TREE
-(object PEACH-TREE
+(object @peach-tree
   :description "peach tree"
-  :location INSIDE-DOME
+  :location @inside-dome
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -4617,9 +4950,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PENTAGRAM
-(object PENTAGRAM
+(object @pentagram
   :description "pentagram"
-  :location ALCHEMY-LAB
+  :location @alchemy-lab
   :flags (NDESCBIT VEHBIT OPENBIT CONTBIT SEARCHBIT)
   :properties (:capacity 200)
 
@@ -4706,9 +5039,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PLASTIC-CONTAINER
-(object PLASTIC-CONTAINER
+(object @plastic-container
   :description "plastic container"
-  :location INF-1
+  :location @inf-1
   :flags (TAKEBIT CONTBIT READBIT SEARCHBIT OPENABLE)
   :properties (:capacity 30 :size 15 :text "\"Frobozz Magic Floor Wax (and Dessert Topping)\"")
 
@@ -4741,7 +5074,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PLATFORM
-(object PLATFORM
+(object @platform
   :description "platform"
   :flags (NDESCBIT VEHBIT SURFACEBIT)
 
@@ -4764,9 +5097,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PLAYER
-(object PLAYER
+(object @player
   :description "it"
-  :location TERMINAL-ROOM
+  :location @terminal-room
   :flags (NDESCBIT INVISIBLE PERSON CONTBIT TRANSBIT)
 
   ; --- ZIL Source ---
@@ -4799,7 +5132,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] POOL
-(object POOL
+(object @pool
   :description "pool"
   :flags (NDESCBIT VEHBIT)
 
@@ -4851,7 +5184,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] POWER-CORD
-(object POWER-CORD
+(object @power-cord
   :description "power cord"
   :flags (NDESCBIT)
 
@@ -4917,9 +5250,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PRESSURE-VALVE
-(object PRESSURE-VALVE
+(object @pressure-valve
   :description "pressure valve"
-  :location TUNNEL-EAST
+  :location @tunnel-east
   :flags (NDESCBIT OPENABLE)
   :properties (:value 5)
 
@@ -4968,9 +5301,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] PROFESSOR
-(object PROFESSOR
+(object @professor
   :description "professor"
-  :location ALCHEMY-DEPT
+  :location @alchemy-dept
   :flags (PERSON OPENBIT CONTBIT SEARCHBIT)
   :properties (:value 5 :contfcn "PROFESSOR-F" :descfcn "PROFESSOR-DESC")
 
@@ -5072,13 +5405,13 @@ crud."
   )
 )
 
-(object PROGRAM
+(object @program
   :description "program"
   :flags (NDESCBIT)
 )
 
 ; [NEEDS-TRANSLATION] PSEUDO-OBJECT
-(object PSEUDO-OBJECT
+(object @pseudo-object
   :description "pseudo"
 
   ; --- ZIL Source ---
@@ -5103,9 +5436,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] RAT-SYMBOL
-(object RAT-SYMBOL
+(object @rat-symbol
   :description "branded symbol"
-  :location DEAD-RAT
+  :location @dead-rat
   :flags (NDESCBIT)
   :properties (:size 0)
 
@@ -5127,7 +5460,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] RATS
-(object RATS
+(object @rats
   :description "sewer rats"
   :flags (NOABIT)
   :properties (:descfcn "RATS-DESC")
@@ -5175,9 +5508,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] READOUT
-(object READOUT
+(object @readout
   :description "display"
-  :location KITCHEN
+  :location @kitchen
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -5207,9 +5540,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] REFRIGERATOR
-(object REFRIGERATOR
+(object @refrigerator
   :description "refrigerator"
-  :location KITCHEN
+  :location @kitchen
   :flags (NDESCBIT SEARCHBIT CONTBIT OPENABLE READBIT)
   :properties (:capacity 200)
 
@@ -5242,9 +5575,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] REPEATER
-(object REPEATER
+(object @repeater
   :description "metal box"
-  :location INNER-LAIR
+  :location @inner-lair
   :flags (TRANSBIT CONTBIT SEARCHBIT OPENABLE)
   :properties (:descfcn "REPEATER-DESC")
 
@@ -5271,9 +5604,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] REPEATER-COVER
-(object REPEATER-COVER
+(object @repeater-cover
   :description "metal cover"
-  :location REPEATER
+  :location @repeater
   :flags (TAKEBIT OPENABLE)
 
   ; --- ZIL Source ---
@@ -5310,9 +5643,9 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] RING
-(object RING
+(object @ring
   :description "brass hyrax"
-  :location PROFESSOR
+  :location @professor
   :flags (TAKEBIT TRYTAKEBIT TOUCHBIT)
 
   ; --- ZIL Source ---
@@ -5339,7 +5672,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] ROD
-(object ROD
+(object @rod
   :description "reinforcing rod"
   :flags (INVISIBLE)
 
@@ -5367,7 +5700,7 @@ crud."
 )
 
 ; [NEEDS-TRANSLATION] ROOF-DOOR
-(object ROOF-DOOR
+(object @roof-door
   :description "roof door"
   :flags (DOORBIT LOCKED NDESCBIT OPENABLE)
 
@@ -5396,27 +5729,27 @@ crud."
   )
 )
 
-(object ROOF-DOOR-SIGN
+(object @roof-door-sign
   :description "sign"
-  :location BROWN-TOP-FLOOR
+  :location @brown-top-floor
   :flags (READBIT NDESCBIT)
   :properties (:text "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below,
 it says \"This means you!\" and below that in different handwriting,
 it says \"Who, me?\"")
 )
 
-(object ROOMS
-  :location TO
+(object @rooms
+  :location @to
 )
 
-(object SECRET-HOLE
+(object @secret-hole
   :description "cylindrical hole"
   :flags (CONTBIT OPENBIT SEARCHBIT)
   :properties (:capacity 5)
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-1
-(object SHAFT-1
+(object @shaft-1
   :description "elevator shaft"
   :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
 
@@ -5464,7 +5797,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-2
-(object SHAFT-2
+(object @shaft-2
   :description "elevator shaft"
   :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
 
@@ -5512,7 +5845,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-3
-(object SHAFT-3
+(object @shaft-3
   :description "elevator shaft"
   :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
 
@@ -5560,7 +5893,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-B
-(object SHAFT-B
+(object @shaft-b
   :description "elevator shaft"
   :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
 
@@ -5608,10 +5941,10 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SIGNUP
-(object SIGNUP
+(object @signup
   :description "sign-up sheet"
   :fdesc "Taped to the wall to the right of the archway is a sign-up sheet."
-  :location ALCHEMY-DEPT
+  :location @alchemy-dept
   :flags (TAKEBIT TRYTAKEBIT READBIT)
 
   ; --- ZIL Source ---
@@ -5642,9 +5975,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SLAB
-(object SLAB
+(object @slab
   :description "slab of granite"
-  :location CAVE-ALTAR
+  :location @cave-altar
   :flags (NDESCBIT SEARCHBIT VEHBIT OPENBIT SURFACEBIT CONTBIT)
   :properties (:capacity 200)
 
@@ -5681,7 +6014,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SLIME
-(object SLIME
+(object @slime
   :description "crawling slime"
   :properties (:descfcn "SLIME-DESC")
 
@@ -5715,9 +6048,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SLOTS
-(object SLOTS
+(object @slots
   :description "slot"
-  :location LARGE-CHAMBER
+  :location @large-chamber
   :flags (NDESCBIT OPENBIT CONTBIT VEHBIT)
 
   ; --- ZIL Source ---
@@ -5763,9 +6096,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SMOOTH-STONE
-(object SMOOTH-STONE
+(object @smooth-stone
   :description "smooth stone"
-  :location PLATFORM-ROOM
+  :location @platform-room
   :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT WEAPONBIT)
   :properties (:value 5 :descfcn "SMOOTH-STONE-DESC")
 
@@ -5845,9 +6178,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SNACK
-(object SNACK
+(object @snack
   :description "package of Funny Bones"
-  :location KITCHEN-COUNTER
+  :location @kitchen-counter
   :flags (TAKEBIT FOODBIT READBIT OPENABLE)
   :properties (:heat 0 :text "\"Funny Bones\"")
 
@@ -5890,7 +6223,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SNOW
-(object SNOW
+(object @snow
   :description "snow"
 
   ; --- ZIL Source ---
@@ -5908,7 +6241,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] SOUTH-WALL
-(object SOUTH-WALL
+(object @south-wall
   :description "south wall"
 
   ; --- ZIL Source ---
@@ -5924,15 +6257,15 @@ it says \"Who, me?\"")
   )
 )
 
-(object STEAM-PIPES
+(object @steam-pipes
   :description "steam pipes"
   :flags (NDESCBIT)
 )
 
 ; [NEEDS-TRANSLATION] STONE-SYMBOL
-(object STONE-SYMBOL
+(object @stone-symbol
   :description "carved symbol"
-  :location SMOOTH-STONE
+  :location @smooth-stone
   :flags (NDESCBIT)
   :properties (:size 0)
 
@@ -5954,9 +6287,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] STOP-SWITCH
-(object STOP-SWITCH
+(object @stop-switch
   :description "stop switch"
-  :location CS-ELEVATOR-ROOM
+  :location @cs-elevator-room
   :flags (NDESCBIT)
 
   ; --- ZIL Source ---
@@ -5972,7 +6305,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] STUDENTS
-(object STUDENTS
+(object @students
   :description "missing students"
   :flags (NDESCBIT PERSON)
 
@@ -5988,9 +6321,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] TATTOO
-(object TATTOO
+(object @tattoo
   :description "tattoo"
-  :location HAND
+  :location @hand
   :flags (NDESCBIT)
   :properties (:size 0)
 
@@ -6010,7 +6343,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] TENTACLE
-(object TENTACLE
+(object @tentacle
   :description "ropy strand"
   :flags (NDESCBIT)
 
@@ -6047,9 +6380,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] TUB
-(object TUB
+(object @tub
   :description "tub of dirt"
-  :location INSIDE-DOME
+  :location @inside-dome
   :flags (NDESCBIT CONTBIT OPENBIT SEARCHBIT)
   :properties (:capacity 30)
 
@@ -6083,7 +6416,7 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] UP-BUTTON
-(object UP-BUTTON
+(object @up-button
   :description "up-arrow"
   :flags (NDESCBIT AN)
 
@@ -6121,9 +6454,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] URCHIN
-(object URCHIN
+(object @urchin
   :description "urchin"
-  :location AERO-LOBBY
+  :location @aero-lobby
   :flags (PERSON AN SEARCHBIT OPENBIT CONTBIT)
   :properties (:descfcn "URCHIN-DESC")
 
@@ -6216,9 +6549,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] URCHIN-CLOTHES
-(object URCHIN-CLOTHES
+(object @urchin-clothes
   :description "clothes"
-  :location URCHIN
+  :location @urchin
   :flags (NDESCBIT TRYTAKEBIT TAKEBIT)
 
   ; --- ZIL Source ---
@@ -6238,9 +6571,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] URCHIN-WIRE
-(object URCHIN-WIRE
+(object @urchin-wire
   :description "wire"
-  :location LARGE-CHAMBER
+  :location @large-chamber
   :flags (NDESCBIT)
   :properties (:value 5)
 
@@ -6286,9 +6619,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] URCHINS
-(object URCHINS
+(object @urchins
   :description "urchins"
-  :location SLOTS
+  :location @slots
   :flags (INVISIBLE PERSON NOABIT)
   :properties (:descfcn "URCHINS-DESC")
 
@@ -6331,9 +6664,9 @@ it says \"Who, me?\"")
 )
 
 ; [NEEDS-TRANSLATION] VAT
-(object VAT
+(object @vat
   :description "vat"
-  :location LAB-BENCH
+  :location @lab-bench
   :flags (TAKEBIT READBIT OPENBIT CONTBIT TRANSBIT SEARCHBIT)
   :properties (:capacity 20 :size 20 :text "The text is a long chemical-sounding name typed on a
 label affixed to the container. Below is written in pencil
@@ -6384,7 +6717,7 @@ label affixed to the container. Below is written in pencil
 )
 
 ; [NEEDS-TRANSLATION] WALL
-(object WALL
+(object @wall
   :description "wall"
 
   ; --- ZIL Source ---
@@ -6400,14 +6733,14 @@ label affixed to the container. Below is written in pencil
   )
 )
 
-(object WALL-SOCKET
+(object @wall-socket
   :description "wall socket"
-  :location INF-3
+  :location @inf-3
   :properties (:descfcn "WALL-SOCKET-DESC")
 )
 
 ; [NEEDS-TRANSLATION] WEST-WALL
-(object WEST-WALL
+(object @west-wall
   :description "west wall"
 
   ; --- ZIL Source ---
@@ -6424,7 +6757,7 @@ label affixed to the container. Below is written in pencil
 )
 
 ; [NEEDS-TRANSLATION] YAK-WINDOW
-(object YAK-WINDOW
+(object @yak-window
   :description "YAK editor"
   :flags (NDESCBIT READBIT)
   :properties (:text "\"YAK 5.3\"")
