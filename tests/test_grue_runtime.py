@@ -678,3 +678,179 @@ class TestGlobalsRuntime:
         assert runtime.get_global("counter") == 1
         runtime.do("push", "BUTTON")
         assert runtime.get_global("counter") == 2
+
+
+class TestEventSystem:
+    """Test turn-based event handlers."""
+
+    def test_event_fires_when_queued(self):
+        """Events fire when queued and processed."""
+        source = """
+        (globals :stage 0)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+
+        (event test-event
+          :on-turn (cond
+            (true (success
+                    :effects ((inc! stage))
+                    :context ((message "Event fired"))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Event shouldn't fire if not queued
+        results = runtime.process_events()
+        assert len(results) == 0
+        assert runtime.get_global("stage") == 0
+
+        # Queue the event
+        runtime.queue_event("test-event")
+        results = runtime.process_events()
+        assert len(results) == 1
+        assert results[0].outcome == "success"
+        assert runtime.get_global("stage") == 1
+
+    def test_event_location_constraint(self):
+        """Events with location only fire when player is there."""
+        source = """
+        (globals :stage 0)
+        (room LOBBY :description "A lobby")
+        (room GARDEN :description "A garden")
+        (object PLAYER :location GARDEN)
+
+        (event lobby-only
+          :location LOBBY
+          :on-turn (cond
+            (true (success :effects ((inc! stage))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        runtime.queue_event("lobby-only")
+
+        # Player is in GARDEN, event shouldn't fire
+        results = runtime.process_events()
+        assert len(results) == 0
+        assert runtime.get_global("stage") == 0
+
+        # Move player to LOBBY
+        runtime.state.objects["PLAYER"].location = "LOBBY"
+        results = runtime.process_events()
+        assert len(results) == 1
+        assert runtime.get_global("stage") == 1
+
+    def test_event_countdown(self):
+        """Events with countdown wait before firing."""
+        source = """
+        (globals :stage 0)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+
+        (event delayed-event
+          :on-turn (cond
+            (true (success :effects ((inc! stage))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Queue with 2-turn countdown
+        runtime.queue_event("delayed-event", countdown=2)
+
+        # First call: countdown 2 -> 1
+        results = runtime.process_events()
+        assert len(results) == 0
+        assert runtime.get_global("stage") == 0
+        assert runtime.get_queue_countdown("delayed-event") == 1
+
+        # Second call: countdown 1 -> 0
+        results = runtime.process_events()
+        assert len(results) == 0
+        assert runtime.get_global("stage") == 0
+        assert runtime.get_queue_countdown("delayed-event") == 0
+
+        # Third call: countdown 0, event fires
+        results = runtime.process_events()
+        assert len(results) == 1
+        assert runtime.get_global("stage") == 1
+
+    def test_event_staged_logic(self):
+        """Events can use stage-based conditions like I-HACKER-HELPS."""
+        source = """
+        (globals :help-stage 0)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+
+        (event hacker-helps
+          :location LOBBY
+          :on-turn (cond
+            ((= help-stage 0)
+              (success
+                :effects ((inc! help-stage))
+                :context ((message "Hacker walks over"))))
+            ((= help-stage 1)
+              (success
+                :effects ((inc! help-stage))
+                :context ((message "Hacker types furiously"))))
+            ((= help-stage 2)
+              (success
+                :effects ((inc! help-stage))
+                :context ((message "Hacker explains problem"))))
+            (true
+              (success
+                :effects ((dequeue! hacker-helps))
+                :context ((message "Hacker returns to seat"))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        runtime.queue_event("hacker-helps")
+
+        # Stage 1
+        results = runtime.process_events()
+        assert len(results) == 1
+        assert ("message", "Hacker walks over") in results[0].context
+        assert runtime.get_global("help-stage") == 1
+
+        # Stage 2
+        results = runtime.process_events()
+        assert ("message", "Hacker types furiously") in results[0].context
+        assert runtime.get_global("help-stage") == 2
+
+        # Stage 3
+        results = runtime.process_events()
+        assert ("message", "Hacker explains problem") in results[0].context
+        assert runtime.get_global("help-stage") == 3
+
+        # Final stage - dequeues itself
+        results = runtime.process_events()
+        assert ("message", "Hacker returns to seat") in results[0].context
+        assert not runtime.is_queued("hacker-helps")
+
+        # No more events
+        results = runtime.process_events()
+        assert len(results) == 0
+
+    def test_event_dequeues_self(self):
+        """Events can dequeue themselves."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+
+        (event one-shot
+          :on-turn (cond
+            (true (success :effects ((dequeue! one-shot))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        runtime.queue_event("one-shot")
+        assert runtime.is_queued("one-shot")
+
+        results = runtime.process_events()
+        assert len(results) == 1
+        assert not runtime.is_queued("one-shot")
+
+        # Won't fire again
+        results = runtime.process_events()
+        assert len(results) == 0

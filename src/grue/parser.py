@@ -31,6 +31,7 @@ from .forms import (
     GrueObject,
     GrueVictory,
     GrueDefeat,
+    GrueEvent,
 )
 
 # Re-export error for backward compatibility
@@ -46,6 +47,7 @@ __all__ = [
     "GrueObject",
     "GrueVictory",
     "GrueDefeat",
+    "GrueEvent",
     "GrueWorld",
     "GrueParser",
     "load_grue",

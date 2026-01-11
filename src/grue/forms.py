@@ -122,6 +122,26 @@ class GrueDefeat:
 
 
 @dataclass
+class GrueEvent:
+    """Turn-based event handler (like ZIL interrupts).
+
+    Events run once per turn when queued. They use the same cond/case
+    structure as behaviors, allowing stage-based logic.
+
+    Example:
+        (event hacker-helps
+          :location @terminal-room   ; Only fires when player is here
+          :on-turn (cond
+            ((= hacker-help 1) (success :effects (...) :context (...)))
+            ((= hacker-help 2) ...)
+            (true (success :effects ((dequeue! hacker-helps)) ...))))
+    """
+    name: str
+    location: str | None  # If set, event only fires when player is here
+    cases: list[GrueCase] = field(default_factory=list)  # Same as behavior cases
+
+
+@dataclass
 class GrueWorld:
     """
     Complete GRUE world definition.
@@ -134,6 +154,7 @@ class GrueWorld:
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
     globals: dict[str, Any] = field(default_factory=dict)  # global variables
+    events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
 
 
 # === Helper functions for form handlers ===
@@ -528,6 +549,43 @@ def _parse_defeat(expr: SList, world: GrueWorld) -> None:
 
     defeat = GrueDefeat(name=name, when=kwargs["when"], context=context)
     world.defeat[defeat.name] = defeat
+
+
+@form("event")
+def _parse_event(expr: SList, world: GrueWorld) -> None:
+    """Parse (event NAME :location ROOM :on-turn (cond ...)).
+
+    Turn-based event handlers that run once per turn when queued.
+    Uses the same cond/case structure as behaviors.
+
+    Example:
+        (event hacker-helps
+          :location @terminal-room   ; Only fires when player is here
+          :on-turn (cond
+            ((= hacker-help 1) (success :effects (...) :context (...)))
+            ((= hacker-help 2) ...)
+            (true (success :effects ((dequeue! hacker-helps)) ...))))
+    """
+    if len(expr) < 2:
+        raise FormParseError("event requires a name")
+
+    name = expect_symbol(expr[1], "event name")
+    kwargs = parse_kwargs(list(expr.items[2:]))
+
+    if "on-turn" not in kwargs:
+        raise FormParseError(f"event {name} requires :on-turn handler")
+
+    # Parse optional location constraint
+    location: str | None = None
+    if "location" in kwargs:
+        loc_expr = kwargs["location"]
+        location = expect_symbol(loc_expr, "event location")
+
+    # Parse the cond handler (same as behavior cases)
+    cases = parse_cond(kwargs["on-turn"])
+
+    event = GrueEvent(name=name, location=location, cases=cases)
+    world.events[event.name] = event
 
 
 @form("default")

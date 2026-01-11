@@ -255,6 +255,98 @@ class GrueRuntime:
         return self.state.queues.get(event)
 
     # -------------------------------------------------------------------------
+    # Turn-based event processing
+    # -------------------------------------------------------------------------
+
+    def process_events(self) -> list[ActionResult]:
+        """
+        Process all queued events that should fire this turn.
+
+        Called at the end of each turn (after action resolution).
+        Returns a list of ActionResults from events that fired.
+
+        Events fire if:
+        - They are queued (in state.queues)
+        - They have a handler defined (in world.events)
+        - Location constraint is satisfied (if specified)
+        """
+        results: list[ActionResult] = []
+        player_loc = self.get_player_location()
+
+        # Process each queued event
+        # Copy queue keys since events may modify the queue
+        for event_name in list(self.state.queues.keys()):
+            event_def = self.world.events.get(event_name)
+            if event_def is None:
+                # No handler defined for this event
+                continue
+
+            # Check location constraint
+            if event_def.location is not None and event_def.location != player_loc:
+                continue
+
+            # Decrement countdown if present
+            countdown = self.state.queues.get(event_name)
+            if countdown is not None and countdown > 0:
+                # Not ready to fire yet
+                self.state.queues[event_name] = countdown - 1
+                continue
+
+            # Fire the event
+            result = self._evaluate_event(event_def)
+            results.append(result)
+
+        return results
+
+    def _evaluate_event(self, event: "GrueEvent") -> ActionResult:
+        """Evaluate an event's cases and return the result."""
+        from .forms import GrueEvent  # Import here to avoid circular
+
+        # Events use simple bindings (no direct object)
+        bindings = {"actor": self.player_name}
+        old_bindings = self.bindings
+        self.bindings = bindings
+        try:
+            evaluator = ExprEvaluator(self)
+
+            for case in event.cases:
+                # Evaluate the condition
+                try:
+                    condition_met = evaluator.eval(case.when)
+                except Exception as e:
+                    return ActionResult(
+                        outcome="error",
+                        error=f"Error evaluating event {event.name} condition: {e}"
+                    )
+
+                if condition_met:
+                    # Execute effects
+                    if case.effects:
+                        executor = EffectExecutor(self)
+                        for effect in case.effects:
+                            try:
+                                executor.execute(effect)
+                            except Exception as e:
+                                return ActionResult(
+                                    outcome="error",
+                                    error=f"Error executing event {event.name} effect: {e}"
+                                )
+
+                    return ActionResult(
+                        outcome=case.outcome or "success",
+                        reason=case.reason,
+                        context=case.context
+                    )
+
+            # No case matched - shouldn't happen with proper (true ...) fallback
+            return ActionResult(
+                outcome="success",
+                context=[("event", event.name), ("note", "no case matched")]
+            )
+        finally:
+            self.bindings = old_bindings
+
+    # -------------------------------------------------------------------------
     # High-level convenience methods
     # -------------------------------------------------------------------------
 

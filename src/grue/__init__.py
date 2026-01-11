@@ -42,6 +42,7 @@ from .parser import (
     GrueCase,
     GrueVictory,
     GrueDefeat,
+    GrueEvent,
     load_grue,
     parse_grue,
 )
@@ -106,6 +107,7 @@ __all__ = [
     "GrueCase",
     "GrueVictory",
     "GrueDefeat",
+    "GrueEvent",
     "load_grue",
     "parse_grue",
     # Runtime
