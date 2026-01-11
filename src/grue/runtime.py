@@ -335,7 +335,7 @@ class GrueRuntime:
         self,
         verb: str,
         direct_object: str | None = None,
-        actor: str = "PLAYER",
+        actor: str | None = None,
         _redirects: list[SExpr] | None = None,
         _max_redirects: int = 10,
         **kwargs
@@ -346,7 +346,7 @@ class GrueRuntime:
         Args:
             verb: The verb (e.g., "open", "take", "go")
             direct_object: The target object (e.g., "DOOR", "KEY")
-            actor: Who is performing the action (default: "PLAYER")
+            actor: Who is performing the action (default: player entity)
             _redirects: Internal - chain of redirects followed (for loop detection)
             _max_redirects: Internal - maximum redirect depth
             **kwargs: Additional arguments (with=..., on=..., direction=...)
@@ -355,6 +355,8 @@ class GrueRuntime:
             ActionResult with outcome and details. The 'redirects' field contains
             the chain of redirected actions for narrative purposes.
         """
+        if actor is None:
+            actor = self.player_name
         if _redirects is None:
             _redirects = []
 
@@ -416,10 +418,13 @@ class GrueRuntime:
         self,
         verb: str,
         direct_object: str | None = None,
-        actor: str = "PLAYER",
+        actor: str | None = None,
         **kwargs
     ) -> ActionResult:
         """Execute a single action without following redirects."""
+        if actor is None:
+            actor = self.player_name
+
         # Handle movement specially
         if verb == "go":
             direction = kwargs.get("direction")
@@ -486,7 +491,7 @@ class GrueRuntime:
         self,
         verb: str,
         obj_name: str,
-        actor: str = "PLAYER"
+        actor: str | None = None
     ) -> ActionResult | None:
         """
         Try default behaviors defined in world.defaults.
@@ -494,10 +499,13 @@ class GrueRuntime:
         Args:
             verb: The action verb
             obj_name: Target object
-            actor: Who is performing the action
+            actor: Who is performing the action (default: player entity)
 
         Returns ActionResult if a default applies, None otherwise.
         """
+        if actor is None:
+            actor = self.player_name
+
         # Check if there's a default behavior for this verb
         default_behavior = self.world.defaults.get(verb)
         if default_behavior is None:
@@ -512,8 +520,11 @@ class GrueRuntime:
         # Evaluate the default behavior
         return self._evaluate_behavior(default_behavior, bindings)
 
-    def _do_go(self, direction: str, actor: str = "PLAYER") -> ActionResult:
+    def _do_go(self, direction: str, actor: str | None = None) -> ActionResult:
         """Handle movement."""
+        if actor is None:
+            actor = self.player_name
+
         exit_info = self.get_exit(actor, direction)
         if exit_info is None:
             return ActionResult(
