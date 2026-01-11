@@ -261,6 +261,11 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
             else:
                 result = runtime.do(verb_str, **runtime_kwargs)
 
+            # Show redirects if any occurred (for user awareness)
+            if result.redirects:
+                redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
+                print(f"[via {redirect_chain}]")
+
             if result.outcome == "success":
                 ctx_info = ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
                 if ctx_info:
@@ -275,10 +280,6 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
                     print(f"  {k}: {v}")
             elif result.outcome == "default":
                 print(f"[DEFAULT: {result.default_action}]")
-            elif result.outcome == "redirect":
-                print(f"[REDIRECT: {to_string(result.default_action)}]")
-                for k, v in result.context:
-                    print(f"  {k}: {v}")
             elif result.outcome == "error":
                 print(f"[ERROR: {result.error}]")
             else:

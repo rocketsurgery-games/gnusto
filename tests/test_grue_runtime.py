@@ -479,3 +479,108 @@ class TestEventQueue:
 
         assert not runtime.is_queued("EVENT1")
         assert not runtime.is_queued("EVENT2")
+
+
+class TestRedirectFollowing:
+    """Test automatic redirect following."""
+
+    def test_simple_redirect(self):
+        """Redirect is followed automatically."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object CHAIR :location LOBBY :flags (FURNITURE)
+          :behaviors (
+            :sit (cond
+              (true (success :effects ((move! PLAYER CHAIR))
+                            :message "You sit in the chair.")))))
+        (object DESK :location LOBBY
+          :behaviors (
+            :sit-at (cond
+              (true (redirect :action (sit CHAIR))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # sit-at DESK should redirect to sit CHAIR
+        result = runtime.do("sit-at", "DESK")
+        assert result.outcome == "success"
+        assert len(result.redirects) == 1
+        assert runtime.state.objects["PLAYER"].location == "CHAIR"
+
+    def test_redirect_chain(self):
+        """Multiple redirects are followed."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object THING :location LOBBY
+          :behaviors (
+            :final (cond (true (success :message "Reached final!")))
+            :middle (cond (true (redirect :action (final THING))))
+            :start (cond (true (redirect :action (middle THING))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("start", "THING")
+        assert result.outcome == "success"
+        assert len(result.redirects) == 2
+        assert ("message", "Reached final!") in result.context
+
+    def test_redirect_to_blocked(self):
+        """Redirect to blocked action returns blocked."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object DOOR :location LOBBY :flags (LOCKED)
+          :behaviors (
+            :open (cond
+              ((has-flag self LOCKED) (blocked :reason locked))
+              (true (success)))
+            :enter (cond
+              (true (redirect :action (open DOOR))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("enter", "DOOR")
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+        assert len(result.redirects) == 1
+
+    def test_redirect_loop_detection(self):
+        """Redirect loops are detected and return error."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object THING :location LOBBY
+          :behaviors (
+            :action-a (cond (true (redirect :action (action-b THING))))
+            :action-b (cond (true (redirect :action (action-a THING))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("action-a", "THING")
+        assert result.outcome == "error"
+        assert "loop" in result.error.lower()
+
+    def test_redirect_preserves_context(self):
+        """Context from redirect is preserved."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object THING :location LOBBY
+          :behaviors (
+            :target (cond (true (success :context ((final true)))))
+            :source (cond (true (redirect :action (target THING)
+                                          :context ((redirected true)))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("source", "THING")
+        assert result.outcome == "success"
+        # Both contexts should be present
+        assert ("redirected", True) in result.context
+        assert ("final", True) in result.context

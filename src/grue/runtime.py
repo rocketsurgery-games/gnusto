@@ -23,7 +23,7 @@ from copy import deepcopy
 
 from .parser import GrueWorld, GrueBehavior, GrueCase
 from .expr import ExprEvaluator, EffectExecutor
-from .sexpr import SExpr, Symbol, SList
+from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 
 
 @dataclass
@@ -57,6 +57,7 @@ class ActionResult:
     default_action: SExpr | None = None  # For default with explicit action
     effects_applied: list[str] = field(default_factory=list)  # Description of effects
     error: str | None = None  # For errors
+    redirects: list[SExpr] = field(default_factory=list)  # Chain of redirected actions
 
 
 class GrueRuntime:
@@ -290,25 +291,138 @@ class GrueRuntime:
             return {}
         return {exit.direction: exit.to for exit in room.exits}
 
+    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str | None, dict[str, Any]]:
+        """Parse an action S-expression into (verb, direct_object, kwargs).
+
+        Supports formats:
+            (verb object)           -> ("verb", "object", {})
+            (verb :key val ...)     -> ("verb", None, {"key": val, ...})
+            (verb object :key val)  -> ("verb", "object", {"key": val})
+        """
+        if not isinstance(action, SList) or len(action) < 1:
+            raise ValueError(f"Invalid action format: {action}")
+
+        items = list(action.items)
+        if not isinstance(items[0], Symbol):
+            raise ValueError(f"Action verb must be a symbol: {items[0]}")
+
+        verb = items[0].name
+        direct_object = None
+        kwargs: dict[str, Any] = {}
+
+        i = 1
+        # Check if second item is a direct object (not a keyword)
+        if i < len(items) and isinstance(items[i], Symbol) and not isinstance(items[i], Keyword):
+            direct_object = items[i].name
+            i += 1
+
+        # Parse keyword arguments
+        while i < len(items):
+            if isinstance(items[i], Keyword):
+                key = items[i].name
+                if i + 1 < len(items):
+                    val = items[i + 1]
+                    if isinstance(val, Symbol):
+                        kwargs[key] = val.name
+                    else:
+                        kwargs[key] = val
+                    i += 2
+                else:
+                    raise ValueError(f"Keyword :{key} has no value")
+            else:
+                raise ValueError(f"Expected keyword, got: {items[i]}")
+
+        return verb, direct_object, kwargs
+
     def do(
+        self,
+        verb: str,
+        direct_object: str | None = None,
+        actor: str = "PLAYER",
+        _redirects: list[SExpr] | None = None,
+        _max_redirects: int = 10,
+        **kwargs
+    ) -> ActionResult:
+        """
+        Execute an action, following any redirects automatically.
+
+        Args:
+            verb: The verb (e.g., "open", "take", "go")
+            direct_object: The target object (e.g., "DOOR", "KEY")
+            actor: Who is performing the action (default: "PLAYER")
+            _redirects: Internal - chain of redirects followed (for loop detection)
+            _max_redirects: Internal - maximum redirect depth
+            **kwargs: Additional arguments (with=..., on=..., direction=...)
+
+        Returns:
+            ActionResult with outcome and details. The 'redirects' field contains
+            the chain of redirected actions for narrative purposes.
+        """
+        if _redirects is None:
+            _redirects = []
+
+        result = self._do_single(verb, direct_object, actor, **kwargs)
+
+        # Follow redirects automatically
+        if result.outcome == "redirect" and result.default_action is not None:
+            # Check for redirect loops
+            action_str = to_string(result.default_action)
+            for prev in _redirects:
+                if to_string(prev) == action_str:
+                    return ActionResult(
+                        outcome="error",
+                        error=f"Redirect loop detected: {action_str}",
+                        redirects=_redirects
+                    )
+
+            # Check max redirects
+            if len(_redirects) >= _max_redirects:
+                return ActionResult(
+                    outcome="error",
+                    error=f"Too many redirects (max {_max_redirects})",
+                    redirects=_redirects
+                )
+
+            # Record this redirect
+            _redirects.append(result.default_action)
+
+            # Parse the redirect action and follow it
+            try:
+                new_verb, new_obj, new_kwargs = self._parse_action_sexpr(result.default_action)
+                # Merge context from redirect into kwargs if not already set
+                new_kwargs.setdefault("actor", actor)
+                final_result = self.do(
+                    new_verb,
+                    new_obj,
+                    _redirects=_redirects,
+                    _max_redirects=_max_redirects,
+                    **new_kwargs
+                )
+                # Preserve redirect chain and merge context
+                final_result.redirects = _redirects
+                # Prepend redirect context to final context
+                if result.context:
+                    final_result.context = result.context + final_result.context
+                return final_result
+            except ValueError as e:
+                return ActionResult(
+                    outcome="error",
+                    error=f"Invalid redirect action: {e}",
+                    redirects=_redirects
+                )
+
+        # Not a redirect - return result with any accumulated redirects
+        result.redirects = _redirects
+        return result
+
+    def _do_single(
         self,
         verb: str,
         direct_object: str | None = None,
         actor: str = "PLAYER",
         **kwargs
     ) -> ActionResult:
-        """
-        Execute an action.
-
-        Args:
-            verb: The verb (e.g., "open", "take", "go")
-            direct_object: The target object (e.g., "DOOR", "KEY")
-            actor: Who is performing the action (default: "PLAYER")
-            **kwargs: Additional arguments (with=..., on=..., direction=...)
-
-        Returns:
-            ActionResult with outcome and details.
-        """
+        """Execute a single action without following redirects."""
         # Handle movement specially
         if verb == "go":
             direction = kwargs.get("direction")
