@@ -37,11 +37,11 @@ class GrueExit:
 class GrueCase:
     """A single case in a behavior."""
     when: SExpr
-    outcome: str  # "success", "blocked", "redirect"
+    outcome: str  # "success", "blocked", "default"
     effects: list[SExpr] = field(default_factory=list)
     reason: str | None = None
     context: list[tuple[str, Any]] = field(default_factory=list)
-    action: SExpr | None = None  # For redirects
+    action: SExpr | None = None  # For default with explicit action
 
 
 @dataclass

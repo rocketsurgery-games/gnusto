@@ -47,6 +47,31 @@ from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
 from .expr import ExprEvaluator, EffectExecutor, EvalError
 
 
+def normalize_case(expr: SExpr, runtime: GrueRuntime) -> SExpr:
+    """Normalize symbol names to match known objects (case-insensitive).
+
+    This allows typing 'chair' instead of 'CHAIR' in the REPL.
+    """
+    # Build lookup of known names (objects, rooms)
+    known_names: dict[str, str] = {}
+    for name in runtime.state.objects:
+        known_names[name.upper()] = name
+    for name in runtime.state.rooms:
+        known_names[name.upper()] = name
+
+    def normalize(e: SExpr) -> SExpr:
+        if isinstance(e, Symbol):
+            upper = e.name.upper()
+            if upper in known_names:
+                return Symbol(known_names[upper])
+            return e
+        if isinstance(e, SList):
+            return SList([normalize(item) for item in e.items])
+        return e
+
+    return normalize(expr)
+
+
 def print_location(runtime: GrueRuntime) -> None:
     """Print current location details."""
     room = runtime.get_player_location()
@@ -248,8 +273,8 @@ def execute_repl_command(expr: SExpr, runtime: GrueRuntime) -> bool:
                 print(f"[BLOCKED: {result.reason}]")
                 for k, v in result.context:
                     print(f"  {k}: {v}")
-            elif result.outcome == "redirect":
-                print(f"[REDIRECT: {result.redirect_action}]")
+            elif result.outcome == "default":
+                print(f"[DEFAULT: {result.default_action}]")
             else:
                 print(f"[ERROR: {result.error}]")
 
@@ -332,6 +357,7 @@ def main():
         # Allow multiple expressions on one line
         try:
             expr = parse(line)
+            expr = normalize_case(expr, runtime)  # Allow lowercase object names
             if not execute_repl_command(expr, runtime):
                 break
         except SExprError as e:

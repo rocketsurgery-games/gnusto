@@ -50,10 +50,10 @@ class GameState:
 @dataclass
 class ActionResult:
     """Result of executing an action."""
-    outcome: str  # "success", "blocked", "redirect", "error"
+    outcome: str  # "success", "blocked", "default", "error"
     reason: str | None = None  # For blocked outcomes
     context: list[tuple[str, Any]] = field(default_factory=list)
-    redirect_action: SExpr | None = None  # For redirects
+    default_action: SExpr | None = None  # For default with explicit action
     effects_applied: list[str] = field(default_factory=list)  # Description of effects
     error: str | None = None  # For errors
 
@@ -327,8 +327,8 @@ class GrueRuntime:
         # Evaluate behavior cases
         result = self._evaluate_behavior(behavior, bindings)
 
-        # If behavior returns redirect with no action, fall through to default
-        if result.outcome == "redirect" and result.redirect_action is None:
+        # If behavior returns 'default' with no action, fall through to default behavior
+        if result.outcome == "default" and result.default_action is None:
             default_result = self._try_default_behavior(verb, direct_object, obj_def)
             if default_result is not None:
                 return default_result
@@ -434,9 +434,9 @@ class GrueRuntime:
             if result.outcome == "blocked":
                 return result
 
-            # If door allows passage (success or redirect), complete the movement
-            # The redirect indicates "yes, go that way" - we handle it here
-            if result.outcome in ("success", "redirect"):
+            # If door allows passage (success or default), complete the movement
+            # The default indicates "yes, go that way" - we handle it here
+            if result.outcome in ("success", "default"):
                 self.state.objects["PLAYER"].location = exit_def.to
                 self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
                 return ActionResult(
@@ -481,10 +481,10 @@ class GrueRuntime:
 
                 if condition_met:
                     # This case matches
-                    if case.outcome == "redirect":
+                    if case.outcome == "default":
                         return ActionResult(
-                            outcome="redirect",
-                            redirect_action=case.action,
+                            outcome="default",
+                            default_action=case.action,
                             context=case.context
                         )
 

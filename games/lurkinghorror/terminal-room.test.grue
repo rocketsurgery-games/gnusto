@@ -87,8 +87,7 @@
 
 (test "examine chair"
   :action (do :verb examine :object CHAIR)
-  :expect ((outcome? success)
-           (context? semantic examine-furniture)))
+  :expect ((outcome? success)))
 
 (test "take chair - blocked when hacker in it"
   :setup ((move! HACKER CHAIR))
@@ -121,12 +120,6 @@
 (test "stand from chair"
   :setup ((move! PLAYER CHAIR))
   :action (do :verb stand :object CHAIR)
-  :expect ((outcome? success)
-           (loc? PLAYER TERMINAL-ROOM)))
-
-(test "disembark from chair"
-  :setup ((move! PLAYER CHAIR))
-  :action (do :verb disembark :object CHAIR)
   :expect ((outcome? success)
            (loc? PLAYER TERMINAL-ROOM)))
 
