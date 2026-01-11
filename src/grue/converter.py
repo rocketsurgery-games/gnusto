@@ -499,7 +499,7 @@ class ZILtoGRUEConverter:
         self._emit(f'  :description "passage"')
         self._emit(f'  :flags (INVISIBLE)')
         self._emit(f'  :behaviors (')
-        self._emit(f'    :through (case true :outcome success)))')
+        self._emit(f'    :through (cond (true (success)))))')
         self._emit("")
 
     def _convert_object(self, obj: ZILObject) -> bool:

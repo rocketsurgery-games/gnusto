@@ -78,90 +78,72 @@
   :properties
     ((lock-type electronic))
 
-  :behaviors
-    (; OPEN behavior - depends on which side you're on and where
-     (open
-       ; Outside at push-bar locations: door opens freely
-       (case (and (room-has-flag? OUTSIDE)
-                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF))
-         :outcome success
-         :effects ()
-         :context ((mechanism push-bar)))
+  :behaviors (
+    ; OPEN behavior - depends on which side you're on and where
+    :open (cond
+      ; Outside at push-bar locations: door opens freely
+      ((and (room-has-flag? OUTSIDE)
+            (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF))
+        (success :context ((mechanism push-bar))))
 
-       ; Outside elsewhere: locked
-       (case (room-has-flag? OUTSIDE)
-         :outcome blocked
-         :reason locked-from-outside)
+      ; Outside elsewhere: locked
+      ((room-has-flag? OUTSIDE)
+        (blocked :reason locked-from-outside))
 
-       ; Inside: opens but auto-closes (no state change)
-       (case true
-         :outcome success
-         :effects ()
-         :context ((note auto-closing))))
+      ; Inside: opens but auto-closes (no state change)
+      (true
+        (success :context ((note auto-closing)))))
 
-     ; UNLOCK behavior - electronic lock rejects physical keys
-     (unlock
-       ; Outside with master key at push-bar locations: wrong key type
-       (case (and (room-has-flag? OUTSIDE)
-                  (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF)
-                  (= ?with MASTER-KEY))
-         :outcome blocked
-         :reason wrong-key-type
-         :context ((detail electronic-lock)
-                   (expected card-key)))
+    ; UNLOCK behavior - electronic lock rejects physical keys
+    :unlock (cond
+      ; Outside with master key at push-bar locations: wrong key type
+      ((and (room-has-flag? OUTSIDE)
+            (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF)
+            (= ?with MASTER-KEY))
+        (blocked :reason wrong-key-type
+                 :context ((detail electronic-lock)
+                           (expected card-key))))
 
-       ; Outside elsewhere: just locked
-       (case (room-has-flag? OUTSIDE)
-         :outcome blocked
-         :reason locked-from-outside)
+      ; Outside elsewhere: just locked
+      ((room-has-flag? OUTSIDE)
+        (blocked :reason locked-from-outside))
 
-       ; Inside with master key: success
-       (case (and (has-flag self LOCKED)
-                  (= ?with MASTER-KEY))
-         :outcome success
-         :effects ((clear-flag! self LOCKED)))
+      ; Inside with master key: success
+      ((and (has-flag self LOCKED)
+            (= ?with MASTER-KEY))
+        (success :effects ((clear-flag! self LOCKED))))
 
-       ; Inside without key: need a key
-       (case (has-flag self LOCKED)
-         :outcome blocked
-         :reason need-key)
+      ; Inside without key: need a key
+      ((has-flag self LOCKED)
+        (blocked :reason need-key))
 
-       ; Already unlocked
-       (case true
-         :outcome blocked
-         :reason not-locked))
+      ; Already unlocked
+      (true
+        (blocked :reason not-locked)))
 
-     ; CLOSE behavior - always succeeds (spring-loaded)
-     (close
-       (case true
-         :outcome success
-         :effects ()
-         :context ((note spring-loaded))))
+    ; CLOSE behavior - always succeeds (spring-loaded)
+    :close (cond
+      (true
+        (success :context ((note spring-loaded)))))
 
-     ; THROUGH behavior - redirects to movement
-     (through
-       (case (room-has-flag? OUTSIDE)
-         :outcome redirect
-         :action (go :direction in))
+    ; THROUGH behavior - delegates to movement
+    :through (cond
+      ((room-has-flag? OUTSIDE)
+        (default :action (go :direction in)))
 
-       (case true
-         :outcome redirect
-         :action (go :direction out)))
+      (true
+        (default :action (go :direction out))))
 
-     ; EXAMINE behavior - describe based on location
-     (examine
-       (case (room-has-flag? OUTSIDE)
-         :outcome success
-         :effects ()
-         :context ((visible-features (electronic-lock push-bar))
-                   (apparent-state locked)))
+    ; EXAMINE behavior - describe based on location
+    :examine (cond
+      ((room-has-flag? OUTSIDE)
+        (success :context ((visible-features (electronic-lock push-bar))
+                           (apparent-state locked))))
 
-       (case true
-         :outcome success
-         :effects ()
-         :context ((visible-features (electronic-lock))
-                   (apparent-state
-                     (if (has-flag self LOCKED) locked unlocked)))))))
+      (true
+        (success :context ((visible-features (electronic-lock))
+                           (apparent-state
+                             (if (has-flag self LOCKED) locked unlocked))))))))
 
 (object MASTER-KEY
   :description "A worn brass key on a GBS keyring"
