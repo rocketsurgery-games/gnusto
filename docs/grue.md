@@ -98,6 +98,9 @@ true false      ; booleans
 ; Quantifiers
 (any COLLECTION PRED)         ; any element satisfies predicate
 (all COLLECTION PRED)         ; all elements satisfy predicate
+
+; Event queue
+(queued? EVENT)               ; is event currently active?
 ```
 
 ### Effects (State Deltas)
@@ -113,6 +116,11 @@ Effects describe how state changes. They don't mutate - they declare the delta.
 ; Compound effects
 (seq EFFECT ...)              ; apply effects in order
 (when COND EFFECT)            ; conditional effect
+
+; Event queue
+(queue! EVENT)                ; activate event (indefinite)
+(queue! EVENT N)              ; activate event with countdown
+(dequeue! EVENT)              ; deactivate event
 ```
 
 ### Objects
@@ -332,24 +340,54 @@ The world model:
 
 The LLM interprets these responses and generates natural language for the user.
 
+### Event Queues
+
+Event queues track ongoing situations that affect behavior. They map to ZIL's
+`QUEUE`/`QUEUED?` system used for timed events and state machines.
+
+```scheme
+; Check if an event is active
+(queued? HACKER-HELPS)        ; is the hacker currently helping?
+(queued? COMPULSION)          ; is player under compulsion?
+
+; Activate/deactivate events in effects
+(queue! HACKER-HELPS)         ; start the event (indefinite)
+(queue! LANTERN 200)          ; start with 200-turn countdown
+(dequeue! HACKER-HELPS)       ; end the event
+```
+
+**Use in behaviors:**
+
+Events are commonly used to alter behavior based on ongoing situations:
+
+```scheme
+(object PC
+  :behaviors (
+    :turn-off (cond
+      ; Hacker blocks turning off PC while helping
+      ((queued? HACKER-HELPS)
+        (blocked :reason hacker-interference
+                 :context ((blocker HACKER)
+                           (message "You'll mung the bits, chomper!"))))
+      (true
+        (success :effects ((clear-flag! self POWER)))))))
+```
+
+**Note:** The current implementation provides queue flags for behavior conditions.
+Turn-by-turn event handlers (like ZIL's interrupt routines that run each turn)
+are planned for future implementation.
+
 ### Time and Turns
 
-Games track turns for timed events:
+Games track turns via the `moves` global, incremented on successful actions.
 
 ```scheme
 ; In PLAYER properties
 (moves 0)
-
-; Scheduled events
-(timer HACKER-LEAVES
-  :turns 10
-  :when (and (here? HACKER) (not (prop HACKER appeased)))
-  :effects ((move! HACKER ELSEWHERE))
-  :context ((reason bored)))
 ```
 
 For static analysis, we model time as part of state: each turn increments
-`(prop PLAYER moves)` and may trigger scheduled effects.
+`moves` and may trigger countdown-based events.
 
 ### Win/Lose Conditions
 

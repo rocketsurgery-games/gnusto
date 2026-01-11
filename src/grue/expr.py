@@ -28,6 +28,7 @@ Built-in Predicates:
     (exit? ACTOR DIR)         - Check if exit exists from actor's room
     (exit-to ACTOR DIR)       - Get destination room for exit
     (exit-via ACTOR DIR)      - Get door object for exit (if any)
+    (queued? EVENT)           - Check if event is currently queued
 
 Built-in Effects:
     (move! OBJ DEST)          - Move object to destination
@@ -40,6 +41,9 @@ Built-in Effects:
     (seq EFFECT ...)          - Execute effects in order
     (when COND EFFECT)        - Conditional effect
     (defn NAME (PARAMS) BODY) - Define user function
+    (queue! EVENT)            - Queue an event (indefinite)
+    (queue! EVENT N)          - Queue an event with countdown
+    (dequeue! EVENT)          - Remove event from queue
 """
 
 from dataclasses import dataclass
@@ -95,6 +99,10 @@ class WorldState(Protocol):
         """Get exit info for direction from actor's room. Returns (destination, via) or None."""
         ...
 
+    def is_queued(self, event: str) -> bool:
+        """Check if an event is currently queued."""
+        ...
+
 
 class MutableWorldState(WorldState, Protocol):
     """Protocol for mutable world state (effects)."""
@@ -117,6 +125,14 @@ class MutableWorldState(WorldState, Protocol):
 
     def move_object(self, obj: str, dest: str) -> None:
         """Move object to new location."""
+        ...
+
+    def queue_event(self, event: str, countdown: int | None = None) -> None:
+        """Queue an event. countdown=None means indefinite."""
+        ...
+
+    def dequeue_event(self, event: str) -> None:
+        """Remove an event from the queue."""
         ...
 
 
@@ -182,6 +198,9 @@ class ExprEvaluator:
             "exit?": self._eval_exit_exists,
             "exit-to": self._eval_exit_to,
             "exit-via": self._eval_exit_via,
+
+            # Event queue
+            "queued?": self._eval_queued,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -485,6 +504,17 @@ class ExprEvaluator:
         result = self.state.get_exit(actor, direction)
         return result[1] if result else None
 
+    # === Event queue ===
+
+    def _eval_queued(self, form: SList) -> bool:
+        """(queued? EVENT) - check if event is currently queued."""
+        if len(form) != 2:
+            raise EvalError(f"'queued?' expects 1 argument, got {len(form) - 1}")
+        event = self.eval(form[1])
+        return self.state.is_queued(event)
+
+    # === Quantifiers ===
+
     def _eval_any(self, form: SList) -> bool:
         """(any COLLECTION (lambda (x) PRED))"""
         if len(form) != 3:
@@ -602,6 +632,8 @@ class EffectExecutor:
             "seq": self._exec_seq,
             "when": self._exec_when,
             "defn": self._exec_defn,
+            "queue!": self._exec_queue,
+            "dequeue!": self._exec_dequeue,
         }
 
     def execute(self, expr: SExpr) -> None:
@@ -735,6 +767,26 @@ class EffectExecutor:
 
         # Register in shared function dictionary
         self._functions[name] = (params, body)
+
+    def _exec_queue(self, form: SList) -> None:
+        """(queue! EVENT) or (queue! EVENT COUNTDOWN)"""
+        if len(form) < 2 or len(form) > 3:
+            raise EvalError(f"'queue!' expects 1-2 arguments, got {len(form) - 1}")
+
+        event = self._eval(form[1])
+        countdown = None
+        if len(form) == 3:
+            countdown = self._eval(form[2])
+
+        self.state.queue_event(event, countdown)
+
+    def _exec_dequeue(self, form: SList) -> None:
+        """(dequeue! EVENT)"""
+        if len(form) != 2:
+            raise EvalError(f"'dequeue!' expects 1 argument, got {len(form) - 1}")
+
+        event = self._eval(form[1])
+        self.state.dequeue_event(event)
 
 
 def eval_predicate(expr: str | SExpr, state: WorldState) -> bool:

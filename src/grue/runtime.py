@@ -41,6 +41,7 @@ class GameState:
     objects: dict[str, ObjectState] = field(default_factory=dict)
     rooms: set[str] = field(default_factory=set)
     globals: dict[str, Any] = field(default_factory=dict)
+    queues: dict[str, int | None] = field(default_factory=dict)  # event -> countdown (None = indefinite)
 
     def copy(self) -> "GameState":
         """Create a deep copy of the state."""
@@ -231,6 +232,26 @@ class GrueRuntime:
         dest = self._resolve_symbol(dest)
         if obj in self.state.objects:
             self.state.objects[obj].location = dest
+
+    # -------------------------------------------------------------------------
+    # Event queue interface
+    # -------------------------------------------------------------------------
+
+    def is_queued(self, event: str) -> bool:
+        """Check if an event is currently queued."""
+        return event in self.state.queues
+
+    def queue_event(self, event: str, countdown: int | None = None) -> None:
+        """Queue an event. countdown=None means indefinite, countdown=N means N turns."""
+        self.state.queues[event] = countdown
+
+    def dequeue_event(self, event: str) -> None:
+        """Remove an event from the queue."""
+        self.state.queues.pop(event, None)
+
+    def get_queue_countdown(self, event: str) -> int | None:
+        """Get countdown for queued event, or None if not queued or indefinite."""
+        return self.state.queues.get(event)
 
     # -------------------------------------------------------------------------
     # High-level convenience methods

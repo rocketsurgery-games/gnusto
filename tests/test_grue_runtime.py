@@ -362,3 +362,120 @@ class TestReset:
         assert runtime.get_player_location() == "LOBBY"
         assert "KEY" not in runtime.get_inventory()
         assert runtime.state.globals["score"] == 0
+
+
+class TestEventQueue:
+    """Test event queue functionality."""
+
+    def test_queue_basic(self):
+        """Can queue and check events."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Initially not queued
+        assert not runtime.is_queued("HACKER-HELPS")
+
+        # Queue it
+        runtime.queue_event("HACKER-HELPS")
+        assert runtime.is_queued("HACKER-HELPS")
+
+        # Dequeue it
+        runtime.dequeue_event("HACKER-HELPS")
+        assert not runtime.is_queued("HACKER-HELPS")
+
+    def test_queue_with_countdown(self):
+        """Can queue events with countdown."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        runtime.queue_event("LANTERN", 200)
+        assert runtime.is_queued("LANTERN")
+        assert runtime.get_queue_countdown("LANTERN") == 200
+
+    def test_queue_in_behavior(self):
+        """Behaviors can use queue! and queued? predicates."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object BUTTON
+          :location LOBBY
+          :behaviors (
+            :push (cond
+              ((queued? ALARM)
+                (success :effects ((dequeue! ALARM))
+                         :context ((result alarm-off))))
+              (true
+                (success :effects ((queue! ALARM))
+                         :context ((result alarm-on)))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # First push queues alarm
+        result = runtime.do("push", "BUTTON")
+        assert result.outcome == "success"
+        assert ("result", "alarm-on") in result.context
+        assert runtime.is_queued("ALARM")
+
+        # Second push dequeues alarm
+        result = runtime.do("push", "BUTTON")
+        assert result.outcome == "success"
+        assert ("result", "alarm-off") in result.context
+        assert not runtime.is_queued("ALARM")
+
+    def test_queue_blocks_action(self):
+        """Queued events can block actions."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object PC
+          :location LOBBY
+          :behaviors (
+            :turn-off (cond
+              ((queued? HACKER-HELPS)
+                (blocked :reason hacker-interference
+                         :context ((blocker HACKER))))
+              (true
+                (success)))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Without queue, action succeeds
+        result = runtime.do("turn-off", "PC")
+        assert result.outcome == "success"
+
+        # Queue the event
+        runtime.queue_event("HACKER-HELPS")
+
+        # Now action is blocked
+        result = runtime.do("turn-off", "PC")
+        assert result.outcome == "blocked"
+        assert result.reason == "hacker-interference"
+
+    def test_reset_clears_queues(self):
+        """Reset clears all queued events."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        runtime.queue_event("EVENT1")
+        runtime.queue_event("EVENT2", 10)
+        assert runtime.is_queued("EVENT1")
+        assert runtime.is_queued("EVENT2")
+
+        runtime.reset()
+
+        assert not runtime.is_queued("EVENT1")
+        assert not runtime.is_queued("EVENT2")

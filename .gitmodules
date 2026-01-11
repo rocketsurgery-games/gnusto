@@ -4,3 +4,6 @@
 [submodule "games/zork1/source"]
 	path = games/zork1/source
 	url = https://github.com/the-infocom-files/zork1.git
+[submodule "games/enchanter/source"]
+	path = games/enchanter/source
+	url = https://github.com/the-infocom-files/enchanter
