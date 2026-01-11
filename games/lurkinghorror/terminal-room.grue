@@ -186,7 +186,72 @@ people here, but tonight it's almost deserted."
   ; --- End ZIL Source ---
 
   :behaviors (
-    ; TODO: Translate from ZIL source above
+    ; examine - describe the cheap plastic chair
+    (examine
+      (case true
+        :outcome success
+        :context ((semantic examine-furniture)
+                  (description "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable."))))
+
+    ; take - blocked if hacker is sitting in it
+    (take
+      (case (in? HACKER CHAIR)
+        :outcome blocked
+        :reason in-use
+        :context ((message "It's in use.")))
+      ; Otherwise fall through to default TAKEBIT behavior
+      (case true
+        :outcome redirect))
+
+    ; sit/board - enter the chair
+    (sit
+      (case (in? HACKER CHAIR)
+        :outcome blocked
+        :reason occupied
+        :context ((message "The hacker is already using it.")))
+      (case (in? PLAYER CHAIR)
+        :outcome blocked
+        :reason already-there
+        :context ((message "You are.")))
+      (case true
+        :outcome success
+        :effects ((move! PLAYER CHAIR))
+        :context ((message "You are now sitting in the chair."))))
+
+    (board
+      (case (in? HACKER CHAIR)
+        :outcome blocked
+        :reason occupied
+        :context ((message "The hacker is already using it.")))
+      (case (in? PLAYER CHAIR)
+        :outcome blocked
+        :reason already-there
+        :context ((message "You are.")))
+      (case true
+        :outcome success
+        :effects ((move! PLAYER CHAIR))
+        :context ((message "You are now sitting in the chair."))))
+
+    ; stand/disembark - exit the chair
+    (stand
+      (case (in? PLAYER CHAIR)
+        :outcome success
+        :effects ((move! PLAYER (loc CHAIR)))
+        :context ((message "You get out of the chair.")))
+      (case true
+        :outcome blocked
+        :reason not-in-vehicle
+        :context ((message "You're not in the chair."))))
+
+    (disembark
+      (case (in? PLAYER CHAIR)
+        :outcome success
+        :effects ((move! PLAYER (loc CHAIR)))
+        :context ((message "You get out of the chair.")))
+      (case true
+        :outcome blocked
+        :reason not-in-vehicle
+        :context ((message "You're not in the chair."))))
   ))
 
 ; [NEEDS-TRANSLATION] HACKER

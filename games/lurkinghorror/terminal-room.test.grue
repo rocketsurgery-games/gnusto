@@ -83,6 +83,53 @@
   :expect ((outcome? blocked)
            (reason? not-held)))
 
+; === CHAIR behaviors ===
+
+(test "examine chair"
+  :action (do :verb examine :object CHAIR)
+  :expect ((outcome? success)
+           (context? semantic examine-furniture)))
+
+(test "take chair - blocked when hacker in it"
+  :setup ((move! HACKER CHAIR))
+  :action (do :verb take :object CHAIR)
+  :expect ((outcome? blocked)
+           (reason? in-use)))
+
+(test "take chair - success when hacker not in it"
+  :action (do :verb take :object CHAIR)
+  :expect ((outcome? success)
+           (held? CHAIR)))
+
+(test "sit in chair - success"
+  :action (do :verb sit :object CHAIR)
+  :expect ((outcome? success)
+           (loc? PLAYER CHAIR)))
+
+(test "sit in chair - blocked when hacker using it"
+  :setup ((move! HACKER CHAIR))
+  :action (do :verb sit :object CHAIR)
+  :expect ((outcome? blocked)
+           (reason? occupied)))
+
+(test "sit in chair - blocked when already sitting"
+  :setup ((move! PLAYER CHAIR))
+  :action (do :verb sit :object CHAIR)
+  :expect ((outcome? blocked)
+           (reason? already-there)))
+
+(test "stand from chair"
+  :setup ((move! PLAYER CHAIR))
+  :action (do :verb stand :object CHAIR)
+  :expect ((outcome? success)
+           (loc? PLAYER TERMINAL-ROOM)))
+
+(test "disembark from chair"
+  :setup ((move! PLAYER CHAIR))
+  :action (do :verb disembark :object CHAIR)
+  :expect ((outcome? success)
+           (loc? PLAYER TERMINAL-ROOM)))
+
 ; === Take/drop with barrier ===
 
 (test-sequence "take PC then blocked at exit"

@@ -325,7 +325,15 @@ class GrueRuntime:
         }
 
         # Evaluate behavior cases
-        return self._evaluate_behavior(behavior, bindings)
+        result = self._evaluate_behavior(behavior, bindings)
+
+        # If behavior returns redirect with no action, fall through to default
+        if result.outcome == "redirect" and result.redirect_action is None:
+            default_result = self._try_default_behavior(verb, direct_object, obj_def)
+            if default_result is not None:
+                return default_result
+
+        return result
 
     def _try_default_behavior(
         self,
