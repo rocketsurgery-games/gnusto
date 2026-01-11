@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from copy import deepcopy
 
-from .parser import GrueWorld, GrueObject, GrueBehavior, GrueCase
+from .parser import GrueWorld, GrueBehavior, GrueCase
 from .expr import ExprEvaluator, EffectExecutor
 from .sexpr import SExpr, Symbol, SList
 
@@ -261,6 +261,7 @@ class GrueRuntime:
         self,
         verb: str,
         direct_object: str | None = None,
+        actor: str = "PLAYER",
         **kwargs
     ) -> ActionResult:
         """
@@ -269,6 +270,7 @@ class GrueRuntime:
         Args:
             verb: The verb (e.g., "open", "take", "go")
             direct_object: The target object (e.g., "DOOR", "KEY")
+            actor: Who is performing the action (default: "PLAYER")
             **kwargs: Additional arguments (with=..., on=..., direction=...)
 
         Returns:
@@ -278,7 +280,7 @@ class GrueRuntime:
         if verb == "go":
             direction = kwargs.get("direction")
             if direction:
-                return self._do_go(direction)
+                return self._do_go(direction, actor=actor)
             return ActionResult(
                 outcome="error",
                 error="go requires a direction"
@@ -308,7 +310,7 @@ class GrueRuntime:
 
         if behavior is None:
             # Try default behaviors based on flags
-            default_result = self._try_default_behavior(verb, direct_object, obj_def)
+            default_result = self._try_default_behavior(verb, direct_object, actor)
             if default_result is not None:
                 return default_result
 
@@ -321,6 +323,7 @@ class GrueRuntime:
         # Set up bindings for evaluation
         bindings = {
             "self": direct_object,
+            "actor": actor,
             **kwargs
         }
 
@@ -329,7 +332,7 @@ class GrueRuntime:
 
         # If behavior returns 'default' with no action, fall through to default behavior
         if result.outcome == "default" and result.default_action is None:
-            default_result = self._try_default_behavior(verb, direct_object, obj_def)
+            default_result = self._try_default_behavior(verb, direct_object, actor)
             if default_result is not None:
                 return default_result
 
@@ -339,10 +342,15 @@ class GrueRuntime:
         self,
         verb: str,
         obj_name: str,
-        obj_def: GrueObject
+        actor: str = "PLAYER"
     ) -> ActionResult | None:
         """
         Try default behaviors based on object flags.
+
+        Args:
+            verb: The action verb
+            obj_name: Target object
+            actor: Who is performing the action
 
         Returns ActionResult if a default applies, None otherwise.
         """
@@ -350,7 +358,7 @@ class GrueRuntime:
         if obj_state is None:
             return None
 
-        player_loc = self.get_player_location()
+        actor_loc = self.get_object_location(actor)
 
         if verb == "take":
             # Check TAKEBIT flag
@@ -361,8 +369,8 @@ class GrueRuntime:
                     context=[("object", obj_name)]
                 )
 
-            # Check if object is here or visible
-            if obj_state.location != player_loc and obj_state.location != "PLAYER":
+            # Check if object is here or already held by actor
+            if obj_state.location != actor_loc and obj_state.location != actor:
                 return ActionResult(
                     outcome="blocked",
                     reason="not-here",
@@ -370,7 +378,7 @@ class GrueRuntime:
                 )
 
             # Already holding it?
-            if obj_state.location == "PLAYER":
+            if obj_state.location == actor:
                 return ActionResult(
                     outcome="blocked",
                     reason="already-held",
@@ -378,37 +386,38 @@ class GrueRuntime:
                 )
 
             # Take it
-            obj_state.location = "PLAYER"
+            obj_state.location = actor
             return ActionResult(
                 outcome="success",
-                effects_applied=[f"{obj_name} moved to PLAYER"]
+                effects_applied=[f"{obj_name} moved to {actor}"]
             )
 
         if verb == "drop":
             # Must be holding it
-            if obj_state.location != "PLAYER":
+            if obj_state.location != actor:
                 return ActionResult(
                     outcome="blocked",
                     reason="not-held",
                     context=[("object", obj_name)]
                 )
 
-            # Drop it in current room
-            obj_state.location = player_loc
+            # Drop it in actor's current room
+            obj_state.location = actor_loc
             return ActionResult(
                 outcome="success",
-                effects_applied=[f"{obj_name} moved to {player_loc}"]
+                effects_applied=[f"{obj_name} moved to {actor_loc}"]
             )
 
         return None
 
-    def _do_go(self, direction: str) -> ActionResult:
+    def _do_go(self, direction: str, actor: str = "PLAYER") -> ActionResult:
         """Handle movement."""
-        room = self.world.rooms.get(self.get_player_location())
+        actor_loc = self.get_object_location(actor)
+        room = self.world.rooms.get(actor_loc) if actor_loc else None
         if not room:
             return ActionResult(
                 outcome="error",
-                error="Player is not in a valid room"
+                error=f"{actor} is not in a valid room"
             )
 
         # Find the exit
@@ -428,7 +437,7 @@ class GrueRuntime:
         # Check if exit has a :via door
         if exit_def.via:
             # Dispatch to door's "through" behavior
-            result = self.do("through", exit_def.via, direction=direction, to=exit_def.to)
+            result = self.do("through", exit_def.via, actor=actor, direction=direction, to=exit_def.to)
 
             # If door blocks passage, return that result
             if result.outcome == "blocked":
@@ -437,11 +446,11 @@ class GrueRuntime:
             # If door allows passage (success or default), complete the movement
             # The default indicates "yes, go that way" - we handle it here
             if result.outcome in ("success", "default"):
-                self.state.objects["PLAYER"].location = exit_def.to
+                self.state.objects[actor].location = exit_def.to
                 self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
                 return ActionResult(
                     outcome="success",
-                    effects_applied=[f"PLAYER moved to {exit_def.to} (via {exit_def.via})"],
+                    effects_applied=[f"{actor} moved to {exit_def.to} (via {exit_def.via})"],
                     context=result.context,
                 )
 
@@ -449,12 +458,12 @@ class GrueRuntime:
             return result
 
         # Simple exit - just move
-        self.state.objects["PLAYER"].location = exit_def.to
+        self.state.objects[actor].location = exit_def.to
         self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
 
         return ActionResult(
             outcome="success",
-            effects_applied=[f"PLAYER moved to {exit_def.to}"]
+            effects_applied=[f"{actor} moved to {exit_def.to}"]
         )
 
     def _evaluate_behavior(
