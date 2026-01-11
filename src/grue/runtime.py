@@ -72,6 +72,7 @@ class GrueRuntime:
         self.world = world
         self.state = self._init_state()
         self.bindings: dict[str, Any] = {}  # Current action bindings (?with, ?on, self, etc.)
+        self.player_name = self._find_player_name()  # Detect player entity by PERSON flag
 
     def _init_state(self) -> GameState:
         """Initialize game state from world definition."""
@@ -102,10 +103,21 @@ class GrueRuntime:
 
         return state
 
+    def _find_player_name(self) -> str:
+        """Find the player entity by looking for an object with the PERSON flag.
+
+        Falls back to "PLAYER" for backwards compatibility.
+        """
+        for name, obj in self.state.objects.items():
+            if "PERSON" in obj.flags and name not in self.state.rooms:
+                return name
+        return "PLAYER"  # Fallback
+
     def reset(self) -> None:
         """Reset game state to initial state."""
         self.state = self._init_state()
         self.bindings = {}
+        self.player_name = self._find_player_name()
 
     # -------------------------------------------------------------------------
     # MutableWorldState interface - used by ExprEvaluator and EffectExecutor
@@ -117,7 +129,7 @@ class GrueRuntime:
         return flag in self.state.objects[obj].flags
 
     def get_object_location(self, obj: str) -> str | None:
-        if obj == "PLAYER":
+        if obj == self.player_name:
             return self.get_player_location()
         if obj not in self.state.objects:
             return None
@@ -150,16 +162,20 @@ class GrueRuntime:
 
     def get_player_location(self) -> str:
         """Get the player's current room."""
-        player = self.state.objects.get("PLAYER")
+        player = self.state.objects.get(self.player_name)
         if player:
             return player.location or ""
         return ""
+
+    def get_player_name(self) -> str:
+        """Get the player entity name."""
+        return self.player_name
 
     def get_inventory(self) -> list[str]:
         """Get objects the player is carrying."""
         return [
             name for name, obj in self.state.objects.items()
-            if obj.location == "PLAYER" and name != "PLAYER"
+            if obj.location == self.player_name and name != self.player_name
         ]
 
     def is_visible(self, obj: str) -> bool:
@@ -172,7 +188,7 @@ class GrueRuntime:
         loc = obj_state.location
         if loc is None:
             return False
-        if loc == "PLAYER":
+        if loc == self.player_name:
             return True
         return loc == self.get_player_location()
 
@@ -262,7 +278,7 @@ class GrueRuntime:
         """Get objects visible to the player."""
         return [
             name for name in self.state.objects
-            if name != "PLAYER" and self.is_visible(name)
+            if name != self.player_name and self.is_visible(name)
         ]
 
     def get_exits(self) -> dict[str, str]:

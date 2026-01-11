@@ -1,22 +1,22 @@
-; TERMINAL-ROOM - Starting location for The Lurking Horror
+; terminal-room - Starting location for The Lurking Horror
 ;
-; This is a minimal world file for testing the TERMINAL-ROOM
-; and HACKER-EXIT barrier behavior.
+; This is a minimal world file for testing the @terminal-room
+; and @hacker-exit-barrier behavior.
 
 (world
   :name "Terminal Room Test"
-  :description "Test world for TERMINAL-ROOM conversion")
+  :description "Test world for @terminal-room conversion")
 
 ; === Player ===
 
-(object PLAYER
-  :location TERMINAL-ROOM
+(object @player
+  :location @terminal-room
   :flags (PERSON))
 
 ; === Rooms ===
 
-; [NEEDS-TRANSLATION] Room TERMINAL-ROOM: ACTION TERMINAL-ROOM-F
-(room TERMINAL-ROOM
+; [NEEDS-TRANSLATION] Room @terminal-room: ACTION TERMINAL-ROOM-F
+(room @terminal-room
   :description "Terminal Room"
   :ldesc "This is a large room crammed with computer terminals, small
 computers, and printers. An exit leads south. Banners, posters, and
@@ -25,8 +25,8 @@ paper, old pizza boxes, and empty Coke cans. There are usually a lot of
 people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
-    ((south :to CS-2ND :via HACKER-EXIT-BARRIER)
-     (out :to CS-2ND :via HACKER-EXIT-BARRIER))
+    ((south :to @cs-2nd :via @hacker-exit-barrier)
+     (out :to @cs-2nd :via @hacker-exit-barrier))
 
   ; --- Room ACTION Routine ---
   ; <ROUTINE TERMINAL-ROOM-F (RARG)
@@ -64,27 +64,27 @@ people here, but tonight it's almost deserted."
   ; --- End Room ACTION Routine ---
 )
 
-(room CS-2ND
+(room @cs-2nd
   :description "Second Floor"
   :ldesc "This is the second floor of the CS building."
   :flags (ONBIT)
   :exits
-    ((north :to TERMINAL-ROOM)))
+    ((north :to @terminal-room)))
 
 ; === Objects ===
 
-(object PC
+(object @pc
   :description "pc"
   :fdesc "A really whiz-bang pc is right inside the door."
-  :location TERMINAL-ROOM
+  :location @terminal-room
   :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
   :properties (:size 30 :unplugged false)
 
   :behaviors (
     ; EXAMINE - Show PC description with power state and screen contents
     :examine (cond
-      ((has-flag self POWER)
-        (success :context ((power on) (screen-contents (first-in self)))
+      ((has-flag ?self POWER)
+        (success :context ((power on) (screen-contents (first-in ?self)))
                  :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
       (true
         (success :context ((power off))
@@ -92,26 +92,26 @@ people here, but tonight it's almost deserted."
 
     ; LISTEN - Hums when powered on
     :listen (cond
-      ((has-flag self POWER)
+      ((has-flag ?self POWER)
         (success :message "It hums contentedly."))
       (true
         (blocked :reason not-powered :message "It's silent.")))
 
     ; TAKE - When hacker helps, redirect to unplug; otherwise auto-unplug
     :take (cond
-      ((queued? HACKER-HELPS)
-        (redirect :action (unplug PC)
+      ((queued? @hacker-helps)
+        (redirect :action (unplug @pc)
                   :context ((hacker-blocks true))))
-      ((prop self unplugged)
+      ((prop ?self unplugged)
         (default))  ; Normal take when already unplugged
-      ((has-flag self POWER)
+      ((has-flag ?self POWER)
         ; Taking while on: turn off and unplug
-        (success :effects ((clear-flag! self POWER) (set-prop! self unplugged true) (move! self PLAYER))
+        (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true) (move! ?self @player))
                  :context ((auto-unplug true) (was-powered true))
                  :message "You take it, turning it off and unplugging it first."))
       (true
         ; Taking while off but plugged in: just unplug
-        (success :effects ((set-prop! self unplugged true) (move! self PLAYER))
+        (success :effects ((set-prop! ?self unplugged true) (move! ?self @player))
                  :context ((auto-unplug true))
                  :message "You take it, unplugging it first.")))
 
@@ -122,81 +122,81 @@ people here, but tonight it's almost deserted."
 
     ; READ - Show screen contents
     :read (cond
-      ((and (queued? HACKER-HELPS) (< (prop PLAYER hacker-help-stage) 3))
+      ((and (queued? @hacker-helps) (< (prop @player hacker-help-stage) 3))
         (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
-      ((not (has-flag self POWER))
+      ((not (has-flag ?self POWER))
         (blocked :reason not-powered :message "The screen is dark."))
       ; Check for objects on screen (in PC container)
-      ((in? ODD-PAPER self)
-        (redirect :action (read ODD-PAPER)))
-      ((in? MENU-BOX self)
-        (redirect :action (read MENU-BOX)))
-      ((in? MORE-BOX self)
-        (redirect :action (read MORE-BOX)))
-      ((in? YAK-WINDOW self)
-        (redirect :action (read YAK-WINDOW)))
+      ((in? @odd-paper ?self)
+        (redirect :action (read @odd-paper)))
+      ((in? @menu-box ?self)
+        (redirect :action (read @menu-box)))
+      ((in? @more-box ?self)
+        (redirect :action (read @more-box)))
+      ((in? @yak-window ?self)
+        (redirect :action (read @yak-window)))
       (true
         (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now.")))
 
     ; TURN-ON (LAMP-ON) - Power up computer
     :turn-on (cond
-      ((prop self unplugged)
+      ((prop ?self unplugged)
         (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
-      ((has-flag self POWER)
+      ((has-flag ?self POWER)
         (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
       (true
-        (success :effects ((set-flag! self POWER))
+        (success :effects ((set-flag! ?self POWER))
                  :context ((booting true))
                  :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum.")))
 
     ; TURN-OFF (LAMP-OFF) - Power down computer
     :turn-off (cond
-      ((queued? HACKER-HELPS)
+      ((queued? @hacker-helps)
         (blocked :reason hacker-interference
-                 :context ((blocker HACKER))
+                 :context ((blocker @hacker))
                  :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-      ((not (has-flag self POWER))
+      ((not (has-flag ?self POWER))
         (blocked :reason already-off :message "It's already off."))
       (true
-        (success :effects ((clear-flag! self POWER))
+        (success :effects ((clear-flag! ?self POWER))
                  :message "The computer powers off.")))
 
     ; PLUG-IN - Plug in computer
     :plug-in (cond
-      ((not (prop self unplugged))
+      ((not (prop ?self unplugged))
         (blocked :reason already-plugged :message "It's already plugged in."))
       (true
-        (success :effects ((set-prop! self unplugged false))
+        (success :effects ((set-prop! ?self unplugged false))
                  :message "You plug in the computer.")))
 
     ; UNPLUG - Unplug computer
     :unplug (cond
-      ((prop self unplugged)
+      ((prop ?self unplugged)
         (blocked :reason already-unplugged :message "It's already unplugged."))
-      ((queued? HACKER-HELPS)
+      ((queued? @hacker-helps)
         (blocked :reason hacker-interference
-                 :context ((blocker HACKER))
+                 :context ((blocker @hacker))
                  :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-      ((has-flag self POWER)
+      ((has-flag ?self POWER)
         ; Unplug while on: turn off first
-        (success :effects ((clear-flag! self POWER) (set-prop! self unplugged true))
+        (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true))
                  :context ((was-powered true))
                  :message "Okay, it's unplugged now."))
       (true
-        (success :effects ((set-prop! self unplugged true))
+        (success :effects ((set-prop! ?self unplugged true))
                  :message "Okay, it's unplugged now.")))
 
     ; SIT-AT - Redirect to sitting in chair if present
     :sit-at (cond
-      ((here? CHAIR)
-        (redirect :action (sit CHAIR)))
+      ((here? @chair)
+        (redirect :action (sit @chair)))
       (true
         (blocked :reason no-chair :message "There's no chair here.")))))
 
-(object CHAIR
+(object @chair
   :description "chair"
   :fdesc "Nearby is one of those ugly molded plastic chairs."
-  :location TERMINAL-ROOM
+  :location @terminal-room
   :flags (TAKEBIT VEHBIT SEARCHBIT CONTBIT OPENBIT FURNITURE SURFACEBIT)
   :properties (:size 100)
 
@@ -206,29 +206,29 @@ people here, but tonight it's almost deserted."
         (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.")))
 
     :take (cond
-      ((in? HACKER CHAIR)
+      ((in? @hacker @chair)
         (blocked :reason in-use :message "It's in use."))
       (true
         (default)))
 
     :sit (cond
-      ((in? HACKER CHAIR)
+      ((in? @hacker @chair)
         (blocked :reason occupied :message "The hacker is already using it."))
-      ((in? PLAYER CHAIR)
+      ((in? @player @chair)
         (blocked :reason already-there :message "You are."))
       (true
-        (success :effects ((move! PLAYER CHAIR)) :message "You are now sitting in the chair.")))
+        (success :effects ((move! @player @chair)) :message "You are now sitting in the chair.")))
 
     :stand (cond
-      ((in? PLAYER CHAIR)
-        (success :effects ((move! PLAYER (loc CHAIR))) :message "You get out of the chair."))
+      ((in? @player @chair)
+        (success :effects ((move! @player (loc @chair))) :message "You get out of the chair."))
       (true
         (blocked :reason not-in-vehicle :message "You're not in the chair.")))))
 
-; [NEEDS-TRANSLATION] HACKER
-(object HACKER
+; [NEEDS-TRANSLATION] @hacker
+(object @hacker
   :description "hacker"
-  :location TERMINAL-ROOM
+  :location @terminal-room
   :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
   :properties (:descfcn "HACKER-DESC" :contfcn "HACKER-F")
 
@@ -439,7 +439,7 @@ people here, but tonight it's almost deserted."
 
 ; === Barriers ===
 
-; HACKER-EXIT: Prevents leaving with Tech property (PC or CHAIR)
+; HACKER-EXIT: Prevents leaving with Tech property (@pc or @chair)
 ; Original ZIL:
 ;   <ROUTINE HACKER-EXIT ()
 ;      <COND (<OR <HELD? ,PC> <HELD? ,CHAIR>>
@@ -448,15 +448,15 @@ people here, but tonight it's almost deserted."
 ;         <RFALSE>)
 ;        (ELSE ,CS-2ND)>>
 
-(object HACKER-EXIT-BARRIER
-  :location TERMINAL-ROOM
+(object @hacker-exit-barrier
+  :location @terminal-room
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
     :through (cond
-      ((or (held? PC) (held? CHAIR))
+      ((or (held? @pc) (held? @chair))
         (blocked :reason tech-property
-                 :context ((blocker HACKER))
+                 :context ((blocker @hacker))
                  :message "You can't walk off with that! It's Tech property!"))
       (true
         (success)))))

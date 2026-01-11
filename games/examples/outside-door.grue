@@ -1,11 +1,11 @@
-; OUTSIDE-DOOR Example
+; outside-door example
 ; Demonstrates behavioral DSL with the exterior door from Lurking Horror
 ;
 ; This door exhibits complex location-dependent behavior:
 ; - From outside at certain locations: door opens (push-bar)
 ; - From outside elsewhere: locked
 ; - From inside: opens but auto-closes
-; - MASTER-KEY doesn't work (electronic lock)
+; - @master-key doesn't work (electronic lock)
 
 (world
   :name "Outside Door Example"
@@ -13,8 +13,8 @@
 
 ; === PLAYER ===
 
-(object PLAYER
-  :location MASS-AVE
+(object @player
+  :location @mass-ave
   :flags (PERSON)
   :properties
     ((score 0)
@@ -22,58 +22,58 @@
 
 ; === ROOMS ===
 
-(room MASS-AVE
+(room @mass-ave
   :description "The windswept intersection of Mass Ave and Memorial Drive"
   :flags (OUTSIDE LIT)
   :exits
-    ((in :to LOBBY :via OUTSIDE-DOOR)
-     (east :to SMITH-ST)
-     (south :to GREAT-COURT)))
+    ((in :to @lobby :via @outside-door)
+     (east :to @smith-st)
+     (south :to @great-court)))
 
-(room SMITH-ST
+(room @smith-st
   :description "Smith Street, along the side of the building"
   :flags (OUTSIDE LIT)
   :exits
-    ((in :to LOBBY :via OUTSIDE-DOOR)
-     (west :to MASS-AVE)))
+    ((in :to @lobby :via @outside-door)
+     (west :to @mass-ave)))
 
-(room GREAT-COURT
+(room @great-court
   :description "The great court, surrounded by imposing buildings"
   :flags (OUTSIDE LIT)
   :exits
-    ((in :to LOBBY :via OUTSIDE-DOOR)
-     (north :to MASS-AVE)))
+    ((in :to @lobby :via @outside-door)
+     (north :to @mass-ave)))
 
-(room COURTYARD
+(room @courtyard
   :description "A small courtyard with a locked door"
   :flags (OUTSIDE LIT)
   :exits
-    ((in :to LOBBY :via OUTSIDE-DOOR)))
+    ((in :to @lobby :via @outside-door)))
 
-(room CS-ROOF
+(room @cs-roof
   :description "The roof of the computer science building"
   :flags (OUTSIDE LIT)
   :exits
-    ((down :to LOBBY :via OUTSIDE-DOOR)))
+    ((down :to @lobby :via @outside-door)))
 
-(room LOBBY
+(room @lobby
   :description "The building's main lobby, quiet at this hour"
   :flags (INSIDE LIT)
   :exits
-    ((out :to MASS-AVE :via OUTSIDE-DOOR)
-     (north :to HALLWAY)))
+    ((out :to @mass-ave :via @outside-door)
+     (north :to @hallway)))
 
-(room HALLWAY
+(room @hallway
   :description "A long corridor stretching into darkness"
   :flags (INSIDE LIT)
   :exits
-    ((south :to LOBBY)))
+    ((south :to @lobby)))
 
 ; === OBJECTS ===
 
-(object OUTSIDE-DOOR
+(object @outside-door
   :description "A heavy exterior door with an electronic lock"
-  :location MASS-AVE
+  :location @mass-ave
   :flags (DOOR LOCKED OPENABLE FIXED)
   :properties
     ((lock-type electronic))
@@ -83,7 +83,7 @@
     :open (cond
       ; Outside at push-bar locations: door opens freely
       ((and (room-has-flag? OUTSIDE)
-            (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF))
+            (in-room? @player @mass-ave @smith-st @courtyard @cs-roof))
         (success :context ((mechanism push-bar))))
 
       ; Outside elsewhere: locked
@@ -98,8 +98,8 @@
     :unlock (cond
       ; Outside with master key at push-bar locations: wrong key type
       ((and (room-has-flag? OUTSIDE)
-            (in-room? PLAYER MASS-AVE SMITH-ST COURTYARD CS-ROOF)
-            (= ?with MASTER-KEY))
+            (in-room? @player @mass-ave @smith-st @courtyard @cs-roof)
+            (= ?with @master-key))
         (blocked :reason wrong-key-type
                  :context ((detail electronic-lock)
                            (expected card-key))))
@@ -109,12 +109,12 @@
         (blocked :reason locked-from-outside))
 
       ; Inside with master key: success
-      ((and (has-flag self LOCKED)
-            (= ?with MASTER-KEY))
-        (success :effects ((clear-flag! self LOCKED))))
+      ((and (has-flag ?self LOCKED)
+            (= ?with @master-key))
+        (success :effects ((clear-flag! ?self LOCKED))))
 
       ; Inside without key: need a key
-      ((has-flag self LOCKED)
+      ((has-flag ?self LOCKED)
         (blocked :reason need-key))
 
       ; Already unlocked
@@ -143,18 +143,18 @@
       (true
         (success :context ((visible-features (electronic-lock))
                            (apparent-state
-                             (if (has-flag self LOCKED) locked unlocked))))))))
+                             (if (has-flag ?self LOCKED) locked unlocked))))))))
 
-(object MASTER-KEY
+(object @master-key
   :description "A worn brass key on a GBS keyring"
-  :location PLAYER
+  :location @player
   :flags (TAKEABLE)
   :properties
     ((key-type physical)))
 
-(object CARD-KEY
+(object @card-key
   :description "A white plastic card with a magnetic stripe"
-  :location HALLWAY
+  :location @hallway
   :flags (TAKEABLE)
   :properties
     ((key-type electronic)))
@@ -163,7 +163,7 @@
 
 ; For this example, victory is reaching the hallway
 (victory
-  :when (= (loc PLAYER) HALLWAY)
+  :when (= (loc @player) @hallway)
   :context ((ending reached-inside)))
 
 ; No defeat conditions in this simple example

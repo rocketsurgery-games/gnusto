@@ -79,6 +79,10 @@ class WorldState(Protocol):
         """Get player's current room."""
         ...
 
+    def get_player_name(self) -> str:
+        """Get the player entity name (e.g., '@player' or 'PLAYER')."""
+        ...
+
     def get_inventory(self) -> list[str]:
         """Get player's inventory."""
         ...
@@ -386,7 +390,7 @@ class ExprEvaluator:
             raise EvalError(f"'held?' expects 1 argument, got {len(form) - 1}")
         obj = self.eval(form[1])
         loc = self.state.get_object_location(obj)
-        return loc == "PLAYER"
+        return loc == self.state.get_player_name()
 
     def _eval_here(self, form: SList) -> bool:
         """(here? OBJ) - shorthand for (= (loc OBJ) (loc PLAYER))"""

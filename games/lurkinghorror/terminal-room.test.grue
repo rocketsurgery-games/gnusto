@@ -1,7 +1,7 @@
-; Tests for TERMINAL-ROOM and HACKER-EXIT barrier
+; Tests for @terminal-room and @hacker-exit-barrier
 ;
-; The HACKER-EXIT barrier prevents the player from leaving
-; the terminal room while carrying "Tech property" (PC or CHAIR).
+; The @hacker-exit-barrier prevents the player from leaving
+; the terminal room while carrying "Tech property" (@pc or @chair).
 ; The hacker stops you with "You can't walk off with that!"
 
 ; === Basic movement (no tech property) ===
@@ -9,32 +9,32 @@
 (test "can exit south without carrying anything"
   :action (go :direction south)
   :expect ((outcome? success)
-           (player-at? CS-2ND)))
+           (player-at? @cs-2nd)))
 
 (test "can exit out without carrying anything"
-  :setup ((move! PLAYER TERMINAL-ROOM))
+  :setup ((move! @player @terminal-room))
   :action (go :direction out)
   :expect ((outcome? success)
-           (player-at? CS-2ND)))
+           (player-at? @cs-2nd)))
 
-; === Blocked when carrying PC ===
+; === Blocked when carrying @pc ===
 
 (test "blocked when carrying PC - south"
-  :setup ((move! PC PLAYER))
+  :setup ((move! @pc @player))
   :action (go :direction south)
   :expect ((outcome? blocked)
            (reason? tech-property)))
 
 (test "blocked when carrying PC - out"
-  :setup ((move! PC PLAYER))
+  :setup ((move! @pc @player))
   :action (go :direction out)
   :expect ((outcome? blocked)
            (reason? tech-property)))
 
-; === Blocked when carrying CHAIR ===
+; === Blocked when carrying @chair ===
 
 (test "blocked when carrying chair - south"
-  :setup ((move! CHAIR PLAYER))
+  :setup ((move! @chair @player))
   :action (go :direction south)
   :expect ((outcome? blocked)
            (reason? tech-property)))
@@ -42,104 +42,103 @@
 ; === Can leave after putting down tech property ===
 
 (test "can leave after putting PC back"
-  :setup ((move! PC PLAYER)
-          (move! PC TERMINAL-ROOM))
+  :setup ((move! @pc @player)
+          (move! @pc @terminal-room))
   :action (go :direction south)
   :expect ((outcome? success)
-           (player-at? CS-2ND)))
+           (player-at? @cs-2nd)))
 
 ; === Take/drop behavior ===
 
 (test "take PC"
-  :action (do :verb take :object PC)
+  :action (do :verb take :object @pc)
   :expect ((outcome? success)
-           (held? PC)))
+           (held? @pc)))
 
 (test "cannot take object not here"
-  :setup ((move! PC CS-2ND))
-  :action (do :verb take :object PC)
+  :setup ((move! @pc @cs-2nd))
+  :action (do :verb take :object @pc)
   :expect ((outcome? blocked)
            (reason? not-here)))
 
 (test "cannot take object already held"
-  :setup ((move! PC PLAYER))
-  :action (do :verb take :object PC)
+  :setup ((move! @pc @player))
+  :action (do :verb take :object @pc)
   :expect ((outcome? blocked)
            (reason? already-held)))
 
 (test "cannot take non-takeable object"
-  :action (do :verb take :object HACKER)
+  :action (do :verb take :object @hacker)
   :expect ((outcome? blocked)
            (reason? not-takeable)))
 
 (test "drop PC"
-  :setup ((move! PC PLAYER))
-  :action (do :verb drop :object PC)
+  :setup ((move! @pc @player))
+  :action (do :verb drop :object @pc)
   :expect ((outcome? success)
-           (loc? PC TERMINAL-ROOM)))
+           (loc? @pc @terminal-room)))
 
 (test "cannot drop object not held"
-  :action (do :verb drop :object PC)
+  :action (do :verb drop :object @pc)
   :expect ((outcome? blocked)
            (reason? not-held)))
 
-; === CHAIR behaviors ===
+; === @chair behaviors ===
 
 (test "examine chair"
-  :action (do :verb examine :object CHAIR)
+  :action (do :verb examine :object @chair)
   :expect ((outcome? success)))
 
 (test "take chair - blocked when hacker in it"
-  :setup ((move! HACKER CHAIR))
-  :action (do :verb take :object CHAIR)
+  :setup ((move! @hacker @chair))
+  :action (do :verb take :object @chair)
   :expect ((outcome? blocked)
            (reason? in-use)))
 
 (test "take chair - success when hacker not in it"
-  :action (do :verb take :object CHAIR)
+  :action (do :verb take :object @chair)
   :expect ((outcome? success)
-           (held? CHAIR)))
+           (held? @chair)))
 
 (test "sit in chair - success"
-  :action (do :verb sit :object CHAIR)
+  :action (do :verb sit :object @chair)
   :expect ((outcome? success)
-           (loc? PLAYER CHAIR)))
+           (loc? @player @chair)))
 
 (test "sit in chair - blocked when hacker using it"
-  :setup ((move! HACKER CHAIR))
-  :action (do :verb sit :object CHAIR)
+  :setup ((move! @hacker @chair))
+  :action (do :verb sit :object @chair)
   :expect ((outcome? blocked)
            (reason? occupied)))
 
 (test "sit in chair - blocked when already sitting"
-  :setup ((move! PLAYER CHAIR))
-  :action (do :verb sit :object CHAIR)
+  :setup ((move! @player @chair))
+  :action (do :verb sit :object @chair)
   :expect ((outcome? blocked)
            (reason? already-there)))
 
 (test "stand from chair"
-  :setup ((move! PLAYER CHAIR))
-  :action (do :verb stand :object CHAIR)
+  :setup ((move! @player @chair))
+  :action (do :verb stand :object @chair)
   :expect ((outcome? success)
-           (loc? PLAYER TERMINAL-ROOM)))
+           (loc? @player @terminal-room)))
 
 ; === Take/drop with barrier ===
 
 (test-sequence "take PC then blocked at exit"
-  (step :action (do :verb take :object PC)
+  (step :action (do :verb take :object @pc)
         :expect ((outcome? success)
-                 (held? PC)))
+                 (held? @pc)))
   (step :action (go :direction south)
         :expect ((outcome? blocked)
                  (reason? tech-property))))
 
 (test-sequence "take PC, drop PC, then exit"
-  (step :action (do :verb take :object PC)
+  (step :action (do :verb take :object @pc)
         :expect ((outcome? success)))
-  (step :action (do :verb drop :object PC)
+  (step :action (do :verb drop :object @pc)
         :expect ((outcome? success)
-                 (loc? PC TERMINAL-ROOM)))
+                 (loc? @pc @terminal-room)))
   (step :action (go :direction south)
         :expect ((outcome? success)
-                 (player-at? CS-2ND))))
-
+                 (player-at? @cs-2nd))))

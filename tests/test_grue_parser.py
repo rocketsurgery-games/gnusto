@@ -248,7 +248,7 @@ class TestExampleFile:
 
     def test_parse_outside_door_example(self):
         """Parse the outside-door.grue example file."""
-        example_path = Path(__file__).parent.parent / "examples" / "outside-door.grue"
+        example_path = Path(__file__).parent.parent / "games" / "examples" / "outside-door.grue"
         if not example_path.exists():
             pytest.skip("Example file not found")
 
@@ -257,23 +257,23 @@ class TestExampleFile:
         # Check world meta
         assert world.name == "Outside Door Example"
 
-        # Check rooms
-        assert "MASS-AVE" in world.rooms
-        assert "LOBBY" in world.rooms
-        assert "HALLWAY" in world.rooms
+        # Check rooms (now using @lowercase naming)
+        assert "@mass-ave" in world.rooms
+        assert "@lobby" in world.rooms
+        assert "@hallway" in world.rooms
 
-        mass_ave = world.rooms["MASS-AVE"]
+        mass_ave = world.rooms["@mass-ave"]
         assert "OUTSIDE" in mass_ave.flags
         assert "LIT" in mass_ave.flags
         assert len(mass_ave.exits) == 3
 
         # Check objects
-        assert "PLAYER" in world.objects
-        assert "OUTSIDE-DOOR" in world.objects
-        assert "MASTER-KEY" in world.objects
+        assert "@player" in world.objects
+        assert "@outside-door" in world.objects
+        assert "@master-key" in world.objects
 
-        door = world.objects["OUTSIDE-DOOR"]
-        assert door.location == "MASS-AVE"
+        door = world.objects["@outside-door"]
+        assert door.location == "@mass-ave"
         assert "DOOR" in door.flags
         assert "LOCKED" in door.flags
         assert door.properties["lock-type"] == "electronic"

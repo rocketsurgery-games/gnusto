@@ -1,7 +1,7 @@
 ; Tests for outside-door.grue
 ;
 ; Validates the complex door behavior:
-; - Opens from push-bar locations (MASS-AVE, SMITH-ST, etc.)
+; - Opens from push-bar locations (@mass-ave, @smith-st, etc.)
 ; - Blocked from other outside locations
 ; - Opens from inside but auto-closes
 ; - Electronic lock rejects physical keys
@@ -9,79 +9,79 @@
 ; === OPEN behavior ===
 
 (test "door opens from mass-ave"
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? success)
            (context? mechanism push-bar)))
 
 (test "door opens from smith-st"
-  :setup ((move! PLAYER SMITH-ST))
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :setup ((move! @player @smith-st))
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? success)
            (context? mechanism push-bar)))
 
 (test "door opens from courtyard"
-  :setup ((move! PLAYER COURTYARD))
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :setup ((move! @player @courtyard))
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? success)
            (context? mechanism push-bar)))
 
 (test "door opens from cs-roof"
-  :setup ((move! PLAYER CS-ROOF))
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :setup ((move! @player @cs-roof))
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? success)
            (context? mechanism push-bar)))
 
 (test "door blocked from great-court"
-  :setup ((move! PLAYER GREAT-COURT))
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :setup ((move! @player @great-court))
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? blocked)
            (reason? locked-from-outside)))
 
 (test "door opens from lobby"
-  :setup ((move! PLAYER LOBBY))
-  :action (do :verb open :object OUTSIDE-DOOR)
+  :setup ((move! @player @lobby))
+  :action (do :verb open :object @outside-door)
   :expect ((outcome? success)
            (context? note auto-closing)))
 
 ; === UNLOCK behavior ===
 
 (test "master-key rejected outside"
-  :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+  :action (do :verb unlock :object @outside-door :with @master-key)
   :expect ((outcome? blocked)
            (reason? wrong-key-type)
            (context? detail electronic-lock)
            (context? expected card-key)))
 
 (test "unlock blocked from great-court"
-  :setup ((move! PLAYER GREAT-COURT))
-  :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+  :setup ((move! @player @great-court))
+  :action (do :verb unlock :object @outside-door :with @master-key)
   :expect ((outcome? blocked)
            (reason? locked-from-outside)))
 
 (test "master-key works inside"
-  :setup ((move! PLAYER LOBBY))
-  :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+  :setup ((move! @player @lobby))
+  :action (do :verb unlock :object @outside-door :with @master-key)
   :expect ((outcome? success)
-           (no-flag? OUTSIDE-DOOR LOCKED)))
+           (no-flag? @outside-door LOCKED)))
 
 (test "unlock needs key inside"
-  :setup ((move! PLAYER LOBBY)
-          (move! MASTER-KEY MASS-AVE))
-  :action (do :verb unlock :object OUTSIDE-DOOR)
+  :setup ((move! @player @lobby)
+          (move! @master-key @mass-ave))
+  :action (do :verb unlock :object @outside-door)
   :expect ((outcome? blocked)
            (reason? need-key)))
 
 (test "unlock already unlocked"
-  :setup ((move! PLAYER LOBBY)
-          (clear-flag! OUTSIDE-DOOR LOCKED))
-  :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+  :setup ((move! @player @lobby)
+          (clear-flag! @outside-door LOCKED))
+  :action (do :verb unlock :object @outside-door :with @master-key)
   :expect ((outcome? blocked)
            (reason? not-locked)))
 
 ; === CLOSE behavior ===
 
 (test "close always succeeds"
-  :action (do :verb close :object OUTSIDE-DOOR)
+  :action (do :verb close :object @outside-door)
   :expect ((outcome? success)
            (context? note spring-loaded)))
 
@@ -90,39 +90,39 @@
 (test "go in from outside"
   :action (go :direction in)
   :expect ((outcome? success)
-           (player-at? LOBBY)))
+           (player-at? @lobby)))
 
 (test "go out from inside"
-  :setup ((move! PLAYER LOBBY))
+  :setup ((move! @player @lobby))
   :action (go :direction out)
   :expect ((outcome? success)
-           (player-at? MASS-AVE)))
+           (player-at? @mass-ave)))
 
 (test "east-west movement"
   :action (go :direction east)
   :expect ((outcome? success)
-           (player-at? SMITH-ST)))
+           (player-at? @smith-st)))
 
 ; === Multi-step sequences ===
 
 (test-sequence "unlock and enter from inside"
-  :setup ((move! PLAYER LOBBY))
-  (step :action (do :verb unlock :object OUTSIDE-DOOR :with MASTER-KEY)
+  :setup ((move! @player @lobby))
+  (step :action (do :verb unlock :object @outside-door :with @master-key)
         :expect ((outcome? success)
-                 (no-flag? OUTSIDE-DOOR LOCKED)))
-  (step :action (do :verb open :object OUTSIDE-DOOR)
+                 (no-flag? @outside-door LOCKED)))
+  (step :action (do :verb open :object @outside-door)
         :expect ((outcome? success)))
   (step :action (go :direction out)
         :expect ((outcome? success)
-                 (player-at? MASS-AVE))))
+                 (player-at? @mass-ave))))
 
 (test-sequence "round trip through door"
   (step :action (go :direction in)
         :expect ((outcome? success)
-                 (player-at? LOBBY)))
+                 (player-at? @lobby)))
   (step :action (go :direction out)
         :expect ((outcome? success)
-                 (player-at? MASS-AVE)))
+                 (player-at? @mass-ave)))
   (step :action (go :direction east)
         :expect ((outcome? success)
-                 (player-at? SMITH-ST))))
+                 (player-at? @smith-st))))

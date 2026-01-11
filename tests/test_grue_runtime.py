@@ -261,26 +261,26 @@ class TestOutsideDoorExample:
 
     @pytest.fixture
     def runtime(self):
-        example_path = Path(__file__).parent.parent / "examples" / "outside-door.grue"
+        example_path = Path(__file__).parent.parent / "games" / "examples" / "outside-door.grue"
         if not example_path.exists():
             pytest.skip("Example file not found")
         world = load_grue(example_path)
         return GrueRuntime(world)
 
     def test_initial_state(self, runtime):
-        """Player starts at MASS-AVE."""
-        assert runtime.get_player_location() == "MASS-AVE"
-        assert "MASTER-KEY" in runtime.get_inventory()
+        """Player starts at @mass-ave."""
+        assert runtime.get_player_location() == "@mass-ave"
+        assert "@master-key" in runtime.get_inventory()
 
     def test_open_door_from_outside(self, runtime):
         """Opening door from outside at push-bar location succeeds."""
-        result = runtime.do("open", "OUTSIDE-DOOR")
+        result = runtime.do("open", "@outside-door")
         assert result.outcome == "success"
         assert ("mechanism", "push-bar") in result.context
 
     def test_unlock_door_with_key_from_outside(self, runtime):
         """Unlocking door from outside with physical key fails."""
-        result = runtime.do("unlock", "OUTSIDE-DOOR", **{"with": "MASTER-KEY"})
+        result = runtime.do("unlock", "@outside-door", **{"with": "@master-key"})
         assert result.outcome == "blocked"
         assert result.reason == "wrong-key-type"
 
@@ -288,12 +288,12 @@ class TestOutsideDoorExample:
         """Victory when player reaches hallway."""
         assert not runtime.check_victory()
 
-        runtime.state.objects["PLAYER"].location = "HALLWAY"
+        runtime.state.objects["@player"].location = "@hallway"
         assert runtime.check_victory()
 
     def test_close_door(self, runtime):
         """Closing door always succeeds (spring-loaded)."""
-        result = runtime.do("close", "OUTSIDE-DOOR")
+        result = runtime.do("close", "@outside-door")
         assert result.outcome == "success"
         assert ("note", "spring-loaded") in result.context
 

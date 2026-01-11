@@ -71,6 +71,9 @@ class MockWorldState:
     def get_player_location(self) -> str:
         return self.locations["PLAYER"]
 
+    def get_player_name(self) -> str:
+        return "PLAYER"
+
     def get_inventory(self) -> list[str]:
         return [obj for obj, loc in self.locations.items() if loc == "PLAYER" and obj != "PLAYER"]
 
