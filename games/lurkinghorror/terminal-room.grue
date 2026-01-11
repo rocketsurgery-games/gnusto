@@ -271,6 +271,74 @@ people here, but tonight it's almost deserted."
   :flags (TAKEBIT)
   :properties ())
 
+; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
+
+(object @keys
+  :description "keys"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @food
+  :description "food"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @students
+  :description "missing students"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @program
+  :description "the program"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @lovecraft
+  :description "Lovecraft"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @smooth-stone
+  :description "smooth stone"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @urchins
+  :description "urchins"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @repeater
+  :description "repeater"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @cable
+  :description "cable"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @hand
+  :description "your hand"
+  :location @player
+  :flags (INVISIBLE NDESCBIT)
+  :properties ())
+
+(object @dead-rat
+  :description "dead rat"
+  :location nil
+  :flags (TAKEBIT)
+  :properties ())
+
 ; === Main Characters ===
 
 (object @hacker
@@ -407,7 +475,7 @@ people here, but tonight it's almost deserted."
       ((= ?object @keyring)
         (blocked :reason needs-keys :context ((response "\"Well, I can't give you my keys, I need them.\" He fondles his keyring proudly."))))
       ; Ask for master key - key not visible (suspicious)
-      ((and (= ?object @master-key) (not (visible? @master-key)))
+      ((and (= ?object @master-key) (not (has-flag @master-key TOUCHBIT)))
         (blocked :reason suspicious :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
       ; Ask for master key - player already fed hacker (loan it)
       ((and (= ?object @master-key) (in? @carton @hacker))
@@ -430,6 +498,61 @@ people here, but tonight it's almost deserted."
         (success :context ((response "\"Greetingage.\" He turns back to his hacking."))))
       (true
         (success :context ((response "\"Greetingage.\"")))))
+
+    ; === ASK-ABOUT (ask hacker about X) ===
+    ; ZIL: TELL-ME-ABOUT / WHAT verbs with WINNER=HACKER
+    :ask-about (cond
+      ; Possessed state (lair-cnt > 6) - he's not himself
+      ((> lair-cnt 6)
+        (success :context ((response "The hacker replies, \"Meld!\""))))
+      ; About himself
+      ((= ?topic @hacker)
+        (success :context ((response "He's reluctant to boast."))))
+      ; About keys/keyring - reveals master key!
+      ((or (= ?topic @keyring) (= ?topic @keys))
+        (success
+          :effects ((set-flag! @master-key TOUCHBIT) (move! @master-key @keyring))
+          :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says."))))
+      ; About food
+      ((or (= ?topic @chinese-food) (= ?topic @snack) (= ?topic @food))
+        (success :context ((response "\"Yeah! I'd love some yummy Chinese food. Szechuan style. Ummm!\""))))
+      ; About the master key - depends on whether it's been revealed (TOUCHBIT)
+      ((and (= ?topic @master-key) (not (has-flag @master-key TOUCHBIT)))
+        (success :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
+      ((= ?topic @master-key)
+        (success :context ((response "\"That's one of my best keys. It's a Tech master key. Not that it really opens every door at Tech, but I'd say three out of five, at least. Naturally, some labs are off-limits even to this key.\""))))
+      ; About missing students
+      ((= ?topic @students)
+        (success :context ((response "\"Missing students? I knew one of them slightly. Not the sort who would go away, you know? He was sort of hackeresque, not dumb for an undergrad, either. Not the type to disappear.\""))))
+      ; About the program/PC - state dependent on hacker-help global
+      ((or (= ?topic @program) (= ?topic @pc))
+        (success :context ((response "\"You should consult the documentation.\" He's preoccupied with his own debugging."))))
+      ; About Lovecraft
+      ((= ?topic @lovecraft)
+        (success :context ((response "\"Wasn't he a fantasy author?\""))))
+      ; About the smooth stone
+      ((= ?topic @smooth-stone)
+        (success :context ((response "\"I've never seen one like that. Pretty tasteful, I'd say.\""))))
+      ; About urchins
+      ((= ?topic @urchins)
+        (success :context ((response "\"There are always urchins around. I remember one or two who became hackers.\""))))
+      ; About repeater/cable (offers to help)
+      ((or (= ?topic @repeater) (= ?topic @cable))
+        (success :context ((response "\"I'll fix it!\""))))
+      ; Default - doesn't know
+      (true
+        (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about.")))))
+
+    ; === TELL-ABOUT (tell hacker about X) ===
+    ; ZIL: same as ASK-ABOUT for most topics
+    :tell-about (cond
+      ; Possessed state
+      ((> lair-cnt 6)
+        (success :context ((response "The hacker replies, \"Meld!\""))))
+      ; For most topics, redirect to ask-about behavior
+      ; The hacker treats "tell about" the same as "ask about"
+      (true
+        (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about.")))))
 
     ; === HOSTILE ACTIONS ===
     :attack (cond
