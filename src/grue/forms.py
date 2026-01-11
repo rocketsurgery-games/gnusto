@@ -133,6 +133,7 @@ class GrueWorld:
     victory: GrueVictory | None = None
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
+    globals: dict[str, Any] = field(default_factory=dict)  # global variables
 
 
 # === Helper functions for form handlers ===
@@ -421,6 +422,23 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
         world.name = expect_string(kwargs["name"], "world name")
     if "description" in kwargs:
         world.description = expect_string(kwargs["description"], "world description")
+
+
+@form("globals")
+def _parse_globals(expr: SList, world: GrueWorld) -> None:
+    """Parse (globals :name value :name2 value2 ...).
+
+    Example:
+        (globals
+          :lair-cnt 0
+          :hacker-help 0
+          :hacker-trade false)
+    """
+    kwargs = parse_kwargs(list(expr.items[1:]))
+
+    for key, val_expr in kwargs.items():
+        # Convert keyword names: :lair-cnt -> lair-cnt
+        world.globals[key] = sexpr_to_value(val_expr)
 
 
 @form("room")

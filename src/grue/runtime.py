@@ -97,9 +97,12 @@ class GrueRuntime:
                 properties=dict(obj.properties),
             )
 
-        # Initialize globals
-        state.globals["score"] = 0
-        state.globals["moves"] = 0
+        # Initialize globals from world definition
+        state.globals.update(self.world.globals)
+
+        # Set default globals if not already defined
+        state.globals.setdefault("score", 0)
+        state.globals.setdefault("moves", 0)
 
         return state
 

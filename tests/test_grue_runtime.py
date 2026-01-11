@@ -584,3 +584,97 @@ class TestRedirectFollowing:
         # Both contexts should be present
         assert ("redirected", True) in result.context
         assert ("final", True) in result.context
+
+
+
+class TestGlobalsRuntime:
+    """Test globals initialization and usage at runtime."""
+
+    def test_globals_initialized_from_world(self):
+        """Globals from world definition are available at runtime."""
+        source = """
+        (globals
+          :lair-cnt 0
+          :hacker-help 0
+          :active true)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        assert runtime.get_global("lair-cnt") == 0
+        assert runtime.get_global("hacker-help") == 0
+        assert runtime.get_global("active") is True
+
+    def test_default_globals_preserved(self):
+        """Default globals (score, moves) are set if not defined."""
+        source = """
+        (globals :custom-var 42)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Custom global is set
+        assert runtime.get_global("custom-var") == 42
+        # Default globals still present
+        assert runtime.get_global("score") == 0
+        assert runtime.get_global("moves") == 0
+
+    def test_world_can_override_defaults(self):
+        """World can override default global values."""
+        source = """
+        (globals :score 100 :moves 50)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        assert runtime.get_global("score") == 100
+        assert runtime.get_global("moves") == 50
+
+    def test_globals_in_behavior_conditions(self):
+        """Globals can be checked in behavior conditions."""
+        source = """
+        (globals :counter 5)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object THING :location LOBBY
+          :behaviors (
+            :examine (cond
+              ((> counter 3)
+                (success :message "Counter is high"))
+              (true
+                (success :message "Counter is low")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("examine", "THING")
+        assert result.outcome == "success"
+        assert ("message", "Counter is high") in result.context
+
+    def test_globals_modified_by_effects(self):
+        """Globals can be modified by set! effects."""
+        source = """
+        (globals :counter 0)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object BUTTON :location LOBBY
+          :behaviors (
+            :push (cond
+              (true (success
+                      :effects ((inc! counter))
+                      :message "Counter incremented")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        assert runtime.get_global("counter") == 0
+        runtime.do("push", "BUTTON")
+        assert runtime.get_global("counter") == 1
+        runtime.do("push", "BUTTON")
+        assert runtime.get_global("counter") == 2
