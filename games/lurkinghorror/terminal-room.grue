@@ -352,14 +352,23 @@ people here, but tonight it's almost deserted."
   ;
   ; IMPLEMENTED:
   ; - hacker-trade global: Set when player offers trade for master key
-  ; - :give, :show, :trade, :ask-for, :hello behaviors
+  ; - lair-cnt global: Possessed state check (> 6 = possessed, responds "Meld!")
+  ; - :describe, :examine, :smell, :listen, :thank - sensory behaviors
+  ; - :show - show object to hacker
+  ; - :give - give items (food trade puzzle)
+  ; - :trade - propose trades (sets hacker-trade flag)
+  ; - :ask-for - "give me X" requests
+  ; - :hello - greeting
+  ; - :ask-about - conversation topics (keyring reveals master key)
+  ; - :tell-about - tell hacker about topics
+  ; - :follow - follow hacker (busy/location-dependent)
+  ; - :attack, :kill - hostile actions (blocked)
   ;
-  ; MISSING FEATURES requiring further work:
-  ; - LAIR-CNT global checks: When > 6, hacker is possessed (different responses)
-  ; - HACKER-HELP global: Tracks help interaction state (0=not asked, 1+=helping)
+  ; MISSING FEATURES requiring turn-based events (frotzlm-ppy.7):
+  ; - HACKER-HELP global: Full help interaction state (0=not asked, 1+=helping)
   ; - I-HACKER-HELPS interrupt: Queued event for hacker helping with PC
   ; - I-FOOD-HINT interrupt: Hint about feeding the hacker
-  ; - Conversation system: "hacker, tell me about X"
+  ; - :help behavior: State-dependent responses
 
   :behaviors (
     ; === ROOM DESCRIPTION ===
@@ -553,6 +562,13 @@ people here, but tonight it's almost deserted."
       ; The hacker treats "tell about" the same as "ask about"
       (true
         (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about.")))))
+
+    ; === FOLLOW ===
+    :follow (cond
+      ((here? @inner-lair)
+        (success :context ((response "\"I'm here, aren't I?\""))))
+      (true
+        (blocked :reason busy :context ((response "\"I haven't got time. I have new versions of the system, the assembler, the editor, and the debugger to finish hacking.\"")))))
 
     ; === HOSTILE ACTIONS ===
     :attack (cond
