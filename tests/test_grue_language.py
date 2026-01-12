@@ -432,3 +432,110 @@ class TestLanguageErrors:
         evaluator.eval(parse("(defn needs-two (a b) true)"))
         with pytest.raises(EvalError, match="expects 2 arguments"):
             evaluator.eval(parse("(needs-two 1)"))
+
+
+# === Arithmetic operators tests ===
+
+class TestArithmetic:
+    """Test arithmetic operators (+, -, *, /, mod)."""
+
+    def test_add_two_numbers(self):
+        """(+ 2 3) should return 5."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(+ 2 3)")) == 5
+
+    def test_add_variadic(self):
+        """(+ 1 2 3 4 5) should return 15."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(+ 1 2 3 4 5)")) == 15
+
+    def test_add_zero_args(self):
+        """(+) should return 0."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(+)")) == 0
+
+    def test_subtract_two_numbers(self):
+        """(- 10 3) should return 7."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(- 10 3)")) == 7
+
+    def test_subtract_unary(self):
+        """(- 5) should return -5."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(- 5)")) == -5
+
+    def test_subtract_variadic(self):
+        """(- 20 5 3 2) should return 10."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(- 20 5 3 2)")) == 10
+
+    def test_multiply_two_numbers(self):
+        """(* 4 5) should return 20."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(* 4 5)")) == 20
+
+    def test_multiply_variadic(self):
+        """(* 2 3 4) should return 24."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(* 2 3 4)")) == 24
+
+    def test_multiply_zero_args(self):
+        """(*) should return 1."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(*)")) == 1
+
+    def test_divide_two_numbers(self):
+        """(/ 20 4) should return 5."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(/ 20 4)")) == 5
+
+    def test_divide_integer_truncation(self):
+        """(/ 7 2) should return 3 (integer division)."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(/ 7 2)")) == 3
+
+    def test_divide_by_zero(self):
+        """(/ 10 0) should raise error."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        with pytest.raises(EvalError, match="Division by zero"):
+            evaluator.eval(parse("(/ 10 0)"))
+
+    def test_mod(self):
+        """(mod 17 5) should return 2."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(mod 17 5)")) == 2
+
+    def test_mod_by_zero(self):
+        """(mod 10 0) should raise error."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        with pytest.raises(EvalError, match="Modulo by zero"):
+            evaluator.eval(parse("(mod 10 0)"))
+
+    def test_nested_arithmetic(self):
+        """Arithmetic can be nested."""
+        state = MinimalState()
+        evaluator = ExprEvaluator(state)
+        # (+ (* 3 4) (- 10 5)) = 12 + 5 = 17
+        assert evaluator.eval(parse("(+ (* 3 4) (- 10 5))")) == 17
+
+    def test_arithmetic_in_defn(self):
+        """Arithmetic works in user-defined functions."""
+        state = MinimalState()
+        functions = {}
+        evaluator = ExprEvaluator(state, functions)
+        evaluator.eval(parse("(defn double (x) (* x 2))"))
+        assert evaluator.eval(parse("(double 21)")) == 42

@@ -239,6 +239,13 @@ class ExprEvaluator:
         self._functions: dict[str, GrueFn] = functions if functions is not None else {}
         # Map of special form names to handlers
         self._builtins: dict[str, Callable[..., Any]] = {
+            # Arithmetic operators
+            "+": self._eval_add,
+            "-": self._eval_sub,
+            "*": self._eval_mul,
+            "/": self._eval_div,
+            "mod": self._eval_mod,
+
             # Boolean operators
             "and": self._eval_and,
             "or": self._eval_or,
@@ -385,6 +392,61 @@ class ExprEvaluator:
 
         # Use call_fn which handles GrueFn properly
         return self.call_fn(fn, arg_values)
+
+    # === Arithmetic operators ===
+
+    def _eval_add(self, form: SList) -> int | float:
+        """(+ EXPR ...) - add numbers."""
+        result = 0
+        for item in form.items[1:]:
+            result += self.eval(item)
+        return result
+
+    def _eval_sub(self, form: SList) -> int | float:
+        """(- EXPR ...) - subtract numbers.
+        
+        (- x) returns -x
+        (- x y ...) returns x - y - ...
+        """
+        args = form.items[1:]
+        if len(args) == 0:
+            raise EvalError("'-' requires at least one argument")
+        if len(args) == 1:
+            return -self.eval(args[0])
+        result = self.eval(args[0])
+        for item in args[1:]:
+            result -= self.eval(item)
+        return result
+
+    def _eval_mul(self, form: SList) -> int | float:
+        """(* EXPR ...) - multiply numbers."""
+        result = 1
+        for item in form.items[1:]:
+            result *= self.eval(item)
+        return result
+
+    def _eval_div(self, form: SList) -> int | float:
+        """(/ EXPR EXPR) - divide numbers (integer division)."""
+        args = form.items[1:]
+        if len(args) < 2:
+            raise EvalError("'/' requires at least two arguments")
+        result = self.eval(args[0])
+        for item in args[1:]:
+            divisor = self.eval(item)
+            if divisor == 0:
+                raise EvalError("Division by zero")
+            result //= divisor  # Integer division like ZIL
+        return result
+
+    def _eval_mod(self, form: SList) -> int:
+        """(mod X Y) - modulo."""
+        if len(form) != 3:
+            raise EvalError("'mod' requires exactly two arguments")
+        x = self.eval(form[1])
+        y = self.eval(form[2])
+        if y == 0:
+            raise EvalError("Modulo by zero")
+        return x % y
 
     # === Boolean operators ===
 
