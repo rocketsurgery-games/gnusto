@@ -1019,6 +1019,100 @@ class TestRoomBehaviors:
         result = runtime.do("HACKER", "give", "KEY")
         assert result.outcome == "success"
 
+    def test_room_on_enter_triggered(self):
+        """Room :on-enter is called when player enters."""
+        source = """
+        (globals :entered-from nil)
+
+        (room LOBBY
+          :description "A lobby"
+          :exits ((north :to GARDEN)))
+
+        (room GARDEN
+          :description "A garden"
+          :exits ((south :to LOBBY))
+          :behaviors (
+            :on-enter (fn (?from-room)
+              (success
+                :effects ((set! entered-from ?from-room))
+                :context ((welcome true) (from ?from-room))))))
+
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Move to garden
+        result = runtime.do("_movement", "go", "north")
+        assert result.outcome == "success"
+        assert runtime.get_player_location() == "GARDEN"
+        # Check on-enter was triggered
+        assert ("welcome", True) in result.context
+        assert ("from", "LOBBY") in result.context
+        # Check effect was applied
+        assert runtime.state.globals.get("entered-from") == "LOBBY"
+
+    def test_room_on_enter_with_different_origins(self):
+        """Room :on-enter can distinguish between different origin rooms."""
+        source = """
+        (room LOBBY
+          :description "A lobby"
+          :exits ((north :to GARDEN)))
+
+        (room KITCHEN
+          :description "A kitchen"
+          :exits ((east :to GARDEN)))
+
+        (room GARDEN
+          :description "A garden"
+          :exits ((south :to LOBBY) (west :to KITCHEN))
+          :behaviors (
+            :on-enter (fn (?from-room)
+              (cond
+                ((= ?from-room "LOBBY")
+                  (success :context ((entrance "front"))))
+                ((= ?from-room "KITCHEN")
+                  (success :context ((entrance "side"))))
+                (true (success))))))
+
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Enter from lobby
+        result = runtime.do("_movement", "go", "north")
+        assert ("entrance", "front") in result.context
+
+        # Go to kitchen via garden
+        runtime.do("_movement", "go", "west")
+        assert runtime.get_player_location() == "KITCHEN"
+
+        # Enter garden from kitchen
+        result = runtime.do("_movement", "go", "east")
+        assert ("entrance", "side") in result.context
+
+    def test_room_without_on_enter(self):
+        """Rooms without :on-enter work normally."""
+        source = """
+        (room LOBBY
+          :description "A lobby"
+          :exits ((north :to GARDEN)))
+
+        (room GARDEN
+          :description "A garden"
+          :exits ((south :to LOBBY)))
+
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Move to garden - no on-enter, should still work
+        result = runtime.do("_movement", "go", "north")
+        assert result.outcome == "success"
+        assert runtime.get_player_location() == "GARDEN"
+
 
 class TestGeneralizedFn:
     """Test generalized fn support - behaviors not limited to cond."""

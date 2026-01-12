@@ -117,9 +117,7 @@
 ; - Hacker blocks PC actions during helping: @pc :turn-off, :unplug + room :before-action
 ; - Compulsion event forces player to read: compulsion event + room :before-action
 ; - Exit barrier: @hacker-exit-barrier :through behavior
-;
-; NOT YET IMPLEMENTED:
-; - Room entry from @platform-room (wake from nightmare, queue hacker-helps)
+; - Room entry from @platform-room: :on-enter triggers nightmare wake-up
 
 (room @terminal-room
   :description "Terminal Room"
@@ -132,6 +130,18 @@
      (out :to @cs-2nd :via @hacker-exit-barrier))
 
   :behaviors (
+    ; Room entry handler - ZIL TERMINAL-ROOM-F with RARG? ENTER
+    ; Triggers when player wakes from nightmare and returns here
+    :on-enter (fn (?from-room)
+      (cond
+        ; Waking from nightmare - player fell asleep on platform, wakes at terminal
+        ((= ?from-room @platform-room)
+          (success
+            :effects ((queue! hacker-helps) (set! hacker-help 0))
+            :context ((nightmare-wake true))
+            :message "You are awakened by the thump of your head hitting the keyboard."))
+        (true (success))))
+
     ; Room-level action interception
     ; ZIL TERMINAL-ROOM-F with RARG? BEG
     :before-action (fn (?verb ?target)
@@ -174,6 +184,15 @@
   :ldesc "You find yourself in a dark, alien landscape. The geometry is wrong - angles that shouldn't exist, shadows that move against the light."
   :flags ()
   :exits ())
+
+; Stub for platform room - where player falls asleep and has nightmare
+; The nightmare sequence ends with player waking at terminal-room
+; Full definition would be in converted/rooms.grue
+(room @platform-room
+  :description "Platform"
+  :ldesc "A narrow platform."
+  :flags ()
+  :exits ((north :to @terminal-room)))
 
 ; === Objects ===
 

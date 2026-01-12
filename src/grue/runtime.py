@@ -657,6 +657,52 @@ class GrueRuntime:
         # Evaluate the behavior
         return self._evaluate_behavior(before_action, bindings)
 
+    def _check_room_on_enter(
+        self,
+        room_name: str,
+        from_room: str,
+        actor: str,
+    ) -> ActionResult | None:
+        """Check if a room has an :on-enter behavior and execute it.
+
+        Args:
+            room_name: The room being entered
+            from_room: The room being left
+            actor: Who is entering
+
+        Returns:
+            ActionResult if room has :on-enter behavior,
+            or None if room has no :on-enter behavior.
+        """
+        room = self.world.rooms.get(room_name)
+        if room is None:
+            return None
+
+        # Find :on-enter behavior
+        on_enter = None
+        for b in room.behaviors:
+            if b.verb == "on-enter":
+                on_enter = b
+                break
+
+        if on_enter is None:
+            return None
+
+        # Set up bindings
+        # :on-enter (fn (?from-room) ...)
+        bindings = {
+            "actor": actor,
+        }
+
+        # Bind positional params (typically just ?from-room)
+        param_values = [from_room]
+        for i, param in enumerate(on_enter.params):
+            if i < len(param_values):
+                bindings[param] = param_values[i]
+
+        # Evaluate the behavior
+        return self._evaluate_behavior(on_enter, bindings)
+
     def _try_default_behavior(
         self,
         verb: str,
@@ -695,6 +741,9 @@ class GrueRuntime:
         if actor is None:
             actor = self.player_name
 
+        # Capture current location before move (for :on-enter)
+        from_room = self.state.objects[actor].location
+
         exit_info = self.get_exit(actor, direction)
         if exit_info is None:
             return ActionResult(
@@ -721,10 +770,20 @@ class GrueRuntime:
         self.state.objects[actor].location = dest
         self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
 
-        via_note = f" (via {via})" if via else ""
+        effects = [f"{actor} moved to {dest}" + (f" (via {via})" if via else "")]
+
+        # Check for :on-enter behavior in destination room
+        on_enter_result = self._check_room_on_enter(dest, from_room, actor)
+        if on_enter_result is not None:
+            # Merge on-enter effects and context
+            if on_enter_result.effects_applied:
+                effects.extend(on_enter_result.effects_applied)
+            if on_enter_result.context:
+                context = context + on_enter_result.context
+
         return ActionResult(
             outcome="success",
-            effects_applied=[f"{actor} moved to {dest}{via_note}"],
+            effects_applied=effects,
             context=context,
         )
 
