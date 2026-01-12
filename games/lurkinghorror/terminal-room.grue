@@ -159,7 +159,7 @@ people here, but tonight it's almost deserted."
 
     ; TAKE - When hacker helps, redirect to unplug; otherwise auto-unplug
     :take (cond
-      ((queued? @hacker-helps)
+      ((queued? hacker-helps)
         (redirect :action (unplug @pc)
                   :context ((hacker-blocks true))))
       ((prop ?self unplugged)
@@ -182,7 +182,7 @@ people here, but tonight it's almost deserted."
 
     ; READ - Show screen contents
     :read (cond
-      ((and (queued? @hacker-helps) (< (prop @player hacker-help-stage) 3))
+      ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
         (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
       ((not (has-flag ?self POWER))
         (blocked :reason not-powered :message "The screen is dark."))
@@ -211,7 +211,7 @@ people here, but tonight it's almost deserted."
 
     ; TURN-OFF (LAMP-OFF) - Power down computer
     :turn-off (cond
-      ((queued? @hacker-helps)
+      ((queued? hacker-helps)
         (blocked :reason hacker-interference
                  :context ((blocker @hacker))
                  :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
@@ -233,7 +233,7 @@ people here, but tonight it's almost deserted."
     :unplug (cond
       ((prop ?self unplugged)
         (blocked :reason already-unplugged :message "It's already unplugged."))
-      ((queued? @hacker-helps)
+      ((queued? hacker-helps)
         (blocked :reason hacker-interference
                  :context ((blocker @hacker))
                  :message "The hacker stops you. \"You'll mung the bits, chomper!\""))

@@ -265,8 +265,9 @@ class TestRunner:
             for step_idx, step in enumerate(steps, 1):
                 step_action = None
                 step_expects: list[SExpr] = []
+                step_setup: list[SExpr] = []
 
-                # Parse step form: (step :action A :expect P)
+                # Parse step form: (step :setup S :action A :expect P)
                 j = 1
                 while j < len(step):
                     item = step[j]
@@ -281,6 +282,9 @@ class TestRunner:
                         elif item.name == "expect":
                             if isinstance(value, SList):
                                 step_expects = list(value.items)
+                        elif item.name == "setup":
+                            if isinstance(value, SList):
+                                step_setup = list(value.items)
                         j += 2
                     else:
                         j += 1
@@ -288,6 +292,10 @@ class TestRunner:
                 if step_action is None:
                     all_failures.append(f"Step {step_idx}: Missing :action")
                     continue
+
+                # Run per-step setup effects
+                for effect in step_setup:
+                    executor.execute(effect)
 
                 # Execute this step's action
                 result = self._execute_action(runtime, step_action)
@@ -323,20 +331,16 @@ class TestRunner:
         name = head.name
 
         if name == "do":
-            # Parse (do :verb V :object O :with W ...)
+            # Parse (do :verb V :object O :with W :topic T :to R ...)
             kwargs = self._parse_kwargs(action)
-            verb = kwargs.get("verb")
-            obj = kwargs.get("object")
-            with_obj = kwargs.get("with")
+            verb = kwargs.pop("verb", None)
+            obj = kwargs.pop("object", None)
 
             if verb is None:
                 raise EvalError("(do ...) requires :verb")
 
-            extra = {}
-            if with_obj:
-                extra["with"] = with_obj
-
-            return runtime.do(verb, obj, **extra)
+            # Pass all remaining kwargs through to runtime.do
+            return runtime.do(verb, obj, **kwargs)
 
         elif name == "go":
             # Parse (go :direction D)
@@ -345,6 +349,22 @@ class TestRunner:
             if direction is None:
                 raise EvalError("(go ...) requires :direction")
             return runtime.do("go", direction=direction)
+
+        elif name == "process-events":
+            # Process all queued events for this turn
+            # Returns the first event result (if any) for testing
+            results = runtime.process_events()
+            if results:
+                return results[0]
+            # Return a no-op success if no events fired
+            return ActionResult(outcome="success", context=[("events-processed", 0)])
+
+        elif name == "wait":
+            # Shorthand for doing nothing + processing events
+            results = runtime.process_events()
+            if results:
+                return results[0]
+            return ActionResult(outcome="success", context=[("waited", True)])
 
         else:
             raise EvalError(f"Unknown action type: {name}")
@@ -493,6 +513,42 @@ class TestRunner:
                         failures.append(
                             f"Object '{obj}' at '{actual}', expected '{expected}'"
                         )
+
+            elif name == "global?":
+                if len(pred) != 3:
+                    failures.append("(global? NAME EXPECTED) requires 2 arguments")
+                    continue
+                gname = pred[1]
+                expected = pred[2]
+                if isinstance(gname, Symbol):
+                    gname = gname.name
+                if isinstance(expected, Symbol):
+                    expected = expected.name
+                actual = runtime.state.globals.get(gname)
+                if actual != expected:
+                    failures.append(
+                        f"Global '{gname}' is '{actual}', expected '{expected}'"
+                    )
+
+            elif name == "queued?":
+                if len(pred) != 2:
+                    failures.append("(queued? EVENT) requires 1 argument")
+                    continue
+                event = pred[1]
+                if isinstance(event, Symbol):
+                    event = event.name
+                if not runtime.is_queued(event):
+                    failures.append(f"Event '{event}' is not queued")
+
+            elif name == "not-queued?":
+                if len(pred) != 2:
+                    failures.append("(not-queued? EVENT) requires 1 argument")
+                    continue
+                event = pred[1]
+                if isinstance(event, Symbol):
+                    event = event.name
+                if runtime.is_queued(event):
+                    failures.append(f"Event '{event}' should not be queued")
 
             else:
                 # Try evaluating as a general predicate

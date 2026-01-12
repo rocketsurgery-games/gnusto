@@ -142,3 +142,125 @@
   (step :action (go :direction south)
         :expect ((outcome? success)
                  (player-at? @cs-2nd))))
+
+; =============================================================================
+; TURN-BASED EVENTS - hacker-helps
+; =============================================================================
+; The hacker-helps event is a 4-stage cutscene triggered by :help behavior.
+; Each turn, while the player is in terminal-room, the event advances.
+
+(test "ask hacker for help queues event"
+  :action (do :verb help :object @hacker)
+  :expect ((outcome? success)
+           (queued? hacker-helps)
+           (global? hacker-help 0)))
+
+(test "hacker-helps event fires in terminal room"
+  :setup ((queue! hacker-helps) (set! hacker-help 0))
+  :action (process-events)
+  :expect ((outcome? success)
+           (context? stage 1)
+           (global? hacker-help 1)))
+
+(test-sequence "hacker-helps full 4-stage sequence"
+  ; Stage 0->1: "The hacker wanders over..."
+  (step :setup ((queue! hacker-helps) (set! hacker-help 0))
+        :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 1)
+                 (global? hacker-help 1)
+                 (queued? hacker-helps)))
+  ; Stage 1->2: "The hacker, mumbling..."
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 2)
+                 (global? hacker-help 2)
+                 (queued? hacker-helps)))
+  ; Stage 2->3: "The hacker types furiously..."
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 3)
+                 (global? hacker-help 3)
+                 (queued? hacker-helps)))
+  ; Stage 3->done: "The hacker wanders back..." + event dequeues
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 4)
+                 (not-queued? hacker-helps)
+                 (loc? @hacker @terminal-room))))
+
+(test "hacker-helps event doesn't fire outside terminal room"
+  :setup ((queue! hacker-helps) (set! hacker-help 0) (move! @player @cs-2nd))
+  :action (process-events)
+  :expect ((context? events-processed 0)
+           (global? hacker-help 0)))
+
+(test "asking for help when already helping"
+  :setup ((queue! hacker-helps))
+  :action (do :verb help :object @hacker)
+  :expect ((outcome? success)
+           (queued? hacker-helps)))
+
+(test "asking for help when already helped"
+  :setup ((set! hacker-help 3))
+  :action (do :verb help :object @hacker)
+  :expect ((outcome? success)))
+
+; =============================================================================
+; CONVERSATION - ask-about and tell-about
+; =============================================================================
+; Note: Conversation behaviors use ?topic binding for the conversation topic.
+
+(test "ask hacker about keys reveals master key"
+  :action (do :verb ask-about :object @hacker :topic @keys)
+  :expect ((outcome? success)
+           (has-flag? @master-key TOUCHBIT)))
+
+(test "ask hacker about keys again - already revealed"
+  :setup ((set-flag! @master-key TOUCHBIT))
+  :action (do :verb ask-about :object @hacker :topic @keys)
+  :expect ((outcome? success)))
+
+(test "ask hacker about food"
+  :action (do :verb ask-about :object @hacker :topic @food)
+  :expect ((outcome? success)))
+
+(test "hacker is possessed - responds with Meld"
+  :setup ((set! lair-cnt 7))
+  :action (do :verb ask-about :object @hacker :topic @keys)
+  :expect ((outcome? success)))
+
+; =============================================================================
+; GIVE/TRADE PUZZLE - trading food for master key
+; =============================================================================
+; NOTE: These tests are DISABLED pending resolution of the binding design issue.
+; The hacker's :give, :trade, :ask-for behaviors use ?object to refer to the
+; item being transferred, but ?object is not a standard binding. The behaviors
+; are on @hacker, so ?self = @hacker, leaving no standard way to pass the item.
+;
+; Options to fix:
+; 1. Add standard ?item binding for "give X to Y" where X is the item
+; 2. Change behaviors to use ?with ("give with X")
+; 3. Move behaviors to the item objects with special dispatch
+;
+; See frotzlm-0l8 for tracking issue.
+;
+; (test "propose trade - food for key" ...)
+; (test "give cold food - rejected" ...)
+; etc.
+
+; =============================================================================
+; HACKER BLOCKING PC ACTIONS DURING HELP
+; =============================================================================
+
+(test "can't turn off PC while hacker helps"
+  :setup ((queue! hacker-helps) (set-flag! @pc POWER))
+  :action (do :verb turn-off :object @pc)
+  :expect ((outcome? blocked)
+           (reason? hacker-interference)))
+
+(test "can't unplug PC while hacker helps"
+  :setup ((queue! hacker-helps))
+  :action (do :verb unplug :object @pc)
+  :expect ((outcome? blocked)
+           (reason? hacker-interference)))
