@@ -1,4 +1,9 @@
 
+# Development Philosophy
+
+This is a single-developer research project. There are no other users of this code.
+Always prefer hard cutovers to backward-compatible migrations - just change things directly.
+
 # Issue Tracking
 
 This project uses **bd** (beads) for issue tracking.
