@@ -13,7 +13,8 @@
   :hacker-trade false   ; Set when player proposes food-for-key trade
   :lair-cnt 0           ; Possession counter (0-7+) - affects hacker responses
   :hacker-help 0        ; Help stage counter (0-4) for I-HACKER-HELPS
-  :food-hint 0)         ; Food hint counter for I-FOOD-HINT
+  :food-hint 0          ; Food hint counter for I-FOOD-HINT
+  :comp-cnt 0)          ; Compulsion page counter (0-4) for I-COMPULSION
 
 ; === Turn-Based Events ===
 
@@ -67,6 +68,43 @@
     (true
       (success :effects ((dequeue! food-hint))))))
 
+; I-COMPULSION: Possession event - player is compelled to read the odd paper
+; Triggered by reading @odd-paper. Advances through 4 pages of disturbing content,
+; then teleports player to @yuggoth (nightmare realm). Player cannot resist.
+(event compulsion
+  :location @terminal-room
+  :on-turn (cond
+    ; Page 1: First glimpse of the strange text
+    ((= comp-cnt 0)
+      (success
+        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :context ((page 1)
+                  (description "The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort of \"Olde English\" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English."))))
+    ; Page 2: Hints of summoning
+    ((= comp-cnt 1)
+      (success
+        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :context ((page 2)
+                  (description "The second page is much like the first, but around the edges, not when you look at it straight, it's almost readable. There is something about a \"summoning,\" or a \"visitor.\""))))
+    ; Page 3: The poem/ritual
+    ((= comp-cnt 2)
+      (success
+        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :context ((page 3)
+                  (description "The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing.\n\nThere is a translation, or notes for one, typed between the lines of the poem:\n\n\"He returns, he is called back (?)\nThe loyal ones (acolytes?) make a sacrifice\nThose who survive will meet him (be absorbed? eaten?)\nThey will live, yet die\nForever will be (is?) nothing to them (to him?)\n\n\"His place (lair? burrow?) must be prepared\nHis food (offerings?) must be prepared\nCall him forth (invite him?) with great power\nOnly an acceptable (tasteful?) sacrifice will call him forth\nHe will be grateful (satiated?)\"\n\nThe rest is even more fragmentary."))))
+    ; Page 4: The photograph - triggers nightmare transport
+    ((= comp-cnt 3)
+      (success
+        :effects ((inc! comp-cnt) (dequeue! compulsion)
+                  (move! @more-box nil) (move! @menu-box @pc)
+                  (move! @player @yuggoth))
+        :context ((page 4)
+                  (description "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?")
+                  (transition "You faint, and when you awaken..."))))
+    ; Default - shouldn't happen but dequeue to be safe
+    (true
+      (success :effects ((dequeue! compulsion))))))
+
 ; === Player ===
 
 (object @player
@@ -75,7 +113,15 @@
 
 ; === Rooms ===
 
-; [NEEDS-TRANSLATION] Room @terminal-room: ACTION TERMINAL-ROOM-F
+; Room action behaviors translated to:
+; - Hacker blocks PC actions during helping: @pc :turn-off, :unplug behaviors
+; - Compulsion event forces player to read: compulsion event + @odd-paper, @more-box
+; - Exit barrier: @hacker-exit-barrier :through behavior
+;
+; NOT YET IMPLEMENTED:
+; - Room entry from @platform-room (wake from nightmare, queue hacker-helps)
+; - Compulsion action interception (forces player toward MORE box during possession)
+
 (room @terminal-room
   :description "Terminal Room"
   :ldesc "This is a large room crammed with computer terminals, small
@@ -86,43 +132,7 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     ((south :to @cs-2nd :via @hacker-exit-barrier)
-     (out :to @cs-2nd :via @hacker-exit-barrier))
-
-  ; --- Room ACTION Routine ---
-  ; <ROUTINE TERMINAL-ROOM-F (RARG)
-  ;   <COND
-  ;       (<RARG? BEG> <COND
-  ;         (<AND <NOT <VERB? TELL>> <GAME-VERB?>> <RFALSE>)
-  ;         (<QUEUED? I-HACKER-HELPS> <COND
-  ;           (<P?
-  ;             (RUB POINT CLICK HELP)
-  ;             (MENU-BOX MORE-BOX <>)> <TELL
-  ;             ,HACKER-PREVENTS
-  ;             "Who's the hacker here?\" he snarls."
-  ;             CR>)>)
-  ;         (<QUEUED? I-COMPULSION> <COND
-  ;           (<P?
-  ;             (RUB POINT CLICK PUSH ATTACK)
-  ;             MORE-BOX> <RFALSE>)
-  ;           (<P? READ ,ODD-PAPER> <RFALSE>)
-  ;           (ELSE <COND
-  ;             (<VERB? TELL HELLO> <TELL "Your throat tightens, and no sound issues forth. ">)
-  ;             (<VERB? INVENTORY LAMP-OFF> <TELL "Your body refuses to obey your brain's command. ">)> <TELL
-  ;             "Instead, you find your finger moving towards the MORE box, and you touch
-  ;   it. The screen feels oddly cold."
-  ;             CR> <COND (<VERB? TELL> <END-QUOTE>) (ELSE <RTRUE>)>)>)>)
-  ;       (<AND
-  ;         <RARG? ENTER>
-  ;         <EQUAL? ,OHERE ,PLATFORM-ROOM>> <QUEUE I-HACKER-HELPS -1> <TELL
-  ;         "You are awakened by the thump of your head hitting the terminal
-  ;   in front of you. Falling asleep over term papers! It must have been a
-  ;   nightmare. Embarrassed, you glance around. Yes, the hacker is looking
-  ;   in your direction. He must have heard the thump."
-  ;         CR
-  ;         CR>)>
-  ; >
-  ; --- End Room ACTION Routine ---
-)
+     (out :to @cs-2nd :via @hacker-exit-barrier)))
 
 (room @cs-2nd
   :description "Second Floor"
@@ -130,6 +140,14 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     ((north :to @terminal-room)))
+
+; Stub for nightmare realm - player is teleported here by compulsion event
+; Full definition would be in converted/rooms.grue
+(room @yuggoth
+  :description "Nightmare Realm"
+  :ldesc "You find yourself in a dark, alien landscape. The geometry is wrong - angles that shouldn't exist, shadows that move against the light."
+  :flags ()
+  :exits ())
 
 ; === Objects ===
 
@@ -406,6 +424,123 @@ people here, but tonight it's almost deserted."
   :location nil
   :flags (TAKEBIT)
   :properties ())
+
+; === PC Screen Objects ===
+; These represent on-screen UI elements that appear on the PC.
+; Flow: @menu-box -> click -> @yak-window -> click -> @odd-paper + @more-box
+; Reading @odd-paper triggers I-COMPULSION (possession mechanic)
+
+(object @menu-box
+  :description "menu box"
+  :location @pc  ; Starts on screen
+  :flags (NDESCBIT READBIT)
+  :properties (:text "Edit Classics Paper.")
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "It says \"Edit Classics Paper\" in an urgent-looking shade of red."))))
+
+    ; CLICK - open the YAK editor
+    :click (fn ()
+      (cond
+        (true
+          (success
+            :effects ((move! @menu-box nil) (move! @yak-window @pc))
+            :message "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red."))))))
+
+(object @yak-window
+  :description "YAK editor"
+  :location nil  ; Appears after clicking menu-box
+  :flags (NDESCBIT READBIT)
+  :properties (:text "YAK 5.3")
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "There's a box for your paper."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "There's a box for your paper."))))
+
+    ; CLICK - open the paper (reveals the odd text)
+    :click (fn ()
+      (cond
+        ; First time - odd paper appears
+        ((not (has-flag @odd-paper TOUCHBIT))
+          (success
+            :effects ((move! @yak-window nil) (move! @odd-paper @pc) (move! @more-box @pc) (set-flag! @odd-paper TOUCHBIT))
+            :message "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different."))
+        ; Already seen - paper is lost
+        (true
+          (success
+            :message "Nothing happens. \"Your paper is lost!\" reminds the hacker."))))))
+
+(object @odd-paper
+  :description "classics paper"
+  :location nil  ; Appears after clicking yak-window
+  :flags (READBIT NDESCBIT)
+  :properties (:read-page false)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (redirect :action (do @odd-paper :read)))))
+
+    ; READ - triggers possession (I-COMPULSION)
+    :read (fn ()
+      (cond
+        ; Queue compulsion event and show the strange text
+        ((not (queued? compulsion))
+          (success
+            :effects ((queue! compulsion 2) (set-prop! @odd-paper read-page true))
+            :context ((possession-starting true))
+            :message "As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the \"MORE\" box..."))
+        ; Already reading/possessed
+        (true
+          (success
+            :effects ((set-prop! @odd-paper read-page true))
+            :message "You click the \"MORE\" box and read what appears."))))))
+
+(object @more-box
+  :description "more box"
+  :location nil  ; Appears with odd-paper
+  :flags (READBIT NDESCBIT)
+  :properties ()
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "It says \"MORE\" in a subdued typeface."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "It says \"MORE\" in a subdued typeface."))))
+
+    ; CLICK - advance through the strange document
+    :click (fn ()
+      (cond
+        ; Haven't read the page yet
+        ((not (prop @odd-paper read-page))
+          (blocked :reason not-read-yet
+                   :message "You haven't read the page yet. You probably shouldn't touch the MORE box until then."))
+        ; Read the page - advance
+        (true
+          (success
+            :effects ((set-prop! @odd-paper read-page false))
+            :message "You touch the MORE box, and a new page appears."))))))
 
 ; === Main Characters ===
 
