@@ -1,0 +1,8 @@
+; Stub for nightmare realm - player is teleported here by compulsion event
+; Full definition would be in converted/rooms.grue
+(room @yuggoth
+  :description "Nightmare Realm"
+  :ldesc "You find yourself in a dark, alien landscape. The geometry is wrong - angles that shouldn't exist, shadows that move against the light."
+  :flags ()
+  :exits ())
+

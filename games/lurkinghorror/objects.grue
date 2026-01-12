@@ -1,0 +1,108 @@
+; === Puzzle Objects ===
+; These are stub definitions for testing the hacker trade puzzle.
+; Full definitions would come from converted/objects.grue
+
+(object @master-key
+  :description "master key"
+  :location @hacker  ; On hacker's keyring initially
+  :flags (TAKEBIT KEYBIT)
+  :properties ())
+
+(object @keyring
+  :description "keyring"
+  :location @hacker
+  :flags (CONTBIT)
+  :properties ())
+
+(object @carton
+  :description "white carton"
+  :location @player  ; Player starts with it for testing
+  :flags (TAKEBIT CONTBIT OPENBIT)
+  :properties ())
+
+(object @chinese-food
+  :description "chinese food"
+  :location @carton  ; Inside the carton
+  :flags (FOODBIT)
+  :properties (:heat 0))  ; 0=cold, 12+=hot, higher=overcooked
+
+(object @snack
+  :description "snack"
+  :location @terminal-room
+  :flags (TAKEBIT FOODBIT)
+  :properties ())
+
+(object @coke
+  :description "coke"
+  :location @terminal-room
+  :flags (TAKEBIT)
+  :properties ())
+
+; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
+
+(object @keys
+  :description "keys"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @food
+  :description "food"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @students
+  :description "missing students"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @program
+  :description "the program"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @lovecraft
+  :description "Lovecraft"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @smooth-stone
+  :description "smooth stone"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @urchins
+  :description "urchins"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @repeater
+  :description "repeater"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @cable
+  :description "cable"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @hand
+  :description "your hand"
+  :location @player
+  :flags (INVISIBLE NDESCBIT)
+  :properties ())
+
+(object @dead-rat
+  :description "dead rat"
+  :location nil
+  :flags (TAKEBIT)
+  :properties ())
+

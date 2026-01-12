@@ -1,0 +1,247 @@
+(object @pc
+  :description "pc"
+  :fdesc "A really whiz-bang pc is right inside the door."
+  :location @terminal-room
+  :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
+  :properties (:size 30 :unplugged false)
+
+  :behaviors (
+    ; EXAMINE - Show PC description with power state and screen contents
+    :examine (fn ()
+      (cond
+        ((has-flag ?self POWER)
+          (success :context ((power on) (screen-contents (first-in ?self)))
+                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
+        (true
+          (success :context ((power off))
+                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off."))))
+
+    ; LISTEN - Hums when powered on
+    :listen (fn ()
+      (cond
+        ((has-flag ?self POWER)
+          (success :message "It hums contentedly."))
+        (true
+          (blocked :reason not-powered :message "It's silent."))))
+
+    ; TAKE - When hacker helps, redirect to unplug; otherwise auto-unplug
+    :take (fn ()
+      (cond
+        ((queued? hacker-helps)
+          (redirect :action (do @pc :unplug)
+                    :context ((hacker-blocks true))))
+        ((prop ?self unplugged)
+          (default))  ; Normal take when already unplugged
+        ((has-flag ?self POWER)
+          ; Taking while on: turn off and unplug
+          (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true) (move! ?self ?actor))
+                   :context ((auto-unplug true) (was-powered true))
+                   :message "You take it, turning it off and unplugging it first."))
+        (true
+          ; Taking while off but plugged in: just unplug
+          (success :effects ((set-prop! ?self unplugged true) (move! ?self ?actor))
+                   :context ((auto-unplug true))
+                   :message "You take it, unplugging it first."))))
+
+    ; PUT-ON / PUT - Not a good surface
+    :put-on (fn (?item)
+      (cond
+        (true
+          (blocked :reason not-a-surface :message "That's not a good surface for that."))))
+
+    ; READ - Show screen contents
+    :read (fn ()
+      (cond
+        ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
+          (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-powered :message "The screen is dark."))
+        ; Check for objects on screen (in PC container)
+        ((in? @odd-paper ?self)
+          (redirect :action (do @odd-paper :read)))
+        ((in? @menu-box ?self)
+          (redirect :action (do @menu-box :read)))
+        ((in? @more-box ?self)
+          (redirect :action (do @more-box :read)))
+        ((in? @yak-window ?self)
+          (redirect :action (do @yak-window :read)))
+        (true
+          (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now."))))
+
+    ; TURN-ON (LAMP-ON) - Power up computer
+    :turn-on (fn ()
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
+        ((has-flag ?self POWER)
+          (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
+        (true
+          (success :effects ((set-flag! ?self POWER))
+                   :context ((booting true))
+                   :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum."))))
+
+    ; TURN-OFF (LAMP-OFF) - Power down computer
+    :turn-off (fn ()
+      (cond
+        ((queued? hacker-helps)
+          (blocked :reason hacker-interference
+                   :context ((blocker @hacker))
+                   :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+        ((not (has-flag ?self POWER))
+          (blocked :reason already-off :message "It's already off."))
+        (true
+          (success :effects ((clear-flag! ?self POWER))
+                   :message "The computer powers off."))))
+
+    ; PLUG-IN - Plug in computer
+    :plug-in (fn ()
+      (cond
+        ((not (prop ?self unplugged))
+          (blocked :reason already-plugged :message "It's already plugged in."))
+        (true
+          (success :effects ((set-prop! ?self unplugged false))
+                   :message "You plug in the computer."))))
+
+    ; UNPLUG - Unplug computer
+    :unplug (fn ()
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason already-unplugged :message "It's already unplugged."))
+        ((queued? hacker-helps)
+          (blocked :reason hacker-interference
+                   :context ((blocker @hacker))
+                   :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+        ((has-flag ?self POWER)
+          ; Unplug while on: turn off first
+          (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true))
+                   :context ((was-powered true))
+                   :message "Okay, it's unplugged now."))
+        (true
+          (success :effects ((set-prop! ?self unplugged true))
+                   :message "Okay, it's unplugged now."))))
+
+    ; SIT-AT - Redirect to sitting in chair if present
+    :sit-at (fn ()
+      (cond
+        ((here? @chair)
+          (redirect :action (do @chair :sit)))
+        (true
+          (blocked :reason no-chair :message "There's no chair here."))))))
+
+; === PC Screen Objects ===
+; These represent on-screen UI elements that appear on the PC.
+; Flow: @menu-box -> click -> @yak-window -> click -> @odd-paper + @more-box
+; Reading @odd-paper triggers I-COMPULSION (possession mechanic)
+
+(object @menu-box
+  :description "menu box"
+  :location @pc  ; Starts on screen
+  :flags (NDESCBIT READBIT)
+  :properties (:text "Edit Classics Paper.")
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "It says \"Edit Classics Paper\" in an urgent-looking shade of red."))))
+
+    ; CLICK - open the YAK editor
+    :click (fn ()
+      (cond
+        (true
+          (success
+            :effects ((move! @menu-box nil) (move! @yak-window @pc))
+            :message "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red."))))))
+
+(object @yak-window
+  :description "YAK editor"
+  :location nil  ; Appears after clicking menu-box
+  :flags (NDESCBIT READBIT)
+  :properties (:text "YAK 5.3")
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "There's a box for your paper."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "There's a box for your paper."))))
+
+    ; CLICK - open the paper (reveals the odd text)
+    :click (fn ()
+      (cond
+        ; First time - odd paper appears
+        ((not (has-flag @odd-paper TOUCHBIT))
+          (success
+            :effects ((move! @yak-window nil) (move! @odd-paper @pc) (move! @more-box @pc) (set-flag! @odd-paper TOUCHBIT))
+            :message "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different."))
+        ; Already seen - paper is lost
+        (true
+          (success
+            :message "Nothing happens. \"Your paper is lost!\" reminds the hacker."))))))
+
+(object @odd-paper
+  :description "classics paper"
+  :location nil  ; Appears after clicking yak-window
+  :flags (READBIT NDESCBIT)
+  :properties (:read-page false)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (redirect :action (do @odd-paper :read)))))
+
+    ; READ - triggers possession (I-COMPULSION)
+    :read (fn ()
+      (cond
+        ; Queue compulsion event and show the strange text
+        ((not (queued? compulsion))
+          (success
+            :effects ((queue! compulsion 2) (set-prop! @odd-paper read-page true))
+            :context ((possession-starting true))
+            :message "As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the \"MORE\" box..."))
+        ; Already reading/possessed
+        (true
+          (success
+            :effects ((set-prop! @odd-paper read-page true))
+            :message "You click the \"MORE\" box and read what appears."))))))
+
+(object @more-box
+  :description "more box"
+  :location nil  ; Appears with odd-paper
+  :flags (READBIT NDESCBIT)
+  :properties ()
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "It says \"MORE\" in a subdued typeface."))))
+
+    :read (fn ()
+      (cond
+        (true
+          (success :message "It says \"MORE\" in a subdued typeface."))))
+
+    ; CLICK - advance through the strange document
+    :click (fn ()
+      (cond
+        ; Haven't read the page yet
+        ((not (prop @odd-paper read-page))
+          (blocked :reason not-read-yet
+                   :message "You haven't read the page yet. You probably shouldn't touch the MORE box until then."))
+        ; Read the page - advance
+        (true
+          (success
+            :effects ((set-prop! @odd-paper read-page false))
+            :message "You touch the MORE box, and a new page appears."))))))
+

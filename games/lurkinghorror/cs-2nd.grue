@@ -1,0 +1,7 @@
+(room @cs-2nd
+  :description "Second Floor"
+  :ldesc "This is the second floor of the CS building."
+  :flags (ONBIT)
+  :exits
+    ((north :to @terminal-room)))
+

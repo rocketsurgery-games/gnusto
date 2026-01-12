@@ -1,0 +1,8 @@
+(world
+  :name "The Lurking Horror"
+  :description "Conversion of Infocom's _The Lurking Horror_ to FrotzLM / Grue")
+
+(object @player
+  :location @terminal-room
+  :flags (PERSON))
+

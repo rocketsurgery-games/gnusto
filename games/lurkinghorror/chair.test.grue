@@ -1,0 +1,40 @@
+; === @chair behaviors ===
+
+(test "examine chair"
+  :action (do @chair :examine)
+  :expect ((outcome? success)))
+
+(test "take chair - blocked when hacker in it"
+  :setup ((move! @hacker @chair))
+  :action (do @chair :take)
+  :expect ((outcome? blocked)
+           (reason? in-use)))
+
+(test "take chair - success when hacker not in it"
+  :action (do @chair :take)
+  :expect ((outcome? success)
+           (held? @chair)))
+
+(test "sit in chair - success"
+  :action (do @chair :sit)
+  :expect ((outcome? success)
+           (loc? @player @chair)))
+
+(test "sit in chair - blocked when hacker using it"
+  :setup ((move! @hacker @chair))
+  :action (do @chair :sit)
+  :expect ((outcome? blocked)
+           (reason? occupied)))
+
+(test "sit in chair - blocked when already sitting"
+  :setup ((move! @player @chair))
+  :action (do @chair :sit)
+  :expect ((outcome? blocked)
+           (reason? already-there)))
+
+(test "stand from chair"
+  :setup ((move! @player @chair))
+  :action (do @chair :stand)
+  :expect ((outcome? success)
+           (loc? @player @terminal-room)))
+

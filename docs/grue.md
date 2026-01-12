@@ -567,12 +567,44 @@ at parse time to build the `GrueWorld` datastructure and are not evaluated at ru
 #### `(world :name "..." :description "...")`
 Game metadata. Both `:name` and `:description` are optional.
 
-#### `(room NAME :description "..." :flags (...) :exits (...))`
+#### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:
 - `:description` / `:ldesc` - Short/long descriptions
 - `:flags` - Boolean markers (e.g., `OUTSIDE`, `LIT`)
 - `:exits` - List of exit forms `(DIRECTION :to ROOM [:via OBJECT] [:when EXPR])`
 - `:properties` - Key-value properties
+- `:behaviors` - Room-level action handlers (see Room Hooks below)
+
+**Room Hooks:**
+
+Rooms can define special behaviors that intercept or respond to player actions:
+
+- `:on-enter` - Called when player enters the room, receives `?from-room` binding
+- `:before-action` - Called before any action in the room, receives `?verb` and `?target` bindings
+
+```scheme
+(room @terminal-room
+  :behaviors (
+    ; Triggered when player enters from a specific room
+    :on-enter (fn (?from-room)
+      (cond
+        ((= ?from-room @platform-room)
+          (success :context ((nightmare-wake true))
+                   :effects ((queue! hacker-helps))))
+        (true (success))))
+
+    ; Intercept actions - can block or allow them to proceed
+    :before-action (fn (?verb ?target)
+      (cond
+        ((and (queued? compulsion)
+              (not (= ?target "@more-box")))
+          (blocked :reason possessed))
+        (true (default))))))
+```
+
+The `:on-enter` hook is useful for triggering events when the player arrives from
+specific locations (e.g., waking from a nightmare). The `:before-action` hook can
+intercept and block actions based on game state (e.g., possession mechanics).
 
 #### `(object NAME :location LOC :flags (...) :behaviors (...))`
 Object definition. Objects are named entities with:
@@ -614,6 +646,47 @@ can be modified with `set!` and `inc!` effects.
 
 Special forms have custom evaluation rules - they control when and whether their
 arguments are evaluated.
+
+#### `(fn (PARAMS...) BODY)`
+Anonymous function (lambda). Creates a closure that can be called later.
+```scheme
+(fn (?item)
+  (cond
+    ((has-flag ?item TAKEBIT) (success :effects ((move! ?item ?actor))))
+    (true (blocked :reason not-takeable))))
+```
+
+The `lambda` keyword is also supported as an alias for `fn`.
+
+#### `(defn NAME (PARAMS...) BODY)`
+Named function definition. Defines a reusable function in the global scope.
+```scheme
+(defn is-lit (obj)
+  (and (has-flag obj LIGHT)
+       (has-flag obj ON)))
+
+; Usage:
+(cond
+  ((is-lit @lantern) (success))
+  (true (blocked :reason dark)))
+```
+
+#### `(if COND THEN ELSE)`
+Conditional expression. Evaluates COND, then returns THEN if truthy, ELSE otherwise.
+```scheme
+(if (has-flag @door LOCKED)
+    (blocked :reason locked)
+    (success))
+```
+
+#### `(let ((VAR VAL) ...) BODY)`
+Local binding. Binds variables for use within BODY.
+```scheme
+(let ((target-room (exit-to ?direction)))
+  (if (room-has-flag? target-room DARK)
+      (blocked :reason too-dark)
+      (success)))
+```
 
 #### `(cond CLAUSE ...)`
 Conditional evaluation. Each clause is `(CONDITION OUTCOME-FORM)`. Conditions are
@@ -696,6 +769,16 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `exit-to` | DIRECTION | string | Destination room for direction |
 | `exit-via` | DIRECTION | string | Via object for direction (or nil) |
 | `queued?` | EVENT | bool | Is event currently queued? |
+
+#### Arithmetic Operators
+
+| Operator | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `+` | A B | number | Addition |
+| `-` | A B | number | Subtraction |
+| `*` | A B | number | Multiplication |
+| `/` | A B | number | Integer division |
+| `%` | A B | number | Modulo (remainder) |
 
 #### Comparison Functions
 
@@ -793,6 +876,62 @@ Entity names use lowercase with hyphens (`@outside-door`), while flags use upper
    - First matching clause's outcome determines result
    - Effects (if any) are executed in order
    - Result is returned
+
+## Test DSL
+
+GRUE includes a built-in test DSL for writing game behavior tests in pure GRUE syntax.
+Test files use the `.test.grue` extension and are colocated with game files.
+
+### `(test NAME :setup EFFECTS :action ACTION :expect PREDICATES)`
+
+Single action test. Runs setup effects, executes action, checks predicates.
+
+```scheme
+(test "can exit south without carrying anything"
+  :action (go :direction south)
+  :expect ((outcome? success)
+           (player-at? @cs-2nd)))
+
+(test "blocked when carrying PC"
+  :setup ((move! @pc @player))
+  :action (go :direction south)
+  :expect ((outcome? blocked)
+           (reason? tech-property)))
+```
+
+### `(test-sequence NAME (step ...) ...)`
+
+Multi-step test sequence. Each step builds on the previous state.
+
+```scheme
+(test-sequence "take PC then blocked at exit"
+  (step :action (do @pc :take)
+        :expect ((outcome? success)
+                 (held? @pc)))
+  (step :action (go :direction south)
+        :expect ((outcome? blocked)
+                 (reason? tech-property))))
+```
+
+### Test Predicates
+
+| Predicate | Description |
+|-----------|-------------|
+| `(outcome? STATUS)` | Check action outcome (success, blocked, error) |
+| `(reason? SYMBOL)` | Check blocked reason |
+| `(context? KEY VALUE)` | Check context contains key-value pair |
+| `(player-at? ROOM)` | Player is in room |
+| `(held? OBJ)` | Object is in player's inventory |
+| `(loc? OBJ LOCATION)` | Object is at location |
+| `(queued? EVENT)` | Event is in queue |
+| `(not-queued? EVENT)` | Event is not in queue |
+| `(global? NAME VALUE)` | Global variable has value |
+| `(has-flag? OBJ FLAG)` | Object has flag |
+
+### Test Effects
+
+Setup can use any standard effect: `move!`, `set!`, `set-flag!`, `clear-flag!`,
+`set-prop!`, `queue!`, etc.
 
 ## Open Questions
 
