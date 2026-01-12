@@ -14,9 +14,15 @@ Commands (meta):
     (quit)                    - Exit REPL
 
 Actions:
-    (do :verb V :object O)                - Perform action
-    (do :verb V :object O :with W)        - Action with instrument
+    (do TARGET :verb)                     - Perform action on target
+    (do TARGET :verb ARG1 ARG2 ...)       - Action with arguments
     (go :direction D)                     - Move in direction
+
+Examples:
+    (do @door :open)                      - Open the door
+    (do @door :unlock @key)               - Unlock door with key
+    (do @hacker :give @food)              - Give food to hacker
+    (do @hacker :ask-about @keys)         - Ask hacker about keys
 
 Queries (return values):
     (loc OBJ)                             - Object location
@@ -279,47 +285,34 @@ class ReplEvaluator:
             return ActionError(message=str(e))
 
     def _cmd_do(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
-        """Execute (do :object TARGET :verb V [:arg1 A1 :arg2 A2 ...]).
+        """Execute (do TARGET :verb arg1 arg2 ...).
 
-        New API: runtime.do(target, verb, *args)
-
-        Maps REPL kwargs to positional args based on verb:
-        - :with → first positional arg (for unlock, give, etc.)
-        - :topic → first positional arg (for ask-about)
-        - :offer/:want → two positional args (for trade)
+        Examples:
+            (do @door :open)
+            (do @door :unlock @key)
+            (do @hacker :give @food)
+            (do @hacker :ask-about @keys)
+            (do @hacker :trade @carton @master-key)
         """
         try:
-            kwargs = self._extract_kwargs(expr)
-            verb = kwargs.get("verb")
-            target = kwargs.get("object")
+            # Parse: (do TARGET :verb arg1 arg2 ...)
+            items = list(expr.items)[1:]  # Skip 'do'
 
-            if verb is None:
-                return ActionError(message="(do) requires :verb")
-            if target is None:
-                return ActionError(message="(do) requires :object (the target)")
+            if len(items) < 2:
+                return ActionError(message="(do) requires TARGET :verb [args...]")
 
-            verb_str = self._to_string(verb)
+            target = items[0]
+            verb_kw = items[1]
+
+            # Verb must be a keyword
+            if not isinstance(verb_kw, Keyword):
+                return ActionError(message=f"(do) verb must be a keyword, got {verb_kw}")
+
             target_str = self._to_string(target)
+            verb_str = verb_kw.name
 
-            # Build positional args from kwargs based on verb semantics
-            args: list[str] = []
-
-            # Common patterns - map kwargs to positional args
-            if "with" in kwargs:
-                # :with is typically a key or instrument - first arg
-                args.append(self._to_string(kwargs["with"]))
-            if "topic" in kwargs:
-                # :topic for ask-about, tell-about
-                args.append(self._to_string(kwargs["topic"]))
-            if "item" in kwargs:
-                # :item for give
-                args.append(self._to_string(kwargs["item"]))
-            if "offer" in kwargs:
-                # :offer for trade (first arg)
-                args.append(self._to_string(kwargs["offer"]))
-            if "want" in kwargs:
-                # :want for trade (second arg)
-                args.append(self._to_string(kwargs["want"]))
+            # Remaining items are positional args
+            args = [self._to_string(item) for item in items[2:]]
 
             result = self.runtime.do(target_str, verb_str, *args)
 
