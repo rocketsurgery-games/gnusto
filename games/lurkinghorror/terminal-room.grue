@@ -114,13 +114,12 @@
 ; === Rooms ===
 
 ; Room action behaviors translated to:
-; - Hacker blocks PC actions during helping: @pc :turn-off, :unplug behaviors
-; - Compulsion event forces player to read: compulsion event + @odd-paper, @more-box
+; - Hacker blocks PC actions during helping: @pc :turn-off, :unplug + room :before-action
+; - Compulsion event forces player to read: compulsion event + room :before-action
 ; - Exit barrier: @hacker-exit-barrier :through behavior
 ;
 ; NOT YET IMPLEMENTED:
 ; - Room entry from @platform-room (wake from nightmare, queue hacker-helps)
-; - Compulsion action interception (forces player toward MORE box during possession)
 
 (room @terminal-room
   :description "Terminal Room"
@@ -132,7 +131,36 @@ people here, but tonight it's almost deserted."
   :flags (ONBIT)
   :exits
     ((south :to @cs-2nd :via @hacker-exit-barrier)
-     (out :to @cs-2nd :via @hacker-exit-barrier)))
+     (out :to @cs-2nd :via @hacker-exit-barrier))
+
+  :behaviors (
+    ; Room-level action interception
+    ; ZIL TERMINAL-ROOM-F with RARG? BEG
+    :before-action (fn (?verb ?target)
+      (cond
+        ; === HACKER HELPING ===
+        ; When hacker is helping with PC, block certain actions on screen objects
+        ((and (queued? hacker-helps)
+              (in? ?verb (click rub point help))
+              (in? ?target (@menu-box @more-box)))
+          (blocked :reason hacker-interference
+                   :context ((blocker @hacker))
+                   :message "\"Who's the hacker here?\" he snarls."))
+
+        ; === COMPULSION (POSSESSION) ===
+        ; When possessed, override most player actions
+        ; Allow: click/rub/point/push/attack on @more-box, read @odd-paper
+        ; Everything else gets redirected to touching the MORE box
+        ((and (queued? compulsion)
+              ; These are allowed to proceed
+              (not (and (in? ?verb (click rub point push attack)) (= ?target @more-box)))
+              (not (and (= ?verb read) (= ?target @odd-paper))))
+          (blocked :reason possessed
+                   :context ((compelled true) (forced-target @more-box))
+                   :message "Instead, you find your finger moving towards the MORE box, and you touch it. The screen feels oddly cold."))
+
+        ; Default - allow action to proceed
+        (true (default))))))
 
 (room @cs-2nd
   :description "Second Floor"

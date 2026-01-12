@@ -93,13 +93,18 @@ class GrueBehavior:
 
 @dataclass
 class GrueRoom:
-    """A room definition."""
+    """A room definition.
+
+    Rooms can have behaviors just like objects. The most common is :before-action,
+    which runs before any action in the room and can block or redirect it.
+    """
     name: str
     description: str = ""
     ldesc: str = ""  # Long description
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
+    behaviors: list["GrueBehavior"] = field(default_factory=list)
 
 
 @dataclass
@@ -522,6 +527,8 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
         room.exits = parse_exits(kwargs["exits"])
     if "properties" in kwargs:
         room.properties = parse_properties(kwargs["properties"])
+    if "behaviors" in kwargs:
+        room.behaviors = parse_behaviors(kwargs["behaviors"])
 
     world.rooms[room.name] = room
 

@@ -531,6 +531,11 @@ class GrueRuntime:
                 error="go requires a direction"
             )
 
+        # Check room's :before-action behavior (if any)
+        room_result = self._check_room_before_action(verb, target, actor, args)
+        if room_result is not None and room_result.outcome != "default":
+            return room_result
+
         # Get the object's definition
         obj_def = self.world.objects.get(target)
         if obj_def is None:
@@ -585,6 +590,57 @@ class GrueRuntime:
                 return default_result
 
         return result
+
+    def _check_room_before_action(
+        self,
+        verb: str,
+        target: str,
+        actor: str,
+        args: tuple,
+    ) -> ActionResult | None:
+        """Check if current room has a :before-action behavior that intercepts this action.
+
+        Args:
+            verb: The action verb
+            target: The target object
+            actor: Who is performing the action
+            args: Additional arguments to the action
+
+        Returns:
+            ActionResult if room behavior intercepts (blocked/redirect/etc),
+            ActionResult with outcome="default" to proceed normally,
+            or None if room has no :before-action behavior.
+        """
+        # Get current room
+        player_loc = self.get_player_location()
+        room = self.world.rooms.get(player_loc)
+        if room is None:
+            return None
+
+        # Find :before-action behavior
+        before_action = None
+        for b in room.behaviors:
+            if b.verb == "before-action":
+                before_action = b
+                break
+
+        if before_action is None:
+            return None
+
+        # Set up bindings
+        # :before-action (fn (?verb ?target) ...) or (fn (?verb ?target ?args) ...)
+        bindings = {
+            "actor": actor,
+        }
+
+        # Bind positional params
+        param_values = [verb, target] + list(args)
+        for i, param in enumerate(before_action.params):
+            if i < len(param_values):
+                bindings[param] = param_values[i]
+
+        # Evaluate the behavior
+        return self._evaluate_behavior(before_action, bindings)
 
     def _try_default_behavior(
         self,

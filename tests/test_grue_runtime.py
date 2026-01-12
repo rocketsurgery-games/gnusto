@@ -874,3 +874,147 @@ class TestEventSystem:
         # Won't fire again
         results = runtime.process_events()
         assert len(results) == 0
+
+
+class TestRoomBehaviors:
+    """Test room behaviors with :before-action hook."""
+
+    def test_room_before_action_blocks(self):
+        """Room :before-action can block an action."""
+        source = """
+        (room LOBBY
+          :description "A lobby"
+          :behaviors (
+            :before-action (fn (?verb ?target)
+              (cond
+                ; Block examining the lamp
+                ((and (= ?verb "examine") (= ?target "LAMP"))
+                  (blocked :reason haunted :message "The ghost won't let you."))
+                (true (default))))))
+
+        (object PLAYER :location LOBBY)
+        (object LAMP
+          :location LOBBY
+          :behaviors (
+            :examine (fn () (cond (true (success :message "A brass lamp."))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Examine lamp is blocked by room
+        result = runtime.do("LAMP", "examine")
+        assert result.outcome == "blocked"
+        assert result.reason == "haunted"
+
+    def test_room_before_action_allows(self):
+        """Room :before-action with (default) allows action to proceed."""
+        source = """
+        (room LOBBY
+          :description "A lobby"
+          :behaviors (
+            :before-action (fn (?verb ?target)
+              (cond
+                ; Only block examine on LAMP
+                ((and (= ?verb "examine") (= ?target "LAMP"))
+                  (blocked :reason haunted))
+                (true (default))))))
+
+        (object PLAYER :location LOBBY)
+        (object KEY
+          :location LOBBY
+          :behaviors (
+            :examine (fn () (cond (true (success :message "A brass key."))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Examine key is allowed
+        result = runtime.do("KEY", "examine")
+        assert result.outcome == "success"
+
+    def test_room_before_action_with_event_state(self):
+        """Room :before-action can check event queue state."""
+        source = """
+        (globals :helping false)
+
+        (room TERMINAL-ROOM
+          :description "Terminal room"
+          :behaviors (
+            :before-action (fn (?verb ?target)
+              (cond
+                ; Block screen actions while helping
+                ((and helping (= ?target "SCREEN"))
+                  (blocked :reason hacker-busy
+                           :message "The hacker snarls at you."))
+                (true (default))))))
+
+        (object PLAYER :location TERMINAL-ROOM)
+        (object SCREEN
+          :location TERMINAL-ROOM
+          :behaviors (
+            :click (fn () (cond (true (success :message "You click the screen."))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Click screen when not helping - allowed
+        result = runtime.do("SCREEN", "click")
+        assert result.outcome == "success"
+
+        # Set helping flag
+        runtime.set_global("helping", True)
+
+        # Click screen when helping - blocked
+        result = runtime.do("SCREEN", "click")
+        assert result.outcome == "blocked"
+        assert result.reason == "hacker-busy"
+
+    def test_room_without_before_action(self):
+        """Rooms without :before-action behavior work normally."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object LAMP
+          :location LOBBY
+          :behaviors (
+            :examine (fn () (cond (true (success :message "A lamp."))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("LAMP", "examine")
+        assert result.outcome == "success"
+
+    def test_room_before_action_receives_args(self):
+        """Room :before-action receives action arguments."""
+        source = """
+        (room LOBBY
+          :description "A lobby"
+          :behaviors (
+            :before-action (fn (?verb ?target ?arg1)
+              (cond
+                ; Block giving food to anyone
+                ((and (= ?verb "give") (= ?arg1 "FOOD"))
+                  (blocked :reason no-sharing))
+                (true (default))))))
+
+        (object PLAYER :location LOBBY)
+        (object HACKER
+          :location LOBBY
+          :behaviors (
+            :give (fn (?item)
+              (cond (true (success :message "Thanks!"))))))
+        (object FOOD :location LOBBY)
+        (object KEY :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Give food - blocked
+        result = runtime.do("HACKER", "give", "FOOD")
+        assert result.outcome == "blocked"
+        assert result.reason == "no-sharing"
+
+        # Give key - allowed
+        result = runtime.do("HACKER", "give", "KEY")
+        assert result.outcome == "success"
