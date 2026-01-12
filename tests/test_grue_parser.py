@@ -115,8 +115,9 @@ class TestBehaviorParsing:
           :location LOBBY
           :flags (DOOR)
           :behaviors (
-            :open (cond
-              (true (success)))))
+            :open (fn ()
+              (cond
+                (true (success))))))
         """
         world = parse_grue(source)
 
@@ -125,6 +126,7 @@ class TestBehaviorParsing:
 
         behavior = obj.behaviors[0]
         assert behavior.verb == "open"
+        assert behavior.params == []
         assert len(behavior.cases) == 1
 
         case = behavior.cases[0]
@@ -139,9 +141,10 @@ class TestBehaviorParsing:
           :location LOBBY
           :flags (DOOR LOCKED)
           :behaviors (
-            :open (cond
-              ((not (has-flag ?self LOCKED)) (success))
-              (true (blocked :reason locked)))))
+            :open (fn ()
+              (cond
+                ((not (has-flag ?self LOCKED)) (success))
+                (true (blocked :reason locked))))))
         """
         world = parse_grue(source)
 
@@ -167,12 +170,15 @@ class TestBehaviorParsing:
           :location LOBBY
           :flags (DOOR LOCKED)
           :behaviors (
-            :unlock (cond
-              ((= ?with KEY) (success :effects ((clear-flag! ?self LOCKED)))))))
+            :unlock (fn (?key)
+              (cond
+                ((= ?key KEY) (success :effects ((clear-flag! ?self LOCKED))))))))
         """
         world = parse_grue(source)
 
-        case = world.objects["DOOR"].behaviors[0].cases[0]
+        behavior = world.objects["DOOR"].behaviors[0]
+        assert behavior.params == ["key"]
+        case = behavior.cases[0]
         assert len(case.effects) == 1
         assert isinstance(case.effects[0], SList)
 
@@ -183,9 +189,10 @@ class TestBehaviorParsing:
           :description "A door"
           :location LOBBY
           :behaviors (
-            :open (cond
-              (true (success :context ((mechanism push-bar)
-                                       (note auto-closing)))))))
+            :open (fn ()
+              (cond
+                (true (success :context ((mechanism push-bar)
+                                         (note auto-closing))))))))
         """
         world = parse_grue(source)
 
@@ -201,8 +208,9 @@ class TestBehaviorParsing:
           :description "A door"
           :location LOBBY
           :behaviors (
-            :through (cond
-              (true (default :action (go :direction in))))))
+            :through (fn ()
+              (cond
+                (true (default :action (go :direction in)))))))
         """
         world = parse_grue(source)
 

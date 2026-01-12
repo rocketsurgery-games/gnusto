@@ -80,70 +80,76 @@
 
   :behaviors (
     ; OPEN behavior - depends on which side you're on and where
-    :open (cond
-      ; Outside at push-bar locations: door opens freely
-      ((and (room-has-flag? OUTSIDE)
-            (in-room? @player @mass-ave @smith-st @courtyard @cs-roof))
-        (success :context ((mechanism push-bar))))
+    :open (fn ()
+      (cond
+        ; Outside at push-bar locations: door opens freely
+        ((and (room-has-flag? OUTSIDE)
+              (in-room? @player @mass-ave @smith-st @courtyard @cs-roof))
+          (success :context ((mechanism push-bar))))
 
-      ; Outside elsewhere: locked
-      ((room-has-flag? OUTSIDE)
-        (blocked :reason locked-from-outside))
+        ; Outside elsewhere: locked
+        ((room-has-flag? OUTSIDE)
+          (blocked :reason locked-from-outside))
 
-      ; Inside: opens but auto-closes (no state change)
-      (true
-        (success :context ((note auto-closing)))))
+        ; Inside: opens but auto-closes (no state change)
+        (true
+          (success :context ((note auto-closing))))))
 
     ; UNLOCK behavior - electronic lock rejects physical keys
-    :unlock (cond
-      ; Outside with master key at push-bar locations: wrong key type
-      ((and (room-has-flag? OUTSIDE)
-            (in-room? @player @mass-ave @smith-st @courtyard @cs-roof)
-            (= ?with @master-key))
-        (blocked :reason wrong-key-type
-                 :context ((detail electronic-lock)
-                           (expected card-key))))
+    ; ?key is the key being used to unlock
+    :unlock (fn (?key)
+      (cond
+        ; Outside with master key at push-bar locations: wrong key type
+        ((and (room-has-flag? OUTSIDE)
+              (in-room? @player @mass-ave @smith-st @courtyard @cs-roof)
+              (= ?key @master-key))
+          (blocked :reason wrong-key-type
+                   :context ((detail electronic-lock)
+                             (expected card-key))))
 
-      ; Outside elsewhere: just locked
-      ((room-has-flag? OUTSIDE)
-        (blocked :reason locked-from-outside))
+        ; Outside elsewhere: just locked
+        ((room-has-flag? OUTSIDE)
+          (blocked :reason locked-from-outside))
 
-      ; Inside with master key: success
-      ((and (has-flag ?self LOCKED)
-            (= ?with @master-key))
-        (success :effects ((clear-flag! ?self LOCKED))))
+        ; Inside with master key: success
+        ((and (has-flag ?self LOCKED)
+              (= ?key @master-key))
+          (success :effects ((clear-flag! ?self LOCKED))))
 
-      ; Inside without key: need a key
-      ((has-flag ?self LOCKED)
-        (blocked :reason need-key))
+        ; Inside without key: need a key
+        ((has-flag ?self LOCKED)
+          (blocked :reason need-key))
 
-      ; Already unlocked
-      (true
-        (blocked :reason not-locked)))
+        ; Already unlocked
+        (true
+          (blocked :reason not-locked))))
 
     ; CLOSE behavior - always succeeds (spring-loaded)
-    :close (cond
-      (true
-        (success :context ((note spring-loaded)))))
+    :close (fn ()
+      (cond
+        (true
+          (success :context ((note spring-loaded))))))
 
     ; THROUGH behavior - delegates to movement
-    :through (cond
-      ((room-has-flag? OUTSIDE)
-        (default :action (go :direction in)))
+    :through (fn ()
+      (cond
+        ((room-has-flag? OUTSIDE)
+          (default :action (go :direction in)))
 
-      (true
-        (default :action (go :direction out))))
+        (true
+          (default :action (go :direction out)))))
 
     ; EXAMINE behavior - describe based on location
-    :examine (cond
-      ((room-has-flag? OUTSIDE)
-        (success :context ((visible-features (electronic-lock push-bar))
-                           (apparent-state locked))))
+    :examine (fn ()
+      (cond
+        ((room-has-flag? OUTSIDE)
+          (success :context ((visible-features (electronic-lock push-bar))
+                             (apparent-state locked))))
 
-      (true
-        (success :context ((visible-features (electronic-lock))
-                           (apparent-state
-                             (if (has-flag ?self LOCKED) locked unlocked))))))))
+        (true
+          (success :context ((visible-features (electronic-lock))
+                             (apparent-state
+                               (if (has-flag ?self LOCKED) locked unlocked)))))))))
 
 (object @master-key
   :description "A worn brass key on a GBS keyring"

@@ -77,8 +77,17 @@ class GrueCase:
 
 @dataclass
 class GrueBehavior:
-    """A behavior definition for a specific verb."""
+    """A behavior definition for a specific verb.
+
+    Behaviors are functions with explicit parameters:
+        :give (fn (?item) (cond ...))
+
+    Auto-bound symbols (not in params):
+        ?self  - The object whose behavior is invoked
+        ?actor - Who is performing the action (usually @player)
+    """
     verb: str
+    params: list[str] = field(default_factory=list)  # Parameter names (without ?)
     cases: list[GrueCase] = field(default_factory=list)
 
 
@@ -387,15 +396,21 @@ def parse_cond(expr: SExpr) -> list[GrueCase]:
 
 
 def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
-    """Parse behaviors list: (:verb (cond ...) :verb2 (cond ...) ...)
+    """Parse behaviors list: (:verb (fn (?params) (cond ...)) ...)
 
     Example:
         :behaviors (
-          :open (cond
-            ((has-flag ?self LOCKED) (blocked :reason locked))
-            (true (success :effects ((set-flag! ?self OPENBIT)))))
-          :close (cond
-            (true (success))))
+          :give (fn (?item)
+            (cond
+              ((not (held-by? ?item ?actor)) (blocked :reason not-held))
+              (true (success))))
+          :examine (fn ()
+            (cond
+              (true (success)))))
+
+    Auto-bound symbols (not specified in params):
+        ?self  - The object whose behavior is invoked
+        ?actor - Who is performing the action
     """
     if not isinstance(expr, SList):
         raise FormParseError(f"Expected behaviors list, got {expr}")
@@ -412,17 +427,41 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
             i += 1
 
             if i >= len(items):
-                raise FormParseError(f"Missing (cond ...) after :{verb}")
+                raise FormParseError(f"Missing (fn ...) after :{verb}")
 
-            cond_expr = items[i]
+            fn_expr = items[i]
+            if not isinstance(fn_expr, SList) or len(fn_expr) < 1:
+                raise FormParseError(f"Expected (fn ...) after :{verb}, got {fn_expr}")
+
+            first = fn_expr[0]
+            if not isinstance(first, Symbol) or first.name != "fn":
+                raise FormParseError(f"Expected 'fn' after :{verb}, got {first}")
+
+            # Parse (fn (?param1 ?param2) (cond ...))
+            if len(fn_expr) < 3:
+                raise FormParseError(f"Expected (fn (params) (cond ...)) for :{verb}")
+
+            params_expr = fn_expr[1]
+            cond_expr = fn_expr[2]
+
+            # Parse parameter list
+            params = []
+            if isinstance(params_expr, SList):
+                for p in params_expr.items:
+                    if isinstance(p, Symbol) and p.name.startswith("?"):
+                        params.append(p.name[1:])  # Strip leading ?
+                    else:
+                        raise FormParseError(f"Expected ?param in params list, got {p}")
+
+            # Parse cond expression
             if not isinstance(cond_expr, SList) or len(cond_expr) < 1:
-                raise FormParseError(f"Expected (cond ...) after :{verb}, got {cond_expr}")
+                raise FormParseError(f"Expected (cond ...) in fn body for :{verb}")
 
-            first = cond_expr[0]
-            if not isinstance(first, Symbol) or first.name != "cond":
-                raise FormParseError(f"Expected 'cond' after :{verb}, got {first}")
+            cond_first = cond_expr[0]
+            if not isinstance(cond_first, Symbol) or cond_first.name != "cond":
+                raise FormParseError(f"Expected 'cond' in fn body for :{verb}, got {cond_first}")
 
-            behavior = GrueBehavior(verb=verb)
+            behavior = GrueBehavior(verb=verb, params=params)
             behavior.cases = parse_cond(cond_expr)
             behaviors.append(behavior)
             i += 1

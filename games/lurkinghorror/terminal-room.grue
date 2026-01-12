@@ -142,116 +142,126 @@ people here, but tonight it's almost deserted."
 
   :behaviors (
     ; EXAMINE - Show PC description with power state and screen contents
-    :examine (cond
-      ((has-flag ?self POWER)
-        (success :context ((power on) (screen-contents (first-in ?self)))
-                 :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
-      (true
-        (success :context ((power off))
-                 :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off.")))
+    :examine (fn ()
+      (cond
+        ((has-flag ?self POWER)
+          (success :context ((power on) (screen-contents (first-in ?self)))
+                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
+        (true
+          (success :context ((power off))
+                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off."))))
 
     ; LISTEN - Hums when powered on
-    :listen (cond
-      ((has-flag ?self POWER)
-        (success :message "It hums contentedly."))
-      (true
-        (blocked :reason not-powered :message "It's silent.")))
+    :listen (fn ()
+      (cond
+        ((has-flag ?self POWER)
+          (success :message "It hums contentedly."))
+        (true
+          (blocked :reason not-powered :message "It's silent."))))
 
     ; TAKE - When hacker helps, redirect to unplug; otherwise auto-unplug
-    :take (cond
-      ((queued? hacker-helps)
-        (redirect :action (unplug @pc)
-                  :context ((hacker-blocks true))))
-      ((prop ?self unplugged)
-        (default))  ; Normal take when already unplugged
-      ((has-flag ?self POWER)
-        ; Taking while on: turn off and unplug
-        (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true) (move! ?self @player))
-                 :context ((auto-unplug true) (was-powered true))
-                 :message "You take it, turning it off and unplugging it first."))
-      (true
-        ; Taking while off but plugged in: just unplug
-        (success :effects ((set-prop! ?self unplugged true) (move! ?self @player))
-                 :context ((auto-unplug true))
-                 :message "You take it, unplugging it first.")))
+    :take (fn ()
+      (cond
+        ((queued? hacker-helps)
+          (redirect :action (do @pc :unplug)
+                    :context ((hacker-blocks true))))
+        ((prop ?self unplugged)
+          (default))  ; Normal take when already unplugged
+        ((has-flag ?self POWER)
+          ; Taking while on: turn off and unplug
+          (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true) (move! ?self ?actor))
+                   :context ((auto-unplug true) (was-powered true))
+                   :message "You take it, turning it off and unplugging it first."))
+        (true
+          ; Taking while off but plugged in: just unplug
+          (success :effects ((set-prop! ?self unplugged true) (move! ?self ?actor))
+                   :context ((auto-unplug true))
+                   :message "You take it, unplugging it first."))))
 
     ; PUT-ON / PUT - Not a good surface
-    :put-on (cond
-      (true
-        (blocked :reason not-a-surface :message "That's not a good surface for that.")))
+    :put-on (fn (?item)
+      (cond
+        (true
+          (blocked :reason not-a-surface :message "That's not a good surface for that."))))
 
     ; READ - Show screen contents
-    :read (cond
-      ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
-        (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
-      ((not (has-flag ?self POWER))
-        (blocked :reason not-powered :message "The screen is dark."))
-      ; Check for objects on screen (in PC container)
-      ((in? @odd-paper ?self)
-        (redirect :action (read @odd-paper)))
-      ((in? @menu-box ?self)
-        (redirect :action (read @menu-box)))
-      ((in? @more-box ?self)
-        (redirect :action (read @more-box)))
-      ((in? @yak-window ?self)
-        (redirect :action (read @yak-window)))
-      (true
-        (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now.")))
+    :read (fn ()
+      (cond
+        ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
+          (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-powered :message "The screen is dark."))
+        ; Check for objects on screen (in PC container)
+        ((in? @odd-paper ?self)
+          (redirect :action (do @odd-paper :read)))
+        ((in? @menu-box ?self)
+          (redirect :action (do @menu-box :read)))
+        ((in? @more-box ?self)
+          (redirect :action (do @more-box :read)))
+        ((in? @yak-window ?self)
+          (redirect :action (do @yak-window :read)))
+        (true
+          (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now."))))
 
     ; TURN-ON (LAMP-ON) - Power up computer
-    :turn-on (cond
-      ((prop ?self unplugged)
-        (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
-      ((has-flag ?self POWER)
-        (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
-      (true
-        (success :effects ((set-flag! ?self POWER))
-                 :context ((booting true))
-                 :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum.")))
+    :turn-on (fn ()
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
+        ((has-flag ?self POWER)
+          (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
+        (true
+          (success :effects ((set-flag! ?self POWER))
+                   :context ((booting true))
+                   :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum."))))
 
     ; TURN-OFF (LAMP-OFF) - Power down computer
-    :turn-off (cond
-      ((queued? hacker-helps)
-        (blocked :reason hacker-interference
-                 :context ((blocker @hacker))
-                 :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-      ((not (has-flag ?self POWER))
-        (blocked :reason already-off :message "It's already off."))
-      (true
-        (success :effects ((clear-flag! ?self POWER))
-                 :message "The computer powers off.")))
+    :turn-off (fn ()
+      (cond
+        ((queued? hacker-helps)
+          (blocked :reason hacker-interference
+                   :context ((blocker @hacker))
+                   :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+        ((not (has-flag ?self POWER))
+          (blocked :reason already-off :message "It's already off."))
+        (true
+          (success :effects ((clear-flag! ?self POWER))
+                   :message "The computer powers off."))))
 
     ; PLUG-IN - Plug in computer
-    :plug-in (cond
-      ((not (prop ?self unplugged))
-        (blocked :reason already-plugged :message "It's already plugged in."))
-      (true
-        (success :effects ((set-prop! ?self unplugged false))
-                 :message "You plug in the computer.")))
+    :plug-in (fn ()
+      (cond
+        ((not (prop ?self unplugged))
+          (blocked :reason already-plugged :message "It's already plugged in."))
+        (true
+          (success :effects ((set-prop! ?self unplugged false))
+                   :message "You plug in the computer."))))
 
     ; UNPLUG - Unplug computer
-    :unplug (cond
-      ((prop ?self unplugged)
-        (blocked :reason already-unplugged :message "It's already unplugged."))
-      ((queued? hacker-helps)
-        (blocked :reason hacker-interference
-                 :context ((blocker @hacker))
-                 :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-      ((has-flag ?self POWER)
-        ; Unplug while on: turn off first
-        (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true))
-                 :context ((was-powered true))
-                 :message "Okay, it's unplugged now."))
-      (true
-        (success :effects ((set-prop! ?self unplugged true))
-                 :message "Okay, it's unplugged now.")))
+    :unplug (fn ()
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason already-unplugged :message "It's already unplugged."))
+        ((queued? hacker-helps)
+          (blocked :reason hacker-interference
+                   :context ((blocker @hacker))
+                   :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
+        ((has-flag ?self POWER)
+          ; Unplug while on: turn off first
+          (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true))
+                   :context ((was-powered true))
+                   :message "Okay, it's unplugged now."))
+        (true
+          (success :effects ((set-prop! ?self unplugged true))
+                   :message "Okay, it's unplugged now."))))
 
     ; SIT-AT - Redirect to sitting in chair if present
-    :sit-at (cond
-      ((here? @chair)
-        (redirect :action (sit @chair)))
-      (true
-        (blocked :reason no-chair :message "There's no chair here.")))))
+    :sit-at (fn ()
+      (cond
+        ((here? @chair)
+          (redirect :action (do @chair :sit)))
+        (true
+          (blocked :reason no-chair :message "There's no chair here."))))))
 
 (object @chair
   :description "chair"
@@ -261,29 +271,33 @@ people here, but tonight it's almost deserted."
   :properties (:size 100)
 
   :behaviors (
-    :examine (cond
-      (true
-        (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.")))
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable."))))
 
-    :take (cond
-      ((in? @hacker @chair)
-        (blocked :reason in-use :message "It's in use."))
-      (true
-        (default)))
+    :take (fn ()
+      (cond
+        ((in? @hacker @chair)
+          (blocked :reason in-use :message "It's in use."))
+        (true
+          (default))))
 
-    :sit (cond
-      ((in? @hacker @chair)
-        (blocked :reason occupied :message "The hacker is already using it."))
-      ((in? @player @chair)
-        (blocked :reason already-there :message "You are."))
-      (true
-        (success :effects ((move! @player @chair)) :message "You are now sitting in the chair.")))
+    :sit (fn ()
+      (cond
+        ((in? @hacker @chair)
+          (blocked :reason occupied :message "The hacker is already using it."))
+        ((in? ?actor @chair)
+          (blocked :reason already-there :message "You are."))
+        (true
+          (success :effects ((move! ?actor @chair)) :message "You are now sitting in the chair."))))
 
-    :stand (cond
-      ((in? @player @chair)
-        (success :effects ((move! @player (loc @chair))) :message "You get out of the chair."))
-      (true
-        (blocked :reason not-in-vehicle :message "You're not in the chair.")))))
+    :stand (fn ()
+      (cond
+        ((in? ?actor @chair)
+          (success :effects ((move! ?actor (loc @chair))) :message "You get out of the chair."))
+        (true
+          (blocked :reason not-in-vehicle :message "You're not in the chair."))))))
 
 ; === Puzzle Objects ===
 ; These are stub definitions for testing the hacker trade puzzle.
@@ -427,229 +441,251 @@ people here, but tonight it's almost deserted."
   :behaviors (
     ; === ROOM DESCRIPTION ===
     ; HACKER-DESC function - varies by location
-    :describe (cond
-      ((here? @terminal-room)
-        (success :context ((description "Sitting at a terminal is a hacker whom you recognize."))))
-      ((here? @inner-lair)
-        (success :context ((description "A muddy, scratched-up hacker stands tiredly here."))))
-      (true
-        (success :context ((description "A hacker is here.")))))
+    :describe (fn ()
+      (cond
+        ((here? @terminal-room)
+          (success :context ((description "Sitting at a terminal is a hacker whom you recognize."))))
+        ((here? @inner-lair)
+          (success :context ((description "A muddy, scratched-up hacker stands tiredly here."))))
+        (true
+          (success :context ((description "A hacker is here."))))))
 
     ; === EXAMINE ===
     ; Note: Full implementation would check global lair-cnt for possessed state
     ; and global hacker-help for helping state. Simplified for basic translation.
-    :examine (cond
-      ((here? @inner-lair)
-        (success :context ((description "He's muddy, wet, and tired looking."))))
-      ; Normal state - at his own terminal
-      (true
-        (success :context ((description "The hacker sits comfortably on an office chair facing a terminal table, or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly, using just two fingers, but achieves speeds that typists using all ten fingers only dream of. He is apparently debugging a large assembly language program, as the screen of his terminal looks like a spray of completely random characters. The hacker is dressed in blue jeans, an old work shirt, and what might once have been running shoes. Hanging from his belt is an enormous ring of keys. He is in need of a bath.")))))
+    :examine (fn ()
+      (cond
+        ((here? @inner-lair)
+          (success :context ((description "He's muddy, wet, and tired looking."))))
+        ; Normal state - at his own terminal
+        (true
+          (success :context ((description "The hacker sits comfortably on an office chair facing a terminal table, or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly, using just two fingers, but achieves speeds that typists using all ten fingers only dream of. He is apparently debugging a large assembly language program, as the screen of his terminal looks like a spray of completely random characters. The hacker is dressed in blue jeans, an old work shirt, and what might once have been running shoes. Hanging from his belt is an enormous ring of keys. He is in need of a bath."))))))
 
     ; === SMELL ===
-    :smell (cond
-      (true
-        (success :context ((description "Either the hacker, his clothing, or both are in need of cleaning.")))))
+    :smell (fn ()
+      (cond
+        (true
+          (success :context ((description "Either the hacker, his clothing, or both are in need of cleaning."))))))
 
     ; === LISTEN ===
-    :listen (cond
-      (true
-        (success :context ((description "He is humming something. It sounds classical, perhaps Bach?")))))
+    :listen (fn ()
+      (cond
+        (true
+          (success :context ((description "He is humming something. It sounds classical, perhaps Bach?"))))))
 
     ; === THANK ===
-    :thank (cond
-      ((held? @master-key)
-        (success :context ((response "He blushes."))))
-      (true
-        (success)))
+    :thank (fn ()
+      (cond
+        ((held? @master-key)
+          (success :context ((response "He blushes."))))
+        (true
+          (success))))
 
     ; === SHOW ===
-    :show (cond
-      ; Show food
-      ((has-flag ?object FOODBIT)
-        (success :context ((response "\"Winnage! I could do with some of that.\""))))
-      ; Show specific items
-      ((= ?object @smooth-stone)
-        (success :context ((response "\"Odd-looking thing. Are you a rock-jock?\""))))
-      ((= ?object @hand)
-        (success :context ((response "\"Mondo grosso!\""))))
-      ((= ?object @dead-rat)
-        (success :context ((response "\"I have enough of those in my basement. Get rid of it!\""))))
-      ; Default show
-      (true
-        (success :context ((response "He more or less grunts at you, but shows little interest in it.")))))
+    ; ?item is the object being shown to the hacker
+    :show (fn (?item)
+      (cond
+        ; Show food
+        ((has-flag ?item FOODBIT)
+          (success :context ((response "\"Winnage! I could do with some of that.\""))))
+        ; Show specific items
+        ((= ?item @smooth-stone)
+          (success :context ((response "\"Odd-looking thing. Are you a rock-jock?\""))))
+        ((= ?item @hand)
+          (success :context ((response "\"Mondo grosso!\""))))
+        ((= ?item @dead-rat)
+          (success :context ((response "\"I have enough of those in my basement. Get rid of it!\""))))
+        ; Default show
+        (true
+          (success :context ((response "He more or less grunts at you, but shows little interest in it."))))))
 
     ; === GIVE ===
-    :give (cond
-      ; Give overcooked chinese food
-      ((and (= ?object @carton) (in? @chinese-food @carton) (has-flag @chinese-food RMUNGBIT))
-        (success
-          :effects ((move! @carton nil))
-          :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away."))))
-      ; Give hot chinese food (heat >= 12) - if trade was proposed, loan the key
-      ((and (= ?object @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) hacker-trade)
-        (success
-          :effects ((move! @carton @hacker) (move! @chinese-food nil) (set! hacker-trade false) (move! @master-key @player))
-          :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
-      ; Give hot chinese food (heat >= 12) - no trade proposed
-      ((and (= ?object @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12))
-        (success
-          :effects ((move! @carton @hacker) (move! @chinese-food nil))
-          :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Now, what was it you were wanting?\" he asks."))))
-      ; Give cold chinese food
-      ((and (= ?object @carton) (in? @chinese-food @carton) (= (prop @chinese-food heat) 0))
-        (blocked :reason food-cold :context ((response "\"Yuck! This is cold!\" He thrusts it back into your hands."))))
-      ; Give lukewarm chinese food
-      ((and (= ?object @carton) (in? @chinese-food @carton))
-        (blocked :reason food-cold :context ((response "\"Yuck! This isn't warm enough!\" He thrusts it back into your hands."))))
-      ; Give snack (not eaten)
-      ((and (= ?object @snack) (not (has-flag @snack RMUNGBIT)))
-        (success
-          :effects ((move! @snack @hacker))
-          :context ((response "\"Hey, thanks!\" He stuffs it down in no time. \"I could really do with some Chinese food, though.\""))))
-      ; Give coke
-      ((= ?object @coke)
-        (blocked :reason wrong-drink :context ((response "\"I only drink Diet Coke,\" he complains. \"I could really do with some Chinese food, though.\""))))
-      ; Default give
-      (true
-        (blocked :reason not-interested :context ((response "\"No thanks, keep it for now.\"")))))
+    ; ?item is the object being given to the hacker
+    :give (fn (?item)
+      (cond
+        ; Give overcooked chinese food
+        ((and (= ?item @carton) (in? @chinese-food @carton) (has-flag @chinese-food RMUNGBIT))
+          (success
+            :effects ((move! @carton nil))
+            :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away."))))
+        ; Give hot chinese food (heat >= 12) - if trade was proposed, loan the key
+        ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) hacker-trade)
+          (success
+            :effects ((move! @carton @hacker) (move! @chinese-food nil) (set! hacker-trade false) (move! @master-key ?actor))
+            :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+        ; Give hot chinese food (heat >= 12) - no trade proposed
+        ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12))
+          (success
+            :effects ((move! @carton @hacker) (move! @chinese-food nil))
+            :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Now, what was it you were wanting?\" he asks."))))
+        ; Give cold chinese food
+        ((and (= ?item @carton) (in? @chinese-food @carton) (= (prop @chinese-food heat) 0))
+          (blocked :reason food-cold :context ((response "\"Yuck! This is cold!\" He thrusts it back into your hands."))))
+        ; Give lukewarm chinese food
+        ((and (= ?item @carton) (in? @chinese-food @carton))
+          (blocked :reason food-cold :context ((response "\"Yuck! This isn't warm enough!\" He thrusts it back into your hands."))))
+        ; Give snack (not eaten)
+        ((and (= ?item @snack) (not (has-flag @snack RMUNGBIT)))
+          (success
+            :effects ((move! @snack @hacker))
+            :context ((response "\"Hey, thanks!\" He stuffs it down in no time. \"I could really do with some Chinese food, though.\""))))
+        ; Give coke
+        ((= ?item @coke)
+          (blocked :reason wrong-drink :context ((response "\"I only drink Diet Coke,\" he complains. \"I could really do with some Chinese food, though.\""))))
+        ; Default give
+        (true
+          (blocked :reason not-interested :context ((response "\"No thanks, keep it for now.\""))))))
 
     ; === TRADE ===
     ; "trade food for key" - sets up the trade, food must be given afterward
-    :trade (cond
-      ; Valid trade: food for key (either direction)
-      ((or (and (= ?object @chinese-food) (= ?indirect @master-key))
-           (and (= ?object @carton) (= ?indirect @master-key))
-           (and (= ?object @master-key) (= ?indirect @chinese-food))
-           (and (= ?object @master-key) (= ?indirect @carton)))
-        (success
-          :effects ((set! hacker-trade true))
-          :context ((response "\"You give me the food first.\""))))
-      ; Invalid trade
-      (true
-        (blocked :reason bad-trade :context ((response "\"That's not a good trade.\"")))))
+    ; ?offer is what player is offering, ?want is what player wants
+    :trade (fn (?offer ?want)
+      (cond
+        ; Valid trade: food for key (either direction)
+        ((or (and (= ?offer @chinese-food) (= ?want @master-key))
+             (and (= ?offer @carton) (= ?want @master-key))
+             (and (= ?offer @master-key) (= ?want @chinese-food))
+             (and (= ?offer @master-key) (= ?want @carton)))
+          (success
+            :effects ((set! hacker-trade true))
+            :context ((response "\"You give me the food first.\""))))
+        ; Invalid trade
+        (true
+          (blocked :reason bad-trade :context ((response "\"That's not a good trade.\""))))))
 
     ; === ASK-FOR (give me X) ===
     ; Player asking hacker for things
-    :ask-for (cond
-      ; Ask for keyring (with carton given - slightly different wording)
-      ((and (= ?object @keyring) (in? @carton @hacker))
-        (blocked :reason needs-keys :context ((response "\"Well, I can't give you all my keys, I need them.\" He fondles his keyring proudly."))))
-      ; Ask for keyring (without carton given)
-      ((= ?object @keyring)
-        (blocked :reason needs-keys :context ((response "\"Well, I can't give you my keys, I need them.\" He fondles his keyring proudly."))))
-      ; Ask for master key - key not visible (suspicious)
-      ((and (= ?object @master-key) (not (has-flag @master-key TOUCHBIT)))
-        (blocked :reason suspicious :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
-      ; Ask for master key - player already fed hacker (loan it)
-      ((and (= ?object @master-key) (in? @carton @hacker))
-        (success
-          :effects ((set! hacker-trade false) (move! @master-key @player))
-          :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
-      ; Ask for master key - no food given yet
-      ((= ?object @master-key)
-        (blocked :reason quid-pro-quo :context ((response "\"Fat chance! This is a master key! What have you done for me lately?\""))))
-      ; Ask for other keys
-      ((has-flag ?object KEYBIT)
-        (blocked :reason boring-keys :context ((response "\"Those are boring old keys. They don't open anything interesting.\""))))
-      ; Ask for anything else
-      (true
-        (blocked :reason no-have :context ((response "\"I don't have that.\"")))))
+    ; ?item is the object being requested
+    :ask-for (fn (?item)
+      (cond
+        ; Ask for keyring (with carton given - slightly different wording)
+        ((and (= ?item @keyring) (in? @carton @hacker))
+          (blocked :reason needs-keys :context ((response "\"Well, I can't give you all my keys, I need them.\" He fondles his keyring proudly."))))
+        ; Ask for keyring (without carton given)
+        ((= ?item @keyring)
+          (blocked :reason needs-keys :context ((response "\"Well, I can't give you my keys, I need them.\" He fondles his keyring proudly."))))
+        ; Ask for master key - key not visible (suspicious)
+        ((and (= ?item @master-key) (not (has-flag @master-key TOUCHBIT)))
+          (blocked :reason suspicious :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
+        ; Ask for master key - player already fed hacker (loan it)
+        ((and (= ?item @master-key) (in? @carton @hacker))
+          (success
+            :effects ((set! hacker-trade false) (move! @master-key ?actor))
+            :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+        ; Ask for master key - no food given yet
+        ((= ?item @master-key)
+          (blocked :reason quid-pro-quo :context ((response "\"Fat chance! This is a master key! What have you done for me lately?\""))))
+        ; Ask for other keys
+        ((has-flag ?item KEYBIT)
+          (blocked :reason boring-keys :context ((response "\"Those are boring old keys. They don't open anything interesting.\""))))
+        ; Ask for anything else
+        (true
+          (blocked :reason no-have :context ((response "\"I don't have that.\""))))))
 
     ; === HELLO ===
-    :hello (cond
-      ((here? @terminal-room)
-        (success :context ((response "\"Greetingage.\" He turns back to his hacking."))))
-      (true
-        (success :context ((response "\"Greetingage.\"")))))
+    :hello (fn ()
+      (cond
+        ((here? @terminal-room)
+          (success :context ((response "\"Greetingage.\" He turns back to his hacking."))))
+        (true
+          (success :context ((response "\"Greetingage.\""))))))
 
     ; === ASK-ABOUT (ask hacker about X) ===
     ; ZIL: TELL-ME-ABOUT / WHAT verbs with WINNER=HACKER
-    :ask-about (cond
-      ; Possessed state (lair-cnt > 6) - he's not himself
-      ((> lair-cnt 6)
-        (success :context ((response "The hacker replies, \"Meld!\""))))
-      ; About himself
-      ((= ?topic @hacker)
-        (success :context ((response "He's reluctant to boast."))))
-      ; About keys/keyring - reveals master key!
-      ((or (= ?topic @keyring) (= ?topic @keys))
-        (success
-          :effects ((set-flag! @master-key TOUCHBIT) (move! @master-key @keyring))
-          :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says."))))
-      ; About food
-      ((or (= ?topic @chinese-food) (= ?topic @snack) (= ?topic @food))
-        (success :context ((response "\"Yeah! I'd love some yummy Chinese food. Szechuan style. Ummm!\""))))
-      ; About the master key - depends on whether it's been revealed (TOUCHBIT)
-      ((and (= ?topic @master-key) (not (has-flag @master-key TOUCHBIT)))
-        (success :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
-      ((= ?topic @master-key)
-        (success :context ((response "\"That's one of my best keys. It's a Tech master key. Not that it really opens every door at Tech, but I'd say three out of five, at least. Naturally, some labs are off-limits even to this key.\""))))
-      ; About missing students
-      ((= ?topic @students)
-        (success :context ((response "\"Missing students? I knew one of them slightly. Not the sort who would go away, you know? He was sort of hackeresque, not dumb for an undergrad, either. Not the type to disappear.\""))))
-      ; About the program/PC - state dependent on hacker-help global
-      ((or (= ?topic @program) (= ?topic @pc))
-        (success :context ((response "\"You should consult the documentation.\" He's preoccupied with his own debugging."))))
-      ; About Lovecraft
-      ((= ?topic @lovecraft)
-        (success :context ((response "\"Wasn't he a fantasy author?\""))))
-      ; About the smooth stone
-      ((= ?topic @smooth-stone)
-        (success :context ((response "\"I've never seen one like that. Pretty tasteful, I'd say.\""))))
-      ; About urchins
-      ((= ?topic @urchins)
-        (success :context ((response "\"There are always urchins around. I remember one or two who became hackers.\""))))
-      ; About repeater/cable (offers to help)
-      ((or (= ?topic @repeater) (= ?topic @cable))
-        (success :context ((response "\"I'll fix it!\""))))
-      ; Default - doesn't know
-      (true
-        (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about.")))))
+    ; ?topic is the thing being asked about
+    :ask-about (fn (?topic)
+      (cond
+        ; Possessed state (lair-cnt > 6) - he's not himself
+        ((> lair-cnt 6)
+          (success :context ((response "The hacker replies, \"Meld!\""))))
+        ; About himself
+        ((= ?topic @hacker)
+          (success :context ((response "He's reluctant to boast."))))
+        ; About keys/keyring - reveals master key!
+        ((or (= ?topic @keyring) (= ?topic @keys))
+          (success
+            :effects ((set-flag! @master-key TOUCHBIT) (move! @master-key @keyring))
+            :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says."))))
+        ; About food
+        ((or (= ?topic @chinese-food) (= ?topic @snack) (= ?topic @food))
+          (success :context ((response "\"Yeah! I'd love some yummy Chinese food. Szechuan style. Ummm!\""))))
+        ; About the master key - depends on whether it's been revealed (TOUCHBIT)
+        ((and (= ?topic @master-key) (not (has-flag @master-key TOUCHBIT)))
+          (success :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
+        ((= ?topic @master-key)
+          (success :context ((response "\"That's one of my best keys. It's a Tech master key. Not that it really opens every door at Tech, but I'd say three out of five, at least. Naturally, some labs are off-limits even to this key.\""))))
+        ; About missing students
+        ((= ?topic @students)
+          (success :context ((response "\"Missing students? I knew one of them slightly. Not the sort who would go away, you know? He was sort of hackeresque, not dumb for an undergrad, either. Not the type to disappear.\""))))
+        ; About the program/PC - state dependent on hacker-help global
+        ((or (= ?topic @program) (= ?topic @pc))
+          (success :context ((response "\"You should consult the documentation.\" He's preoccupied with his own debugging."))))
+        ; About Lovecraft
+        ((= ?topic @lovecraft)
+          (success :context ((response "\"Wasn't he a fantasy author?\""))))
+        ; About the smooth stone
+        ((= ?topic @smooth-stone)
+          (success :context ((response "\"I've never seen one like that. Pretty tasteful, I'd say.\""))))
+        ; About urchins
+        ((= ?topic @urchins)
+          (success :context ((response "\"There are always urchins around. I remember one or two who became hackers.\""))))
+        ; About repeater/cable (offers to help)
+        ((or (= ?topic @repeater) (= ?topic @cable))
+          (success :context ((response "\"I'll fix it!\""))))
+        ; Default - doesn't know
+        (true
+          (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about."))))))
 
     ; === TELL-ABOUT (tell hacker about X) ===
     ; ZIL: same as ASK-ABOUT for most topics
-    :tell-about (cond
-      ; Possessed state
-      ((> lair-cnt 6)
-        (success :context ((response "The hacker replies, \"Meld!\""))))
-      ; For most topics, redirect to ask-about behavior
-      ; The hacker treats "tell about" the same as "ask about"
-      (true
-        (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about.")))))
+    ; ?topic is the thing being told about
+    :tell-about (fn (?topic)
+      (cond
+        ; Possessed state
+        ((> lair-cnt 6)
+          (success :context ((response "The hacker replies, \"Meld!\""))))
+        ; For most topics, redirect to ask-about behavior
+        ; The hacker treats "tell about" the same as "ask about"
+        (true
+          (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about."))))))
 
     ; === FOLLOW ===
-    :follow (cond
-      ((here? @inner-lair)
-        (success :context ((response "\"I'm here, aren't I?\""))))
-      (true
-        (blocked :reason busy :context ((response "\"I haven't got time. I have new versions of the system, the assembler, the editor, and the debugger to finish hacking.\"")))))
+    :follow (fn ()
+      (cond
+        ((here? @inner-lair)
+          (success :context ((response "\"I'm here, aren't I?\""))))
+        (true
+          (blocked :reason busy :context ((response "\"I haven't got time. I have new versions of the system, the assembler, the editor, and the debugger to finish hacking.\""))))))
 
     ; === HELP (ask hacker for help with PC) ===
     ; ZIL: VERB? HELP with various state checks
-    :help (cond
-      ; Already helping
-      ((queued? hacker-helps)
-        (success :context ((response "\"I'm looking at it. Be patient. This isn't some little micro. We're on a hairy OS on a hairy net.\""))))
-      ; Already helped (hacker-help >= 3 means stage 3 was reached)
-      ((>= hacker-help 3)
-        (success :context ((response "\"I already looked at it. The bug is fixed in the sources. Your paper is gone, unless those Alchemy chompers have a copy.\""))))
-      ; In terminal room - start helping
-      ((= (loc @player) @terminal-room)
-        (success
-          :effects ((queue! hacker-helps) (set! hacker-help 0))
-          :context ((response "\"Be patient!\""))))
-      ; Not in terminal room
-      (true
-        (blocked :reason busy :context ((response "\"Help? I'm not a T.A. I've got work to do.\"")))))
+    :help (fn ()
+      (cond
+        ; Already helping
+        ((queued? hacker-helps)
+          (success :context ((response "\"I'm looking at it. Be patient. This isn't some little micro. We're on a hairy OS on a hairy net.\""))))
+        ; Already helped (hacker-help >= 3 means stage 3 was reached)
+        ((>= hacker-help 3)
+          (success :context ((response "\"I already looked at it. The bug is fixed in the sources. Your paper is gone, unless those Alchemy chompers have a copy.\""))))
+        ; In terminal room - start helping
+        ((= (loc ?actor) @terminal-room)
+          (success
+            :effects ((queue! hacker-helps) (set! hacker-help 0))
+            :context ((response "\"Be patient!\""))))
+        ; Not in terminal room
+        (true
+          (blocked :reason busy :context ((response "\"Help? I'm not a T.A. I've got work to do.\""))))))
 
     ; === HOSTILE ACTIONS ===
-    :attack (cond
-      (true
-        (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly.")))))
+    :attack (fn ()
+      (cond
+        (true
+          (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly."))))))
 
-    :kill (cond
-      (true
-        (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly.")))))))
+    :kill (fn ()
+      (cond
+        (true
+          (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly."))))))))
 
 ; === Barriers ===
 
@@ -667,10 +703,11 @@ people here, but tonight it's almost deserted."
   :description "passage"
   :flags (INVISIBLE)
   :behaviors (
-    :through (cond
-      ((or (held? @pc) (held? @chair))
-        (blocked :reason tech-property
-                 :context ((blocker @hacker))
-                 :message "You can't walk off with that! It's Tech property!"))
-      (true
-        (success)))))
+    :through (fn ()
+      (cond
+        ((or (held? @pc) (held? @chair))
+          (blocked :reason tech-property
+                   :context ((blocker @hacker))
+                   :message "You can't walk off with that! It's Tech property!"))
+        (true
+          (success))))))

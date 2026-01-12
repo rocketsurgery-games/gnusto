@@ -73,7 +73,7 @@ class TestSimpleMovement:
 
         assert runtime.get_player_location() == "LOBBY"
 
-        result = runtime.do("go", direction="north")
+        result = runtime.do("_movement", "go", "north")
         assert result.outcome == "success"
         assert runtime.get_player_location() == "HALLWAY"
 
@@ -86,7 +86,7 @@ class TestSimpleMovement:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("go", direction="north")
+        result = runtime.do("_movement", "go", "north")
         assert result.outcome == "blocked"
         assert result.reason == "no-exit"
 
@@ -103,13 +103,14 @@ class TestBehaviorExecution:
           :location LOBBY
           :flags (DOOR)
           :behaviors (
-            :open (cond
-              (true (success)))))
+            :open (fn ()
+              (cond
+                (true (success))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("open", "DOOR")
+        result = runtime.do("DOOR", "open")
         assert result.outcome == "success"
 
     def test_conditional_behavior(self):
@@ -121,15 +122,16 @@ class TestBehaviorExecution:
           :location LOBBY
           :flags (DOOR LOCKED)
           :behaviors (
-            :open (cond
-              ((not (has-flag ?self LOCKED)) (success))
-              (true (blocked :reason locked)))))
+            :open (fn ()
+              (cond
+                ((not (has-flag ?self LOCKED)) (success))
+                (true (blocked :reason locked))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # Door is locked, so should be blocked
-        result = runtime.do("open", "DOOR")
+        result = runtime.do("DOOR", "open")
         assert result.outcome == "blocked"
         assert result.reason == "locked"
 
@@ -142,9 +144,10 @@ class TestBehaviorExecution:
           :location LOBBY
           :flags (DOOR LOCKED)
           :behaviors (
-            :unlock (cond
-              ((has-flag ?self LOCKED)
-                (success :effects ((clear-flag! ?self LOCKED)))))))
+            :unlock (fn ()
+              (cond
+                ((has-flag ?self LOCKED)
+                  (success :effects ((clear-flag! ?self LOCKED))))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -152,7 +155,7 @@ class TestBehaviorExecution:
         # Door starts locked
         assert "LOCKED" in runtime.state.objects["DOOR"].flags
 
-        result = runtime.do("unlock", "DOOR")
+        result = runtime.do("DOOR", "unlock")
         assert result.outcome == "success"
 
         # Now unlocked
@@ -166,13 +169,14 @@ class TestBehaviorExecution:
         (object DOOR
           :location LOBBY
           :behaviors (
-            :open (cond
-              (true (success :context ((mechanism push-bar)))))))
+            :open (fn ()
+              (cond
+                (true (success :context ((mechanism push-bar))))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("open", "DOOR")
+        result = runtime.do("DOOR", "open")
         assert result.outcome == "success"
         assert ("mechanism", "push-bar") in result.context
 
@@ -186,7 +190,7 @@ class TestBehaviorExecution:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("open", "ROCK")
+        result = runtime.do("ROCK", "open")
         assert result.outcome == "blocked"
         assert result.reason == "no-behavior"
 
@@ -205,8 +209,9 @@ class TestMovementViaDoors:
         (object DOOR
           :location OUTSIDE
           :behaviors (
-            :through (cond
-              (true (default :action (go :direction in))))))
+            :through (fn ()
+              (cond
+                (true (default :action (do _movement :go in)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -214,7 +219,7 @@ class TestMovementViaDoors:
         assert runtime.get_player_location() == "OUTSIDE"
 
         # Going "in" triggers DOOR's through behavior, which allows passage
-        result = runtime.do("go", direction="in")
+        result = runtime.do("_movement", "go", "in")
         assert result.outcome == "success"
         assert runtime.get_player_location() == "LOBBY"
 
@@ -274,13 +279,13 @@ class TestOutsideDoorExample:
 
     def test_open_door_from_outside(self, runtime):
         """Opening door from outside at push-bar location succeeds."""
-        result = runtime.do("open", "@outside-door")
+        result = runtime.do("@outside-door", "open")
         assert result.outcome == "success"
         assert ("mechanism", "push-bar") in result.context
 
     def test_unlock_door_with_key_from_outside(self, runtime):
         """Unlocking door from outside with physical key fails."""
-        result = runtime.do("unlock", "@outside-door", **{"with": "@master-key"})
+        result = runtime.do("@outside-door", "unlock", "@master-key")
         assert result.outcome == "blocked"
         assert result.reason == "wrong-key-type"
 
@@ -293,7 +298,7 @@ class TestOutsideDoorExample:
 
     def test_close_door(self, runtime):
         """Closing door always succeeds (spring-loaded)."""
-        result = runtime.do("close", "@outside-door")
+        result = runtime.do("@outside-door", "close")
         assert result.outcome == "success"
         assert ("note", "spring-loaded") in result.context
 
@@ -408,25 +413,26 @@ class TestEventQueue:
         (object BUTTON
           :location LOBBY
           :behaviors (
-            :push (cond
-              ((queued? ALARM)
-                (success :effects ((dequeue! ALARM))
-                         :context ((result alarm-off))))
-              (true
-                (success :effects ((queue! ALARM))
-                         :context ((result alarm-on)))))))
+            :push (fn ()
+              (cond
+                ((queued? ALARM)
+                  (success :effects ((dequeue! ALARM))
+                           :context ((result alarm-off))))
+                (true
+                  (success :effects ((queue! ALARM))
+                           :context ((result alarm-on))))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # First push queues alarm
-        result = runtime.do("push", "BUTTON")
+        result = runtime.do("BUTTON", "push")
         assert result.outcome == "success"
         assert ("result", "alarm-on") in result.context
         assert runtime.is_queued("ALARM")
 
         # Second push dequeues alarm
-        result = runtime.do("push", "BUTTON")
+        result = runtime.do("BUTTON", "push")
         assert result.outcome == "success"
         assert ("result", "alarm-off") in result.context
         assert not runtime.is_queued("ALARM")
@@ -439,25 +445,26 @@ class TestEventQueue:
         (object PC
           :location LOBBY
           :behaviors (
-            :turn-off (cond
-              ((queued? HACKER-HELPS)
-                (blocked :reason hacker-interference
-                         :context ((blocker HACKER))))
-              (true
-                (success)))))
+            :turn-off (fn ()
+              (cond
+                ((queued? HACKER-HELPS)
+                  (blocked :reason hacker-interference
+                           :context ((blocker HACKER))))
+                (true
+                  (success))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # Without queue, action succeeds
-        result = runtime.do("turn-off", "PC")
+        result = runtime.do("PC", "turn-off")
         assert result.outcome == "success"
 
         # Queue the event
         runtime.queue_event("HACKER-HELPS")
 
         # Now action is blocked
-        result = runtime.do("turn-off", "PC")
+        result = runtime.do("PC", "turn-off")
         assert result.outcome == "blocked"
         assert result.reason == "hacker-interference"
 
@@ -491,19 +498,21 @@ class TestRedirectFollowing:
         (object PLAYER :location LOBBY)
         (object CHAIR :location LOBBY :flags (FURNITURE)
           :behaviors (
-            :sit (cond
-              (true (success :effects ((move! PLAYER CHAIR))
-                            :message "You sit in the chair.")))))
+            :sit (fn ()
+              (cond
+                (true (success :effects ((move! PLAYER CHAIR))
+                              :message "You sit in the chair."))))))
         (object DESK :location LOBBY
           :behaviors (
-            :sit-at (cond
-              (true (redirect :action (sit CHAIR))))))
+            :sit-at (fn ()
+              (cond
+                (true (redirect :action (do CHAIR :sit)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # sit-at DESK should redirect to sit CHAIR
-        result = runtime.do("sit-at", "DESK")
+        result = runtime.do("DESK", "sit-at")
         assert result.outcome == "success"
         assert len(result.redirects) == 1
         assert runtime.state.objects["PLAYER"].location == "CHAIR"
@@ -515,14 +524,17 @@ class TestRedirectFollowing:
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
           :behaviors (
-            :final (cond (true (success :message "Reached final!")))
-            :middle (cond (true (redirect :action (final THING))))
-            :start (cond (true (redirect :action (middle THING))))))
+            :final (fn ()
+              (cond (true (success :message "Reached final!"))))
+            :middle (fn ()
+              (cond (true (redirect :action (do THING :final)))))
+            :start (fn ()
+              (cond (true (redirect :action (do THING :middle)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("start", "THING")
+        result = runtime.do("THING", "start")
         assert result.outcome == "success"
         assert len(result.redirects) == 2
         assert ("message", "Reached final!") in result.context
@@ -534,16 +546,18 @@ class TestRedirectFollowing:
         (object PLAYER :location LOBBY)
         (object DOOR :location LOBBY :flags (LOCKED)
           :behaviors (
-            :open (cond
-              ((has-flag ?self LOCKED) (blocked :reason locked))
-              (true (success)))
-            :enter (cond
-              (true (redirect :action (open DOOR))))))
+            :open (fn ()
+              (cond
+                ((has-flag ?self LOCKED) (blocked :reason locked))
+                (true (success))))
+            :enter (fn ()
+              (cond
+                (true (redirect :action (do DOOR :open)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("enter", "DOOR")
+        result = runtime.do("DOOR", "enter")
         assert result.outcome == "blocked"
         assert result.reason == "locked"
         assert len(result.redirects) == 1
@@ -555,13 +569,15 @@ class TestRedirectFollowing:
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
           :behaviors (
-            :action-a (cond (true (redirect :action (action-b THING))))
-            :action-b (cond (true (redirect :action (action-a THING))))))
+            :action-a (fn ()
+              (cond (true (redirect :action (do THING :action-b)))))
+            :action-b (fn ()
+              (cond (true (redirect :action (do THING :action-a)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("action-a", "THING")
+        result = runtime.do("THING", "action-a")
         assert result.outcome == "error"
         assert "loop" in result.error.lower()
 
@@ -572,14 +588,16 @@ class TestRedirectFollowing:
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
           :behaviors (
-            :target (cond (true (success :context ((final true)))))
-            :source (cond (true (redirect :action (target THING)
-                                          :context ((redirected true)))))))
+            :target (fn ()
+              (cond (true (success :context ((final true))))))
+            :source (fn ()
+              (cond (true (redirect :action (do THING :target)
+                                    :context ((redirected true))))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("source", "THING")
+        result = runtime.do("THING", "source")
         assert result.outcome == "success"
         # Both contexts should be present
         assert ("redirected", True) in result.context
@@ -644,16 +662,17 @@ class TestGlobalsRuntime:
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
           :behaviors (
-            :examine (cond
-              ((> counter 3)
-                (success :message "Counter is high"))
-              (true
-                (success :message "Counter is low")))))
+            :examine (fn ()
+              (cond
+                ((> counter 3)
+                  (success :message "Counter is high"))
+                (true
+                  (success :message "Counter is low"))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        result = runtime.do("examine", "THING")
+        result = runtime.do("THING", "examine")
         assert result.outcome == "success"
         assert ("message", "Counter is high") in result.context
 
@@ -665,18 +684,19 @@ class TestGlobalsRuntime:
         (object PLAYER :location LOBBY)
         (object BUTTON :location LOBBY
           :behaviors (
-            :push (cond
-              (true (success
-                      :effects ((inc! counter))
-                      :message "Counter incremented")))))
+            :push (fn ()
+              (cond
+                (true (success
+                        :effects ((inc! counter))
+                        :message "Counter incremented"))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         assert runtime.get_global("counter") == 0
-        runtime.do("push", "BUTTON")
+        runtime.do("BUTTON", "push")
         assert runtime.get_global("counter") == 1
-        runtime.do("push", "BUTTON")
+        runtime.do("BUTTON", "push")
         assert runtime.get_global("counter") == 2
 
 

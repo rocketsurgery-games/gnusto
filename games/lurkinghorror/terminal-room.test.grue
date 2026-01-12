@@ -51,82 +51,82 @@
 ; === Take/drop behavior ===
 
 (test "take PC"
-  :action (do :verb take :object @pc)
+  :action (do @pc :take)
   :expect ((outcome? success)
            (held? @pc)))
 
 (test "cannot take object not here"
   :setup ((move! @pc @cs-2nd))
-  :action (do :verb take :object @pc)
+  :action (do @pc :take)
   :expect ((outcome? blocked)
            (reason? not-here)))
 
 (test "cannot take object already held"
   :setup ((move! @pc @player))
-  :action (do :verb take :object @pc)
+  :action (do @pc :take)
   :expect ((outcome? blocked)
            (reason? already-held)))
 
 (test "cannot take non-takeable object"
-  :action (do :verb take :object @hacker)
+  :action (do @hacker :take)
   :expect ((outcome? blocked)
            (reason? not-takeable)))
 
 (test "drop PC"
   :setup ((move! @pc @player))
-  :action (do :verb drop :object @pc)
+  :action (do @pc :drop)
   :expect ((outcome? success)
            (loc? @pc @terminal-room)))
 
 (test "cannot drop object not held"
-  :action (do :verb drop :object @pc)
+  :action (do @pc :drop)
   :expect ((outcome? blocked)
            (reason? not-held)))
 
 ; === @chair behaviors ===
 
 (test "examine chair"
-  :action (do :verb examine :object @chair)
+  :action (do @chair :examine)
   :expect ((outcome? success)))
 
 (test "take chair - blocked when hacker in it"
   :setup ((move! @hacker @chair))
-  :action (do :verb take :object @chair)
+  :action (do @chair :take)
   :expect ((outcome? blocked)
            (reason? in-use)))
 
 (test "take chair - success when hacker not in it"
-  :action (do :verb take :object @chair)
+  :action (do @chair :take)
   :expect ((outcome? success)
            (held? @chair)))
 
 (test "sit in chair - success"
-  :action (do :verb sit :object @chair)
+  :action (do @chair :sit)
   :expect ((outcome? success)
            (loc? @player @chair)))
 
 (test "sit in chair - blocked when hacker using it"
   :setup ((move! @hacker @chair))
-  :action (do :verb sit :object @chair)
+  :action (do @chair :sit)
   :expect ((outcome? blocked)
            (reason? occupied)))
 
 (test "sit in chair - blocked when already sitting"
   :setup ((move! @player @chair))
-  :action (do :verb sit :object @chair)
+  :action (do @chair :sit)
   :expect ((outcome? blocked)
            (reason? already-there)))
 
 (test "stand from chair"
   :setup ((move! @player @chair))
-  :action (do :verb stand :object @chair)
+  :action (do @chair :stand)
   :expect ((outcome? success)
            (loc? @player @terminal-room)))
 
 ; === Take/drop with barrier ===
 
 (test-sequence "take PC then blocked at exit"
-  (step :action (do :verb take :object @pc)
+  (step :action (do @pc :take)
         :expect ((outcome? success)
                  (held? @pc)))
   (step :action (go :direction south)
@@ -134,9 +134,9 @@
                  (reason? tech-property))))
 
 (test-sequence "take PC, drop PC, then exit"
-  (step :action (do :verb take :object @pc)
+  (step :action (do @pc :take)
         :expect ((outcome? success)))
-  (step :action (do :verb drop :object @pc)
+  (step :action (do @pc :drop)
         :expect ((outcome? success)
                  (loc? @pc @terminal-room)))
   (step :action (go :direction south)
@@ -150,7 +150,7 @@
 ; Each turn, while the player is in terminal-room, the event advances.
 
 (test "ask hacker for help queues event"
-  :action (do :verb help :object @hacker)
+  :action (do @hacker :help)
   :expect ((outcome? success)
            (queued? hacker-helps)
            (global? hacker-help 0)))
@@ -197,57 +197,79 @@
 
 (test "asking for help when already helping"
   :setup ((queue! hacker-helps))
-  :action (do :verb help :object @hacker)
+  :action (do @hacker :help)
   :expect ((outcome? success)
            (queued? hacker-helps)))
 
 (test "asking for help when already helped"
   :setup ((set! hacker-help 3))
-  :action (do :verb help :object @hacker)
+  :action (do @hacker :help)
   :expect ((outcome? success)))
 
 ; =============================================================================
 ; CONVERSATION - ask-about and tell-about
 ; =============================================================================
-; Note: Conversation behaviors use ?topic binding for the conversation topic.
+; Conversation behaviors use ?topic parameter.
+; New syntax: (do @hacker :ask-about @keys)
 
 (test "ask hacker about keys reveals master key"
-  :action (do :verb ask-about :object @hacker :topic @keys)
+  :action (do @hacker :ask-about @keys)
   :expect ((outcome? success)
            (has-flag? @master-key TOUCHBIT)))
 
 (test "ask hacker about keys again - already revealed"
   :setup ((set-flag! @master-key TOUCHBIT))
-  :action (do :verb ask-about :object @hacker :topic @keys)
+  :action (do @hacker :ask-about @keys)
   :expect ((outcome? success)))
 
 (test "ask hacker about food"
-  :action (do :verb ask-about :object @hacker :topic @food)
+  :action (do @hacker :ask-about @food)
   :expect ((outcome? success)))
 
 (test "hacker is possessed - responds with Meld"
   :setup ((set! lair-cnt 7))
-  :action (do :verb ask-about :object @hacker :topic @keys)
+  :action (do @hacker :ask-about @keys)
   :expect ((outcome? success)))
 
 ; =============================================================================
 ; GIVE/TRADE PUZZLE - trading food for master key
 ; =============================================================================
-; NOTE: These tests are DISABLED pending resolution of the binding design issue.
-; The hacker's :give, :trade, :ask-for behaviors use ?object to refer to the
-; item being transferred, but ?object is not a standard binding. The behaviors
-; are on @hacker, so ?self = @hacker, leaving no standard way to pass the item.
-;
-; Options to fix:
-; 1. Add standard ?item binding for "give X to Y" where X is the item
-; 2. Change behaviors to use ?with ("give with X")
-; 3. Move behaviors to the item objects with special dispatch
-;
-; See frotzlm-0l8 for tracking issue.
-;
-; (test "propose trade - food for key" ...)
-; (test "give cold food - rejected" ...)
-; etc.
+; Now that behaviors are functions with explicit parameters, we can test these!
+; :give takes (?item) - what's being given
+; :trade takes (?offer ?want) - what player offers and wants
+
+(test "give snack to hacker"
+  :setup ((move! @snack @player))
+  :action (do @hacker :give @snack)
+  :expect ((outcome? success)
+           (loc? @snack @hacker)))
+
+(test "give coke to hacker - rejected"
+  :setup ((move! @coke @player))
+  :action (do @hacker :give @coke)
+  :expect ((outcome? blocked)
+           (reason? wrong-drink)))
+
+(test "propose trade - food for key"
+  :action (do @hacker :trade @carton @master-key)
+  :expect ((outcome? success)
+           (global? hacker-trade true)))
+
+(test "propose bad trade - rejected"
+  :action (do @hacker :trade @coke @master-key)
+  :expect ((outcome? blocked)
+           (reason? bad-trade)))
+
+(test "ask for master key - not revealed yet"
+  :action (do @hacker :ask-for @master-key)
+  :expect ((outcome? blocked)
+           (reason? suspicious)))
+
+(test "ask for master key - revealed but no quid pro quo"
+  :setup ((set-flag! @master-key TOUCHBIT))
+  :action (do @hacker :ask-for @master-key)
+  :expect ((outcome? blocked)
+           (reason? quid-pro-quo)))
 
 ; =============================================================================
 ; HACKER BLOCKING PC ACTIONS DURING HELP
@@ -255,12 +277,12 @@
 
 (test "can't turn off PC while hacker helps"
   :setup ((queue! hacker-helps) (set-flag! @pc POWER))
-  :action (do :verb turn-off :object @pc)
+  :action (do @pc :turn-off)
   :expect ((outcome? blocked)
            (reason? hacker-interference)))
 
 (test "can't unplug PC while hacker helps"
   :setup ((queue! hacker-helps))
-  :action (do :verb unplug :object @pc)
+  :action (do @pc :unplug)
   :expect ((outcome? blocked)
            (reason? hacker-interference)))

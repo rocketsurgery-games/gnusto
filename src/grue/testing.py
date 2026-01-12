@@ -223,32 +223,28 @@ class GrueTestHarness:
 
     def do(
         self,
+        target: str,
         verb: str,
-        direct_object: str | None = None,
-        **kwargs
+        *args,
     ) -> ActionResult:
         """
         Execute an action and record the trace.
 
         Examples:
-            harness.do("open", "DOOR")
-            harness.do("unlock", "DOOR", with_obj="KEY")
-            harness.do("go", direction="north")
+            harness.do("HACKER", "give", "FOOD")
+            harness.do("DOOR", "unlock", "KEY")
+            harness.do("LAMP", "examine")
         """
         before = self.snapshot()
 
-        # Handle 'with_obj' -> 'with' kwarg rename (since 'with' is reserved)
-        if "with_obj" in kwargs:
-            kwargs["with"] = kwargs.pop("with_obj")
-
-        result = self.runtime.do(verb, direct_object, **kwargs)
+        result = self.runtime.do(target, verb, *args)
 
         after = self.snapshot()
 
         trace = ActionTrace(
             verb=verb,
-            direct_object=direct_object,
-            kwargs=kwargs,
+            direct_object=target,
+            kwargs={"args": args},
             before=before,
             after=after,
             result=result,
@@ -259,7 +255,7 @@ class GrueTestHarness:
 
     def go(self, direction: str) -> ActionResult:
         """Shorthand for movement."""
-        return self.do("go", direction=direction)
+        return self.runtime.do("_movement", "go", direction)
 
     @property
     def traces(self) -> list[ActionTrace]:
@@ -307,9 +303,9 @@ class GrueTestCase(unittest.TestCase):
 
     # === Convenience Methods (delegate to harness) ===
 
-    def do(self, verb: str, direct_object: str | None = None, **kwargs) -> ActionResult:
+    def do(self, target: str, verb: str, *args) -> ActionResult:
         """Execute an action."""
-        return self.harness.do(verb, direct_object, **kwargs)
+        return self.harness.do(target, verb, *args)
 
     def go(self, direction: str) -> ActionResult:
         """Move in direction."""

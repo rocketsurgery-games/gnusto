@@ -383,79 +383,78 @@ class GrueRuntime:
             return {}
         return {exit.direction: exit.to for exit in room.exits}
 
-    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str | None, dict[str, Any]]:
-        """Parse an action S-expression into (verb, direct_object, kwargs).
+    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str, list[str]]:
+        """Parse an action S-expression into (target, verb, args).
 
-        Supports formats:
-            (verb object)           -> ("verb", "object", {})
-            (verb :key val ...)     -> ("verb", None, {"key": val, ...})
-            (verb object :key val)  -> ("verb", "object", {"key": val})
+        Format: (do TARGET :verb arg1 arg2 ...)
+
+        Examples:
+            (do @hacker :give @food)  -> ("HACKER", "give", ["FOOD"])
+            (do @lamp :examine)       -> ("LAMP", "examine", [])
+            (do @door :unlock @key)   -> ("DOOR", "unlock", ["KEY"])
         """
-        if not isinstance(action, SList) or len(action) < 1:
+        if not isinstance(action, SList) or len(action) < 3:
             raise ValueError(f"Invalid action format: {action}")
 
         items = list(action.items)
-        if not isinstance(items[0], Symbol):
-            raise ValueError(f"Action verb must be a symbol: {items[0]}")
 
-        verb = items[0].name
-        direct_object = None
-        kwargs: dict[str, Any] = {}
+        # First item should be 'do'
+        if not isinstance(items[0], Symbol) or items[0].name != "do":
+            raise ValueError(f"Action must start with 'do': {items[0]}")
 
-        i = 1
-        # Check if second item is a direct object (not a keyword)
-        if i < len(items) and isinstance(items[i], Symbol) and not isinstance(items[i], Keyword):
-            direct_object = items[i].name
-            i += 1
+        # Second item is target
+        if not isinstance(items[1], Symbol):
+            raise ValueError(f"Target must be a symbol: {items[1]}")
+        target = items[1].name
 
-        # Parse keyword arguments
-        while i < len(items):
-            if isinstance(items[i], Keyword):
-                key = items[i].name
-                if i + 1 < len(items):
-                    val = items[i + 1]
-                    if isinstance(val, Symbol):
-                        kwargs[key] = val.name
-                    else:
-                        kwargs[key] = val
-                    i += 2
-                else:
-                    raise ValueError(f"Keyword :{key} has no value")
+        # Third item is verb (keyword)
+        if not isinstance(items[2], Keyword):
+            raise ValueError(f"Verb must be a keyword: {items[2]}")
+        verb = items[2].name
+
+        # Remaining items are positional args
+        args = []
+        for i in range(3, len(items)):
+            item = items[i]
+            if isinstance(item, Symbol):
+                args.append(item.name)
             else:
-                raise ValueError(f"Expected keyword, got: {items[i]}")
+                args.append(item)
 
-        return verb, direct_object, kwargs
+        return target, verb, args
 
     def do(
         self,
+        target: str,
         verb: str,
-        direct_object: str | None = None,
-        actor: str | None = None,
+        *args,
         _redirects: list[SExpr] | None = None,
         _max_redirects: int = 10,
-        **kwargs
     ) -> ActionResult:
         """
         Execute an action, following any redirects automatically.
 
+        New signature: (do TARGET :verb arg1 arg2 ...)
+
         Args:
-            verb: The verb (e.g., "open", "take", "go")
-            direct_object: The target object (e.g., "DOOR", "KEY")
-            actor: Who is performing the action (default: player entity)
+            target: The object whose behavior to invoke (e.g., "HACKER", "DOOR")
+            verb: The verb (e.g., "give", "examine", "go")
+            *args: Positional arguments bound to behavior params
             _redirects: Internal - chain of redirects followed (for loop detection)
             _max_redirects: Internal - maximum redirect depth
-            **kwargs: Additional arguments (with=..., on=..., direction=...)
+
+        Auto-bound symbols:
+            ?self  - The target object
+            ?actor - Who is performing the action (currently always player)
 
         Returns:
             ActionResult with outcome and details. The 'redirects' field contains
             the chain of redirected actions for narrative purposes.
         """
-        if actor is None:
-            actor = self.player_name
         if _redirects is None:
             _redirects = []
 
-        result = self._do_single(verb, direct_object, actor, **kwargs)
+        result = self._do_single(target, verb, *args)
 
         # Follow redirects automatically
         if result.outcome == "redirect" and result.default_action is not None:
@@ -482,15 +481,13 @@ class GrueRuntime:
 
             # Parse the redirect action and follow it
             try:
-                new_verb, new_obj, new_kwargs = self._parse_action_sexpr(result.default_action)
-                # Merge context from redirect into kwargs if not already set
-                new_kwargs.setdefault("actor", actor)
+                new_target, new_verb, new_args = self._parse_action_sexpr(result.default_action)
                 final_result = self.do(
+                    new_target,
                     new_verb,
-                    new_obj,
+                    *new_args,
                     _redirects=_redirects,
                     _max_redirects=_max_redirects,
-                    **new_kwargs
                 )
                 # Preserve redirect chain and merge context
                 final_result.redirects = _redirects
@@ -511,38 +508,35 @@ class GrueRuntime:
 
     def _do_single(
         self,
+        target: str,
         verb: str,
-        direct_object: str | None = None,
-        actor: str | None = None,
-        **kwargs
+        *args,
     ) -> ActionResult:
-        """Execute a single action without following redirects."""
-        if actor is None:
-            actor = self.player_name
+        """Execute a single action without following redirects.
 
-        # Handle movement specially
+        Args:
+            target: The object whose behavior to invoke
+            verb: The verb (behavior name)
+            *args: Positional arguments for the behavior's params
+        """
+        actor = self.player_name
+
+        # Handle movement specially - target is a pseudo-object
         if verb == "go":
-            direction = kwargs.get("direction")
-            if direction:
+            if args:
+                direction = args[0]
                 return self._do_go(direction, actor=actor)
             return ActionResult(
                 outcome="error",
                 error="go requires a direction"
             )
 
-        # Find the target object
-        if direct_object is None:
-            return ActionResult(
-                outcome="error",
-                error=f"{verb} requires a target object"
-            )
-
         # Get the object's definition
-        obj_def = self.world.objects.get(direct_object)
+        obj_def = self.world.objects.get(target)
         if obj_def is None:
             return ActionResult(
                 outcome="error",
-                error=f"Unknown object: {direct_object}"
+                error=f"Unknown object: {target}"
             )
 
         # Find the behavior for this verb
@@ -554,29 +548,39 @@ class GrueRuntime:
 
         if behavior is None:
             # Try default behaviors based on flags
-            default_result = self._try_default_behavior(verb, direct_object, actor)
+            default_result = self._try_default_behavior(verb, target, actor)
             if default_result is not None:
                 return default_result
 
             return ActionResult(
                 outcome="blocked",
                 reason="no-behavior",
-                context=[("verb", verb), ("object", direct_object)]
+                context=[("verb", verb), ("object", target)]
+            )
+
+        # Check arity
+        if len(args) < len(behavior.params):
+            return ActionResult(
+                outcome="error",
+                error=f"{verb} on {target} requires {len(behavior.params)} args, got {len(args)}"
             )
 
         # Set up bindings for evaluation
+        # Auto-bound: ?self, ?actor
+        # Positional: behavior.params[i] = args[i]
         bindings = {
-            "self": direct_object,
+            "self": target,
             "actor": actor,
-            **kwargs
         }
+        for i, param in enumerate(behavior.params):
+            bindings[param] = args[i]
 
         # Evaluate behavior cases
         result = self._evaluate_behavior(behavior, bindings)
 
         # If behavior returns 'default' with no action, fall through to default behavior
         if result.outcome == "default" and result.default_action is None:
-            default_result = self._try_default_behavior(verb, direct_object, actor)
+            default_result = self._try_default_behavior(verb, target, actor)
             if default_result is not None:
                 return default_result
 
@@ -632,7 +636,7 @@ class GrueRuntime:
 
         # Check if exit has a :via door
         if via:
-            result = self.do("through", via, actor=actor, direction=direction, to=dest)
+            result = self.do(via, "through")
             if result.outcome == "blocked":
                 return result
             if result.outcome not in ("success", "default"):

@@ -331,16 +331,36 @@ class TestRunner:
         name = head.name
 
         if name == "do":
-            # Parse (do :verb V :object O :with W :topic T :to R ...)
-            kwargs = self._parse_kwargs(action)
-            verb = kwargs.pop("verb", None)
-            obj = kwargs.pop("object", None)
+            # Parse (do TARGET :verb arg1 arg2 ...)
+            # Format: (do @hacker :give @food) -> runtime.do("HACKER", "give", "FOOD")
+            items = list(action.items)[1:]  # Skip 'do'
 
-            if verb is None:
-                raise EvalError("(do ...) requires :verb")
+            if len(items) < 2:
+                raise EvalError("(do TARGET :verb ...) requires target and verb")
 
-            # Pass all remaining kwargs through to runtime.do
-            return runtime.do(verb, obj, **kwargs)
+            # First item is target
+            target = items[0]
+            if isinstance(target, Symbol):
+                target = target.name
+            else:
+                raise EvalError(f"Target must be a symbol: {target}")
+
+            # Second item is verb (keyword)
+            verb_item = items[1]
+            if isinstance(verb_item, Keyword):
+                verb = verb_item.name
+            else:
+                raise EvalError(f"Verb must be a keyword: {verb_item}")
+
+            # Remaining items are positional args
+            args = []
+            for item in items[2:]:
+                if isinstance(item, Symbol):
+                    args.append(item.name)
+                else:
+                    args.append(item)
+
+            return runtime.do(target, verb, *args)
 
         elif name == "go":
             # Parse (go :direction D)
@@ -348,7 +368,7 @@ class TestRunner:
             direction = kwargs.get("direction")
             if direction is None:
                 raise EvalError("(go ...) requires :direction")
-            return runtime.do("go", direction=direction)
+            return runtime.do("_movement", "go", direction)
 
         elif name == "process-events":
             # Process all queued events for this turn
