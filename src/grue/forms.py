@@ -165,6 +165,14 @@ class GrueEvent:
 
 
 @dataclass
+class GrueFunction:
+    """A named function defined with (defn name (params) body)."""
+    name: str
+    params: list[str]
+    body: SExpr
+
+
+@dataclass
 class GrueWorld:
     """
     Complete GRUE world definition.
@@ -178,6 +186,7 @@ class GrueWorld:
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
     globals: dict[str, Any] = field(default_factory=dict)  # global variables
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
+    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
 
 
 # === Helper functions for form handlers ===
@@ -693,9 +702,30 @@ def _skip_test_sequence(expr: SList, world: GrueWorld) -> None:
 
 
 @form("defn")
-def _skip_defn(expr: SList, world: GrueWorld) -> None:
-    """Skip defn forms (handled at runtime)."""
-    pass
+def _parse_defn(expr: SList, world: GrueWorld) -> None:
+    """Parse (defn name (params) body) and store in world.functions."""
+    if len(expr) != 4:
+        raise FormParseError(f"'defn' expects 3 arguments (name, params, body), got {len(expr) - 1}")
+
+    name_expr = expr[1]
+    if not isinstance(name_expr, Symbol):
+        raise FormParseError(f"'defn' name must be a symbol, got: {name_expr}")
+    name = name_expr.name
+
+    params_expr = expr[2]
+    if not isinstance(params_expr, SList):
+        raise FormParseError(f"'defn' params must be a list, got: {params_expr}")
+    params: list[str] = []
+    for p in params_expr.items:
+        if not isinstance(p, Symbol):
+            raise FormParseError(f"'defn' parameter must be a symbol, got: {p}")
+        # Strip leading ? if present
+        param_name = p.name[1:] if p.name.startswith("?") else p.name
+        params.append(param_name)
+
+    body = expr[3]
+
+    world.functions[name] = GrueFunction(name=name, params=params, body=body)
 
 
 # === Form Dispatcher ===

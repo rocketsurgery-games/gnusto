@@ -76,6 +76,17 @@ class GrueRuntime:
         self.state = self._init_state()
         self.bindings: dict[str, Any] = {}  # Current action bindings (?with, ?on, self, etc.)
         self.player_name = self._find_player_name()  # Detect player entity by PERSON flag
+        self._functions = self._init_functions()  # User-defined functions from world.functions
+
+    def _init_functions(self) -> dict[str, GrueFn]:
+        """Initialize user-defined functions from world definition."""
+        functions: dict[str, GrueFn] = {}
+        for name, grue_func in self.world.functions.items():
+            functions[name] = GrueFn(
+                params=grue_func.params,
+                body=grue_func.body,
+            )
+        return functions
 
     def _init_state(self) -> GameState:
         """Initialize game state from world definition."""
@@ -123,6 +134,7 @@ class GrueRuntime:
         """Reset game state to initial state."""
         self.state = self._init_state()
         self.bindings = {}
+        self._functions = self._init_functions()
         self.player_name = self._find_player_name()
 
     # -------------------------------------------------------------------------
@@ -310,7 +322,7 @@ class GrueRuntime:
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self)
+            evaluator = ExprEvaluator(self, self._functions)
 
             for case in event.cases:
                 # Evaluate the condition
@@ -325,7 +337,7 @@ class GrueRuntime:
                 if condition_met:
                     # Execute effects
                     if case.effects:
-                        executor = EffectExecutor(self)
+                        executor = EffectExecutor(self, self._functions)
                         for effect in case.effects:
                             try:
                                 executor.execute(effect)
@@ -731,7 +743,7 @@ class GrueRuntime:
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self)
+            evaluator = ExprEvaluator(self, self._functions)
 
             # New style: use body expression
             if behavior.body is not None:
@@ -779,7 +791,7 @@ class GrueRuntime:
             # Execute effects
             effects_applied = []
             if result.effects:
-                executor = EffectExecutor(self)
+                executor = EffectExecutor(self, self._functions)
                 for effect in result.effects:
                     try:
                         executor.execute(effect)
@@ -867,7 +879,7 @@ class GrueRuntime:
                 # Success - execute effects
                 effects_applied = []
                 if case.effects:
-                    executor = EffectExecutor(self)
+                    executor = EffectExecutor(self, self._functions)
                     for effect in case.effects:
                         try:
                             executor.execute(effect)
@@ -897,7 +909,7 @@ class GrueRuntime:
         if self.world.victory is None:
             return False
 
-        evaluator = ExprEvaluator(self)
+        evaluator = ExprEvaluator(self, self._functions)
 
         try:
             return bool(evaluator.eval(self.world.victory.when))
@@ -906,7 +918,7 @@ class GrueRuntime:
 
     def check_defeat(self) -> str | None:
         """Check if any defeat condition is met. Returns defeat name or None."""
-        evaluator = ExprEvaluator(self)
+        evaluator = ExprEvaluator(self, self._functions)
 
         for name, defeat in self.world.defeat.items():
             try:

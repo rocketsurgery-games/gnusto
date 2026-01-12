@@ -233,10 +233,10 @@ class ExprEvaluator:
         evaluator.eval(parse("(double 5)"))  # Returns 10
     """
 
-    def __init__(self, state: WorldState, functions: dict[str, tuple[list[str], SExpr]] | None = None):
+    def __init__(self, state: WorldState, functions: dict[str, GrueFn] | None = None):
         self.state = state
-        # User-defined functions: name -> (params, body)
-        self._functions: dict[str, tuple[list[str], SExpr]] = functions if functions is not None else {}
+        # User-defined functions: name -> GrueFn
+        self._functions: dict[str, GrueFn] = functions if functions is not None else {}
         # Map of special form names to handlers
         self._builtins: dict[str, Callable[..., Any]] = {
             # Boolean operators
@@ -285,6 +285,7 @@ class ExprEvaluator:
 
             # First-class functions
             "fn": self._eval_fn,
+            "defn": self._eval_defn,
             "if": self._eval_if,
             "let": self._eval_let,
             "cond": self._eval_cond,
@@ -321,6 +322,9 @@ class ExprEvaluator:
             return expr.name
         if isinstance(expr, SList):
             return self._eval_form(expr)
+        if isinstance(expr, GrueFn):
+            # Function values evaluate to themselves
+            return expr
 
         raise EvalError(f"Cannot evaluate: {expr}")
 
@@ -353,6 +357,11 @@ class ExprEvaluator:
                 return self.call_fn(fn_value, args)
             raise EvalError(f"Cannot call non-function: {fn_value}")
 
+        # If head is already a GrueFn (e.g., from let binding substitution), apply it directly
+        if isinstance(head, GrueFn):
+            args = [self.eval(arg) for arg in form.items[1:]]
+            return self.call_fn(head, args)
+
         raise EvalError(f"Expected function name or expression, got: {head}")
 
     def define_function(self, name: str, params: list[str], body: SExpr) -> None:
@@ -364,27 +373,18 @@ class ExprEvaluator:
             params: List of parameter names
             body: S-expression for function body
         """
-        self._functions[name] = (params, body)
+        self._functions[name] = GrueFn(params=params, body=body)
 
     def _call_function(self, name: str, form: SList) -> Any:
         """Call a user-defined function with argument binding."""
-        params, body = self._functions[name]
+        fn = self._functions[name]
         args = form.items[1:]
-
-        if len(args) != len(params):
-            raise EvalError(
-                f"Function '{name}' expects {len(params)} arguments, got {len(args)}"
-            )
 
         # Evaluate arguments
         arg_values = [self.eval(arg) for arg in args]
 
-        # Substitute parameters in body
-        result_expr = body
-        for param, value in zip(params, arg_values):
-            result_expr = self._substitute(result_expr, param, value)
-
-        return self.eval(result_expr)
+        # Use call_fn which handles GrueFn properly
+        return self.call_fn(fn, arg_values)
 
     # === Boolean operators ===
 
@@ -647,6 +647,47 @@ class ExprEvaluator:
             raise EvalError(f"'fn' params must be a list, got {params_expr}")
 
         return GrueFn(params=params, body=body)
+
+    def _eval_defn(self, form: SList) -> None:
+        """(defn name (params) body) - define a named function.
+
+        Examples:
+            (defn double (x) (+ x x))
+            (defn at-lobby? () (= (loc PLAYER) LOBBY))
+            (defn greet (name) (str "Hello, " name))
+
+        Note: Returns nil (None) after registering the function.
+        """
+        if len(form) != 4:
+            raise EvalError(f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}")
+
+        # Extract function name
+        name_expr = form[1]
+        if not isinstance(name_expr, Symbol):
+            raise EvalError(f"'defn' name must be a symbol, got: {name_expr}")
+        name = name_expr.name
+
+        # Extract parameter list
+        params_expr = form[2]
+        if not isinstance(params_expr, SList):
+            raise EvalError(f"'defn' params must be a list, got: {params_expr}")
+        params: list[str] = []
+        for p in params_expr.items:
+            if isinstance(p, Symbol):
+                # Strip leading ? if present (like in fn)
+                param_name = p.name[1:] if p.name.startswith("?") else p.name
+                params.append(param_name)
+            else:
+                raise EvalError(f"'defn' parameter must be a symbol, got: {p}")
+
+        # Body is kept as-is (not evaluated until called)
+        body = form[3]
+
+        # Register the function
+        self._functions[name] = GrueFn(params=params, body=body)
+
+        # defn returns nil
+        return None
 
     def _eval_if(self, form: SList) -> Any:
         """(if condition then-expr else-expr) - conditional expression.
@@ -1012,11 +1053,11 @@ class EffectExecutor:
     def __init__(
         self,
         state: MutableWorldState,
-        functions: dict[str, tuple[list[str], SExpr]] | None = None
+        functions: dict[str, GrueFn] | None = None
     ):
         self.state = state
         # Shared function registry between evaluator and executor
-        self._functions: dict[str, tuple[list[str], SExpr]] = functions if functions is not None else {}
+        self._functions: dict[str, GrueFn] = functions if functions is not None else {}
         self._predicates = ExprEvaluator(state, self._functions)
         self._effects: dict[str, Callable[..., None]] = {
             "move!": self._exec_move,
@@ -1156,13 +1197,15 @@ class EffectExecutor:
         for p in params_expr.items:
             if not isinstance(p, Symbol):
                 raise EvalError(f"'defn' parameter must be a symbol, got: {p}")
-            params.append(p.name)
+            # Strip leading ? if present (like in fn)
+            param_name = p.name[1:] if p.name.startswith("?") else p.name
+            params.append(param_name)
 
         # Body is kept as-is (not evaluated until called)
         body = form[3]
 
-        # Register in shared function dictionary
-        self._functions[name] = (params, body)
+        # Register in shared function dictionary as GrueFn
+        self._functions[name] = GrueFn(params=params, body=body)
 
     def _exec_queue(self, form: SList) -> None:
         """(queue! EVENT) or (queue! EVENT COUNTDOWN)"""
