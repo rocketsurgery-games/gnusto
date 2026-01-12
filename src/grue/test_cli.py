@@ -35,13 +35,37 @@ def colorize(text: str, color: str, use_color: bool = True) -> str:
     return f"{color}{text}{Colors.RESET}"
 
 
+def _should_load_directory(test_file: Path) -> Path | None:
+    """
+    Check if a test file's directory should be loaded as a multi-file world.
+
+    Returns the directory path if it contains a main world file (world.grue or <dirname>.grue),
+    otherwise returns None.
+    """
+    directory = test_file.parent
+    dirname = directory.name
+
+    # Check for world.grue or <dirname>.grue (e.g., lurkinghorror.grue)
+    world_file = directory / "world.grue"
+    if world_file.exists():
+        return directory
+
+    dirname_world = directory / f"{dirname}.grue"
+    if dirname_world.exists():
+        return directory
+
+    return None
+
+
 def find_test_files(paths: list[str]) -> list[tuple[Path, Path]]:
     """
     Find world/test file pairs from paths.
 
     Returns list of (world_path, test_path) tuples.
+    World path may be a directory if the test is part of a multi-file world.
     """
     pairs = []
+    seen_dirs = set()  # Track directories we've already processed
 
     for path_str in paths:
         path = Path(path_str)
@@ -49,12 +73,24 @@ def find_test_files(paths: list[str]) -> list[tuple[Path, Path]]:
         if path.is_file():
             if path.suffix == ".grue":
                 if path.name.endswith(".test.grue"):
-                    # Test file - find corresponding world
-                    world_path = path.with_name(path.name.replace(".test.grue", ".grue"))
-                    if world_path.exists():
-                        pairs.append((world_path, path))
+                    # Test file - check if we should load the directory
+                    dir_path = _should_load_directory(path)
+                    if dir_path:
+                        # Multi-file world - load directory, but only once per directory
+                        if dir_path not in seen_dirs:
+                            pairs.append((dir_path, path))
+                            seen_dirs.add(dir_path)
+                        else:
+                            # Already have this directory, just add the test file
+                            # Find existing pair and note we have multiple tests
+                            pairs.append((dir_path, path))
                     else:
-                        print(f"Warning: No world file for {path}", file=sys.stderr)
+                        # Single-file world
+                        world_path = path.with_name(path.name.replace(".test.grue", ".grue"))
+                        if world_path.exists():
+                            pairs.append((world_path, path))
+                        else:
+                            print(f"Warning: No world file for {path}", file=sys.stderr)
                 else:
                     # World file - find corresponding test
                     test_path = path.with_suffix(".test.grue")
@@ -64,13 +100,16 @@ def find_test_files(paths: list[str]) -> list[tuple[Path, Path]]:
                         print(f"Warning: No test file for {path}", file=sys.stderr)
 
         elif path.is_dir():
-            # Find all .grue files with corresponding .test.grue
-            for world_file in path.glob("**/*.grue"):
-                if world_file.name.endswith(".test.grue"):
-                    continue
-                test_file = world_file.with_suffix(".test.grue")
-                if test_file.exists():
-                    pairs.append((world_file, test_file))
+            # Find all .test.grue files
+            for test_file in path.glob("**/*.test.grue"):
+                dir_path = _should_load_directory(test_file)
+                if dir_path:
+                    pairs.append((dir_path, test_file))
+                else:
+                    # Single-file world
+                    world_file = test_file.with_name(test_file.name.replace(".test.grue", ".grue"))
+                    if world_file.exists():
+                        pairs.append((world_file, test_file))
 
     return pairs
 

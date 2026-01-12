@@ -121,14 +121,20 @@ class GrueRuntime:
         return state
 
     def _find_player_name(self) -> str:
-        """Find the player entity by looking for an object with the PERSON flag.
+        """Find the player entity.
 
-        Falls back to "PLAYER" for backwards compatibility.
+        Uses explicit :player declaration from world if present,
+        otherwise falls back to finding object with PERSON flag.
         """
+        # Prefer explicit declaration
+        if self.world.player:
+            return self.world.player
+
+        # Fallback: find by PERSON flag (for backwards compatibility)
         for name, obj in self.state.objects.items():
             if "PERSON" in obj.flags and name not in self.state.rooms:
                 return name
-        return "PLAYER"  # Fallback
+        return "PLAYER"  # Last resort fallback  # Fallback
 
     def reset(self) -> None:
         """Reset game state to initial state."""

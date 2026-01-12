@@ -564,8 +564,11 @@ GRUE has three categories of constructs, each with different evaluation semantic
 Declarative forms define the static structure of the game world. They are processed
 at parse time to build the `GrueWorld` datastructure and are not evaluated at runtime.
 
-#### `(world :name "..." :description "...")`
-Game metadata. Both `:name` and `:description` are optional.
+#### `(world :name "..." :description "..." :player @entity)`
+Game metadata and player declaration.
+- `:name` - Game title (optional)
+- `:description` - Game description (optional)
+- `:player` - Entity name of the player object (recommended)
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:

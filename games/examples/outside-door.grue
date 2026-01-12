@@ -9,7 +9,8 @@
 
 (world
   :name "Outside Door Example"
-  :description "Demonstrates complex door behavior from Lurking Horror")
+  :description "Demonstrates complex door behavior from Lurking Horror"
+  :player @player)
 
 ; === PLAYER ===
 

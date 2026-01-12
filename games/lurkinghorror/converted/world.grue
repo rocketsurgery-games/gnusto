@@ -7,7 +7,8 @@
 
 (world
   :name "The Lurking Horror"
-  :description "A text adventure by Infocom")
+  :description "A text adventure by Infocom"
+  :player @player)
 
 ; === PLAYER ===
 

@@ -167,9 +167,8 @@ class ZILtoGRUEConverter:
         self._emit("(world")
         self._emit(f'  :name "{name}"')
         if description:
-            self._emit(f'  :description "{description}")')
-        else:
-            self._emit(")")
+            self._emit(f'  :description "{description}"')
+        self._emit("  :player @player)")
         self._emit("")
 
         # Player

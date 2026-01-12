@@ -179,6 +179,7 @@ class GrueWorld:
     """
     name: str = ""
     description: str = ""
+    player: str = ""  # Entity name of the player (e.g., "@player")
     rooms: dict[str, GrueRoom] = field(default_factory=dict)
     objects: dict[str, GrueObject] = field(default_factory=dict)
     victory: GrueVictory | None = None
@@ -186,7 +187,7 @@ class GrueWorld:
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
     globals: dict[str, Any] = field(default_factory=dict)  # global variables
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
-    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
+    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition  # name -> function definition
 
 
 # === Helper functions for form handlers ===
@@ -500,13 +501,15 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
 
 @form("world")
 def _parse_world(expr: SList, world: GrueWorld) -> None:
-    """Parse (world :name "..." :description "...")."""
+    """Parse (world :name "..." :description "..." :player @entity)."""
     kwargs = parse_kwargs(list(expr.items[1:]))
 
     if "name" in kwargs:
         world.name = expect_string(kwargs["name"], "world name")
     if "description" in kwargs:
         world.description = expect_string(kwargs["description"], "world description")
+    if "player" in kwargs:
+        world.player = expect_symbol(kwargs["player"], "world player")
 
 
 @form("globals")

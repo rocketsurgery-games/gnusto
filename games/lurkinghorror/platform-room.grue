@@ -1,0 +1,9 @@
+; Stub for platform room - where player falls asleep and has nightmare
+; The nightmare sequence ends with player waking at terminal-room
+; Full definition in converted/rooms.grue
+
+(room @platform-room
+  :description "Platform"
+  :ldesc "A narrow platform."
+  :flags ()
+  :exits ((north :to @terminal-room)))
