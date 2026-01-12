@@ -149,8 +149,8 @@
         ; === HACKER HELPING ===
         ; When hacker is helping with PC, block certain actions on screen objects
         ((and (queued? hacker-helps)
-              (in? ?verb (click rub point help))
-              (in? ?target (@menu-box @more-box)))
+              (or (= ?verb "click") (= ?verb "rub") (= ?verb "point") (= ?verb "help"))
+              (or (= ?target "@menu-box") (= ?target "@more-box")))
           (blocked :reason hacker-interference
                    :context ((blocker @hacker))
                    :message "\"Who's the hacker here?\" he snarls."))
@@ -161,8 +161,9 @@
         ; Everything else gets redirected to touching the MORE box
         ((and (queued? compulsion)
               ; These are allowed to proceed
-              (not (and (in? ?verb (click rub point push attack)) (= ?target @more-box)))
-              (not (and (= ?verb read) (= ?target @odd-paper))))
+              (not (and (or (= ?verb "click") (= ?verb "rub") (= ?verb "point") (= ?verb "push") (= ?verb "attack"))
+                        (= ?target "@more-box")))
+              (not (and (= ?verb "read") (= ?target "@odd-paper"))))
           (blocked :reason possessed
                    :context ((compelled true) (forced-target @more-box))
                    :message "Instead, you find your finger moving towards the MORE box, and you touch it. The screen feels oddly cold."))
