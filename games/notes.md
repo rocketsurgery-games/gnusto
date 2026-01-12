@@ -3,7 +3,7 @@
 - [Infocom Doc Project](https://infodoc.plover.net/manuals/index.html)
 - [Adventure History: Infocom](https://mocagh.org/loadpage.php?getcompany=infocom)
 - [Infocom Gallery](https://gallery.guetech.org/)
-
+- [Invisiclues](https://www.invisiclues.org/invisiclues/)
 
 # Zork I
 - [Source](https://github.com/the-infocom-files/zork1)
