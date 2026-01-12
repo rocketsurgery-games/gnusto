@@ -1018,3 +1018,158 @@ class TestRoomBehaviors:
         # Give key - allowed
         result = runtime.do("HACKER", "give", "KEY")
         assert result.outcome == "success"
+
+
+class TestGeneralizedFn:
+    """Test generalized fn support - behaviors not limited to cond."""
+
+    def test_behavior_with_if_instead_of_cond(self):
+        """Behavior body can use (if ...) instead of (cond ...)."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object DOOR :location LOBBY :flags (locked)
+          :behaviors (
+            :open (fn ()
+              (if (has-flag ?self locked)
+                  (blocked :reason locked :message "The door is locked.")
+                  (success :message "The door opens.")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Door is locked
+        result = runtime.do("DOOR", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+
+        # Unlock the door
+        runtime.clear_object_flag("DOOR", "locked")
+        result = runtime.do("DOOR", "open")
+        assert result.outcome == "success"
+
+    def test_behavior_with_direct_success(self):
+        """Behavior body can be just (success ...)."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object LAMP :location LOBBY
+          :behaviors (
+            :examine (fn () (success :message "A brass lamp."))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("LAMP", "examine")
+        assert result.outcome == "success"
+        assert ("message", "A brass lamp.") in result.context
+
+    def test_behavior_with_let_binding(self):
+        """Behavior body can use (let ...)."""
+        source = """
+        (globals :base-price 100)
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object ITEM :location LOBBY
+          :properties (:multiplier 2)
+          :behaviors (
+            :appraise (fn ()
+              (let ((?mult (prop ?self multiplier)))
+                (if (> ?mult 1)
+                    (success :value "expensive")
+                    (success :value "cheap"))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("ITEM", "appraise")
+        assert result.outcome == "success"
+        assert ("value", "expensive") in result.context
+
+    def test_behavior_with_nested_if(self):
+        """Behavior body can have nested (if ...)."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object BOX :location LOBBY :flags (locked sealed)
+          :behaviors (
+            :open (fn ()
+              (if (has-flag ?self locked)
+                  (blocked :reason locked)
+                  (if (has-flag ?self sealed)
+                      (blocked :reason sealed)
+                      (success))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Both flags set - locked takes precedence
+        result = runtime.do("BOX", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+
+        # Remove locked flag
+        runtime.clear_object_flag("BOX", "locked")
+        result = runtime.do("BOX", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "sealed"
+
+        # Remove sealed flag
+        runtime.clear_object_flag("BOX", "sealed")
+        result = runtime.do("BOX", "open")
+        assert result.outcome == "success"
+
+    def test_fn_with_parameters_and_if(self):
+        """Behavior fn can have parameters and use (if ...)."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+        (object NPC :location LOBBY
+          :behaviors (
+            :give (fn (?item)
+              (if (= ?item "FOOD")
+                  (success :message "Thanks for the food!")
+                  (blocked :reason wrong-item :message "I don't want that.")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("NPC", "give", "FOOD")
+        assert result.outcome == "success"
+        assert ("message", "Thanks for the food!") in result.context
+
+        result = runtime.do("NPC", "give", "ROCK")
+        assert result.outcome == "blocked"
+        assert result.reason == "wrong-item"
+
+    def test_mixed_cond_and_if_in_same_world(self):
+        """Different behaviors can use cond or if interchangeably."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object PLAYER :location LOBBY)
+
+        ; This object uses cond
+        (object OLD_STYLE :location LOBBY
+          :behaviors (
+            :examine (fn ()
+              (cond
+                (true (success :style "cond"))))))
+
+        ; This object uses if
+        (object NEW_STYLE :location LOBBY
+          :behaviors (
+            :examine (fn ()
+              (if true
+                  (success :style "if")
+                  (blocked :reason impossible)))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("OLD_STYLE", "examine")
+        assert result.outcome == "success"
+        assert ("style", "cond") in result.context
+
+        result = runtime.do("NEW_STYLE", "examine")
+        assert result.outcome == "success"
+        assert ("style", "if") in result.context

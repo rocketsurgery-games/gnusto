@@ -22,7 +22,10 @@ from typing import Any
 from copy import deepcopy
 
 from .parser import GrueWorld, GrueBehavior, GrueCase
-from .expr import ExprEvaluator, EffectExecutor
+from .expr import (
+    ExprEvaluator, EffectExecutor, GrueFn,
+    BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
+)
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 
 
@@ -718,75 +721,176 @@ class GrueRuntime:
         behavior: GrueBehavior,
         bindings: dict[str, Any]
     ) -> ActionResult:
-        """Evaluate a behavior's cases and return the result."""
+        """Evaluate a behavior and return the result.
+
+        Behaviors can use either:
+        1. New style: body expression that evaluates to BehaviorSuccess/Blocked/etc.
+        2. Legacy style: cases list (cond-based, for backward compatibility)
+        """
         # Set bindings for this evaluation (restored after)
         old_bindings = self.bindings
         self.bindings = bindings
         try:
             evaluator = ExprEvaluator(self)
 
-            for case in behavior.cases:
-                # Evaluate the condition
-                try:
-                    condition_met = evaluator.eval(case.when)
-                except Exception as e:
-                    return ActionResult(
-                        outcome="error",
-                        error=f"Error evaluating condition: {e}"
-                    )
+            # New style: use body expression
+            if behavior.body is not None:
+                return self._evaluate_behavior_body(behavior, bindings, evaluator)
 
-                if condition_met:
-                    # This case matches
-                    if case.outcome == "default":
-                        return ActionResult(
-                            outcome="default",
-                            default_action=case.action,
-                            context=case.context
-                        )
-
-                    if case.outcome == "redirect":
-                        return ActionResult(
-                            outcome="redirect",
-                            default_action=case.action,
-                            context=case.context
-                        )
-
-                    if case.outcome == "blocked":
-                        return ActionResult(
-                            outcome="blocked",
-                            reason=case.reason,
-                            context=case.context
-                        )
-
-                    # Success - execute effects
-                    effects_applied = []
-                    if case.effects:
-                        executor = EffectExecutor(self)
-                        for effect in case.effects:
-                            try:
-                                executor.execute(effect)
-                                effects_applied.append(str(effect))
-                            except Exception as e:
-                                return ActionResult(
-                                    outcome="error",
-                                    error=f"Error executing effect: {e}"
-                                )
-
-                    self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
-
-                    return ActionResult(
-                        outcome="success",
-                        context=case.context,
-                        effects_applied=effects_applied
-                    )
-
-            # No case matched - shouldn't happen if behaviors have a (case true ...) fallback
-            return ActionResult(
-                outcome="blocked",
-                reason="no-matching-case"
-            )
+            # Legacy style: iterate through cases
+            return self._evaluate_behavior_cases(behavior, evaluator)
         finally:
             self.bindings = old_bindings
+
+    def _evaluate_behavior_body(
+        self,
+        behavior: GrueBehavior,
+        bindings: dict[str, Any],
+        evaluator: ExprEvaluator
+    ) -> ActionResult:
+        """Evaluate a behavior using its body expression."""
+        # Create a GrueFn from the behavior
+        fn = GrueFn(params=behavior.params, body=behavior.body)
+
+        # Add auto-bound symbols to captured bindings
+        fn.captured = dict(bindings)
+
+        # Build argument list from bindings in param order
+        args = [bindings.get(p) for p in behavior.params]
+
+        try:
+            result = evaluator.call_fn(fn, args)
+        except Exception as e:
+            return ActionResult(
+                outcome="error",
+                error=f"Error evaluating behavior: {e}"
+            )
+
+        # Convert behavior result to ActionResult
+        return self._behavior_result_to_action_result(result, evaluator)
+
+    def _behavior_result_to_action_result(
+        self,
+        result: Any,
+        evaluator: ExprEvaluator
+    ) -> ActionResult:
+        """Convert a BehaviorSuccess/Blocked/etc. to ActionResult."""
+        if isinstance(result, BehaviorSuccess):
+            # Execute effects
+            effects_applied = []
+            if result.effects:
+                executor = EffectExecutor(self)
+                for effect in result.effects:
+                    try:
+                        executor.execute(effect)
+                        effects_applied.append(str(effect))
+                    except Exception as e:
+                        return ActionResult(
+                            outcome="error",
+                            error=f"Error executing effect: {e}"
+                        )
+
+            self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+
+            return ActionResult(
+                outcome="success",
+                context=list(result.context.items()),
+                effects_applied=effects_applied
+            )
+
+        if isinstance(result, BehaviorBlocked):
+            return ActionResult(
+                outcome="blocked",
+                reason=result.reason,
+                context=list(result.context.items())
+            )
+
+        if isinstance(result, BehaviorRedirect):
+            return ActionResult(
+                outcome="redirect",
+                default_action=result.action,
+                context=list(result.context.items())
+            )
+
+        if isinstance(result, BehaviorDefault):
+            return ActionResult(
+                outcome="default",
+                default_action=result.action,
+                context=list(result.context.items())
+            )
+
+        # Unknown result type - treat as error
+        return ActionResult(
+            outcome="error",
+            error=f"Behavior returned unexpected type: {type(result).__name__}"
+        )
+
+    def _evaluate_behavior_cases(
+        self,
+        behavior: GrueBehavior,
+        evaluator: ExprEvaluator
+    ) -> ActionResult:
+        """Legacy: evaluate a behavior using its cases list."""
+        for case in behavior.cases:
+            # Evaluate the condition
+            try:
+                condition_met = evaluator.eval(case.when)
+            except Exception as e:
+                return ActionResult(
+                    outcome="error",
+                    error=f"Error evaluating condition: {e}"
+                )
+
+            if condition_met:
+                # This case matches
+                if case.outcome == "default":
+                    return ActionResult(
+                        outcome="default",
+                        default_action=case.action,
+                        context=case.context
+                    )
+
+                if case.outcome == "redirect":
+                    return ActionResult(
+                        outcome="redirect",
+                        default_action=case.action,
+                        context=case.context
+                    )
+
+                if case.outcome == "blocked":
+                    return ActionResult(
+                        outcome="blocked",
+                        reason=case.reason,
+                        context=case.context
+                    )
+
+                # Success - execute effects
+                effects_applied = []
+                if case.effects:
+                    executor = EffectExecutor(self)
+                    for effect in case.effects:
+                        try:
+                            executor.execute(effect)
+                            effects_applied.append(str(effect))
+                        except Exception as e:
+                            return ActionResult(
+                                outcome="error",
+                                error=f"Error executing effect: {e}"
+                            )
+
+                self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+
+                return ActionResult(
+                    outcome="success",
+                    context=case.context,
+                    effects_applied=effects_applied
+                )
+
+        # No case matched - shouldn't happen if behaviors have a (case true ...) fallback
+        return ActionResult(
+            outcome="blocked",
+            reason="no-matching-case"
+        )
 
     def check_victory(self) -> bool:
         """Check if victory condition is met."""

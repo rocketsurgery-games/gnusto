@@ -16,7 +16,7 @@ Commands (meta):
 Actions:
     (do TARGET :verb)                     - Perform action on target
     (do TARGET :verb ARG1 ARG2 ...)       - Action with arguments
-    (go :direction D)                     - Move in direction
+    (go DIRECTION)                        - Move in direction
 
 Examples:
     (do @door :open)                      - Open the door
@@ -254,14 +254,13 @@ class ReplEvaluator:
         return ResetResult()
 
     def _cmd_go(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
-        """Execute (go :direction DIR)."""
+        """Execute (go DIRECTION)."""
         try:
-            kwargs = self._extract_kwargs(expr)
-            direction = kwargs.get("direction")
-            if direction is None:
-                return ActionError(message="(go) requires :direction")
+            items = list(expr.items)[1:]  # Skip 'go'
+            if len(items) < 1:
+                return ActionError(message="(go) requires a direction")
 
-            dir_str = self._to_string(direction)
+            dir_str = self._to_string(items[0])
             # New API: do(target, verb, *args) - target ignored for "go"
             result = self.runtime.do("_movement", "go", dir_str)
 

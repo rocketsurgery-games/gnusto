@@ -46,10 +46,86 @@ Built-in Effects:
     (dequeue! EVENT)          - Remove event from queue
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from .sexpr import SExpr, Symbol, Keyword, SList, parse
+
+
+@dataclass
+class GrueFn:
+    """A first-class function (lambda/closure).
+
+    Functions capture their parameter names and body expression.
+    When called, parameters are bound to arguments and the body is evaluated.
+
+    Examples:
+        (fn () (success))                    ; No params
+        (fn (?x) (+ ?x 1))                   ; One param
+        (fn (?a ?b) (and (held? ?a) ?b))     ; Multiple params
+
+    Note: Parameter names conventionally start with ? but this is not required.
+    The ? is stripped when stored (e.g., ?item -> "item").
+    """
+    params: list[str]
+    body: SExpr
+    # Captured bindings from lexical scope (for closures)
+    captured: dict[str, Any] = field(default_factory=dict)
+
+    def __repr__(self) -> str:
+        param_str = " ".join(f"?{p}" for p in self.params)
+        return f"(fn ({param_str}) ...)"
+
+
+# === Behavior Result Types ===
+# These are returned by behavior expressions like (success), (blocked), etc.
+
+@dataclass
+class BehaviorSuccess:
+    """Result indicating the behavior succeeded.
+
+    Usage in behaviors:
+        (success)                           ; Simple success
+        (success :message "Done!")          ; With context
+        (success :effect (move! @key @player))  ; With effect
+    """
+    context: dict[str, Any] = field(default_factory=dict)
+    effects: list[SExpr] = field(default_factory=list)
+
+
+@dataclass
+class BehaviorBlocked:
+    """Result indicating the behavior was blocked.
+
+    Usage in behaviors:
+        (blocked :reason locked)
+        (blocked :reason no-key :message "The door is locked.")
+    """
+    reason: str = "unknown"
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BehaviorRedirect:
+    """Result indicating the action should be redirected.
+
+    Usage in behaviors:
+        (redirect (do @other-door :open))
+    """
+    action: SExpr
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BehaviorDefault:
+    """Result indicating the default action should be used.
+
+    Usage in behaviors:
+        (default)                           ; Use default
+        (default (do @container :open))     ; With explicit action
+    """
+    action: SExpr | None = None
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 class WorldState(Protocol):
@@ -206,6 +282,18 @@ class ExprEvaluator:
 
             # Event queue
             "queued?": self._eval_queued,
+
+            # First-class functions
+            "fn": self._eval_fn,
+            "if": self._eval_if,
+            "let": self._eval_let,
+            "cond": self._eval_cond,
+
+            # Behavior results
+            "success": self._eval_success,
+            "blocked": self._eval_blocked,
+            "redirect": self._eval_redirect,
+            "default": self._eval_default,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -242,19 +330,30 @@ class ExprEvaluator:
             raise EvalError("Empty form")
 
         head = form[0]
-        if not isinstance(head, Symbol):
-            raise EvalError(f"Expected function name, got: {head}")
 
-        name = head.name
+        # If head is a symbol, look up builtins and user functions
+        if isinstance(head, Symbol):
+            name = head.name
 
-        if name in self._builtins:
-            return self._builtins[name](form)
+            if name in self._builtins:
+                return self._builtins[name](form)
 
-        # Check user-defined functions
-        if name in self._functions:
-            return self._call_function(name, form)
+            # Check user-defined functions
+            if name in self._functions:
+                return self._call_function(name, form)
 
-        raise EvalError(f"Unknown function: {name}")
+            raise EvalError(f"Unknown function: {name}")
+
+        # If head is a list, evaluate it - might be a fn expression
+        if isinstance(head, SList):
+            fn_value = self.eval(head)
+            if isinstance(fn_value, GrueFn):
+                # Apply the function to remaining arguments
+                args = [self.eval(arg) for arg in form.items[1:]]
+                return self.call_fn(fn_value, args)
+            raise EvalError(f"Cannot call non-function: {fn_value}")
+
+        raise EvalError(f"Expected function name or expression, got: {head}")
 
     def define_function(self, name: str, params: list[str], body: SExpr) -> None:
         """
@@ -517,6 +616,298 @@ class ExprEvaluator:
             raise EvalError(f"'queued?' expects 1 argument, got {len(form) - 1}")
         event = self.eval(form[1])
         return self.state.is_queued(event)
+
+    # === First-class functions ===
+
+    def _eval_fn(self, form: SList) -> GrueFn:
+        """(fn (params) body) - create a function value.
+
+        Examples:
+            (fn () (success))
+            (fn (?x) (+ ?x 1))
+            (fn (?a ?b) (if (> ?a ?b) ?a ?b))
+        """
+        if len(form) < 3:
+            raise EvalError(f"'fn' expects (fn (params) body), got {len(form)} elements")
+
+        params_expr = form[1]
+        body = form[2]
+
+        # Parse parameter list
+        params: list[str] = []
+        if isinstance(params_expr, SList):
+            for p in params_expr.items:
+                if isinstance(p, Symbol):
+                    # Strip leading ? if present
+                    name = p.name[1:] if p.name.startswith("?") else p.name
+                    params.append(name)
+                else:
+                    raise EvalError(f"'fn' parameter must be a symbol, got {p}")
+        elif params_expr is not None:
+            raise EvalError(f"'fn' params must be a list, got {params_expr}")
+
+        return GrueFn(params=params, body=body)
+
+    def _eval_if(self, form: SList) -> Any:
+        """(if condition then-expr else-expr) - conditional expression.
+
+        Examples:
+            (if (held? @key) (success) (blocked :reason no-key))
+            (if (> score 10) "high" "low")
+        """
+        if len(form) < 3 or len(form) > 4:
+            raise EvalError(f"'if' expects 2-3 arguments, got {len(form) - 1}")
+
+        condition = self.eval(form[1])
+
+        if condition:
+            return self.eval(form[2])
+        elif len(form) == 4:
+            return self.eval(form[3])
+        else:
+            return None
+
+    def _eval_let(self, form: SList) -> Any:
+        """(let ((name value) ...) body) - local bindings.
+
+        Examples:
+            (let ((x 1)) (+ x 2))
+            (let ((a (loc @player)) (b @room)) (= a b))
+        """
+        if len(form) != 3:
+            raise EvalError(f"'let' expects 2 arguments, got {len(form) - 1}")
+
+        bindings_expr = form[1]
+        body = form[2]
+
+        if not isinstance(bindings_expr, SList):
+            raise EvalError(f"'let' bindings must be a list, got {bindings_expr}")
+
+        # Evaluate bindings and substitute
+        result_expr = body
+        for binding in bindings_expr.items:
+            if not isinstance(binding, SList) or len(binding) != 2:
+                raise EvalError(f"'let' binding must be (name value), got {binding}")
+
+            name_sym = binding[0]
+            if not isinstance(name_sym, Symbol):
+                raise EvalError(f"'let' binding name must be a symbol, got {name_sym}")
+
+            name = name_sym.name
+            if name.startswith("?"):
+                name = name[1:]
+
+            value = self.eval(binding[1])
+            result_expr = self._substitute(result_expr, name, value)
+            # Also substitute with ? prefix for convenience
+            result_expr = self._substitute(result_expr, f"?{name}", value)
+
+        return self.eval(result_expr)
+
+    def _eval_cond(self, form: SList) -> Any:
+        """(cond (test1 result1) (test2 result2) ... (true default))
+
+        Evaluates conditions in order and returns the result of the first
+        matching branch.
+        """
+        for clause in form.items[1:]:
+            if not isinstance(clause, SList) or len(clause) < 2:
+                raise EvalError(f"Invalid cond clause: {clause}")
+
+            test = clause[0]
+            result = clause[1]
+
+            if self.eval(test):
+                return self.eval(result)
+
+        return None  # No clause matched
+
+    def call_fn(self, fn: GrueFn, args: list[Any]) -> Any:
+        """Call a GrueFn with the given arguments.
+
+        This is used by the behavior system and can also be used for
+        general function application.
+        """
+        if len(args) != len(fn.params):
+            raise EvalError(
+                f"Function expects {len(fn.params)} arguments, got {len(args)}"
+            )
+
+        # Start with captured bindings, then add parameters
+        result_expr = fn.body
+        for name, value in fn.captured.items():
+            result_expr = self._substitute(result_expr, name, value)
+            result_expr = self._substitute(result_expr, f"?{name}", value)
+
+        for param, value in zip(fn.params, args):
+            result_expr = self._substitute(result_expr, param, value)
+            result_expr = self._substitute(result_expr, f"?{param}", value)
+
+        return self.eval(result_expr)
+
+    # === Behavior Results ===
+
+    def _parse_kwargs(self, form: SList, start: int = 1) -> dict[str, Any]:
+        """Parse keyword arguments from a form starting at given index."""
+        kwargs: dict[str, Any] = {}
+        items = list(form.items[start:])
+        i = 0
+        while i < len(items):
+            if isinstance(items[i], Keyword):
+                key = items[i].name
+                if i + 1 < len(items):
+                    # Don't evaluate the value - keep it as SExpr for effects
+                    kwargs[key] = items[i + 1]
+                    i += 2
+                else:
+                    raise EvalError(f"Keyword :{key} has no value")
+            else:
+                i += 1
+        return kwargs
+
+    def _parse_context_list(self, expr: SExpr) -> dict[str, Any]:
+        """Parse context in format ((key value) (key value) ...)."""
+        result: dict[str, Any] = {}
+        if isinstance(expr, SList):
+            for item in expr.items:
+                if isinstance(item, SList) and len(item) >= 2:
+                    key = item[0]
+                    val = item[1]
+                    key_str = key.name if isinstance(key, Symbol) else str(key)
+                    val_str = val.name if isinstance(val, Symbol) else self.eval(val)
+                    result[key_str] = val_str
+        return result
+
+    def _eval_success(self, form: SList) -> BehaviorSuccess:
+        """(success [:key value ...])
+
+        Examples:
+            (success)
+            (success :message "Done!")
+            (success :effect (move! @key @player))
+            (success :context ((mechanism push-bar)))  ; Legacy format
+        """
+        kwargs = self._parse_kwargs(form)
+        context: dict[str, Any] = {}
+        effects: list[SExpr] = []
+
+        for key, val in kwargs.items():
+            if key == "effect":
+                effects.append(val)  # Keep as SExpr
+            elif key == "effects":
+                # Allow list of effects
+                if isinstance(val, SList):
+                    effects.extend(val.items)
+            elif key == "context":
+                # Legacy format: ((key value) ...)
+                context.update(self._parse_context_list(val))
+            else:
+                # Direct key-value pair
+                if isinstance(val, Symbol):
+                    context[key] = val.name
+                elif isinstance(val, SList):
+                    context[key] = val  # Keep as SExpr for complex values
+                else:
+                    context[key] = self.eval(val)
+
+        return BehaviorSuccess(context=context, effects=effects)
+
+    def _eval_blocked(self, form: SList) -> BehaviorBlocked:
+        """(blocked :reason REASON [:key value ...])
+
+        Examples:
+            (blocked :reason locked)
+            (blocked :reason no-key :message "The door is locked.")
+        """
+        kwargs = self._parse_kwargs(form)
+        reason = "unknown"
+        context: dict[str, Any] = {}
+
+        for key, val in kwargs.items():
+            if key == "reason":
+                if isinstance(val, Symbol):
+                    reason = val.name
+                else:
+                    reason = str(self.eval(val))
+            elif key == "context":
+                context.update(self._parse_context_list(val))
+            else:
+                if isinstance(val, Symbol):
+                    context[key] = val.name
+                else:
+                    context[key] = self.eval(val)
+
+        return BehaviorBlocked(reason=reason, context=context)
+
+    def _eval_redirect(self, form: SList) -> BehaviorRedirect:
+        """(redirect ACTION [:key value ...]) or (redirect :action ACTION)
+
+        Examples:
+            (redirect (do @other-door :open))
+            (redirect :action (do @other-door :open))
+        """
+        if len(form) < 2:
+            raise EvalError("'redirect' requires an action")
+
+        action = None
+        context: dict[str, Any] = {}
+
+        # Check if first arg is action (SList) or keywords
+        if isinstance(form[1], SList):
+            action = form[1]
+            kwargs = self._parse_kwargs(form, start=2)
+        else:
+            kwargs = self._parse_kwargs(form, start=1)
+
+        for k, v in kwargs.items():
+            if k == "action":
+                # Don't evaluate action - keep as SExpr
+                action = v
+            elif k == "context":
+                context.update(self._parse_context_list(v))
+            else:
+                if isinstance(v, Symbol):
+                    context[k] = v.name
+                else:
+                    context[k] = self.eval(v)
+
+        if action is None:
+            raise EvalError("'redirect' requires an action")
+
+        return BehaviorRedirect(action=action, context=context)
+
+    def _eval_default(self, form: SList) -> BehaviorDefault:
+        """(default [ACTION] [:key value ...])
+
+        Examples:
+            (default)
+            (default (do @container :open))
+            (default :action (do @container :open))
+        """
+        action = None
+        context: dict[str, Any] = {}
+
+        if len(form) > 1:
+            # Check if first arg is an action (SList) or keyword
+            if isinstance(form[1], SList):
+                action = form[1]
+                kwargs = self._parse_kwargs(form, start=2)
+            else:
+                kwargs = self._parse_kwargs(form, start=1)
+
+            for k, v in kwargs.items():
+                if k == "action":
+                    # Don't evaluate action - keep as SExpr
+                    action = v
+                elif k == "context":
+                    context.update(self._parse_context_list(v))
+                else:
+                    if isinstance(v, Symbol):
+                        context[k] = v.name
+                    else:
+                        context[k] = self.eval(v)
+
+        return BehaviorDefault(action=action, context=context)
 
     # === Quantifiers ===
 
