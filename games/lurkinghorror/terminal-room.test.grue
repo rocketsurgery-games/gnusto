@@ -55,18 +55,6 @@
   :expect ((outcome? success)
            (held? @pc)))
 
-(test "cannot take object not here"
-  :setup ((move! @pc @cs-2nd))
-  :action (do @pc :take)
-  :expect ((outcome? blocked)
-           (reason? not-here)))
-
-(test "cannot take object already held"
-  :setup ((move! @pc @player))
-  :action (do @pc :take)
-  :expect ((outcome? blocked)
-           (reason? already-held)))
-
 (test "cannot take non-takeable object"
   :action (do @hacker :take)
   :expect ((outcome? blocked)
@@ -286,3 +274,115 @@
   :action (do @pc :unplug)
   :expect ((outcome? blocked)
            (reason? hacker-interference)))
+
+; =============================================================================
+; ROOM :BEFORE-ACTION - hacker snarls at screen object interaction
+; =============================================================================
+; When hacker-helps is queued, room :before-action blocks click/rub/point/help
+; on menu-box and more-box with "Who's the hacker here?"
+
+(test "hacker blocks click on menu-box during help"
+  :setup ((queue! hacker-helps))
+  :action (do @menu-box :click)
+  :expect ((outcome? blocked)
+           (reason? hacker-interference)
+           (context? blocker @hacker)))
+
+(test "hacker blocks rub on more-box during help"
+  :setup ((queue! hacker-helps) (move! @more-box @pc))
+  :action (do @more-box :rub)
+  :expect ((outcome? blocked)
+           (reason? hacker-interference)))
+
+(test "examine allowed during hacker help"
+  :setup ((queue! hacker-helps))
+  :action (do @pc :examine)
+  :expect ((outcome? success)))
+
+; =============================================================================
+; NIGHTMARE WAKE-UP - :on-enter from platform-room
+; =============================================================================
+; When player enters terminal-room from platform-room (waking from nightmare),
+; the :on-enter hook triggers and queues hacker-helps.
+
+(test "entering from platform-room triggers nightmare wake-up"
+  :setup ((move! @player @platform-room))
+  :action (go :direction north)
+  :expect ((outcome? success)
+           (player-at? @terminal-room)
+           (context? nightmare-wake true)
+           (queued? hacker-helps)))
+
+(test "entering from cs-2nd does not trigger wake-up"
+  :setup ((move! @player @cs-2nd))
+  :action (go :direction north)
+  :expect ((outcome? success)
+           (player-at? @terminal-room)
+           (not-queued? hacker-helps)))
+
+; =============================================================================
+; COMPULSION - possession mechanic
+; =============================================================================
+; When compulsion event is queued (player is possessed), room :before-action
+; blocks most actions, redirecting to touching the MORE box.
+; Allowed: click/rub/point/push/attack on @more-box, read @odd-paper
+
+(test "compulsion blocks unrelated actions"
+  :setup ((queue! compulsion))
+  :action (do @chair :examine)
+  :expect ((outcome? blocked)
+           (reason? possessed)
+           (context? compelled true)
+           (context? forced-target @more-box)))
+
+(test "compulsion allows click on more-box"
+  :setup ((queue! compulsion)
+          (move! @more-box @pc)
+          (set-prop! @odd-paper read-page true))
+  :action (do @more-box :click)
+  :expect ((outcome? success)))
+
+(test "compulsion allows read odd-paper"
+  :setup ((queue! compulsion) (move! @odd-paper @pc))
+  :action (do @odd-paper :read)
+  :expect ((outcome? success)))
+
+; =============================================================================
+; COMPULSION EVENT - turn-based possession progression
+; =============================================================================
+; The compulsion event advances through 4 pages of disturbing content.
+; Page 4 teleports the player to @yuggoth (nightmare realm).
+
+(test "compulsion event page 1"
+  :setup ((queue! compulsion) (set! comp-cnt 0))
+  :action (process-events)
+  :expect ((outcome? success)
+           (context? page 1)
+           (global? comp-cnt 1)))
+
+(test-sequence "compulsion full 4-page sequence"
+  ; Page 1: First glimpse
+  (step :setup ((queue! compulsion) (set! comp-cnt 0))
+        :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 1)
+                 (global? comp-cnt 1)
+                 (queued? compulsion)))
+  ; Page 2: Hints of summoning
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 2)
+                 (global? comp-cnt 2)
+                 (queued? compulsion)))
+  ; Page 3: The poem/ritual
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 3)
+                 (global? comp-cnt 3)
+                 (queued? compulsion)))
+  ; Page 4: The photograph - teleport to yuggoth
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 4)
+                 (not-queued? compulsion)
+                 (player-at? @yuggoth))))

@@ -75,21 +75,22 @@
   :location @terminal-room
   :on-turn (cond
     ; Page 1: First glimpse of the strange text
+    ; Note: No re-queue - event stays active, advances each turn player clicks MORE
     ((= comp-cnt 0)
       (success
-        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :effects ((inc! comp-cnt) (set-prop! @odd-paper read-page true))
         :context ((page 1)
                   (description "The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort of \"Olde English\" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English."))))
     ; Page 2: Hints of summoning
     ((= comp-cnt 1)
       (success
-        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :effects ((inc! comp-cnt) (set-prop! @odd-paper read-page true))
         :context ((page 2)
                   (description "The second page is much like the first, but around the edges, not when you look at it straight, it's almost readable. There is something about a \"summoning,\" or a \"visitor.\""))))
     ; Page 3: The poem/ritual
     ((= comp-cnt 2)
       (success
-        :effects ((inc! comp-cnt) (queue! compulsion 1) (set-prop! @odd-paper read-page true))
+        :effects ((inc! comp-cnt) (set-prop! @odd-paper read-page true))
         :context ((page 3)
                   (description "The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing.\n\nThere is a translation, or notes for one, typed between the lines of the poem:\n\n\"He returns, he is called back (?)\nThe loyal ones (acolytes?) make a sacrifice\nThose who survive will meet him (be absorbed? eaten?)\nThey will live, yet die\nForever will be (is?) nothing to them (to him?)\n\n\"His place (lair? burrow?) must be prepared\nHis food (offerings?) must be prepared\nCall him forth (invite him?) with great power\nOnly an acceptable (tasteful?) sacrifice will call him forth\nHe will be grateful (satiated?)\"\n\nThe rest is even more fragmentary."))))
     ; Page 4: The photograph - triggers nightmare transport
