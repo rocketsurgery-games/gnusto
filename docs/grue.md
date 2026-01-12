@@ -271,12 +271,41 @@ Each `cond` clause is `(CONDITION OUTCOME-FORM)` where OUTCOME-FORM is one of:
 - `?on` - surface/target (e.g., "put X on Y")
 - `?in` - container (e.g., "put X in Y")
 - `?to` - recipient (e.g., "give X to Y")
+- `?topic` - conversation topic (e.g., "ask X about Y")
 - `?direction` - movement direction
 
 **Note on EXAMINE:** Examining an object is a behavior like any other - the object
 is the direct object of the action. The behavior returns context about what's
 observable, and the LLM generates a description. This keeps all object-specific
 logic in behaviors.
+
+**Conversation behaviors:**
+NPCs can respond to conversation via `:ask-about` and `:tell-about` behaviors.
+The `?topic` binding contains the topic being discussed.
+
+```scheme
+(object @hacker
+  :behaviors (
+    :ask-about (cond
+      ((= ?topic @keys)
+        (success :context ((response "Keys? I've got the master key for the building."))))
+      ((= ?topic @food)
+        (success :context ((response "I'm starving. Got anything to eat?"))))
+      (true
+        (blocked :reason unknown-topic)))
+
+    :tell-about (cond
+      ((= ?topic @assignment)
+        (success :context ((response "I don't care about your homework."))))
+      (true
+        (blocked :reason not-interested)))))
+```
+
+Topics can be abstract objects defined just for conversation:
+```scheme
+(object @keys :description "the topic of keys")
+(object @food :description "the topic of food")
+```
 
 ### Actions
 
@@ -352,9 +381,65 @@ Events are commonly used to alter behavior based on ongoing situations:
         (success :effects ((clear-flag! ?self POWER)))))))
 ```
 
-**Note:** The current implementation provides queue flags for behavior conditions.
-Turn-by-turn event handlers (like ZIL's interrupt routines that run each turn)
-are planned for future implementation.
+### Turn-Based Events
+
+Events are turn-based handlers that fire automatically when queued. They map directly
+to ZIL's interrupt routines (`I-HACKER-HELPS`, `I-FOOD-HINT`, etc.).
+
+```scheme
+(event hacker-helps
+  :location @terminal-room    ; only fires when player is here
+  :on-turn (cond
+    ((= hacker-help 0)
+      (success :effects ((inc! hacker-help))
+               :context ((stage 1) (description "The hacker glances at your screen..."))))
+    ((= hacker-help 1)
+      (success :effects ((inc! hacker-help))
+               :context ((stage 2) (description "The hacker leans closer..."))))
+    ((= hacker-help 2)
+      (success :effects ((inc! hacker-help))
+               :context ((stage 3) (description "The hacker starts typing..."))))
+    (true
+      (success :effects ((dequeue! hacker-helps) (move! @hacker @terminal-room))
+               :context ((stage 4) (description "The hacker finishes and steps back."))))))
+```
+
+**Event structure:**
+- `:location` - Optional room constraint; event only fires when player is in this room
+- `:on-turn` - A `cond` form evaluated each turn the event is active
+
+**Event lifecycle:**
+1. Queue an event with `(queue! event-name)` or `(queue! event-name countdown)`
+2. Each turn, queued events are processed:
+   - If countdown > 0, decrement and skip
+   - If location constraint exists and player isn't there, skip
+   - Otherwise, evaluate the `:on-turn` cond
+3. Event stays queued until explicitly dequeued with `(dequeue! event-name)`
+
+**Common patterns:**
+
+```scheme
+; Multi-stage cutscene (use global counter)
+(event cutscene
+  :on-turn (cond
+    ((= stage 0) (success :effects ((inc! stage)) :context ((stage 1))))
+    ((= stage 1) (success :effects ((inc! stage)) :context ((stage 2))))
+    (true (success :effects ((dequeue! cutscene)) :context ((complete true))))))
+
+; Delayed event (re-queues itself with countdown)
+(event reminder
+  :on-turn (cond
+    ((< hint-count 3)
+      (success :effects ((inc! hint-count) (queue! reminder 5))
+               :context ((hint "Don't forget the key..."))))
+    (true
+      (success :effects ((dequeue! reminder))))))
+
+; Location-gated event
+(event room-atmosphere
+  :location @dark-cave
+  :on-turn (success :context ((ambience "Water drips in the darkness..."))))
+```
 
 ### Time and Turns
 
@@ -506,6 +591,25 @@ Lose condition. Named for narrative purposes.
 #### `(default VERB (cond ...))`
 Default behavior for a verb, applied when an object lacks its own handler.
 
+#### `(event NAME :location ROOM :on-turn (cond ...))`
+Turn-based event handler. Events fire each turn while queued.
+- `:location` - Optional room constraint (event only fires when player is here)
+- `:on-turn` - A `cond` form evaluated each turn
+
+See [Turn-Based Events](#turn-based-events) for detailed documentation.
+
+#### `(globals :name value ...)`
+Global variable definitions. Globals are accessible throughout the world and
+can be modified with `set!` and `inc!` effects.
+
+```scheme
+(globals
+  :score 0
+  :moves 0
+  :hacker-help 0        ; stage counter for hacker-helps event
+  :game-phase beginning)
+```
+
 ### Special Forms (Custom Evaluation)
 
 Special forms have custom evaluation rules - they control when and whether their
@@ -635,6 +739,7 @@ When a behavior is evaluated, these bindings are available:
 | `?on` | Surface ("put X on Y") |
 | `?in` | Container ("put X in Y") |
 | `?to` | Recipient ("give X to Y") |
+| `?topic` | Conversation topic ("ask X about Y") |
 | `?direction` | Movement direction |
 
 Bindings are accessed with the `?` prefix:
