@@ -139,6 +139,15 @@ class QueryValue:
     value: Any
 
 
+@dataclass
+class EventResult:
+    """Result of a fired event."""
+    event_name: str
+    outcome: str
+    context: list[tuple[str, Any]]
+    effects: list[str]
+
+
 # === REPL Evaluator ===
 
 class ReplEvaluator:
@@ -464,6 +473,14 @@ def print_result(result: Any) -> bool:
         print(f"[OK: {result.expr}]")
         return True
 
+    if isinstance(result, EventResult):
+        print(f"[EVENT: {result.event_name}]")
+        for k, v in result.context:
+            print(f"  {k}: {v}")
+        for effect in result.effects:
+            print(f"  Effect: {effect}")
+        return True
+
     if isinstance(result, QueryValue):
         value = result.value
         print(f"=> {_format_value(value)}")
@@ -525,6 +542,20 @@ def main():
         except EvalError as e:
             print(f"[Error: {e}]")
             continue
+
+        # Process events (game loop - events fire after each player action)
+        # Only process after actions that advance time (do, go)
+        if isinstance(result, (ActionDone, ActionBlocked)):
+            event_results = runtime.process_events()
+            for event_result in event_results:
+                # Find the event name from queues (best effort)
+                event_name = "event"
+                print_result(EventResult(
+                    event_name=event_name,
+                    outcome=event_result.outcome,
+                    context=list(event_result.context) if event_result.context else [],
+                    effects=[str(e) for e in event_result.effects_applied]
+                ))
 
         # Check win/lose
         if runtime.check_victory():
