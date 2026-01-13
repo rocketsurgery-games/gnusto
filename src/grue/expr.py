@@ -317,6 +317,9 @@ class ExprEvaluator:
             # Data constructors
             "quote": self._eval_quote,
             "list": self._eval_list,
+
+            # String operations
+            "str": self._eval_str,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -1370,6 +1373,16 @@ class ExprEvaluator:
             (list "a" "b") => ["a", "b"]
         """
         return [self.eval(item) for item in form.items[1:]]
+
+    def _eval_str(self, form: SList) -> str:
+        """(str EXPR ...) - concatenate arguments as strings.
+
+        Examples:
+            (str "hello" " " "world") => "hello world"
+            (str "count: " 42) => "count: 42"
+        """
+        parts = [str(self.eval(item)) for item in form.items[1:]]
+        return "".join(parts)
 
     # === Quantifiers ===
 

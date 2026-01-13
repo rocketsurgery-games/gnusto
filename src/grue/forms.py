@@ -167,6 +167,7 @@ class GrueEvent:
     name: str
     location: str | None  # If set, event only fires when player is here
     body: SExpr | None = None  # The :on-turn handler expression
+    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
 
 
 @dataclass
@@ -652,12 +653,20 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
             ((= hacker-help 1) (success :effects (...) :context (...)))
             ((= hacker-help 2) ...)
             (true (success :effects ((dequeue! hacker-helps)) ...))))
+
+    With scoped definitions:
+        (event compulsion
+          (def page1-desc "...")
+          :location @terminal-room
+          :on-turn (condp = comp-cnt
+            0 (success :context ((description page1-desc)))
+            ...))
     """
     if len(expr) < 2:
         raise FormParseError("event requires a name")
 
     name = expect_symbol(expr[1], "event name")
-    kwargs = parse_kwargs(list(expr.items[2:]))
+    nested_forms, kwargs = parse_entity_body(list(expr.items[2:]), "event")
 
     if "on-turn" not in kwargs:
         raise FormParseError(f"event {name} requires :on-turn handler")
@@ -671,7 +680,7 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
     # Store the body expression directly (evaluated at runtime)
     body = kwargs["on-turn"]
 
-    event = GrueEvent(name=name, location=location, body=body)
+    event = GrueEvent(name=name, location=location, body=body, nested_forms=nested_forms)
     world.events[event.name] = event
 
 

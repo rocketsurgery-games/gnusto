@@ -395,12 +395,25 @@ class GrueRuntime:
                 error=f"Event {event.name} has no body"
             )
 
+        # Build entity scope from nested forms (def, defn)
+        entity_scope = None
+        if event.nested_forms:
+            entity_scope = self._build_entity_scope(event.nested_forms)
+            scoped_fns, scoped_vals = entity_scope
+            merged_functions = {**self._functions, **scoped_fns}
+        else:
+            merged_functions = self._functions
+
         # Events use simple bindings (no direct object)
         bindings = {"actor": self.player_name}
+        # Merge scoped values into bindings
+        if entity_scope:
+            bindings = {**entity_scope[1], **bindings}
+
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self, self._functions)
+            evaluator = ExprEvaluator(self, merged_functions)
 
             try:
                 result = evaluator.eval(event.body)

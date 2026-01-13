@@ -5,16 +5,18 @@
   :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
   :properties (:size 30 :unplugged false)
 
+  (def pc-desc "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key.")
+
   :behaviors (
     ; EXAMINE - Show PC description with power state and screen contents
     :examine (fn ()
       (cond
         ((has-flag ?self POWER)
           (success :context ((power on) (screen-contents (first-in ?self)))
-                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key."))
+                   :message pc-desc))
         (true
           (success :context ((power off))
-                   :message "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off."))))
+                   :message (str pc-desc " It is currently turned off.")))))
 
     ; LISTEN - Hums when powered on
     :listen (fn ()
@@ -140,23 +142,14 @@
   :properties (:text "Edit Classics Paper.")
 
   :behaviors (
-    :examine (fn ()
-      (cond
-        (true
-          (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))))
-
-    :read (fn ()
-      (cond
-        (true
-          (success :message "It says \"Edit Classics Paper\" in an urgent-looking shade of red."))))
+    :examine (fn () (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))
+    :read (fn () (success :message "It says \"Edit Classics Paper\" in an urgent-looking shade of red."))
 
     ; CLICK - open the YAK editor
     :click (fn ()
-      (cond
-        (true
-          (success
-            :effects ((move! @menu-box nil) (move! @yak-window @pc))
-            :message "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red."))))))
+      (success
+        :effects ((move! @menu-box nil) (move! @yak-window @pc))
+        :message "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red."))))
 
 (object @yak-window
   :description "YAK editor"
@@ -165,15 +158,8 @@
   :properties (:text "YAK 5.3")
 
   :behaviors (
-    :examine (fn ()
-      (cond
-        (true
-          (success :message "There's a box for your paper."))))
-
-    :read (fn ()
-      (cond
-        (true
-          (success :message "There's a box for your paper."))))
+    :examine (fn () (success :message "There's a box for your paper."))
+    :read (fn () (success :message "There's a box for your paper."))
 
     ; CLICK - open the paper (reveals the odd text)
     :click (fn ()
@@ -183,6 +169,7 @@
           (success
             :effects ((move! @yak-window nil) (move! @odd-paper @pc) (move! @more-box @pc) (set-flag! @odd-paper TOUCHBIT))
             :message "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different."))
+
         ; Already seen - paper is lost
         (true
           (success
@@ -209,6 +196,7 @@
             :effects ((queue! compulsion 2) (set-prop! @odd-paper read-page true))
             :context ((possession-starting true))
             :message "As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the \"MORE\" box..."))
+
         ; Already reading/possessed
         (true
           (success
@@ -222,15 +210,8 @@
   :properties ()
 
   :behaviors (
-    :examine (fn ()
-      (cond
-        (true
-          (success :message "It says \"MORE\" in a subdued typeface."))))
-
-    :read (fn ()
-      (cond
-        (true
-          (success :message "It says \"MORE\" in a subdued typeface."))))
+    :examine (fn () (success :message "It says \"MORE\" in a subdued typeface."))
+    :read (fn () (success :message "It says \"MORE\" in a subdued typeface."))
 
     ; CLICK - advance through the strange document
     :click (fn ()
@@ -239,6 +220,7 @@
         ((not (prop @odd-paper read-page))
           (blocked :reason not-read-yet
                    :message "You haven't read the page yet. You probably shouldn't touch the MORE box until then."))
+
         ; Read the page - advance
         (true
           (success
