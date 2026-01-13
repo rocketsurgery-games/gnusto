@@ -300,6 +300,10 @@ class ExprEvaluator:
             "if": self._eval_if,
             "let": self._eval_let,
             "cond": self._eval_cond,
+            "match": self._eval_match,
+            "condp": self._eval_condp,
+            "cond->": self._eval_cond_thread,
+            "cond->>": self._eval_cond_thread_last,
 
             # Behavior results
             "success": self._eval_success,
@@ -841,6 +845,217 @@ class ExprEvaluator:
                 return self.eval(result)
 
         return None  # No clause matched
+
+    def _eval_match(self, form: SList) -> Any:
+        """(match (expr1 expr2 ...) (pattern1 result1) (pattern2 result2) ...)
+
+        Pattern matching on a tuple of values.
+
+        Example:
+            (match ((has-flag? ?self LOCKED) (has-flag? ?self OPEN))
+              ((true _)      (blocked :reason locked))
+              ((_ true)      (blocked :reason already-open))
+              ((false false) (success)))
+
+        Pattern elements:
+            - `_` or `?_` : wildcard, matches anything
+            - `true`/`false` : literal boolean match
+            - other literals : exact match
+            - symbols starting with `?` : bind matched value to that name
+        """
+        if len(form) < 3:
+            raise EvalError("'match' requires values and at least one clause")
+
+        values_expr = form[1]
+        if not isinstance(values_expr, SList):
+            raise EvalError("'match' first argument must be a list of expressions")
+
+        # Evaluate all values upfront
+        values = [self.eval(v) for v in values_expr.items]
+
+        # Try each clause
+        for clause in form.items[2:]:
+            if not isinstance(clause, SList) or len(clause) < 2:
+                raise EvalError(f"Invalid match clause: {clause}")
+
+            pattern = clause[0]
+            result = clause[1]
+
+            if not isinstance(pattern, SList):
+                raise EvalError(f"Match pattern must be a list, got: {pattern}")
+
+            if len(pattern) != len(values):
+                raise EvalError(
+                    f"Pattern length {len(pattern)} doesn't match values length {len(values)}"
+                )
+
+            # Try to match pattern
+            bindings: dict[str, Any] = {}
+            matched = True
+
+            for pat_elem, val in zip(pattern.items, values):
+                if isinstance(pat_elem, Symbol):
+                    name = pat_elem.name
+                    if name == "_" or name == "?_":
+                        # Wildcard - matches anything
+                        continue
+                    elif name.startswith("?"):
+                        # Binding - capture value
+                        bindings[name[1:]] = val
+                        bindings[name] = val  # Also bind with ?
+                    elif name.lower() == "true":
+                        if val is not True:
+                            matched = False
+                            break
+                    elif name.lower() == "false":
+                        if val is not False:
+                            matched = False
+                            break
+                    else:
+                        # Symbol literal - check equality
+                        if val != name:
+                            matched = False
+                            break
+                else:
+                    # Literal value (number, string, etc.)
+                    if self.eval(pat_elem) != val:
+                        matched = False
+                        break
+
+            if matched:
+                # Substitute bindings into result and evaluate
+                result_expr = result
+                for name, val in bindings.items():
+                    result_expr = self._substitute(result_expr, name, val)
+                return self.eval(result_expr)
+
+        return None  # No pattern matched
+
+    def _eval_condp(self, form: SList) -> Any:
+        """(condp pred expr test1 result1 test2 result2 ...)
+
+        Compare expr against test values using pred.
+
+        Example:
+            (condp = state
+              :locked (blocked :reason locked)
+              :open   (blocked :reason already-open)
+              :closed (success))
+
+            (condp > health
+              0   (defeat)
+              10  (warn)
+              100 (success))
+
+        Evaluates (pred test-val expr) for each test value.
+        Returns result of first truthy test.
+        """
+        if len(form) < 4:
+            raise EvalError("'condp' requires pred, expr, and at least one clause")
+
+        pred = form[1]
+        expr = form[2]
+        expr_val = self.eval(expr)
+
+        # Process clauses in pairs
+        items = list(form.items[3:])
+        i = 0
+        while i < len(items) - 1:
+            test_val = self.eval(items[i])
+            result = items[i + 1]
+
+            # Evaluate (pred test-val expr-val)
+            pred_call = SList([pred, items[i], expr])
+            if self.eval(pred_call):
+                return self.eval(result)
+
+            i += 2
+
+        # Handle odd trailing element as default
+        if i < len(items):
+            return self.eval(items[i])
+
+        return None
+
+    def _eval_cond_thread(self, form: SList) -> Any:
+        """(cond-> initial test1 expr1 test2 expr2 ...)
+
+        Conditional threading - threads value through exprs when tests pass.
+        Value is threaded as FIRST argument.
+
+        Example:
+            (cond-> {}
+              true           (assoc :a 1)
+              (has-flag? x)  (assoc :b 2))
+
+        If test passes, evaluates (expr threaded-value).
+        """
+        if len(form) < 2:
+            raise EvalError("'cond->' requires an initial value")
+
+        value = self.eval(form[1])
+
+        # Process clauses in pairs
+        items = list(form.items[2:])
+        i = 0
+        while i < len(items) - 1:
+            test = items[i]
+            expr = items[i + 1]
+
+            if self.eval(test):
+                # Thread value as first argument
+                if isinstance(expr, SList) and len(expr) > 0:
+                    # Insert value after the function name
+                    threaded = SList([expr[0], value] + list(expr.items[1:]))
+                    value = self.eval(threaded)
+                else:
+                    # Just call with value as argument
+                    threaded = SList([expr, value])
+                    value = self.eval(threaded)
+
+            i += 2
+
+        return value
+
+    def _eval_cond_thread_last(self, form: SList) -> Any:
+        """(cond->> initial test1 expr1 test2 expr2 ...)
+
+        Conditional threading - threads value through exprs when tests pass.
+        Value is threaded as LAST argument.
+
+        Example:
+            (cond->> (list)
+              (has-flag? ?self LOCKED) (cons :locked)
+              (has-flag? ?self OPEN)   (cons :open))
+
+        If test passes, evaluates (expr ... threaded-value).
+        """
+        if len(form) < 2:
+            raise EvalError("'cond->>' requires an initial value")
+
+        value = self.eval(form[1])
+
+        # Process clauses in pairs
+        items = list(form.items[2:])
+        i = 0
+        while i < len(items) - 1:
+            test = items[i]
+            expr = items[i + 1]
+
+            if self.eval(test):
+                # Thread value as last argument
+                if isinstance(expr, SList) and len(expr) > 0:
+                    # Append value to the end
+                    threaded = SList(list(expr.items) + [value])
+                    value = self.eval(threaded)
+                else:
+                    # Just call with value as argument
+                    threaded = SList([expr, value])
+                    value = self.eval(threaded)
+
+            i += 2
+
+        return value
 
     def call_fn(self, fn: GrueFn, args: list[Any]) -> Any:
         """Call a GrueFn with the given arguments.

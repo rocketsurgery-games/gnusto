@@ -12,8 +12,6 @@
   :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
   :properties ()
 
-  (def wat "w00t!")
-
   ; Translated from ZIL HACKER-F and HACKER-DESC routines.
   ; See games/lurkinghorror/source/hacker.zil for full ZIL source.
   ;
@@ -38,8 +36,6 @@
   ; - :help behavior: Queues hacker-helps event
 
   :behaviors (
-    :foo (fn () (success :context ((description wat))))
-
     ; === ROOM DESCRIPTION ===
     ; HACKER-DESC function - varies by location
     :describe (fn ()
