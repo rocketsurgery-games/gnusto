@@ -56,7 +56,7 @@
     ; and global hacker-help for helping state. Simplified for basic translation.
     :examine (fn () (cond
       ((here? @inner-lair) (success :context ((description "He's muddy, wet, and tired looking."))))
-      (true                (success :context ((description hacker-desc))))) ; Normal state - at his own terminal
+      (true                (success :context ((description hacker-desc)))))) ; Normal state - at his own terminal
 
     :smell (fn () (success :context ((description "Either the hacker, his clothing, or both are in need of cleaning."))))
     :listen (fn () (success :context ((description "He is humming something. It sounds classical, perhaps Bach?"))))
@@ -262,4 +262,4 @@
 
     ; === HOSTILE ACTIONS ===
     :attack (fn () (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly."))))
-
+    :kill (fn () (blocked :reason retreats :context ((response "The hacker retreats. \"I know karate!\" he says, somewhat unconvincingly."))))))

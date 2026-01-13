@@ -1,0 +1,346 @@
+; Kitchen & Microwave Tests
+; Tests for the food puzzle - heating chinese food to trade with the hacker.
+
+; =============================================================================
+; NAVIGATION
+; =============================================================================
+
+(test-group "navigation"
+  :setup ((move! @player @cs-2nd))
+
+  (test "can go from cs-2nd to kitchen"
+    :action (go :direction west)
+    :expect ((outcome? success)
+             (player-at? @kitchen)))
+
+  (test "can go from kitchen to cs-2nd"
+    :setup ((move! @player @kitchen))  ; override group setup
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @cs-2nd))))
+
+; =============================================================================
+; REFRIGERATOR
+; =============================================================================
+
+(test-group "refrigerator"
+  :setup ((move! @player @kitchen))
+
+  (test "starts closed"
+    :action (do @refrigerator :examine)
+    :expect ((outcome? success)
+             (not (has-flag? @refrigerator OPENBIT))))
+
+  (test "can open"
+    :action (do @refrigerator :open)
+    :expect ((outcome? success)
+             (has-flag? @refrigerator OPENBIT)))
+
+  (test "can take carton when open"
+    :setup ((set-flag! @refrigerator OPENBIT))
+    :action (do @carton :take)
+    :expect ((outcome? success)
+             (held? @carton)))
+
+  (test "can read sign"
+    :action (do @refrigerator :read)
+    :expect ((outcome? success)))
+
+  (test "can't look inside when closed"
+    :action (do @refrigerator :look-inside)
+    :expect ((outcome? blocked)
+             (reason? closed)))
+
+  (test "can look inside when open"
+    :setup ((set-flag! @refrigerator OPENBIT))
+    :action (do @refrigerator :look-inside)
+    :expect ((outcome? success))))
+
+; =============================================================================
+; MICROWAVE - OPEN/CLOSE
+; =============================================================================
+
+(test-group "microwave open/close"
+  :setup ((move! @player @kitchen))
+
+  (test "starts closed"
+    :action (do @microwave :examine)
+    :expect ((outcome? success)
+             (not (has-flag? @microwave OPENBIT))))
+
+  (test "can open"
+    :action (do @microwave :open)
+    :expect ((outcome? success)
+             (has-flag? @microwave OPENBIT)))
+
+  (test "can close"
+    :setup ((set-flag! @microwave OPENBIT))
+    :action (do @microwave :close)
+    :expect ((outcome? success)
+             (not (has-flag? @microwave OPENBIT))))
+
+  (test "can't open when already open"
+    :setup ((set-flag! @microwave OPENBIT))
+    :action (do @microwave :open)
+    :expect ((outcome? blocked)
+             (reason? already-open)))
+
+  (test "can't close when already closed"
+    :action (do @microwave :close)
+    :expect ((outcome? blocked)
+             (reason? already-closed))))
+
+; =============================================================================
+; MICROWAVE - SET TIMER
+; =============================================================================
+
+(test-group "microwave set-timer"
+  :setup ((move! @player @kitchen))
+
+  (test "set to 2 minutes"
+    :action (do @microwave :set-timer 120)
+    :expect ((outcome? success)
+             (global? microwave-timer 120)))
+
+  (test "set to 30 seconds"
+    :action (do @microwave :set-timer 30)
+    :expect ((outcome? success)
+             (global? microwave-timer 30)))
+
+  (test "can't set over 1 hour"
+    :action (do @microwave :set-timer 3601)
+    :expect ((outcome? blocked)
+             (reason? too-long))))
+
+; =============================================================================
+; MICROWAVE - SET TEMPERATURE
+; =============================================================================
+
+(test-group "microwave set-temp"
+  :setup ((move! @player @kitchen))
+
+  (test "set to high"
+    :action (do @microwave :set-temp high)
+    :expect ((outcome? success)
+             (global? microwave-temp 4)))
+
+  (test "set to medium"
+    :action (do @microwave :set-temp medium)
+    :expect ((outcome? success)
+             (global? microwave-temp 3)))
+
+  (test "set to low"
+    :action (do @microwave :set-temp low)
+    :expect ((outcome? success)
+             (global? microwave-temp 2)))
+
+  (test "set to warm"
+    :action (do @microwave :set-temp warm)
+    :expect ((outcome? success)
+             (global? microwave-temp 1)))
+
+  (test "can't change while running"
+    :setup ((queue! microwave-running))
+    :action (do @microwave :set-temp high)
+    :expect ((outcome? blocked)
+             (reason? running))))
+
+; =============================================================================
+; MICROWAVE - START/STOP/CLEAR
+; =============================================================================
+
+(test-group "microwave start/stop/clear"
+  :setup ((move! @player @kitchen))
+
+  (test "can start with timer set"
+    :setup ((set! microwave-timer 120))
+    :action (do @microwave :start)
+    :expect ((outcome? success)
+             (queued? microwave-running)))
+
+  (test "start defaults temp to high"
+    :setup ((set! microwave-timer 120)
+            (set! microwave-temp 0))
+    :action (do @microwave :start)
+    :expect ((outcome? success)
+             (global? microwave-temp 4)))
+
+  (test "can't start without timer"
+    :action (do @microwave :start)
+    :expect ((outcome? blocked)
+             (reason? no-time)))
+
+  (test "can't start with door open"
+    :setup ((set! microwave-timer 120)
+            (set-flag! @microwave OPENBIT))
+    :action (do @microwave :start)
+    :expect ((outcome? blocked)
+             (reason? door-open)))
+
+  (test "can't start when already running"
+    :setup ((queue! microwave-running))
+    :action (do @microwave :start)
+    :expect ((outcome? blocked)
+             (reason? already-running)))
+
+  (test "can stop running"
+    :setup ((queue! microwave-running))
+    :action (do @microwave :stop)
+    :expect ((outcome? success)
+             (not-queued? microwave-running)))
+
+  (test "can't stop when already stopped"
+    :action (do @microwave :stop)
+    :expect ((outcome? blocked)
+             (reason? already-off)))
+
+  (test "clear resets timer"
+    :setup ((set! microwave-timer 120))
+    :action (do @microwave :clear)
+    :expect ((outcome? success)
+             (global? microwave-timer 0)))
+
+  (test "can't clear while running"
+    :setup ((queue! microwave-running))
+    :action (do @microwave :clear)
+    :expect ((outcome? blocked)
+             (reason? running))))
+
+; =============================================================================
+; MICROWAVE - SAFETY INTERLOCK
+; =============================================================================
+
+(test-group "microwave safety interlock"
+  :setup ((move! @player @kitchen))
+
+  (test "opening door stops running microwave"
+    :setup ((queue! microwave-running))
+    :action (do @microwave :open)
+    :expect ((outcome? success)
+             (has-flag? @microwave OPENBIT)
+             (not-queued? microwave-running))))
+
+; =============================================================================
+; MICROWAVE-RUNNING EVENT
+; =============================================================================
+
+(test-group "microwave-running event"
+  :setup ((move! @player @kitchen)
+          (queue! microwave-running))
+
+  (test "decrements timer by 60"
+    :setup ((set! microwave-timer 180))
+    :action (process-events)
+    :expect ((outcome? success)
+             (global? microwave-timer 120)
+             (queued? microwave-running)))
+
+  (test "stops when timer reaches 0"
+    :setup ((set! microwave-timer 60))
+    :action (process-events)
+    :expect ((outcome? success)
+             (global? microwave-timer 0)
+             (not-queued? microwave-running)))
+
+  (test "heats chinese food"
+    :setup ((set! microwave-timer 120)
+            (set! microwave-temp 4)
+            (move! @chinese-food @microwave)
+            (set-prop! @chinese-food heat 0))
+    :action (process-events)
+    :expect ((outcome? success)
+             (prop? @chinese-food heat 4)))
+
+  (test "doesn't fire outside kitchen"
+    :setup ((move! @player @cs-2nd)
+            (set! microwave-timer 120))
+    :action (process-events)
+    :expect ((global? microwave-timer 120))))
+
+; =============================================================================
+; OVERCOOKING
+; =============================================================================
+
+(test-group "overcooking"
+  :setup ((move! @player @kitchen)
+          (move! @chinese-food @microwave)
+          (set! microwave-temp 4)
+          (set! microwave-timer 60)
+          (queue! microwave-running))
+
+  (test "chinese food gets RMUNGBIT when heat > 20"
+    :setup ((set-prop! @chinese-food heat 18))
+    :action (process-events)
+    :expect ((outcome? success)
+             (prop? @chinese-food heat 22)
+             (has-flag? @chinese-food RMUNGBIT)))
+
+  (test "not overcooked at heat 20"
+    :setup ((set-prop! @chinese-food heat 16))
+    :action (process-events)
+    :expect ((outcome? success)
+             (prop? @chinese-food heat 20)
+             (not (has-flag? @chinese-food RMUNGBIT)))))
+
+; =============================================================================
+; COOLING EVENT
+; =============================================================================
+
+(test-group "item-cooling event"
+  :setup ((move! @player @kitchen)
+          (queue! item-cooling))
+
+  (test "decrements heat"
+    :setup ((set-prop! @chinese-food heat 12)
+            (move! @chinese-food @player))
+    :action (process-events)
+    :expect ((outcome? success)
+             (prop? @chinese-food heat 11)))
+
+  (test "doesn't cool food in running microwave"
+    :setup ((move! @chinese-food @microwave)
+            (set-prop! @chinese-food heat 12)
+            (set! microwave-timer 120)
+            (set! microwave-temp 4)
+            (queue! microwave-running))
+    :action (process-events)
+    :expect ((prop? @chinese-food heat 16)))
+
+  (test "re-queues itself"
+    :setup ((set-prop! @chinese-food heat 5)
+            (move! @chinese-food @player))
+    :action (process-events)
+    :expect ((queued? item-cooling)))
+
+  (test "doesn't cool below 0"
+    :setup ((set-prop! @chinese-food heat 0)
+            (move! @chinese-food @player))
+    :action (process-events)
+    :expect ((prop? @chinese-food heat 0))))
+
+; =============================================================================
+; FULL PUZZLE SEQUENCE
+; =============================================================================
+
+(test-sequence "heat chinese food to trading temperature"
+  (step :setup ((move! @player @kitchen)
+                (move! @chinese-food @microwave)
+                (set-prop! @chinese-food heat 0)
+                (set! microwave-timer 0)
+                (set! microwave-temp 0))
+        :action (do @microwave :set-timer 180)
+        :expect ((global? microwave-timer 180)))
+  (step :action (do @microwave :set-temp high)
+        :expect ((global? microwave-temp 4)))
+  (step :action (do @microwave :start)
+        :expect ((queued? microwave-running)))
+  (step :action (process-events)
+        :expect ((global? microwave-timer 120)
+                 (prop? @chinese-food heat 4)))
+  (step :action (process-events)
+        :expect ((global? microwave-timer 60)
+                 (prop? @chinese-food heat 8)))
+  (step :action (process-events)
+        :expect ((global? microwave-timer 0)
+                 (prop? @chinese-food heat 12)
+                 (not-queued? microwave-running))))

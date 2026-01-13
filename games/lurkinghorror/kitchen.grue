@@ -1,0 +1,306 @@
+; Kitchen - Food puzzle area
+; The player must heat the chinese food in the microwave to trade with the hacker.
+; See hacker.grue for the trade logic.
+
+(globals
+  :microwave-timer 0      ; Countdown in seconds (decrements by 60 per turn)
+  :microwave-temp 0)      ; Temperature setting: 0=off, 1=warm, 2=low, 3=med, 4=high
+
+(room @kitchen
+  :description "Kitchen"
+  :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
+counter are a refrigerator and a microwave."
+  :flags (ONBIT)
+  :exits ((east :to @cs-2nd)))
+
+; === Microwave Oven ===
+; Container that heats its contents when running.
+; Opening the door stops the microwave (safety interlock).
+
+(object @microwave
+  :description "microwave oven"
+  :location @kitchen
+  :flags (NDESCBIT SEARCHBIT CONTBIT TRANSBIT OPENABLE)
+  :properties (:capacity 30)
+
+  (def temp-names '("off" "warm" "low" "medium" "high"))
+
+  (defn format-timer ()
+    (let ((mins (/ microwave-timer 60))
+          (secs (mod microwave-timer 60)))
+      (str mins ":" (if (< secs 10) "0" "") secs)))
+
+  :behaviors (
+    :examine (fn ()
+      (success :context
+        ((description
+          (if (queued? microwave-running)
+            "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is on."
+            (str "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is off and it's "
+                 (if (has-flag ?self OPENBIT) "open" "closed")
+                 "."))))))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open))
+        (true
+          (success
+            :effects ((set-flag! ?self OPENBIT)
+                      (when (queued? microwave-running) (dequeue! microwave-running)))
+            :context ((description
+              (if (queued? microwave-running)
+                "The microwave oven shuts off, and is now open."
+                "The microwave oven is now open.")))))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed))
+        (true
+          (success
+            :effects ((clear-flag! ?self OPENBIT))
+            :context ((description "The microwave oven is now closed."))))))
+
+    ; === LLM Interface Behaviors ===
+    ; These are the primary way to interact with the microwave.
+
+    ; Set timer in seconds: (do @microwave :set-timer 120) for 2 minutes
+    ; ?value binding receives the numeric argument
+    :set-timer (fn ()
+      (cond
+        ((> ?value 3600)
+          (blocked :reason too-long
+                   :context ((description "You can't set it for that long a time."))))
+        (true
+          (success
+            :effects ((set! microwave-timer ?value))
+            :context ((description (str "The timer display now reads " (format-timer) ".")))))))
+
+    ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
+    ; ?value binding receives the temperature symbol
+    :set-temp (fn ()
+      (cond
+        ((queued? microwave-running)
+          (blocked :reason running
+                   :context ((description "Nothing happens."))))
+        (true
+          (let ((temp-val (condp = ?value
+                            warm 1
+                            low 2
+                            medium 3
+                            high 4
+                            nil)))  ; unknown
+            (if temp-val
+              (success
+                :effects ((set! microwave-temp temp-val))
+                :context ((description (str "The bottom of the display now reads \"" (nth temp-names temp-val) "\"."))))
+              (blocked :reason unknown-temp
+                       :context ((description "Unknown temperature setting. Use warm, low, medium, or high."))))))))
+
+    ; Start the microwave: (do @microwave :start)
+    :start (fn ()
+      (cond
+        ((queued? microwave-running)
+          (blocked :reason already-running
+                   :context ((description "It's already started."))))
+        ((has-flag ?self OPENBIT)
+          (blocked :reason door-open
+                   :context ((description "Nothing happens, as there's a safety interlock engaged when the door is open."))))
+        ((= microwave-timer 0)
+          (blocked :reason no-time
+                   :context ((description "Nothing happens, as there's no time set on it yet."))))
+        (true
+          (success
+            :effects ((when (= microwave-temp 0) (set! microwave-temp 4))
+                      (queue! microwave-running))
+            :context ((description "The microwave starts up. The timer begins counting down."))))))
+
+    ; Stop the microwave: (do @microwave :stop)
+    :stop (fn ()
+      (cond
+        ((queued? microwave-running)
+          (success
+            :effects ((dequeue! microwave-running))
+            :context ((description (str "The microwave stops. The timer display now reads " (format-timer) ".")))))
+        (true
+          (blocked :reason already-off
+                   :context ((description "It's already off."))))))
+
+    ; Clear the timer: (do @microwave :clear)
+    :clear (fn ()
+      (cond
+        ((queued? microwave-running)
+          (blocked :reason running
+                   :context ((description "Nothing happens."))))
+        (true
+          (success
+            :effects ((set! microwave-timer 0))
+            :context ((description "The timer clears to zero."))))))
+
+    ; Aliases for turn-on/turn-off
+    :turn-on (fn () (redirect :action (do @microwave :start)))
+    :turn-off (fn () (redirect :action (do @microwave :stop)))
+
+    :unplug (fn ()
+      (blocked :reason inaccessible
+               :context ((description "You can't get to the plug."))))))
+
+; === Microwave Controls ===
+; Physical buttons: 0-9 (digits), WM/LO/MED/HI (temp), START/STOP/CLEAR
+;
+; LLM interface uses explicit behaviors on @microwave:
+;   (do @microwave :set-timer 120)     ; set to 2:00 (120 seconds)
+;   (do @microwave :set-temp high)     ; set temperature (warm/low/medium/high)
+;   (do @microwave :start)             ; start cooking
+;   (do @microwave :stop)              ; stop cooking
+;   (do @microwave :clear)             ; clear timer
+
+(object @controls
+  :description "microwave controls"
+  :location @kitchen
+  :flags (NDESCBIT)
+
+  (def temp-names '("off" "warm" "low" "medium" "high"))
+
+  (defn format-timer ()
+    (let ((mins (/ microwave-timer 60))
+          (secs (mod microwave-timer 60)))
+      (str mins ":" (if (< secs 10) "0" "") secs)))
+
+  :behaviors (
+    :examine (fn ()
+      (success :context
+        ((description (str "There are controls labelled 0 to 9, WM, LO, MED, HI, START, CLEAR, and STOP. "
+                          "The timer display now reads " (format-timer) "."
+                          " The display shows \"" (nth temp-names microwave-temp) "\".")))))
+
+    ; Redirect push to the microwave's explicit behaviors
+    :push (fn ()
+      (success :context
+        ((description "You can set the timer, temperature, and start/stop the microwave."))))))
+
+; === LED Readout/Display ===
+
+(object @readout
+  :description "display"
+  :location @kitchen
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (let ((mins (/ microwave-timer 60))
+            (secs (mod microwave-timer 60))
+            (temp-names '("off" "warm" "low" "medium" "high")))
+        (success :context
+          ((description (str "The display is currently displaying "
+                            (if (= microwave-timer 0)
+                              "the current time"
+                              (str mins ":" (if (< secs 10) "0" "") secs))
+                            " and the word \"" (nth temp-names microwave-temp) "\"."))))))))
+
+; === Kitchen Counter ===
+
+(object @kitchen-counter
+  :description "kitchen counter"
+  :location @kitchen
+  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
+  :properties (:capacity 200))
+
+; === Refrigerator ===
+; Contains the chinese food carton.
+
+(object @refrigerator
+  :description "refrigerator"
+  :location @kitchen
+  :flags (NDESCBIT SEARCHBIT CONTBIT OPENABLE READBIT)
+  :properties (:capacity 200)
+
+  :behaviors (
+    :examine (fn ()
+      (success :context
+        ((description (str "This is a medium-sized refrigerator whose door is "
+                          (if (has-flag ?self OPENBIT) "open" "closed")
+                          ". There is a sign on the front.")))))
+
+    :read (fn ()
+      (success :context
+        ((description "\"Everything in this fridge must have a name and date on it!\" (The sign has neither.)"))))
+
+    :look-inside (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (success :context
+            ((description "The interior of the refrigerator is appalling. There are soggy lunch bags, ancient sandwiches and other less identifiable items."))))
+        (true
+          (blocked :reason closed
+                   :context ((description "You have to open it to look in it."))))))
+
+    :unplug (fn ()
+      (blocked :reason inaccessible
+               :context ((description "You can't get to the plug."))))))
+
+; === Microwave Running Event ===
+; Each turn: decrement timer by 60 seconds, heat contents.
+; When timer hits 0, stop automatically.
+;
+; Heating formula (from ZIL): heat += microwave-temp each turn
+; Chinese food is "hot enough" at heat >= 12, "overcooked" (RMUNGBIT) at heat > 20
+;
+; Heatable items (from ZIL HEAT-TABLE): @chinese-food, @smooth-stone, @dead-rat,
+; @hand, @coke, @snack. We enumerate them explicitly for purity - no iteration.
+
+; heat-item-effect: Generate effect to heat an item in the microwave
+(defn heat-item-effect (item)
+  (when (in? item @microwave)
+    (set-prop! item heat (+ (prop item heat) microwave-temp))))
+
+; overcook-effect: Set RMUNGBIT if item exceeds heat threshold
+(defn overcook-effect (item threshold)
+  (when (and (in? item @microwave) (> (prop item heat) threshold))
+    (set-flag! item RMUNGBIT)))
+
+(event microwave-running
+  :location @kitchen
+  :on-turn
+    (let ((new-timer (- microwave-timer 60)))
+      (cond
+        ((<= new-timer 0)
+          (success
+            :effects ((set! microwave-timer 0)
+                      (dequeue! microwave-running)
+                      ; Heat heatable items (explicit enumeration)
+                      (heat-item-effect @chinese-food)
+                      (heat-item-effect @carton)
+                      ; Overcook chinese food if heat > 20
+                      (overcook-effect @chinese-food 20))
+            :context ((description "The microwave stops.")
+                      (timer-display "0:00"))))
+        (true
+          (success
+            :effects ((set! microwave-timer new-timer)
+                      ; Heat heatable items
+                      (heat-item-effect @chinese-food)
+                      (heat-item-effect @carton)
+                      ; Overcook chinese food if heat > 20
+                      (overcook-effect @chinese-food 20))
+            :context ((timer-display (str (/ new-timer 60) ":"
+                                         (if (< (mod new-timer 60) 10) "0" "")
+                                         (mod new-timer 60)))))))))
+
+; === Cooling Event ===
+; Items with a :heat property cool down over time when not being heated.
+; Runs globally (not location-gated), queued at game start.
+; ZIL: I-COOL runs every 2 turns, decrements heat by 1 every 3 turns.
+; Simplified: decrement heat by 1 each time this fires (queued every 2 turns).
+
+(event item-cooling
+  :on-turn
+    (success
+      :effects (
+        ; Cool chinese food if not in running microwave
+        (when (and (> (prop @chinese-food heat) 0)
+                   (not (and (in? @chinese-food @microwave) (queued? microwave-running))))
+          (set-prop! @chinese-food heat (- (prop @chinese-food heat) 1)))
+        ; Re-queue ourselves for 2 turns from now
+        (queue! item-cooling 2))))
