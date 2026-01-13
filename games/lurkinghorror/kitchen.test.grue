@@ -344,3 +344,58 @@
         :expect ((global? microwave-timer 0)
                  (prop? @chinese-food heat 12)
                  (not-queued? microwave-running))))
+
+; =============================================================================
+; PUT BEHAVIOR
+; =============================================================================
+
+(test-group "put items in containers"
+  :setup ((move! @player @kitchen)
+          (move! @carton @player)
+          (set-flag! @microwave OPENBIT))
+
+  (test "can put item in open container"
+    :action (do @carton :put @microwave)
+    :expect ((outcome? success)
+             (in? @carton @microwave)))
+
+  (test "can't put item in closed container"
+    :setup ((clear-flag! @microwave OPENBIT))
+    :action (do @carton :put @microwave)
+    :expect ((outcome? blocked)
+             (reason? closed)))
+
+  (test "can't put item in non-container"
+    :action (do @carton :put @readout)
+    :expect ((outcome? blocked)
+             (reason? not-container)))
+
+  (test "can't put item not being held"
+    :setup ((move! @carton @kitchen))
+    :action (do @carton :put @microwave)
+    :expect ((outcome? blocked)
+             (reason? not-held))))
+
+; =============================================================================
+; NESTED CONTAINER HEATING
+; =============================================================================
+
+(test-group "heating food in carton in microwave"
+  :setup ((move! @player @kitchen)
+          (move! @carton @microwave)          ; carton in microwave
+          (move! @chinese-food @carton)       ; food in carton
+          (set-prop! @chinese-food heat 0)
+          (set! microwave-timer 120)
+          (set! microwave-temp 4)
+          (queue! microwave-running))
+
+  (test "heats chinese food inside carton"
+    :action (process-events)
+    :expect ((outcome? success)
+             (prop? @chinese-food heat 4)))
+
+  (test "overcooks food inside carton"
+    :setup ((set-prop! @chinese-food heat 18))
+    :action (process-events)
+    :expect ((prop? @chinese-food heat 22)
+             (has-flag? @chinese-food RMUNGBIT))))

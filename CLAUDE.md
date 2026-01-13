@@ -23,6 +23,8 @@ Do NOT start work on a bead without claiming it.
 # Converting ZIL to Grue
 
 When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go.
+Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their beads P1, so we fix
+them before moving on to the rest of the conversion.
 
 # The Grue Language
 

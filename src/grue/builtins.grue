@@ -58,3 +58,21 @@
 
   (true
     (success :effects ((clear-flag! ?self OPENBIT)) :message "Closed."))))
+
+; === put ===
+; Default put behavior - put ?self into ?value (the container)
+; Syntax: (do @item :put @container)
+
+(default put (cond
+  ((not (held-by? ?self ?actor))
+    (blocked :reason not-held :message "You're not carrying that."))
+
+  ((not (has-flag ?value CONTBIT))
+    (blocked :reason not-container :message "That's not a container."))
+
+  ; Container must be open (has OPENBIT) or not be openable at all
+  ((and (has-flag ?value OPENABLE) (not (has-flag ?value OPENBIT)))
+    (blocked :reason closed :message "It's closed."))
+
+  (true
+    (success :effects ((move! ?self ?value)) :message "Done."))))

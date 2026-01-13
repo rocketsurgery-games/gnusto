@@ -650,7 +650,7 @@ class GrueRuntime:
 
         if behavior is None:
             # Try default behaviors based on flags
-            default_result = self._try_default_behavior(verb, target, actor)
+            default_result = self._try_default_behavior(verb, target, actor, args)
             if default_result is not None:
                 return default_result
 
@@ -688,7 +688,7 @@ class GrueRuntime:
 
         # If behavior returns 'default' with no action, fall through to default behavior
         if result.outcome == "default" and result.default_action is None:
-            default_result = self._try_default_behavior(verb, target, actor)
+            default_result = self._try_default_behavior(verb, target, actor, args)
             if default_result is not None:
                 return default_result
 
@@ -801,7 +801,8 @@ class GrueRuntime:
         self,
         verb: str,
         obj_name: str,
-        actor: str | None = None
+        actor: str | None = None,
+        args: tuple = ()
     ) -> ActionResult | None:
         """
         Try default behaviors defined in world.defaults.
@@ -810,6 +811,7 @@ class GrueRuntime:
             verb: The action verb
             obj_name: Target object
             actor: Who is performing the action (default: player entity)
+            args: Additional positional arguments (e.g., container for 'put')
 
         Returns ActionResult if a default applies, None otherwise.
         """
@@ -826,6 +828,9 @@ class GrueRuntime:
             "self": obj_name,
             "actor": actor,
         }
+        # Bind ?value to first positional arg if any (convenience for simple behaviors)
+        if args:
+            bindings["value"] = args[0]
 
         # Evaluate the default behavior
         return self._evaluate_behavior(default_behavior, bindings)

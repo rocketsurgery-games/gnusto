@@ -18,7 +18,7 @@
   :description "white carton"
   :location @refrigerator  ; In the kitchen refrigerator
   :flags (TAKEBIT CONTBIT OPENBIT)
-  :properties ())
+  :properties (:heat 0))  ; Heatable object - can be warmed in microwave
 
 (object @chinese-food
   :description "chinese food"

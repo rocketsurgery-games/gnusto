@@ -275,6 +275,7 @@ class ExprEvaluator:
             "here?": self._eval_here,
             "in?": self._eval_in,
             "contained-in?": self._eval_in,  # alias for in?
+            "inside?": self._eval_inside,  # recursive containment check
             "held-by?": self._eval_held_by,
             "at?": self._eval_at,
             "room?": self._eval_room,
@@ -600,6 +601,36 @@ class ExprEvaluator:
         obj = self.eval(form[1])
         container = self.eval(form[2])
         return self.state.get_object_location(obj) == container
+
+    def _eval_inside(self, form: SList) -> bool:
+        """(inside? OBJ CONTAINER) - recursive check if OBJ is inside CONTAINER.
+
+        Returns true if:
+        - OBJ's location is CONTAINER, OR
+        - OBJ is inside something that is inside CONTAINER (recursively)
+
+        Example: If @food is in @carton and @carton is in @microwave,
+        (inside? @food @microwave) returns true.
+        """
+        if len(form) != 3:
+            raise EvalError(f"'inside?' expects 2 arguments, got {len(form) - 1}")
+        obj = self.eval(form[1])
+        container = self.eval(form[2])
+
+        # Walk up the containment chain
+        current = obj
+        max_depth = 10  # Prevent infinite loops
+        for _ in range(max_depth):
+            loc = self.state.get_object_location(current)
+            if loc is None:
+                return False
+            if loc == container:
+                return True
+            # Check if loc is itself an object (not a room)
+            if self.state.is_room(loc):
+                return False
+            current = loc
+        return False
 
     def _eval_held_by(self, form: SList) -> bool:
         """(held-by? OBJ ACTOR) - check if OBJ's location is ACTOR."""
