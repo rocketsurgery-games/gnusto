@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from copy import deepcopy
 
-from .parser import GrueWorld, GrueBehavior, GrueCase
+from .parser import GrueWorld, GrueBehavior
 from .expr import (
     ExprEvaluator, EffectExecutor, GrueFn,
     BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
@@ -219,6 +219,10 @@ class GrueRuntime:
     def is_room(self, loc: str) -> bool:
         return loc in self.state.rooms
 
+    def is_object(self, name: str) -> bool:
+        """Check if name refers to a known object."""
+        return name in self.state.objects
+
     def get_contents(self, container: str) -> list[str]:
         return [
             name for name, obj in self.state.objects.items()
@@ -320,8 +324,12 @@ class GrueRuntime:
         return results
 
     def _evaluate_event(self, event: "GrueEvent") -> ActionResult:
-        """Evaluate an event's cases and return the result."""
-        from .forms import GrueEvent  # Import here to avoid circular
+        """Evaluate an event's body and return the result."""
+        if event.body is None:
+            return ActionResult(
+                outcome="error",
+                error=f"Event {event.name} has no body"
+            )
 
         # Events use simple bindings (no direct object)
         bindings = {"actor": self.player_name}
@@ -330,40 +338,16 @@ class GrueRuntime:
         try:
             evaluator = ExprEvaluator(self, self._functions)
 
-            for case in event.cases:
-                # Evaluate the condition
-                try:
-                    condition_met = evaluator.eval(case.when)
-                except Exception as e:
-                    return ActionResult(
-                        outcome="error",
-                        error=f"Error evaluating event {event.name} condition: {e}"
-                    )
+            try:
+                result = evaluator.eval(event.body)
+            except Exception as e:
+                return ActionResult(
+                    outcome="error",
+                    error=f"Error evaluating event {event.name}: {e}"
+                )
 
-                if condition_met:
-                    # Execute effects
-                    if case.effects:
-                        executor = EffectExecutor(self, self._functions)
-                        for effect in case.effects:
-                            try:
-                                executor.execute(effect)
-                            except Exception as e:
-                                return ActionResult(
-                                    outcome="error",
-                                    error=f"Error executing event {event.name} effect: {e}"
-                                )
-
-                    return ActionResult(
-                        outcome=case.outcome or "success",
-                        reason=case.reason,
-                        context=case.context
-                    )
-
-            # No case matched - shouldn't happen with proper (true ...) fallback
-            return ActionResult(
-                outcome="success",
-                context=[("event", event.name), ("note", "no case matched")]
-            )
+            # Convert behavior result to ActionResult (same as behaviors)
+            return self._behavior_result_to_action_result(result, evaluator)
         finally:
             self.bindings = old_bindings
 
@@ -798,24 +782,19 @@ class GrueRuntime:
         behavior: GrueBehavior,
         bindings: dict[str, Any]
     ) -> ActionResult:
-        """Evaluate a behavior and return the result.
+        """Evaluate a behavior's body and return the result."""
+        if behavior.body is None:
+            return ActionResult(
+                outcome="error",
+                error=f"Behavior {behavior.verb} has no body"
+            )
 
-        Behaviors can use either:
-        1. New style: body expression that evaluates to BehaviorSuccess/Blocked/etc.
-        2. Legacy style: cases list (cond-based, for backward compatibility)
-        """
         # Set bindings for this evaluation (restored after)
         old_bindings = self.bindings
         self.bindings = bindings
         try:
             evaluator = ExprEvaluator(self, self._functions)
-
-            # New style: use body expression
-            if behavior.body is not None:
-                return self._evaluate_behavior_body(behavior, bindings, evaluator)
-
-            # Legacy style: iterate through cases
-            return self._evaluate_behavior_cases(behavior, evaluator)
+            return self._evaluate_behavior_body(behavior, bindings, evaluator)
         finally:
             self.bindings = old_bindings
 
@@ -900,73 +879,6 @@ class GrueRuntime:
         return ActionResult(
             outcome="error",
             error=f"Behavior returned unexpected type: {type(result).__name__}"
-        )
-
-    def _evaluate_behavior_cases(
-        self,
-        behavior: GrueBehavior,
-        evaluator: ExprEvaluator
-    ) -> ActionResult:
-        """Legacy: evaluate a behavior using its cases list."""
-        for case in behavior.cases:
-            # Evaluate the condition
-            try:
-                condition_met = evaluator.eval(case.when)
-            except Exception as e:
-                return ActionResult(
-                    outcome="error",
-                    error=f"Error evaluating condition: {e}"
-                )
-
-            if condition_met:
-                # This case matches
-                if case.outcome == "default":
-                    return ActionResult(
-                        outcome="default",
-                        default_action=case.action,
-                        context=case.context
-                    )
-
-                if case.outcome == "redirect":
-                    return ActionResult(
-                        outcome="redirect",
-                        default_action=case.action,
-                        context=case.context
-                    )
-
-                if case.outcome == "blocked":
-                    return ActionResult(
-                        outcome="blocked",
-                        reason=case.reason,
-                        context=case.context
-                    )
-
-                # Success - execute effects
-                effects_applied = []
-                if case.effects:
-                    executor = EffectExecutor(self, self._functions)
-                    for effect in case.effects:
-                        try:
-                            executor.execute(effect)
-                            effects_applied.append(str(effect))
-                        except Exception as e:
-                            return ActionResult(
-                                outcome="error",
-                                error=f"Error executing effect: {e}"
-                            )
-
-                self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
-
-                return ActionResult(
-                    outcome="success",
-                    context=case.context,
-                    effects_applied=effects_applied
-                )
-
-        # No case matched - shouldn't happen if behaviors have a (case true ...) fallback
-        return ActionResult(
-            outcome="blocked",
-            reason="no-matching-case"
         )
 
     def check_victory(self) -> bool:

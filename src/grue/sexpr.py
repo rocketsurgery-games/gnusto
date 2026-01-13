@@ -26,6 +26,7 @@ from enum import Enum, auto
 class TokenType(Enum):
     LPAREN = auto()
     RPAREN = auto()
+    QUOTE = auto()  # '
     SYMBOL = auto()
     KEYWORD = auto()  # :keyword
     STRING = auto()
@@ -241,6 +242,9 @@ class Tokenizer:
         elif ch == ")":
             self.advance()
             return Token(TokenType.RPAREN, ")", start_line, start_col)
+        elif ch == "'":
+            self.advance()
+            return Token(TokenType.QUOTE, "'", start_line, start_col)
         elif ch == '"':
             s = self.read_string()
             return Token(TokenType.STRING, s, start_line, start_col)
@@ -281,7 +285,11 @@ class Parser:
     def parse_expr(self) -> SExpr:
         tok = self.peek()
 
-        if tok.type == TokenType.LPAREN:
+        if tok.type == TokenType.QUOTE:
+            self.advance()  # consume '
+            quoted = self.parse_expr()
+            return SList([Symbol("quote"), quoted])
+        elif tok.type == TokenType.LPAREN:
             return self.parse_list()
         elif tok.type == TokenType.SYMBOL:
             self.advance()
@@ -361,6 +369,11 @@ def to_string(expr: SExpr) -> str:
     elif isinstance(expr, Keyword):
         return f":{expr.name}"
     elif isinstance(expr, SList):
+        # Pretty-print quote forms
+        if (len(expr.items) == 2 and
+            isinstance(expr.items[0], Symbol) and
+            expr.items[0].name == "quote"):
+            return f"'{to_string(expr.items[1])}"
         items = " ".join(to_string(item) for item in expr.items)
         return f"({items})"
     elif isinstance(expr, str):

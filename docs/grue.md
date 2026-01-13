@@ -67,8 +67,15 @@ true false      ; booleans
 ; Lists
 (form arg1 arg2 ...)
 
+; Quote (data, not code)
+'(a b c)        ; literal list, not a function call
+'@entity        ; literal symbol
+
 ; Keyword arguments (Clojure-style)
 (form :key1 value1 :key2 value2)
+
+; Keyword as function (Clojure-style)
+(:key obj)      ; lookup :key on obj
 
 ; Result/response maps
 (outcome :status blocked :reason locked)
@@ -742,6 +749,30 @@ Existential quantifier. Returns true if PRED is true for any element.
 Universal quantifier. Returns true if PRED is true for all elements.
 ```scheme
 (all (contents @chest) (lambda (x) (has-flag x SMALL)))
+```
+
+#### `'EXPR` or `(quote EXPR)`
+Quote prevents evaluation. Returns EXPR as data rather than evaluating it.
+```scheme
+'(a b c)           ; => the list (a b c), not a function call
+'@hacker           ; => the symbol @hacker
+(quote (foo bar))  ; => same as '(foo bar)
+```
+
+#### `(list EXPR ...)`
+List constructor. Evaluates all arguments and returns them as a list.
+```scheme
+(list 1 2 3)       ; => (1 2 3)
+(list @pc @chair)  ; => (@pc @chair) - evaluates to object names
+```
+
+#### `(:keyword OBJ [DEFAULT])`
+Keyword as function (Clojure-style). Looks up the keyword on the object.
+Works for runtime properties and quoted keyword-value lists.
+```scheme
+(:size @pc)                         ; => 30 (property lookup)
+(:missing @pc "default")            ; => "default" (with fallback)
+(:foo '(:foo "bar" :baz "qux"))     ; => "bar" (quoted list lookup)
 ```
 
 ### Functions (Uniform Evaluation)

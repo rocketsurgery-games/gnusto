@@ -171,6 +171,10 @@ class WorldState(Protocol):
         """Check if location is a room."""
         ...
 
+    def is_object(self, name: str) -> bool:
+        """Check if name refers to a known object."""
+        ...
+
     def get_contents(self, container: str) -> list[str]:
         """Get contents of container/room."""
         ...
@@ -302,6 +306,13 @@ class ExprEvaluator:
             "blocked": self._eval_blocked,
             "redirect": self._eval_redirect,
             "default": self._eval_default,
+
+            # Debug/REPL
+            "print": self._eval_print,
+
+            # Data constructors
+            "quote": self._eval_quote,
+            "list": self._eval_list,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -354,6 +365,12 @@ class ExprEvaluator:
                 return self._call_function(name, form)
 
             raise EvalError(f"Unknown function: {name}")
+
+        # If head is a keyword, use it as a lookup function (Clojure-style)
+        # (:key obj) => look up :key on obj
+        # (:key obj default) => look up :key on obj, return default if not found
+        if isinstance(head, Keyword):
+            return self._eval_keyword_lookup(head, form)
 
         # If head is a list, evaluate it - might be a fn expression
         if isinstance(head, SList):
@@ -1011,6 +1028,133 @@ class ExprEvaluator:
                         context[k] = self.eval(v)
 
         return BehaviorDefault(action=action, context=context)
+
+    # === Debug/REPL ===
+
+    def _eval_print(self, form: SList) -> Any:
+        """(print EXPR ...) - Print values to stdout.
+
+        Prints each argument on its own line with formatted output.
+        For objects, shows location, flags, and properties.
+        Returns the last value printed (or nil if none).
+        """
+        result: Any = None
+        for item in form.items[1:]:
+            result = self.eval(item)
+            self._print_value(result)
+        return result
+
+    def _print_value(self, value: Any, indent: int = 0) -> None:
+        """Format and print a value."""
+        prefix = "  " * indent
+
+        if value is None:
+            print(f"{prefix}nil")
+        elif isinstance(value, bool):
+            print(f"{prefix}{str(value).lower()}")
+        elif isinstance(value, (int, float)):
+            print(f"{prefix}{value}")
+        elif isinstance(value, str):
+            # Check if it's a room or object
+            if self.state.is_room(value):
+                print(f"{prefix}@{value} (room)")
+            elif self.state.is_object(value):
+                loc = self.state.get_object_location(value)
+                flags = self.state.get_object_flags(value)
+                print(f"{prefix}@{value}")
+                print(f"{prefix}  location: {loc or 'nil'}")
+                if flags:
+                    print(f"{prefix}  flags: {', '.join(sorted(flags))}")
+            else:
+                # Plain string
+                print(f"{prefix}{value}")
+        elif isinstance(value, list):
+            if not value:
+                print(f"{prefix}()")
+            else:
+                print(f"{prefix}(")
+                for item in value:
+                    self._print_value(item, indent + 1)
+                print(f"{prefix})")
+        elif isinstance(value, dict):
+            if not value:
+                print(f"{prefix}{{}}")
+            else:
+                print(f"{prefix}{{")
+                for k, v in value.items():
+                    print(f"{prefix}  {k}:")
+                    self._print_value(v, indent + 2)
+                print(f"{prefix}}}")
+        elif isinstance(value, GrueFn):
+            params = " ".join(value.params)
+            print(f"{prefix}<fn ({params}) ...>")
+        else:
+            print(f"{prefix}{value}")
+
+    # === Keyword as function (Clojure-style) ===
+
+    def _eval_keyword_lookup(self, key: Keyword, form: SList) -> Any:
+        """(:key obj [default]) - look up key on obj.
+
+        Works on:
+        - Objects: looks up runtime property, returns None if not found
+        - Quoted maps/lists with keyword-value pairs: (:foo '(:foo "bar")) => "bar"
+        - Dicts: standard key lookup
+
+        Examples:
+            (:size @pc) => 30
+            (:missing @pc) => None
+            (:missing @pc "default") => "default"
+            (:foo '(:foo "bar" :baz "qux")) => "bar"
+        """
+        if len(form) < 2 or len(form) > 3:
+            raise EvalError(f"Keyword lookup requires 1-2 arguments: (:{key.name} obj [default])")
+
+        target = self.eval(form[1])
+        default = self.eval(form[2]) if len(form) == 3 else None
+        key_name = key.name
+
+        # Handle dict
+        if isinstance(target, dict):
+            return target.get(key_name, default)
+
+        # Handle SList (quoted keyword-value list like '(:foo "bar" :baz "qux"))
+        if isinstance(target, SList):
+            items = target.items
+            for i in range(0, len(items) - 1, 2):
+                if isinstance(items[i], Keyword) and items[i].name == key_name:
+                    return items[i + 1]
+            return default
+
+        # Handle object name (string) - look up property via state
+        if isinstance(target, str):
+            val = self.state.get_object_property(target, key_name)
+            return val if val is not None else default
+
+        return default
+
+    # === Data constructors ===
+
+    def _eval_quote(self, form: SList) -> Any:
+        """(quote EXPR) or 'EXPR - return EXPR unevaluated.
+
+        Examples:
+            '(a b c) => SList([Symbol(a), Symbol(b), Symbol(c)])
+            'foo => Symbol(foo)
+            '42 => 42
+        """
+        if len(form) != 2:
+            raise EvalError("'quote' requires exactly one argument")
+        return form[1]
+
+    def _eval_list(self, form: SList) -> list[Any]:
+        """(list EXPR ...) - construct a list from evaluated arguments.
+
+        Examples:
+            (list 1 2 3) => [1, 2, 3]
+            (list "a" "b") => ["a", "b"]
+        """
+        return [self.eval(item) for item in form.items[1:]]
 
     # === Quantifiers ===
 

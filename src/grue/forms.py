@@ -65,17 +65,6 @@ class GrueExit:
 
 
 @dataclass
-class GrueCase:
-    """A single case in a behavior."""
-    when: SExpr
-    outcome: str  # "success", "blocked", "default"
-    effects: list[SExpr] = field(default_factory=list)
-    reason: str | None = None
-    context: list[tuple[str, Any]] = field(default_factory=list)
-    action: SExpr | None = None  # For default with explicit action
-
-
-@dataclass
 class GrueBehavior:
     """A behavior definition for a specific verb.
 
@@ -96,8 +85,6 @@ class GrueBehavior:
     verb: str
     params: list[str] = field(default_factory=list)  # Parameter names (without ?)
     body: SExpr | None = None  # The function body expression
-    # DEPRECATED: cases is kept for backward compatibility during migration
-    cases: list[GrueCase] = field(default_factory=list)
 
 
 @dataclass
@@ -148,8 +135,8 @@ class GrueDefeat:
 class GrueEvent:
     """Turn-based event handler (like ZIL interrupts).
 
-    Events run once per turn when queued. They use the same cond/case
-    structure as behaviors, allowing stage-based logic.
+    Events run once per turn when queued. The body is evaluated like
+    a behavior - typically a (cond ...) that returns success/blocked.
 
     Example:
         (event hacker-helps
@@ -161,7 +148,7 @@ class GrueEvent:
     """
     name: str
     location: str | None  # If set, event only fires when player is here
-    cases: list[GrueCase] = field(default_factory=list)  # Same as behavior cases
+    body: SExpr | None = None  # The :on-turn handler expression
 
 
 @dataclass
@@ -336,89 +323,6 @@ def parse_exits(expr: SExpr) -> list[GrueExit]:
     return exits
 
 
-def parse_cond_clause(expr: SExpr) -> GrueCase:
-    """Parse a cond clause: (CONDITION (outcome :key val ...)).
-
-    Examples:
-        ((not (has-flag ?self TAKEBIT)) (blocked :reason not-takeable))
-        (true (success :effects ((move! ?self ?actor))))
-    """
-    if not isinstance(expr, SList) or len(expr) < 2:
-        raise FormParseError(f"Expected (CONDITION (outcome ...)), got {expr}")
-
-    condition = expr[0]
-    outcome_form = expr[1]
-
-    if not isinstance(outcome_form, SList) or len(outcome_form) < 1:
-        raise FormParseError(f"Expected outcome form like (success ...), got {outcome_form}")
-
-    outcome_type = outcome_form[0]
-    if not isinstance(outcome_type, Symbol):
-        raise FormParseError(f"Expected outcome type (success/blocked/default), got {outcome_type}")
-
-    outcome = outcome_type.name
-    if outcome not in ("success", "blocked", "default", "redirect"):
-        raise FormParseError(f"Unknown outcome type: {outcome}")
-
-    # Parse the outcome form's keyword arguments
-    kwargs = parse_kwargs(list(outcome_form.items[1:]))
-
-    effects: list[SExpr] = []
-    if "effects" in kwargs:
-        effects_expr = kwargs["effects"]
-        if isinstance(effects_expr, SList):
-            effects = list(effects_expr.items)
-
-    reason = None
-    if "reason" in kwargs:
-        reason = expect_symbol(kwargs["reason"], "clause reason")
-
-    # Build context from various keyword args
-    context: list[tuple[str, Any]] = []
-    if "context" in kwargs:
-        context = parse_context(kwargs["context"])
-    # Also support :message as shorthand for context
-    if "message" in kwargs:
-        msg = kwargs["message"]
-        if isinstance(msg, str):
-            context.append(("message", msg))
-        else:
-            context.append(("message", str(msg)))
-
-    action = kwargs.get("action")
-
-    return GrueCase(
-        when=condition,
-        outcome=outcome,
-        effects=effects,
-        reason=reason,
-        context=context,
-        action=action,
-    )
-
-
-def parse_cond(expr: SExpr) -> list[GrueCase]:
-    """Parse (cond (CONDITION (outcome ...)) (CONDITION (outcome ...)) ...).
-
-    New syntax using standard Lisp cond form. Each clause is:
-        (CONDITION (success :effects ... :message ...))
-        (CONDITION (blocked :reason ... :message ...))
-        (CONDITION (default :action ...))
-    """
-    if not isinstance(expr, SList) or len(expr) < 2:
-        raise FormParseError(f"Expected (cond ...), got {expr}")
-
-    if not isinstance(expr[0], Symbol) or expr[0].name != "cond":
-        raise FormParseError(f"Expected 'cond', got {expr[0]}")
-
-    cases = []
-    for clause in expr.items[1:]:
-        case = parse_cond_clause(clause)
-        cases.append(case)
-
-    return cases
-
-
 def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
     """Parse behaviors list: (:verb (fn (?params) body) ...)
 
@@ -481,14 +385,8 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
                     else:
                         raise FormParseError(f"Expected ?param in params list, got {p}")
 
-            # Store the body expression directly - no longer require (cond ...)
+            # Store the body expression directly
             behavior = GrueBehavior(verb=verb, params=params, body=body_expr)
-
-            # For backward compatibility, also parse cond if present
-            if (isinstance(body_expr, SList) and len(body_expr) >= 1 and
-                isinstance(body_expr[0], Symbol) and body_expr[0].name == "cond"):
-                behavior.cases = parse_cond(body_expr)
-
             behaviors.append(behavior)
             i += 1
         else:
@@ -622,10 +520,10 @@ def _parse_defeat(expr: SList, world: GrueWorld) -> None:
 
 @form("event")
 def _parse_event(expr: SList, world: GrueWorld) -> None:
-    """Parse (event NAME :location ROOM :on-turn (cond ...)).
+    """Parse (event NAME :location ROOM :on-turn BODY).
 
     Turn-based event handlers that run once per turn when queued.
-    Uses the same cond/case structure as behaviors.
+    The body is evaluated at runtime like a behavior.
 
     Example:
         (event hacker-helps
@@ -650,16 +548,16 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
         loc_expr = kwargs["location"]
         location = expect_symbol(loc_expr, "event location")
 
-    # Parse the cond handler (same as behavior cases)
-    cases = parse_cond(kwargs["on-turn"])
+    # Store the body expression directly (evaluated at runtime)
+    body = kwargs["on-turn"]
 
-    event = GrueEvent(name=name, location=location, cases=cases)
+    event = GrueEvent(name=name, location=location, body=body)
     world.events[event.name] = event
 
 
 @form("default")
 def _parse_default(expr: SList, world: GrueWorld) -> None:
-    """Parse (default VERB (cond ...)).
+    """Parse (default VERB BODY).
 
     Defines a default behavior for a verb that applies when an object
     doesn't define its own behavior for that verb.
@@ -670,24 +568,12 @@ def _parse_default(expr: SList, world: GrueWorld) -> None:
           (true (success :effects ((move! ?self ?actor))))))
     """
     if not isinstance(expr, SList) or len(expr) < 3:
-        raise FormParseError(f"Expected (default VERB (cond ...)), got {expr}")
+        raise FormParseError(f"Expected (default VERB BODY), got {expr}")
 
     verb = expect_symbol(expr[1], "default verb")
-    behavior = GrueBehavior(verb=verb)
+    body = expr[2]
 
-    cond_expr = expr[2]
-    if not isinstance(cond_expr, SList) or len(cond_expr) < 1:
-        raise FormParseError(f"Expected (cond ...) in default, got {cond_expr}")
-
-    first = cond_expr[0]
-    if not isinstance(first, Symbol) or first.name != "cond":
-        raise FormParseError(f"Expected 'cond' in default, got {first}")
-
-    behavior.cases = parse_cond(cond_expr)
-
-    if not behavior.cases:
-        raise FormParseError(f"Default behavior for '{verb}' has no cases")
-
+    behavior = GrueBehavior(verb=verb, body=body)
     world.defaults[behavior.verb] = behavior
 
 

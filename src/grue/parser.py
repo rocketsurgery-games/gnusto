@@ -23,9 +23,8 @@ from .forms import (
     FormDispatcher,
     FormParseError,
     GrueWorld,
-    # Re-export dataclasses for backward compatibility
+    # Re-export dataclasses
     GrueExit,
-    GrueCase,
     GrueBehavior,
     GrueRoom,
     GrueObject,
@@ -34,14 +33,13 @@ from .forms import (
     GrueEvent,
 )
 
-# Re-export error for backward compatibility
+# Re-export error
 GrueParseError = FormParseError
 
 # Re-export all dataclasses
 __all__ = [
     "GrueParseError",
     "GrueExit",
-    "GrueCase",
     "GrueBehavior",
     "GrueRoom",
     "GrueObject",

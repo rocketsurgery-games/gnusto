@@ -175,6 +175,12 @@ class ReplEvaluator:
             raise EvalError("Expected S-expression list")
 
         head = expr[0]
+
+        # Keywords as functions go directly to base evaluator
+        if isinstance(head, Keyword):
+            result = self._base_eval.eval(expr)
+            return QueryValue(value=result)
+
         if not isinstance(head, Symbol):
             raise EvalError(f"Expected command name, got {head}")
 
@@ -343,6 +349,34 @@ class ReplEvaluator:
 
 # === Result Printer ===
 
+def _format_value(value: Any) -> str:
+    """Format a value for REPL output."""
+    if value is None:
+        return "nil"
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, set):
+        if value:
+            return f"({' '.join(sorted(value))})"
+        return "()"
+    if isinstance(value, list):
+        if value:
+            return f"({' '.join(_format_value(v) for v in value)})"
+        return "()"
+    if isinstance(value, SList):
+        return to_string(value)
+    if isinstance(value, Symbol):
+        return value.name
+    if isinstance(value, Keyword):
+        return f":{value.name}"
+    # Fallback
+    return str(value)
+
+
 def print_result(result: Any) -> bool:
     """Print a result. Returns False if should quit."""
     if isinstance(result, QuitResult):
@@ -432,22 +466,7 @@ def print_result(result: Any) -> bool:
 
     if isinstance(result, QueryValue):
         value = result.value
-        if isinstance(value, bool):
-            print(f"=> {str(value).lower()}")
-        elif isinstance(value, set):
-            if value:
-                print(f"=> ({' '.join(sorted(value))})")
-            else:
-                print("=> ()")
-        elif isinstance(value, list):
-            if value:
-                print(f"=> ({' '.join(value)})")
-            else:
-                print("=> ()")
-        elif value is None:
-            print("=> nil")
-        else:
-            print(f"=> {value}")
+        print(f"=> {_format_value(value)}")
         return True
 
     # Unknown result type - just print it

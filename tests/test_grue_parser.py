@@ -127,11 +127,10 @@ class TestBehaviorParsing:
         behavior = obj.behaviors[0]
         assert behavior.verb == "open"
         assert behavior.params == []
-        assert len(behavior.cases) == 1
-
-        case = behavior.cases[0]
-        assert case.outcome == "success"
-        assert case.when is True
+        # Body is stored as an SExpr (the cond expression)
+        assert behavior.body is not None
+        assert isinstance(behavior.body, SList)
+        assert behavior.body[0].name == "cond"
 
     def test_behavior_with_condition(self):
         """Parse a behavior with a complex condition."""
@@ -149,18 +148,12 @@ class TestBehaviorParsing:
         world = parse_grue(source)
 
         behavior = world.objects["DOOR"].behaviors[0]
-        assert len(behavior.cases) == 2
-
-        # First case has a condition
-        case1 = behavior.cases[0]
-        assert isinstance(case1.when, SList)
-        assert case1.outcome == "success"
-
-        # Second case is the fallback
-        case2 = behavior.cases[1]
-        assert case2.when is True
-        assert case2.outcome == "blocked"
-        assert case2.reason == "locked"
+        # Body is the cond expression with 2 clauses
+        assert behavior.body is not None
+        assert isinstance(behavior.body, SList)
+        assert behavior.body[0].name == "cond"
+        # cond has 2 clauses + the "cond" symbol = 3 items
+        assert len(behavior.body) == 3
 
     def test_behavior_with_effects(self):
         """Parse a behavior that has effects."""
@@ -178,9 +171,9 @@ class TestBehaviorParsing:
 
         behavior = world.objects["DOOR"].behaviors[0]
         assert behavior.params == ["key"]
-        case = behavior.cases[0]
-        assert len(case.effects) == 1
-        assert isinstance(case.effects[0], SList)
+        # Body is stored as raw SExpr
+        assert behavior.body is not None
+        assert isinstance(behavior.body, SList)
 
     def test_behavior_with_context(self):
         """Parse a behavior with context hints."""
@@ -196,10 +189,10 @@ class TestBehaviorParsing:
         """
         world = parse_grue(source)
 
-        case = world.objects["DOOR"].behaviors[0].cases[0]
-        assert len(case.context) == 2
-        assert ("mechanism", "push-bar") in case.context
-        assert ("note", "auto-closing") in case.context
+        behavior = world.objects["DOOR"].behaviors[0]
+        # Body stored as raw SExpr - not pre-parsed
+        assert behavior.body is not None
+        assert isinstance(behavior.body, SList)
 
     def test_behavior_with_default(self):
         """Parse a behavior with default action."""
@@ -214,9 +207,11 @@ class TestBehaviorParsing:
         """
         world = parse_grue(source)
 
-        case = world.objects["DOOR"].behaviors[0].cases[0]
-        assert case.outcome == "default"
-        assert isinstance(case.action, SList)
+        behavior = world.objects["DOOR"].behaviors[0]
+        # Body is stored as raw SExpr (the cond expression)
+        assert behavior.body is not None
+        assert isinstance(behavior.body, SList)
+        assert behavior.body[0].name == "cond"
 
 
 class TestVictoryDefeat:
@@ -294,9 +289,10 @@ class TestExampleFile:
         assert "through" in behavior_verbs
         assert "examine" in behavior_verbs
 
-        # Check the open behavior has multiple cases
+        # Check the open behavior has a body
         open_behavior = next(b for b in door.behaviors if b.verb == "open")
-        assert len(open_behavior.cases) == 3
+        assert open_behavior.body is not None
+        assert isinstance(open_behavior.body, SList)
 
         # Check victory
         assert world.victory is not None
