@@ -264,6 +264,7 @@ class ExprEvaluator:
 
             # Object queries
             "has-flag": self._eval_has_flag,
+            "has-flag?": self._eval_has_flag,  # alias
             "loc": self._eval_loc,
             "prop": self._eval_prop,
             "flags": self._eval_flags,
@@ -320,6 +321,12 @@ class ExprEvaluator:
 
             # String operations
             "str": self._eval_str,
+
+            # Sequence operations (Clojure stdlib)
+            "nth": self._eval_nth,
+            "first": self._eval_first,
+            "rest": self._eval_rest,
+            "count": self._eval_count,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -1383,6 +1390,86 @@ class ExprEvaluator:
         """
         parts = [str(self.eval(item)) for item in form.items[1:]]
         return "".join(parts)
+
+    # === Sequence operations (Clojure stdlib) ===
+
+    def _eval_nth(self, form: SList) -> Any:
+        """(nth COLL INDEX [NOT-FOUND]) - get element at index.
+
+        Examples:
+            (nth '(a b c) 1) => 'b'
+            (nth '(a b c) 5 nil) => nil
+        """
+        if len(form) < 3:
+            raise EvalError(f"'nth' expects at least 2 arguments, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+        idx = self.eval(form.items[2])
+        not_found = self.eval(form.items[3]) if len(form) > 3 else None
+
+        if not isinstance(idx, int):
+            raise EvalError(f"'nth' index must be int, got {type(idx).__name__}")
+
+        if isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            if 0 <= idx < len(items):
+                return items[idx]
+            elif len(form) > 3:
+                return not_found
+            else:
+                raise EvalError(f"Index {idx} out of bounds for collection of size {len(items)}")
+        elif isinstance(coll, str):
+            if 0 <= idx < len(coll):
+                return coll[idx]
+            elif len(form) > 3:
+                return not_found
+            else:
+                raise EvalError(f"Index {idx} out of bounds for string of length {len(coll)}")
+        else:
+            raise EvalError(f"'nth' expects sequence, got {type(coll).__name__}")
+
+    def _eval_first(self, form: SList) -> Any:
+        """(first COLL) - get first element, or nil if empty."""
+        if len(form) != 2:
+            raise EvalError(f"'first' expects 1 argument, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+
+        if isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return items[0] if items else None
+        elif isinstance(coll, str):
+            return coll[0] if coll else None
+        else:
+            raise EvalError(f"'first' expects sequence, got {type(coll).__name__}")
+
+    def _eval_rest(self, form: SList) -> list:
+        """(rest COLL) - return all but first element as list."""
+        if len(form) != 2:
+            raise EvalError(f"'rest' expects 1 argument, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+
+        if isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return items[1:] if items else []
+        elif isinstance(coll, str):
+            return list(coll[1:]) if coll else []
+        else:
+            raise EvalError(f"'rest' expects sequence, got {type(coll).__name__}")
+
+    def _eval_count(self, form: SList) -> int:
+        """(count COLL) - return length of collection."""
+        if len(form) != 2:
+            raise EvalError(f"'count' expects 1 argument, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+
+        if coll is None:
+            return 0
+        elif isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return len(items)
+        elif isinstance(coll, str):
+            return len(coll)
+        else:
+            raise EvalError(f"'count' expects sequence, got {type(coll).__name__}")
 
     # === Quantifiers ===
 

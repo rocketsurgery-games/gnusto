@@ -1,7 +1,13 @@
 (room @cs-2nd
   :description "Second Floor"
-  :ldesc "This is the second floor of the CS building."
+  :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room."
   :flags (ONBIT)
   :exits
-    ((north :to @terminal-room)))
+    ((north :to @terminal-room)
+     (west :to @kitchen)
+     ; TODO: (south :to @cs-elevator :via @elevator-door)
+     ; TODO: (in :to @cs-elevator :via @elevator-door)
+     ; TODO: (up :to @cs-3rd)
+     ; TODO: (down :to @comp-center)
+     ))
 

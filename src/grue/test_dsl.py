@@ -550,6 +550,28 @@ class TestRunner:
                         f"Global '{gname}' is '{actual}', expected '{expected}'"
                     )
 
+            elif name == "prop?":
+                if len(pred) != 4:
+                    failures.append("(prop? OBJ PROP EXPECTED) requires 3 arguments")
+                    continue
+                obj = pred[1]
+                prop = pred[2]
+                expected = pred[3]
+                if isinstance(obj, Symbol):
+                    obj = obj.name
+                if isinstance(prop, Symbol):
+                    prop = prop.name
+                if isinstance(expected, Symbol):
+                    expected = expected.name
+                if obj not in runtime.state.objects:
+                    failures.append(f"Unknown object: {obj}")
+                else:
+                    actual = runtime.state.objects[obj].properties.get(prop)
+                    if actual != expected:
+                        failures.append(
+                            f"Property '{obj}.{prop}' is '{actual}', expected '{expected}'"
+                        )
+
             elif name == "queued?":
                 if len(pred) != 2:
                     failures.append("(queued? EVENT) requires 1 argument")
@@ -581,6 +603,145 @@ class TestRunner:
 
         return failures
 
+    def run_test_group(self, group_form: SList) -> list[TestResult]:
+        """
+        Run a (test-group ...) form.
+
+        Format:
+            (test-group NAME
+              :setup EFFECTS
+              (test ...)
+              (test ...)
+              ...)
+
+        Group :setup runs before each test. Test-level :setup is additive.
+        Each test still gets a fresh world state.
+        """
+        if len(group_form) < 2:
+            return [TestResult(
+                name="<invalid group>",
+                passed=False,
+                error="Test-group form too short"
+            )]
+
+        name = group_form[1]
+        if isinstance(name, str):
+            group_name = name
+        elif isinstance(name, Symbol):
+            group_name = name.name
+        else:
+            group_name = to_string(name)
+
+        # Parse group :setup and collect nested tests
+        group_setup: list[SExpr] = []
+        nested_tests: list[SList] = []
+
+        i = 2
+        while i < len(group_form):
+            item = group_form[i]
+
+            if isinstance(item, Keyword):
+                if i + 1 >= len(group_form):
+                    return [TestResult(
+                        name=group_name,
+                        passed=False,
+                        error=f"Missing value for :{item.name}"
+                    )]
+                value = group_form[i + 1]
+
+                if item.name == "setup":
+                    if isinstance(value, SList):
+                        group_setup = list(value.items)
+                i += 2
+
+            elif isinstance(item, SList) and len(item) > 0:
+                head = item[0]
+                if isinstance(head, Symbol) and head.name == "test":
+                    nested_tests.append(item)
+                i += 1
+            else:
+                i += 1
+
+        # Run each nested test with group setup prepended
+        results = []
+        for test_form in nested_tests:
+            # Extract test's own setup
+            test_setup: list[SExpr] = []
+            test_name = ""
+            test_action = None
+            test_expect: list[SExpr] = []
+
+            if len(test_form) >= 2:
+                tn = test_form[1]
+                if isinstance(tn, str):
+                    test_name = tn
+                elif isinstance(tn, Symbol):
+                    test_name = tn.name
+                else:
+                    test_name = to_string(tn)
+
+            j = 2
+            while j < len(test_form):
+                item = test_form[j]
+                if isinstance(item, Keyword):
+                    if j + 1 >= len(test_form):
+                        break
+                    value = test_form[j + 1]
+
+                    if item.name == "setup":
+                        if isinstance(value, SList):
+                            test_setup = list(value.items)
+                    elif item.name == "action":
+                        test_action = value
+                    elif item.name == "expect":
+                        if isinstance(value, SList):
+                            test_expect = list(value.items)
+                    j += 2
+                else:
+                    j += 1
+
+            # Build combined test with group setup + test setup
+            full_name = f"{group_name} / {test_name}"
+            combined_setup = group_setup + test_setup
+
+            if test_action is None:
+                results.append(TestResult(
+                    name=full_name,
+                    passed=False,
+                    error="Test missing :action"
+                ))
+                continue
+
+            # Create fresh runtime for this test
+            runtime = GrueRuntime(self.world)
+            executor = EffectExecutor(runtime, self._functions)
+
+            try:
+                # Run combined setup effects
+                for effect in combined_setup:
+                    executor.execute(effect)
+
+                # Execute action
+                result = self._execute_action(runtime, test_action)
+
+                # Check expectations
+                failures = self._check_expectations(runtime, result, test_expect)
+
+                results.append(TestResult(
+                    name=full_name,
+                    passed=len(failures) == 0,
+                    failures=failures
+                ))
+
+            except Exception as e:
+                results.append(TestResult(
+                    name=full_name,
+                    passed=False,
+                    error=str(e)
+                ))
+
+        return results
+
     def run_suite(self, test_source: str) -> list[TestResult]:
         """Run all tests from source string."""
         results = []
@@ -598,6 +759,8 @@ class TestRunner:
                 results.append(self.run_test(form))
             elif head.name == "test-sequence":
                 results.append(self.run_test_sequence(form))
+            elif head.name == "test-group":
+                results.extend(self.run_test_group(form))
             elif head.name == "defn":
                 # Global function definition for tests
                 try:

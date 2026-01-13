@@ -16,7 +16,7 @@
 
 (object @carton
   :description "white carton"
-  :location @player  ; Player starts with it for testing
+  :location @refrigerator  ; In the kitchen refrigerator
   :flags (TAKEBIT CONTBIT OPENBIT)
   :properties ())
 

@@ -17,7 +17,7 @@
   ((held-by? ?self ?actor)
     (blocked :reason already-held :message "You're already carrying that."))
 
-  ((not (or (at? ?self ?actor) (held-by? ?self ?actor)))
+  ((not (visible? ?self))
     (blocked :reason not-here :message "You don't see that here."))
 
   (true
@@ -32,3 +32,29 @@
 
   (true
     (success :effects ((move! ?self (loc ?actor))) :message "Dropped."))))
+
+; === open ===
+; Default open behavior for OPENABLE objects
+
+(default open (cond
+  ((not (has-flag ?self OPENABLE))
+    (blocked :reason not-openable :message "That's not something you can open."))
+
+  ((has-flag ?self OPENBIT)
+    (blocked :reason already-open :message "It's already open."))
+
+  (true
+    (success :effects ((set-flag! ?self OPENBIT)) :message "Opened."))))
+
+; === close ===
+; Default close behavior for OPENABLE objects
+
+(default close (cond
+  ((not (has-flag ?self OPENABLE))
+    (blocked :reason not-closeable :message "That's not something you can close."))
+
+  ((not (has-flag ?self OPENBIT))
+    (blocked :reason already-closed :message "It's already closed."))
+
+  (true
+    (success :effects ((clear-flag! ?self OPENBIT)) :message "Closed."))))

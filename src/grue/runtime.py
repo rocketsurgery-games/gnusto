@@ -267,6 +267,13 @@ class GrueRuntime:
         ]
 
     def is_visible(self, obj: str) -> bool:
+        """Check if object is visible to player.
+
+        Visible means:
+        - Held by player
+        - In player's current room
+        - In an open container that is visible (recursive)
+        """
         if obj not in self.state.objects:
             return False
         obj_state = self.state.objects[obj]
@@ -278,7 +285,15 @@ class GrueRuntime:
             return False
         if loc == self.player_name:
             return True
-        return loc == self.get_player_location()
+        if loc == self.get_player_location():
+            return True
+        # Check if in an open container
+        if loc in self.state.objects:
+            container = self.state.objects[loc]
+            # Container must be open and visible
+            if "OPENBIT" in container.flags and self.is_visible(loc):
+                return True
+        return False
 
     def is_room(self, loc: str) -> bool:
         return loc in self.state.rooms
@@ -653,12 +668,15 @@ class GrueRuntime:
             )
 
         # Set up bindings for evaluation
-        # Auto-bound: ?self, ?actor
+        # Auto-bound: ?self, ?actor, ?value (first positional arg for convenience)
         # Positional: behavior.params[i] = args[i]
         bindings = {
             "self": target,
             "actor": actor,
         }
+        # Bind ?value to first positional arg if any (convenience for simple behaviors)
+        if args:
+            bindings["value"] = args[0]
         for i, param in enumerate(behavior.params):
             bindings[param] = args[i]
 

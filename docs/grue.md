@@ -894,7 +894,7 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `-` | A B | number | Subtraction |
 | `*` | A B | number | Multiplication |
 | `/` | A B | number | Integer division |
-| `%` | A B | number | Modulo (remainder) |
+| `mod` | A B | number | Modulo (remainder) |
 
 #### Comparison Functions
 
@@ -906,6 +906,21 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `>=` | A B | bool | Greater or equal |
 | `<=` | A B | bool | Less or equal |
 | `not` | EXPR | bool | Boolean negation |
+
+#### String and List Functions
+
+Standard library functions for working with strings and lists:
+
+| Function | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `str` | ARGS... | string | Concatenate arguments into string |
+| `nth` | LIST N | any | Get nth element (0-indexed) |
+| `first` | LIST | any | Get first element |
+| `rest` | LIST | list | Get all but first element |
+| `count` | LIST | number | Get list length |
+| `empty?` | LIST | bool | Is list empty? |
+| `cons` | ELEM LIST | list | Prepend element to list |
+| `concat` | LISTS... | list | Concatenate lists |
 
 #### Effects (State Mutations)
 
@@ -940,6 +955,21 @@ When a behavior is evaluated, these bindings are available:
 | `?to` | Recipient ("give X to Y") |
 | `?topic` | Conversation topic ("ask X about Y") |
 | `?direction` | Movement direction |
+| `?value` | Parameterized value for custom behaviors (see below) |
+
+**Parameterized behaviors:**
+Custom behaviors can accept a value argument via `?value`. This supports explicit
+LLM actions like `(do @microwave :set-timer 120)` or `(do @microwave :set-temp high)`.
+
+```scheme
+(object @microwave
+  :behaviors (
+    :set-timer (fn ()
+      (success :effects ((set! microwave-timer ?value))))
+    :set-temp (fn ()
+      (let ((temp-val (condp = ?value warm 1 low 2 medium 3 high 4 nil)))
+        (success :effects ((set! microwave-temp temp-val)))))))
+```
 
 Bindings are accessed with the `?` prefix:
 ```scheme
@@ -1029,6 +1059,35 @@ Multi-step test sequence. Each step builds on the previous state.
                  (reason? tech-property))))
 ```
 
+### `(test-group NAME :setup EFFECTS TESTS...)`
+
+Group related tests with shared setup. Reduces boilerplate when many tests need
+the same initial state.
+
+```scheme
+(test-group "microwave set-timer"
+  :setup ((move! @player @kitchen))
+
+  (test "set to 2 minutes"
+    :action (do @microwave :set-timer 120)
+    :expect ((global? microwave-timer 120)))
+
+  (test "set to 30 seconds"
+    :action (do @microwave :set-timer 30)
+    :expect ((global? microwave-timer 30)))
+
+  (test "can't set over 1 hour"
+    :action (do @microwave :set-timer 3601)
+    :expect ((outcome? blocked)
+             (reason? too-long))))
+```
+
+**Semantics:**
+- Group `:setup` runs before each test in the group
+- Test-level `:setup` runs after group setup (additive)
+- Each test still starts from fresh game state (group setup is not cumulative)
+- Tests inside a group can override group setup by specifying their own
+
 ### Test Predicates
 
 | Predicate | Description |
@@ -1043,6 +1102,7 @@ Multi-step test sequence. Each step builds on the previous state.
 | `(not-queued? EVENT)` | Event is not in queue |
 | `(global? NAME VALUE)` | Global variable has value |
 | `(has-flag? OBJ FLAG)` | Object has flag |
+| `(prop? OBJ PROP VALUE)` | Object property has value |
 
 ### Test Effects
 
