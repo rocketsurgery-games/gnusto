@@ -338,6 +338,9 @@ class ExprEvaluator:
             return expr
         if isinstance(expr, str):
             return expr
+        if isinstance(expr, (tuple, list)):
+            # Data values (e.g., quoted lists) evaluate to themselves
+            return expr
         if isinstance(expr, Symbol):
             # Handle boolean literals
             if expr.name.lower() == "true":

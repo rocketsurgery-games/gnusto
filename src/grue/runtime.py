@@ -138,14 +138,29 @@ class GrueRuntime:
                     continue
                 name = name_sym.name
 
-                # Evaluate value statically using current global scope
+                # Evaluate value statically
                 value_expr = form[2]
-                # For now, just convert simple literals - complex expressions deferred
                 if isinstance(value_expr, (str, int, bool)):
                     scoped_values[name] = value_expr
                 elif isinstance(value_expr, Symbol):
                     # Could be reference to global or another scoped value
                     scoped_values[name] = value_expr.name
+                elif isinstance(value_expr, SList) and len(value_expr) >= 1:
+                    # Handle (quote ...) forms - evaluate them immediately
+                    if isinstance(value_expr[0], Symbol) and value_expr[0].name == "quote":
+                        # (quote x) => x, converting SList to tuple to avoid eval as code
+                        if len(value_expr) == 2:
+                            inner = value_expr[1]
+                            # Convert SList to tuple so it's treated as data, not code
+                            if isinstance(inner, SList):
+                                scoped_values[name] = tuple(inner.items)
+                            else:
+                                scoped_values[name] = inner
+                        else:
+                            scoped_values[name] = value_expr
+                    else:
+                        # Store complex expressions as SExpr for later evaluation
+                        scoped_values[name] = value_expr
                 else:
                     # Store as SExpr for later evaluation if needed
                     scoped_values[name] = value_expr
@@ -240,6 +255,10 @@ class GrueRuntime:
             if binding_name in self.bindings:
                 return self.bindings[binding_name]
             return None
+
+        # Check entity-scoped values (from (def ...) inside objects/events)
+        if name in self.bindings:
+            return self.bindings[name]
 
         # Then check globals
         if name.lower() in ("score", "moves"):

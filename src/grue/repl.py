@@ -235,6 +235,17 @@ class ReplEvaluator:
             return expr
         return str(self._base_eval.eval(expr))
 
+    def _to_value(self, expr: SExpr) -> Any:
+        """Convert expression to its value, preserving type (int, str, etc)."""
+        if isinstance(expr, Symbol):
+            return expr.name  # Symbols become strings
+        if isinstance(expr, str):
+            return expr
+        if isinstance(expr, (int, float, bool)):
+            return expr
+        # Evaluate complex expressions
+        return self._base_eval.eval(expr)
+
     def _make_location_result(self) -> LocationResult:
         """Create a LocationResult from current state."""
         room = self.runtime.get_player_location()
@@ -325,8 +336,8 @@ class ReplEvaluator:
             target_str = self._to_string(target)
             verb_str = verb_kw.name
 
-            # Remaining items are positional args
-            args = [self._to_string(item) for item in items[2:]]
+            # Remaining items are positional args - preserve types (int, etc)
+            args = [self._to_value(item) for item in items[2:]]
 
             result = self.runtime.do(target_str, verb_str, *args)
 
