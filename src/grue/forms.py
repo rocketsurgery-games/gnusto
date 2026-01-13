@@ -197,8 +197,62 @@ class GrueWorld:
 
 # === Helper functions for form handlers ===
 
+def parse_entity_body(items: list[SExpr], entity_type: str) -> tuple[list[SExpr], dict[str, SExpr]]:
+    """Parse entity body into nested forms and keyword arguments.
+
+    Handles interleaved nested forms (def, defn) and keyword arguments.
+    Raises errors for unexpected items or misplaced forms.
+
+    Args:
+        items: List of items after entity name
+        entity_type: Name of entity type for error messages (e.g., "object", "room")
+
+    Returns:
+        (nested_forms, kwargs)
+    """
+    nested_forms: list[SExpr] = []
+    kwargs: dict[str, SExpr] = {}
+
+    # Known nested form types
+    nested_form_types = {"def", "defn"}
+
+    i = 0
+    while i < len(items):
+        item = items[i]
+
+        if isinstance(item, Keyword):
+            # Keyword argument - consume key and value
+            key = item.name
+            if i + 1 >= len(items):
+                raise FormParseError(f"Missing value for keyword :{key} in {entity_type}")
+            kwargs[key] = items[i + 1]
+            i += 2
+
+        elif isinstance(item, SList) and len(item) > 0 and isinstance(item[0], Symbol):
+            form_name = item[0].name
+            if form_name in nested_form_types:
+                # It's a nested form like (def ...) or (defn ...)
+                nested_forms.append(item)
+                i += 1
+            else:
+                raise FormParseError(
+                    f"Unexpected form ({form_name} ...) in {entity_type} body. "
+                    f"Only {nested_form_types} forms are allowed. "
+                    f"Did you mean to use a keyword like :{form_name}?"
+                )
+        else:
+            raise FormParseError(
+                f"Unexpected item in {entity_type} body: {item}. "
+                f"Expected keyword argument (like :description) or nested form (like (def ...))."
+            )
+
+    return nested_forms, kwargs
+
+
 def separate_nested_forms(items: list[SExpr]) -> tuple[list[SExpr], list[SExpr]]:
     """Separate nested forms from keyword arguments.
+
+    DEPRECATED: Use parse_entity_body() instead for better error handling.
 
     Items before the first keyword are treated as nested forms (e.g., (def ...), (defn ...)).
     Items starting from the first keyword are kwargs.
@@ -481,10 +535,11 @@ def _parse_globals(expr: SList, world: GrueWorld) -> None:
 
 @form("room")
 def _parse_room(expr: SList, world: GrueWorld) -> None:
-    """Parse (room NAME (nested-forms...) :description "..." :flags (...) :exits (...)).
+    """Parse (room NAME :description "..." :flags (...) :exits (...)).
 
-    Nested forms like (def ...) and (defn ...) can appear before keyword arguments
-    to define scoped bindings visible only within this room's behaviors.
+    Nested forms like (def ...) and (defn ...) can appear anywhere in the body
+    (interleaved with keyword arguments) to define scoped bindings visible
+    only within this room's behaviors.
     """
     if len(expr) < 2:
         raise FormParseError("room requires a name")
@@ -492,10 +547,9 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     name = expect_symbol(expr[1], "room name")
     room = GrueRoom(name=name)
 
-    # Separate nested forms from kwargs
-    nested_forms, remaining = separate_nested_forms(list(expr.items[2:]))
+    # Parse body - handles interleaved nested forms and kwargs
+    nested_forms, kwargs = parse_entity_body(list(expr.items[2:]), f"room {name}")
     room.nested_forms = nested_forms
-    kwargs = parse_kwargs(remaining)
 
     if "description" in kwargs:
         room.description = expect_string(kwargs["description"], "room description")
@@ -515,10 +569,11 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
 
 @form("object")
 def _parse_object(expr: SList, world: GrueWorld) -> None:
-    """Parse (object NAME (nested-forms...) :description "..." :location LOC :flags (...) :behaviors (...)).
+    """Parse (object NAME :description "..." :location LOC :flags (...) :behaviors (...)).
 
-    Nested forms like (def ...) and (defn ...) can appear before keyword arguments
-    to define scoped bindings visible only within this object's behaviors.
+    Nested forms like (def ...) and (defn ...) can appear anywhere in the body
+    (interleaved with keyword arguments) to define scoped bindings visible
+    only within this object's behaviors.
     """
     if len(expr) < 2:
         raise FormParseError("object requires a name")
@@ -526,10 +581,9 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     name = expect_symbol(expr[1], "object name")
     obj = GrueObject(name=name)
 
-    # Separate nested forms from kwargs
-    nested_forms, remaining = separate_nested_forms(list(expr.items[2:]))
+    # Parse body - handles interleaved nested forms and kwargs
+    nested_forms, kwargs = parse_entity_body(list(expr.items[2:]), f"object {name}")
     obj.nested_forms = nested_forms
-    kwargs = parse_kwargs(remaining)
 
     if "description" in kwargs:
         obj.description = expect_string(kwargs["description"], "object description")
