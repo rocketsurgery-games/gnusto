@@ -669,17 +669,43 @@ Anonymous function (lambda). Creates a closure that can be called later.
 The `lambda` keyword is also supported as an alias for `fn`.
 
 #### `(defn NAME (PARAMS...) BODY)`
-Named function definition. Defines a reusable function in the global scope.
+Named function definition. At top level, defines a global function. Inside an
+entity (object/room), defines a scoped function visible only within that entity.
+
 ```scheme
+; Global function
 (defn is-lit (obj)
   (and (has-flag obj LIGHT)
        (has-flag obj ON)))
 
-; Usage:
-(cond
-  ((is-lit @lantern) (success))
-  (true (blocked :reason dark)))
+; Entity-scoped function
+(object @door
+  (defn check-locked ()
+    (if (has-flag ?self LOCKED)
+      (blocked :reason locked)
+      (success)))
+
+  :behaviors (
+    :open check-locked))   ; reference by name
 ```
+
+#### `(def NAME VALUE)`
+Value binding. At top level, defines a global constant. Inside an entity,
+defines a scoped value visible only within that entity's behaviors.
+
+```scheme
+; Entity-scoped values
+(object @door
+  (def door-desc "A heavy wooden door.")
+  (def key-required @master-key)
+
+  :behaviors (
+    :examine (fn () (success :context ((description door-desc))))))
+```
+
+Entity-scoped `def` and `defn` can appear anywhere in the entity body (before
+or after keyword properties). They help avoid polluting the global namespace
+with many small helper functions and values.
 
 #### `(if COND THEN ELSE)`
 Conditional expression. Evaluates COND, then returns THEN if truthy, ELSE otherwise.
@@ -706,6 +732,62 @@ evaluated in order until one is truthy; its outcome form is then returned.
 (cond
   ((has-flag ?self LOCKED) (blocked :reason locked))
   (true (success :effects ((set-flag! ?self OPENBIT)))))
+```
+
+#### `(match (EXPRS...) CLAUSE ...)`
+Pattern matching on a tuple of values. Cleaner than nested `cond` when matching
+multiple conditions.
+
+```scheme
+(match ((has-flag ?self LOCKED) (has-flag ?self OPEN))
+  ((true _)      (blocked :reason locked))
+  ((_ true)      (blocked :reason already-open))
+  ((false false) (success :effects ((set-flag! ?self OPEN)))))
+```
+
+Pattern elements:
+- `_` or `?_` - Wildcard, matches anything
+- `true`/`false` - Boolean literal match
+- `?name` - Binding, captures value for use in result
+- Other symbols/literals - Exact match
+
+#### `(condp PRED EXPR TEST1 RESULT1 ...)`
+Compare expression against test values using a predicate.
+
+```scheme
+(condp = (prop ?self :status)
+  locked (blocked :reason locked)
+  open   (blocked :reason already-open)
+  closed (success))
+
+(condp > health
+  0   (defeat)
+  10  (warn "low health")
+  100 (success))
+```
+
+Evaluates `(PRED TEST EXPR)` for each test value. Returns result of first truthy test.
+An odd trailing element is used as default.
+
+#### `(cond-> INITIAL TEST1 EXPR1 ...)`
+Conditional threading (first position). Threads value through expressions when tests pass.
+
+```scheme
+(cond-> 0
+  true  (+ 1)    ; 0 -> (+ 0 1) = 1
+  false (+ 10)   ; skipped
+  true  (+ 2))   ; 1 -> (+ 1 2) = 3
+```
+
+Value is inserted as FIRST argument to each expression.
+
+#### `(cond->> INITIAL TEST1 EXPR1 ...)`
+Conditional threading (last position). Like `cond->` but threads as LAST argument.
+
+```scheme
+(cond->> 10
+  true (- 5)    ; 10 -> (- 5 10) = -5
+  true (- 3))   ; -5 -> (- 3 -5) = 8
 ```
 
 #### Outcome Forms: `(success ...)`, `(blocked ...)`, `(redirect ...)`, `(default ...)`
