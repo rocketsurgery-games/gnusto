@@ -213,17 +213,45 @@
     :examine (fn () (success :message "It says \"MORE\" in a subdued typeface."))
     :read (fn () (success :message "It says \"MORE\" in a subdued typeface."))
 
-    ; CLICK - advance through the strange document
+    ; CLICK - advance through the compulsion/possession sequence
+    ; When possessed, clicking MORE advances comp-cnt and shows next page
     :click (fn ()
       (cond
-        ; Haven't read the page yet
-        ((not (prop @odd-paper read-page))
-          (blocked :reason not-read-yet
-                   :message "You haven't read the page yet. You probably shouldn't touch the MORE box until then."))
-
-        ; Read the page - advance
-        (true
+        ; Not possessed yet - normal behavior
+        ((not (queued? compulsion))
           (success
             :effects ((set-prop! @odd-paper read-page false))
-            :message "You touch the MORE box, and a new page appears."))))))
+            :message "You touch the MORE box, and a new page appears."))
+
+        ; Possessed - advance to next page of the compulsion
+        ; This directly increments comp-cnt rather than waiting for event processing
+        ((= comp-cnt 0)
+          (success
+            :effects ((set! comp-cnt 1) (set-prop! @odd-paper read-page true))
+            :context ((page 1))
+            :message "The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort of \"Olde English\" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English."))
+
+        ((= comp-cnt 1)
+          (success
+            :effects ((set! comp-cnt 2) (set-prop! @odd-paper read-page true))
+            :context ((page 2))
+            :message "The second page is much like the first, but around the edges, not when you look at it straight, it's almost readable. There is something about a \"summoning,\" or a \"visitor.\""))
+
+        ((= comp-cnt 2)
+          (success
+            :effects ((set! comp-cnt 3) (set-prop! @odd-paper read-page true))
+            :context ((page 3))
+            :message "The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing."))
+
+        ((= comp-cnt 3)
+          (success
+            :effects ((set! comp-cnt 4) (dequeue! compulsion)
+                      (move! @more-box nil) (move! @menu-box @pc)
+                      (move! @player @yuggoth))
+            :context ((page 4) (transition "You faint, and when you awaken..."))
+            :message "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?"))
+
+        ; Already past page 4
+        (true
+          (blocked :reason finished :message "The document has ended."))))))
 
