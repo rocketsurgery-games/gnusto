@@ -93,6 +93,9 @@ class GrueRoom:
 
     Rooms can have behaviors just like objects. The most common is :before-action,
     which runs before any action in the room and can block or redirect it.
+
+    Nested forms (def, defn) can be placed inside the room to define scoped
+    bindings that are only visible within this room's behaviors.
     """
     name: str
     description: str = ""
@@ -101,11 +104,25 @@ class GrueRoom:
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list["GrueBehavior"] = field(default_factory=list)
+    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
 
 
 @dataclass
 class GrueObject:
-    """An object definition."""
+    """An object definition.
+
+    Nested forms (def, defn) can be placed inside the object to define scoped
+    bindings that are only visible within this object's behaviors.
+
+    Example:
+        (object @door
+          (def closed-desc "The door is closed.")
+          (defn check-locked () (has-flag? ?self LOCKED))
+
+          :description closed-desc
+          :behaviors (
+            :open (fn () (if (check-locked) (blocked) (success)))))
+    """
     name: str
     description: str = ""
     fdesc: str = ""  # First description (before object is moved)
@@ -114,6 +131,7 @@ class GrueObject:
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list[GrueBehavior] = field(default_factory=list)
+    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
 
 
 @dataclass
@@ -178,6 +196,30 @@ class GrueWorld:
 
 
 # === Helper functions for form handlers ===
+
+def separate_nested_forms(items: list[SExpr]) -> tuple[list[SExpr], list[SExpr]]:
+    """Separate nested forms from keyword arguments.
+
+    Items before the first keyword are treated as nested forms (e.g., (def ...), (defn ...)).
+    Items starting from the first keyword are kwargs.
+
+    Returns:
+        (nested_forms, remaining_items)
+    """
+    nested_forms = []
+    for i, item in enumerate(items):
+        if isinstance(item, Keyword):
+            # Found first keyword - rest are kwargs
+            return nested_forms, items[i:]
+        elif isinstance(item, SList) and len(item) > 0 and isinstance(item[0], Symbol):
+            # It's a nested form like (def ...) or (defn ...)
+            nested_forms.append(item)
+        else:
+            # Something else - stop collecting nested forms
+            return nested_forms, items[i:]
+    # All items were nested forms
+    return nested_forms, []
+
 
 def parse_kwargs(items: list[SExpr]) -> dict[str, SExpr]:
     """Parse Clojure-style keyword arguments from a list."""
@@ -324,9 +366,10 @@ def parse_exits(expr: SExpr) -> list[GrueExit]:
 
 
 def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
-    """Parse behaviors list: (:verb (fn (?params) body) ...)
+    """Parse behaviors list: (:verb (fn (?params) body) ...) or (:verb fn-reference ...)
 
     The body can be any expression - not limited to (cond ...).
+    Alternatively, a bare symbol can reference a function defined elsewhere.
 
     Example:
         :behaviors (
@@ -335,10 +378,7 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
                 (success)
                 (blocked :reason not-held)))
           :take (fn () (success))
-          :examine (fn ()
-            (cond
-              ((has-flag ?self examined) (success :message "Nothing new."))
-              (true (success)))))
+          :examine shared-examine)  ; reference to defn or entity-scoped function
 
     Auto-bound symbols (not specified in params):
         ?self  - The object whose behavior is invoked
@@ -359,15 +399,27 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
             i += 1
 
             if i >= len(items):
-                raise FormParseError(f"Missing (fn ...) after :{verb}")
+                raise FormParseError(f"Missing function or (fn ...) after :{verb}")
 
             fn_expr = items[i]
+
+            # Case 1: Bare symbol - reference to a function
+            if isinstance(fn_expr, Symbol):
+                # Store as a call to the referenced function with no args
+                # The body is (fn-name) which will be resolved at runtime
+                body_expr = SList([fn_expr])
+                behavior = GrueBehavior(verb=verb, params=[], body=body_expr)
+                behaviors.append(behavior)
+                i += 1
+                continue
+
+            # Case 2: (fn ...) inline definition
             if not isinstance(fn_expr, SList) or len(fn_expr) < 1:
-                raise FormParseError(f"Expected (fn ...) after :{verb}, got {fn_expr}")
+                raise FormParseError(f"Expected (fn ...) or symbol after :{verb}, got {fn_expr}")
 
             first = fn_expr[0]
             if not isinstance(first, Symbol) or first.name != "fn":
-                raise FormParseError(f"Expected 'fn' after :{verb}, got {first}")
+                raise FormParseError(f"Expected 'fn' or symbol after :{verb}, got {first}")
 
             # Parse (fn (?param1 ?param2) body)
             if len(fn_expr) < 3:
@@ -429,14 +481,21 @@ def _parse_globals(expr: SList, world: GrueWorld) -> None:
 
 @form("room")
 def _parse_room(expr: SList, world: GrueWorld) -> None:
-    """Parse (room NAME :description "..." :flags (...) :exits (...))."""
+    """Parse (room NAME (nested-forms...) :description "..." :flags (...) :exits (...)).
+
+    Nested forms like (def ...) and (defn ...) can appear before keyword arguments
+    to define scoped bindings visible only within this room's behaviors.
+    """
     if len(expr) < 2:
         raise FormParseError("room requires a name")
 
     name = expect_symbol(expr[1], "room name")
     room = GrueRoom(name=name)
 
-    kwargs = parse_kwargs(list(expr.items[2:]))
+    # Separate nested forms from kwargs
+    nested_forms, remaining = separate_nested_forms(list(expr.items[2:]))
+    room.nested_forms = nested_forms
+    kwargs = parse_kwargs(remaining)
 
     if "description" in kwargs:
         room.description = expect_string(kwargs["description"], "room description")
@@ -456,14 +515,21 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
 
 @form("object")
 def _parse_object(expr: SList, world: GrueWorld) -> None:
-    """Parse (object NAME :description "..." :location LOC :flags (...) :behaviors (...))."""
+    """Parse (object NAME (nested-forms...) :description "..." :location LOC :flags (...) :behaviors (...)).
+
+    Nested forms like (def ...) and (defn ...) can appear before keyword arguments
+    to define scoped bindings visible only within this object's behaviors.
+    """
     if len(expr) < 2:
         raise FormParseError("object requires a name")
 
     name = expect_symbol(expr[1], "object name")
     obj = GrueObject(name=name)
 
-    kwargs = parse_kwargs(list(expr.items[2:]))
+    # Separate nested forms from kwargs
+    nested_forms, remaining = separate_nested_forms(list(expr.items[2:]))
+    obj.nested_forms = nested_forms
+    kwargs = parse_kwargs(remaining)
 
     if "description" in kwargs:
         obj.description = expect_string(kwargs["description"], "object description")

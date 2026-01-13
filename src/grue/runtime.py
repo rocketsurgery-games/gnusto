@@ -88,6 +88,70 @@ class GrueRuntime:
             )
         return functions
 
+    def _build_entity_scope(self, nested_forms: list[SExpr]) -> tuple[dict[str, GrueFn], dict[str, Any]]:
+        """Build scoped functions and values from nested forms.
+
+        Processes (def ...) and (defn ...) forms that appear inside
+        entity definitions (object, room).
+
+        Returns:
+            (scoped_functions, scoped_values) - functions and static values
+        """
+        scoped_functions: dict[str, GrueFn] = {}
+        scoped_values: dict[str, Any] = {}
+
+        for form in nested_forms:
+            if not isinstance(form, SList) or len(form) < 1:
+                continue
+            if not isinstance(form[0], Symbol):
+                continue
+
+            form_type = form[0].name
+
+            if form_type == "defn":
+                # (defn name (params) body)
+                if len(form) != 4:
+                    continue
+                name_sym = form[1]
+                if not isinstance(name_sym, Symbol):
+                    continue
+                name = name_sym.name
+
+                params_expr = form[2]
+                params: list[str] = []
+                if isinstance(params_expr, SList):
+                    for p in params_expr.items:
+                        if isinstance(p, Symbol):
+                            # Strip leading ? if present
+                            param_name = p.name[1:] if p.name.startswith("?") else p.name
+                            params.append(param_name)
+
+                body = form[3]
+                scoped_functions[name] = GrueFn(params=params, body=body)
+
+            elif form_type == "def":
+                # (def name value)
+                if len(form) != 3:
+                    continue
+                name_sym = form[1]
+                if not isinstance(name_sym, Symbol):
+                    continue
+                name = name_sym.name
+
+                # Evaluate value statically using current global scope
+                value_expr = form[2]
+                # For now, just convert simple literals - complex expressions deferred
+                if isinstance(value_expr, (str, int, bool)):
+                    scoped_values[name] = value_expr
+                elif isinstance(value_expr, Symbol):
+                    # Could be reference to global or another scoped value
+                    scoped_values[name] = value_expr.name
+                else:
+                    # Store as SExpr for later evaluation if needed
+                    scoped_values[name] = value_expr
+
+        return scoped_functions, scoped_values
+
     def _init_state(self) -> GameState:
         """Initialize game state from world definition."""
         state = GameState()
@@ -585,8 +649,11 @@ class GrueRuntime:
         for i, param in enumerate(behavior.params):
             bindings[param] = args[i]
 
+        # Build entity scope from nested forms
+        entity_scope = self._build_entity_scope(obj_def.nested_forms)
+
         # Evaluate behavior cases
-        result = self._evaluate_behavior(behavior, bindings)
+        result = self._evaluate_behavior(behavior, bindings, entity_scope)
 
         # If behavior returns 'default' with no action, fall through to default behavior
         if result.outcome == "default" and result.default_action is None:
@@ -644,8 +711,11 @@ class GrueRuntime:
             if i < len(param_values):
                 bindings[param] = param_values[i]
 
+        # Build entity scope from nested forms
+        entity_scope = self._build_entity_scope(room.nested_forms)
+
         # Evaluate the behavior
-        return self._evaluate_behavior(before_action, bindings)
+        return self._evaluate_behavior(before_action, bindings, entity_scope)
 
     def _check_room_on_enter(
         self,
@@ -690,8 +760,11 @@ class GrueRuntime:
             if i < len(param_values):
                 bindings[param] = param_values[i]
 
+        # Build entity scope from nested forms
+        entity_scope = self._build_entity_scope(room.nested_forms)
+
         # Evaluate the behavior
-        return self._evaluate_behavior(on_enter, bindings)
+        return self._evaluate_behavior(on_enter, bindings, entity_scope)
 
     def _try_default_behavior(
         self,
@@ -780,20 +853,36 @@ class GrueRuntime:
     def _evaluate_behavior(
         self,
         behavior: GrueBehavior,
-        bindings: dict[str, Any]
+        bindings: dict[str, Any],
+        entity_scope: tuple[dict[str, GrueFn], dict[str, Any]] | None = None
     ) -> ActionResult:
-        """Evaluate a behavior's body and return the result."""
+        """Evaluate a behavior's body and return the result.
+
+        Args:
+            behavior: The behavior to evaluate
+            bindings: Variable bindings (?self, ?actor, params)
+            entity_scope: Optional (scoped_functions, scoped_values) from entity's nested forms
+        """
         if behavior.body is None:
             return ActionResult(
                 outcome="error",
                 error=f"Behavior {behavior.verb} has no body"
             )
 
+        # Build merged functions dict: entity scope overrides global
+        if entity_scope:
+            scoped_fns, scoped_vals = entity_scope
+            merged_functions = {**self._functions, **scoped_fns}
+            # Add scoped values to bindings
+            bindings = {**scoped_vals, **bindings}
+        else:
+            merged_functions = self._functions
+
         # Set bindings for this evaluation (restored after)
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self, self._functions)
+            evaluator = ExprEvaluator(self, merged_functions)
             return self._evaluate_behavior_body(behavior, bindings, evaluator)
         finally:
             self.bindings = old_bindings
