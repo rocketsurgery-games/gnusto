@@ -4,14 +4,14 @@
 
 (object @master-key
   :description "master key"
-  :location @hacker  ; On hacker's keyring initially
+  :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
   :flags (TAKEBIT KEYBIT)
   :properties ())
 
 (object @keyring
   :description "keyring"
   :location @hacker
-  :flags (CONTBIT)
+  :flags (CONTBIT NDESCBIT SEARCHBIT)  ; NDESCBIT hides from room listing; SEARCHBIT makes it searchable
   :properties ())
 
 (object @carton
@@ -27,16 +27,16 @@
   :properties (:heat 0))  ; 0=cold, 12+=hot, higher=overcooked
 
 (object @snack
-  :description "snack"
-  :location @terminal-room
-  :flags (TAKEBIT FOODBIT)
-  :properties ())
+  :description "package of Funny Bones"
+  :location @kitchen-counter  ; In ZIL: (IN KITCHEN-COUNTER)
+  :flags (TAKEBIT FOODBIT READBIT OPENABLE)
+  :properties (:heat 0))
 
 (object @coke
-  :description "coke"
-  :location @terminal-room
-  :flags (TAKEBIT)
-  :properties ())
+  :description "two liter bottle of Classic Coke"
+  :location @refrigerator  ; In ZIL: (IN REFRIGERATOR)
+  :flags (TAKEBIT FOODBIT OPENABLE)
+  :properties (:size 5 :heat 0))
 
 ; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
 

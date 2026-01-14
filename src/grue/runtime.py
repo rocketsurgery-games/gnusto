@@ -485,12 +485,25 @@ class GrueRuntime:
             return obj.description
         return ""
 
-    def get_visible_objects(self) -> list[str]:
-        """Get objects visible to the player."""
-        return [
-            name for name in self.state.objects
-            if name != self.player_name and self.is_visible(name)
-        ]
+    def get_visible_objects(self, for_description: bool = True) -> list[str]:
+        """Get objects visible to the player.
+
+        Args:
+            for_description: If True, exclude NDESCBIT objects (for room listings).
+                            If False, include all visible objects (for interaction).
+        """
+        result = []
+        for name in self.state.objects:
+            if name == self.player_name:
+                continue
+            if not self.is_visible(name):
+                continue
+            if for_description:
+                obj_state = self.state.objects[name]
+                if "NDESCBIT" in obj_state.flags:
+                    continue
+            result.append(name)
+        return result
 
     def get_exits(self) -> dict[str, str]:
         """Get available exits from the current room."""
