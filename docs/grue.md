@@ -940,6 +940,25 @@ Standard library functions for working with strings and lists:
 | `cons` | ELEM LIST | list | Prepend element to list |
 | `concat` | LISTS... | list | Concatenate lists |
 
+#### Higher-Order Collection Functions
+
+| Function | Arguments | Returns | Description |
+|----------|-----------|---------|-------------|
+| `map` | FN COLL | list | Apply FN to each element |
+| `filter` | PRED COLL | list | Keep elements where PRED returns truthy |
+| `remove` | PRED COLL | list | Remove elements where PRED returns truthy |
+| `keep` | FN COLL | list | Like map but removes nil results |
+| `reduce` | FN INIT COLL | any | Fold with accumulator: `(fn (?acc ?x) ...)` |
+
+Examples:
+```scheme
+(map (fn (?x) (* ?x 2)) '(1 2 3))           ; => (2 4 6)
+(filter (fn (?x) (> ?x 0)) '(-1 0 1 2))     ; => (1 2)
+(remove (fn (?x) (nil? ?x)) '(1 nil 2 nil)) ; => (1 2)
+(keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2)) ; => (1 2)
+(reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3 4))  ; => 10
+```
+
 #### Effects (State Mutations)
 
 Effects describe state changes. By convention, their names end with `!`.

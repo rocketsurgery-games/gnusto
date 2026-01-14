@@ -594,3 +594,77 @@ class TestErrorHandling:
         state = MockWorldState()
         with pytest.raises(EvalError):
             execute_effect("(set! 123 456)", state)
+
+
+class TestHigherOrderFunctions:
+    """Test map, filter, reduce, keep, remove."""
+
+    def test_map_double(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(map (fn (?x) (* ?x 2)) '(1 2 3))"))
+        assert result == [2, 4, 6]
+
+    def test_map_first(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(map (fn (?x) (first ?x)) '((a b) (c d)))"))
+        assert result == ["a", "c"]
+
+    def test_map_empty(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(map (fn (?x) ?x) '())"))
+        assert result == []
+
+    def test_filter_positive(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(filter (fn (?x) (> ?x 0)) '(-1 0 1 2))"))
+        assert result == [1, 2]
+
+    def test_filter_empty(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(filter (fn (?x) (> ?x 100)) '(1 2 3))"))
+        assert result == []
+
+    def test_remove_positive(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(remove (fn (?x) (> ?x 0)) '(-1 0 1 2))"))
+        assert result == [-1, 0]
+
+    def test_keep_positive(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2))"))
+        assert result == [1, 2]
+
+    def test_reduce_sum(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3 4))"))
+        assert result == 10
+
+    def test_reduce_reverse(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(reduce (fn (?acc ?x) (cons ?x ?acc)) '() '(1 2 3))"))
+        assert result == [3, 2, 1]
+
+    def test_reduce_empty(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(reduce (fn (?acc ?x) (+ ?acc ?x)) 100 '())"))
+        assert result == 100
+
+    def test_map_filter_compose(self):
+        """Test composing map and filter."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        # Double values then filter for > 3
+        result = evaluator.eval(parse(
+            "(filter (fn (?x) (> ?x 3)) (map (fn (?x) (* ?x 2)) '(1 2 3)))"
+        ))
+        assert result == [4, 6]

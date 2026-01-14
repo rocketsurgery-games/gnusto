@@ -410,6 +410,13 @@ class ExprEvaluator:
             "cons": self._eval_cons,
             "empty?": self._eval_empty,
 
+            # Higher-order collection functions
+            "map": self._eval_map,
+            "filter": self._eval_filter,
+            "remove": self._eval_remove,
+            "keep": self._eval_keep,
+            "reduce": self._eval_reduce,
+
             # Side effects (require MutableWorldState)
             "set!": self._eval_set_global,
             "inc!": self._eval_inc_global,
@@ -1823,6 +1830,118 @@ class ExprEvaluator:
             return len(coll) == 0
         else:
             raise EvalError(f"'empty?' expects sequence, got {type(coll).__name__}")
+
+    # === Higher-order collection functions ===
+
+    def _eval_map(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(map FN COLL) - apply function to each element.
+
+        Examples:
+            (map (fn (?x) (* ?x 2)) '(1 2 3)) => (2 4 6)
+            (map first '((a b) (c d))) => ("a" "c")
+        """
+        if len(form) != 3:
+            raise EvalError(f"'map' expects 2 arguments, got {len(form) - 1}")
+
+        fn = self.eval(form.items[1], env)
+        coll = self.eval(form.items[2], env)
+
+        if not isinstance(fn, GrueFn):
+            raise EvalError(f"'map' first argument must be a function, got {type(fn).__name__}")
+        if not isinstance(coll, (list, tuple)):
+            raise EvalError(f"'map' second argument must be a sequence, got {type(coll).__name__}")
+
+        return [self.call_fn(fn, [item]) for item in coll]
+
+    def _eval_filter(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(filter PRED COLL) - keep elements matching predicate.
+
+        Examples:
+            (filter (fn (?x) (> ?x 0)) '(-1 0 1 2)) => (1 2)
+            (filter identity '(nil 1 false 2)) => (1 2)
+        """
+        if len(form) != 3:
+            raise EvalError(f"'filter' expects 2 arguments, got {len(form) - 1}")
+
+        pred = self.eval(form.items[1], env)
+        coll = self.eval(form.items[2], env)
+
+        if not isinstance(pred, GrueFn):
+            raise EvalError(f"'filter' first argument must be a function, got {type(pred).__name__}")
+        if not isinstance(coll, (list, tuple)):
+            raise EvalError(f"'filter' second argument must be a sequence, got {type(coll).__name__}")
+
+        return [item for item in coll if self.call_fn(pred, [item])]
+
+    def _eval_remove(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(remove PRED COLL) - remove elements matching predicate (opposite of filter).
+
+        Examples:
+            (remove (fn (?x) (> ?x 0)) '(-1 0 1 2)) => (-1 0)
+            (remove nil? '(nil 1 nil 2)) => (1 2)
+        """
+        if len(form) != 3:
+            raise EvalError(f"'remove' expects 2 arguments, got {len(form) - 1}")
+
+        pred = self.eval(form.items[1], env)
+        coll = self.eval(form.items[2], env)
+
+        if not isinstance(pred, GrueFn):
+            raise EvalError(f"'remove' first argument must be a function, got {type(pred).__name__}")
+        if not isinstance(coll, (list, tuple)):
+            raise EvalError(f"'remove' second argument must be a sequence, got {type(coll).__name__}")
+
+        return [item for item in coll if not self.call_fn(pred, [item])]
+
+    def _eval_keep(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(keep FN COLL) - like map but removes nil results.
+
+        Examples:
+            (keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2)) => (1 2)
+        """
+        if len(form) != 3:
+            raise EvalError(f"'keep' expects 2 arguments, got {len(form) - 1}")
+
+        fn = self.eval(form.items[1], env)
+        coll = self.eval(form.items[2], env)
+
+        if not isinstance(fn, GrueFn):
+            raise EvalError(f"'keep' first argument must be a function, got {type(fn).__name__}")
+        if not isinstance(coll, (list, tuple)):
+            raise EvalError(f"'keep' second argument must be a sequence, got {type(coll).__name__}")
+
+        result = []
+        for item in coll:
+            val = self.call_fn(fn, [item])
+            if val is not None:
+                result.append(val)
+        return result
+
+    def _eval_reduce(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(reduce FN INIT COLL) - fold collection with accumulator.
+
+        FN takes two arguments: (fn (?acc ?item) ...) and returns new accumulator.
+
+        Examples:
+            (reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3)) => 6
+            (reduce (fn (?acc ?x) (cons ?x ?acc)) '() '(1 2 3)) => (3 2 1)
+        """
+        if len(form) != 4:
+            raise EvalError(f"'reduce' expects 3 arguments, got {len(form) - 1}")
+
+        fn = self.eval(form.items[1], env)
+        init = self.eval(form.items[2], env)
+        coll = self.eval(form.items[3], env)
+
+        if not isinstance(fn, GrueFn):
+            raise EvalError(f"'reduce' first argument must be a function, got {type(fn).__name__}")
+        if not isinstance(coll, (list, tuple)):
+            raise EvalError(f"'reduce' third argument must be a sequence, got {type(coll).__name__}")
+
+        acc = init
+        for item in coll:
+            acc = self.call_fn(fn, [acc, item])
+        return acc
 
     # === Side effects (require MutableWorldState) ===
 
