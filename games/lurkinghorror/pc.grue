@@ -1,3 +1,9 @@
+; === Login State Globals ===
+; These track the multi-step login flow from V-TYPE -> V-LOGIN -> V-PASSWORD
+(globals
+  :logged-in false  ; Set true after valid password
+  :username false)  ; Set to login ID after first step (true or 'xyzzy for easter egg)
+
 (object @pc
   :description "pc"
   :fdesc "A really whiz-bang pc is right inside the door."
@@ -6,17 +12,36 @@
   :properties (:size 30 :unplugged false)
 
   (def pc-desc "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key.")
+  (def login-please "\"LOGIN PLEASE:\"")
+  (def password-please "PASSWORD PLEASE:\"")
 
   :behaviors (
     ; EXAMINE - Show PC description with power state and screen contents
+    ; ZIL: "On the screen you see a <FIRST? PC>." when powered and has screen content
+    ; Note: Check specific screen objects in priority order (not mouse/help-key which are physical parts)
     :examine (fn ()
       (cond
-        ((has-flag ?self POWER)
-          (success :context ((power on) (screen-contents (first-in ?self)))
-                   :message pc-desc))
-        (true
+        ; PC is off
+        ((not (has-flag ?self POWER))
           (success :context ((power off))
-                   :message (str pc-desc " It is currently turned off.")))))
+                   :message (str pc-desc " It is currently turned off.")))
+        ; PC is on with screen content
+        ((in? @odd-paper ?self)
+          (success :context ((power on) (screen-contents @odd-paper))
+                   :message (str pc-desc " On the screen you see " @odd-paper ".")))
+        ((in? @menu-box ?self)
+          (success :context ((power on) (screen-contents @menu-box))
+                   :message (str pc-desc " On the screen you see " @menu-box ".")))
+        ((in? @more-box ?self)
+          (success :context ((power on) (screen-contents @more-box))
+                   :message (str pc-desc " On the screen you see " @more-box ".")))
+        ((in? @yak-window ?self)
+          (success :context ((power on) (screen-contents @yak-window))
+                   :message (str pc-desc " On the screen you see " @yak-window ".")))
+        ; PC is on but no screen content (pre-login state)
+        (true
+          (success :context ((power on))
+                   :message pc-desc))))
 
     ; LISTEN - Hums when powered on
     :listen (fn ()
@@ -80,9 +105,9 @@
         (true
           (success :effects ((set-flag! ?self POWER))
                    :context ((booting true))
-                   :message "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting a login. The only sound you hear is a very low hum."))))
+                   :message (str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum.")))))
 
-    ; TURN-OFF (LAMP-OFF) - Power down computer
+    ; TURN-OFF (LAMP-OFF) - Power down computer and reset login state
     :turn-off (fn ()
       (cond
         ((queued? hacker-helps)
@@ -92,8 +117,13 @@
         ((not (has-flag ?self POWER))
           (blocked :reason already-off :message "It's already off."))
         (true
-          (success :effects ((clear-flag! ?self POWER))
-                   :message "The computer powers off."))))
+          (success :effects ((clear-flag! ?self POWER)
+                             (set! logged-in false)
+                             (set! username false)
+                             (move! @menu-box nil)
+                             (move! @more-box nil)
+                             (move! @yak-window nil))
+                   :message "The computer powers off. It no longer makes a sound."))))
 
     ; PLUG-IN - Plug in computer
     :plug-in (fn ()
@@ -104,7 +134,7 @@
           (success :effects ((set-prop! ?self unplugged false))
                    :message "You plug in the computer."))))
 
-    ; UNPLUG - Unplug computer
+    ; UNPLUG - Unplug computer and reset login state
     :unplug (fn ()
       (cond
         ((prop ?self unplugged)
@@ -114,8 +144,14 @@
                    :context ((blocker @hacker))
                    :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
         ((has-flag ?self POWER)
-          ; Unplug while on: turn off first
-          (success :effects ((clear-flag! ?self POWER) (set-prop! ?self unplugged true))
+          ; Unplug while on: turn off first, reset login state
+          (success :effects ((clear-flag! ?self POWER)
+                             (set-prop! ?self unplugged true)
+                             (set! logged-in false)
+                             (set! username false)
+                             (move! @menu-box nil)
+                             (move! @more-box nil)
+                             (move! @yak-window nil))
                    :context ((was-powered true))
                    :message "Okay, it's unplugged now."))
         (true
@@ -128,7 +164,111 @@
         ((here? @chair)
           (redirect :action (do @chair :sit)))
         (true
-          (blocked :reason no-chair :message "There's no chair here."))))))
+          (blocked :reason no-chair :message "There's no chair here."))))
+
+    ; TYPE - Multi-step login flow: routes to :login or :password based on state
+    ; In ZIL this was V-TYPE redirecting via NEW-VERB to V-LOGIN or V-PASSWORD
+    :type (fn (?value)
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason unplugged :message "Login on what?"))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-powered :message "It would help if you turned on the computer first."))
+        ((not username)
+          ; No username yet - redirect to login
+          (redirect :action (do ?self :login ?value)))
+        ((not logged-in)
+          ; Have username but not logged in - redirect to password
+          (redirect :action (do ?self :password ?value)))
+        (true
+          ; Already logged in - syntax error (with smiley face!)
+          (success :message "Nothing interesting happens, except that a yellow smiling face appears in a small box next to the legend \"Sorry, Syntax Error. Hope you have a nice day anyway.\""))))
+
+    ; LOGIN - First step of login flow
+    ; The parser converts "872325412" to "xyzzy" and that's the valid login ID.
+    ; Any other input sets username to true but will fail at password stage.
+    :login (fn (?value)
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason unplugged :message "Login on what?"))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-powered :message "It would help if you turned on the computer first."))
+        ((or (= ?value "xyzzy") (= ?value "872325412"))
+          ; Valid login ID (xyzzy or the actual ID 872325412)
+          (success :effects ((set! username "xyzzy"))
+                   :message (str "The computer responds \"" password-please)))
+        (true
+          ; Wrong login - accept but will fail at password stage
+          (success :effects ((set! username true))
+                   :message (str "The computer responds \"" password-please)))))
+
+    ; PASSWORD - Second step of login flow
+    ; Only "uhlersoth" or "plugh" work, and only if username was "xyzzy" (valid login)
+    :password (fn (?value)
+      (cond
+        ((prop ?self unplugged)
+          (blocked :reason unplugged :message "Login on what?"))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-powered :message "It would help if you turned on the computer first."))
+        ((and (= username "xyzzy")
+              (or (= ?value "plugh") (= ?value "uhlersoth")))
+          ; Valid password with valid login - success!
+          (success :effects ((set! logged-in true) (move! @menu-box ?self))
+                   :message "The computer responds \"Good evening. You're here awfully late.\" It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads \"Classics Paper,\" some particularly ominous words next to it say \"DUE TOMORROW!\" and more reassuringly, a menu box next to that reads \"Edit Classics Paper.\""))
+        (true
+          ; Invalid password or wrong login - reset and fail
+          (success :effects ((set! username false) (set! logged-in false))
+                   :message (str "The computer responds \"INVALID LOGIN\" and then " login-please)))))))
+
+; === PC Physical Components ===
+; These are physical parts of the PC that can be interacted with.
+
+(object @mouse
+  :description "mouse"
+  :location @pc
+  :flags (NDESCBIT)
+  :properties ()
+  :behaviors (
+    :examine (fn () (success :message "It's a plastic pointing device."))
+    :take (fn () (blocked :reason attached :message "It's attached to the computer."))
+    :move (fn () (success :message "It rolls smoothly."))
+    ; CLICK - redirect to the click target
+    :click (fn (?target)
+      (cond
+        (?target (redirect :action (do ?target :click)))
+        (true (blocked :reason no-target :message "You have to click something with the mouse."))))))
+
+(object @help-key
+  :description "HELP key"
+  :location @pc
+  :flags (NDESCBIT READBIT)
+  :properties (:text "It says \"HELP\" in reassuring blue letters.")
+  :behaviors (
+    :examine (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
+    :read (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
+    ; CLICK/PUSH - show contextual help based on PC state
+    :click (fn ()
+      (cond
+        ((not (has-flag @pc POWER))
+          (success :message "Well, nothing happens. Perhaps you should turn on the computer?"))
+        ((not logged-in)
+          (cond
+            ((not username)
+              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should \"LOGIN your-user-id\" and then \"PASSWORD your-password\".\""))
+            (true
+              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"PASSWORD your-password\".\""))))
+        ((in? @more-box @pc)
+          (cond
+            ((not (prop @odd-paper read-page))
+              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please read the page on the screen and then click the MORE box.\""))
+            (true
+              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the MORE box.\"\""))))
+        ((in? @yak-window @pc)
+          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the box representing the file you wish to edit or view. I notice that one file is marked as urgent, so you should probably click its box.\""))
+        ((in? @menu-box @pc)
+          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should click the menu box, as you previously set it up as an urgent task.\""))
+        (true
+          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"I can't help you at this point.\""))))))
 
 ; === PC Screen Objects ===
 ; These represent on-screen UI elements that appear on the PC.
@@ -137,7 +277,7 @@
 
 (object @menu-box
   :description "menu box"
-  :location @pc  ; Starts on screen
+  :location nil  ; Appears on PC after successful login
   :flags (NDESCBIT READBIT)
   :properties (:text "Edit Classics Paper.")
 

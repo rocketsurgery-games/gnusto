@@ -1180,6 +1180,9 @@ class ExprEvaluator:
             elif key == "context":
                 # Legacy format: ((key value) ...)
                 context.update(self._parse_context_list(val))
+            elif key == "message":
+                # Message should always be evaluated to a string
+                context[key] = self.eval(val)
             else:
                 # Direct key-value pair
                 if isinstance(val, Symbol):
