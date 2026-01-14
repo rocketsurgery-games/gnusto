@@ -707,6 +707,24 @@ Entity-scoped `def` and `defn` can appear anywhere in the entity body (before
 or after keyword properties). They help avoid polluting the global namespace
 with many small helper functions and values.
 
+**Shared Behaviors:** You can define shared behaviors at global scope and reference
+them by symbol in multiple objects:
+
+```scheme
+; Define shared behaviors once
+(def door-behaviors
+  '(:examine (fn () (door-examine ?self))
+    :open (fn () (door-open ?self))
+    :close (fn () (door-close ?self))))
+
+; Use in multiple objects
+(object @door-1 :location @room-1 :behaviors door-behaviors)
+(object @door-2 :location @room-2 :behaviors door-behaviors)
+```
+
+This avoids repetition when multiple objects have identical behavior logic.
+Each object can still have unique properties that the shared functions read via `?self`.
+
 #### `(if COND THEN ELSE)`
 Conditional expression. Evaluates COND, then returns THEN if truthy, ELSE otherwise.
 ```scheme

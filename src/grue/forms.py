@@ -421,7 +421,7 @@ def parse_exits(expr: SExpr) -> list[GrueExit]:
     return exits
 
 
-def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
+def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueBehavior]:
     """Parse behaviors list: (:verb (fn (?params) body) ...) or (:verb fn-reference ...)
 
     The body can be any expression - not limited to (cond ...).
@@ -436,10 +436,31 @@ def parse_behaviors(expr: SExpr) -> list[GrueBehavior]:
           :take (fn () (success))
           :examine shared-examine)  ; reference to defn or entity-scoped function
 
+    Shared behaviors can be defined with (def) and referenced by symbol:
+        (def shared-behaviors '(:examine (fn () (success))))
+        (object @foo :behaviors shared-behaviors)
+
     Auto-bound symbols (not specified in params):
         ?self  - The object whose behavior is invoked
         ?actor - Who is performing the action
     """
+    # If expr is a symbol, resolve it from world.constants
+    if isinstance(expr, Symbol) and world is not None:
+        name = expr.name
+        if name in world.constants:
+            expr = world.constants[name]
+            # Unwrap (quote ...) if present - def stores raw AST including quote
+            if (isinstance(expr, SList) and len(expr) == 2 and
+                isinstance(expr[0], Symbol) and expr[0].name == "quote"):
+                expr = expr[1]
+            # The constant value should be an SList (the behaviors list)
+            if not isinstance(expr, SList):
+                raise FormParseError(
+                    f"Behavior reference '{name}' must be a quoted list, got {type(expr).__name__}"
+                )
+        else:
+            raise FormParseError(f"Unknown behavior reference: {name}")
+
     if not isinstance(expr, SList):
         raise FormParseError(f"Expected behaviors list, got {expr}")
 
@@ -564,7 +585,7 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     if "properties" in kwargs:
         room.properties = parse_properties(kwargs["properties"])
     if "behaviors" in kwargs:
-        room.behaviors = parse_behaviors(kwargs["behaviors"])
+        room.behaviors = parse_behaviors(kwargs["behaviors"], world)
 
     world.rooms[room.name] = room
 
@@ -600,7 +621,7 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "properties" in kwargs:
         obj.properties = parse_properties(kwargs["properties"])
     if "behaviors" in kwargs:
-        obj.behaviors = parse_behaviors(kwargs["behaviors"])
+        obj.behaviors = parse_behaviors(kwargs["behaviors"], world)
 
     world.objects[obj.name] = obj
 
