@@ -734,12 +734,17 @@ Conditional expression. Evaluates COND, then returns THEN if truthy, ELSE otherw
 ```
 
 #### `(let ((VAR VAL) ...) BODY)`
-Local binding. Binds variables for use within BODY.
+Local binding with sequential semantics (like Clojure's `let`, not Scheme's parallel `let`).
+Each binding can reference earlier bindings in the same `let`.
 ```scheme
 (let ((target-room (exit-to ?direction)))
   (if (room-has-flag? target-room DARK)
       (blocked :reason too-dark)
       (success)))
+
+; Sequential binding: y can reference x
+(let ((x 10) (y (+ x 5)))  ; y = 15
+  y)
 ```
 
 #### `(cond CLAUSE ...)`
@@ -949,6 +954,8 @@ Standard library functions for working with strings and lists:
 | `remove` | PRED COLL | list | Remove elements where PRED returns truthy |
 | `keep` | FN COLL | list | Like map but removes nil results |
 | `reduce` | FN INIT COLL | any | Fold with accumulator: `(fn (?acc ?x) ...)` |
+| `for` | (VAR SEQ ...) BODY | list | Comprehension returning results |
+| `doseq` | (VAR SEQ ...) BODY | nil | Comprehension for side effects |
 
 Examples:
 ```scheme
@@ -957,6 +964,11 @@ Examples:
 (remove (fn (?x) (nil? ?x)) '(1 nil 2 nil)) ; => (1 2)
 (keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2)) ; => (1 2)
 (reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3 4))  ; => 10
+
+; Comprehensions - for returns results, doseq for side effects only
+(for (?x '(1 2 3)) (* ?x 2))                ; => (2 4 6)
+(for (?x '(1 2) ?y '(a b)) (list ?x ?y))    ; => ((1 a) (1 b) (2 a) (2 b))
+(doseq (?obj (contents @player)) (print (desc ?obj)))  ; prints each, returns nil
 ```
 
 #### Effects (State Mutations)

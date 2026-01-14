@@ -668,3 +668,93 @@ class TestHigherOrderFunctions:
             "(filter (fn (?x) (> ?x 3)) (map (fn (?x) (* ?x 2)) '(1 2 3)))"
         ))
         assert result == [4, 6]
+
+
+class TestForDoseq:
+    """Test for and doseq comprehension forms."""
+
+    def test_for_basic(self):
+        """Basic for comprehension."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(for (?x '(1 2 3)) (* ?x 2))"))
+        assert result == [2, 4, 6]
+
+    def test_for_empty(self):
+        """for over empty sequence returns empty list."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(for (?x '()) ?x)"))
+        assert result == []
+
+    def test_for_nested_bindings(self):
+        """for with multiple binding pairs creates cartesian product."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(for (?x '(1 2) ?y '(a b)) (list ?x ?y))"))
+        assert result == [[1, "a"], [1, "b"], [2, "a"], [2, "b"]]
+
+    def test_for_binding_uses_earlier_binding(self):
+        """Later bindings can reference earlier bindings."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        # For each x, filter y to be less than x
+        result = evaluator.eval(parse("(for (?x '(2 3) ?y (filter (fn (?n) (< ?n ?x)) '(1 2))) (list ?x ?y))"))
+        # x=2: y in [1] (only 1 < 2) -> (2,1)
+        # x=3: y in [1,2] (1,2 < 3) -> (3,1), (3,2)
+        assert result == [[2, 1], [3, 1], [3, 2]]
+
+    def test_for_with_strings(self):
+        """for works with string elements."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(for (?s '(\"a\" \"b\")) (str ?s ?s))"))
+        assert result == ["aa", "bb"]
+
+    def test_doseq_returns_nil(self):
+        """doseq returns nil."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        result = evaluator.eval(parse("(doseq (?x '(1 2 3)) ?x)"))
+        assert result is None
+
+    def test_doseq_side_effects(self):
+        """doseq executes body for side effects."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        # Set global to track iterations
+        evaluator.eval(parse("(set! count 0)"))
+        evaluator.eval(parse("(doseq (?x '(1 2 3)) (inc! count))"))
+        assert state.get_global("count") == 3
+
+    def test_doseq_nested(self):
+        """doseq with nested bindings."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        evaluator.eval(parse("(set! count 0)"))
+        evaluator.eval(parse("(doseq (?x '(1 2) ?y '(a b)) (inc! count))"))
+        assert state.get_global("count") == 4  # 2 * 2
+
+    def test_for_error_odd_bindings(self):
+        """for with odd number of binding elements raises error."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        with pytest.raises(EvalError) as excinfo:
+            evaluator.eval(parse("(for (?x '(1 2) ?y) ?x)"))
+        assert "even number" in str(excinfo.value)
+
+    def test_for_error_no_bindings(self):
+        """for with empty bindings raises error."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        with pytest.raises(EvalError) as excinfo:
+            evaluator.eval(parse("(for () 1)"))
+        assert "at least one" in str(excinfo.value)
+
+    def test_for_error_non_sequence(self):
+        """for with non-sequence raises error."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        with pytest.raises(EvalError) as excinfo:
+            evaluator.eval(parse("(for (?x 42) ?x)"))
+        assert "sequence must be a list" in str(excinfo.value)

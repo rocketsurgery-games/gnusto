@@ -416,6 +416,8 @@ class ExprEvaluator:
             "remove": self._eval_remove,
             "keep": self._eval_keep,
             "reduce": self._eval_reduce,
+            "for": self._eval_for,
+            "doseq": self._eval_doseq,
 
             # Side effects (require MutableWorldState)
             "set!": self._eval_set_global,
@@ -1942,6 +1944,122 @@ class ExprEvaluator:
         for item in coll:
             acc = self.call_fn(fn, [acc, item])
         return acc
+
+    def _eval_for(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(for (BINDING SEQ ...) BODY) - sequence comprehension.
+
+        Returns a list of body evaluation results, one for each element.
+        Supports multiple binding pairs that nest (like nested for loops).
+
+        Examples:
+            (for (?x '(1 2 3)) (* ?x 2)) => (2 4 6)
+            (for (?x '(1 2) ?y '(a b)) (list ?x ?y))
+              => ((1 a) (1 b) (2 a) (2 b))
+        """
+        if len(form) != 3:
+            raise EvalError(f"'for' expects 2 arguments (bindings body), got {len(form) - 1}")
+
+        bindings_expr = form[1]
+        body = form[2]
+
+        if not isinstance(bindings_expr, SList):
+            raise EvalError(f"'for' bindings must be a list, got {bindings_expr}")
+
+        # Parse binding pairs: (?var seq ?var2 seq2 ...)
+        bindings_list = list(bindings_expr.items)
+        if len(bindings_list) % 2 != 0:
+            raise EvalError("'for' bindings must have even number of elements (var seq pairs)")
+        if len(bindings_list) == 0:
+            raise EvalError("'for' requires at least one binding pair")
+
+        pairs = []
+        for i in range(0, len(bindings_list), 2):
+            var = bindings_list[i]
+            seq_expr = bindings_list[i + 1]
+            if not isinstance(var, Symbol):
+                raise EvalError(f"'for' binding variable must be a symbol, got {var}")
+            pairs.append((var.name, seq_expr))
+
+        # Helper to iterate through nested bindings recursively
+        def iterate(pairs_idx: int, current_env: Environment) -> list:
+            if pairs_idx >= len(pairs):
+                # All bindings set, evaluate body
+                return [self.eval(body, current_env)]
+
+            var_name, seq_expr = pairs[pairs_idx]
+            seq = self.eval(seq_expr, current_env)
+            if not isinstance(seq, (list, tuple)):
+                raise EvalError(f"'for' sequence must be a list, got {type(seq).__name__}")
+
+            result = []
+            base_name = var_name[1:] if var_name.startswith("?") else var_name
+            for item in seq:
+                # Bind the variable
+                new_bindings = {base_name: item, f"?{base_name}": item}
+                new_env = current_env.extend(new_bindings)
+                # Recurse to next binding or body
+                result.extend(iterate(pairs_idx + 1, new_env))
+            return result
+
+        base_env = env if env is not None else Environment()
+        return iterate(0, base_env)
+
+    def _eval_doseq(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(doseq (BINDING SEQ ...) BODY) - iterate for side effects.
+
+        Like for, but doesn't collect results. Returns nil.
+        Useful when body has side effects like print or move!.
+
+        Examples:
+            (doseq (?obj (contents @player)) (print (desc ?obj)))
+        """
+        if len(form) != 3:
+            raise EvalError(f"'doseq' expects 2 arguments (bindings body), got {len(form) - 1}")
+
+        bindings_expr = form[1]
+        body = form[2]
+
+        if not isinstance(bindings_expr, SList):
+            raise EvalError(f"'doseq' bindings must be a list, got {bindings_expr}")
+
+        # Parse binding pairs: (?var seq ?var2 seq2 ...)
+        bindings_list = list(bindings_expr.items)
+        if len(bindings_list) % 2 != 0:
+            raise EvalError("'doseq' bindings must have even number of elements (var seq pairs)")
+        if len(bindings_list) == 0:
+            raise EvalError("'doseq' requires at least one binding pair")
+
+        pairs = []
+        for i in range(0, len(bindings_list), 2):
+            var = bindings_list[i]
+            seq_expr = bindings_list[i + 1]
+            if not isinstance(var, Symbol):
+                raise EvalError(f"'doseq' binding variable must be a symbol, got {var}")
+            pairs.append((var.name, seq_expr))
+
+        # Helper to iterate through nested bindings recursively
+        def iterate(pairs_idx: int, current_env: Environment) -> None:
+            if pairs_idx >= len(pairs):
+                # All bindings set, evaluate body for side effects
+                self.eval(body, current_env)
+                return
+
+            var_name, seq_expr = pairs[pairs_idx]
+            seq = self.eval(seq_expr, current_env)
+            if not isinstance(seq, (list, tuple)):
+                raise EvalError(f"'doseq' sequence must be a list, got {type(seq).__name__}")
+
+            base_name = var_name[1:] if var_name.startswith("?") else var_name
+            for item in seq:
+                # Bind the variable
+                new_bindings = {base_name: item, f"?{base_name}": item}
+                new_env = current_env.extend(new_bindings)
+                # Recurse to next binding or body
+                iterate(pairs_idx + 1, new_env)
+
+        base_env = env if env is not None else Environment()
+        iterate(0, base_env)
+        return None
 
     # === Side effects (require MutableWorldState) ===
 
