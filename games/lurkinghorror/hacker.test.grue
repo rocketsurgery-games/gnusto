@@ -1,0 +1,66 @@
+; Hacker Tests
+; Tests for conversation, giving, and trading with the hacker.
+
+; =============================================================================
+; CONVERSATION - ask-about
+; =============================================================================
+
+(test-group "ask-about"
+  (test "about keys reveals master key"
+    :action (do @hacker :ask-about @keys)
+    :expect ((outcome? success)
+             (has-flag? @master-key TOUCHBIT)))
+
+  (test "about keys again - already revealed"
+    :setup ((set-flag! @master-key TOUCHBIT))
+    :action (do @hacker :ask-about @keys)
+    :expect ((outcome? success)))
+
+  (test "about food"
+    :action (do @hacker :ask-about @food)
+    :expect ((outcome? success)))
+
+  (test "when possessed - responds with Meld"
+    :setup ((set! lair-cnt 7))
+    :action (do @hacker :ask-about @keys)
+    :expect ((outcome? success))))
+
+; =============================================================================
+; GIVE/TRADE PUZZLE
+; =============================================================================
+
+(test-group "give items"
+  (test "give snack - accepted"
+    :setup ((move! @snack @player))
+    :action (do @hacker :give @snack)
+    :expect ((outcome? success)
+             (loc? @snack @hacker)))
+
+  (test "give coke - rejected"
+    :setup ((move! @coke @player))
+    :action (do @hacker :give @coke)
+    :expect ((outcome? blocked)
+             (reason? wrong-drink))))
+
+(test-group "trade"
+  (test "propose food for key"
+    :action (do @hacker :trade @carton @master-key)
+    :expect ((outcome? success)
+             (global? hacker-trade true)))
+
+  (test "propose bad trade - rejected"
+    :action (do @hacker :trade @coke @master-key)
+    :expect ((outcome? blocked)
+             (reason? bad-trade))))
+
+(test-group "ask-for"
+  (test "master key - not revealed yet"
+    :action (do @hacker :ask-for @master-key)
+    :expect ((outcome? blocked)
+             (reason? suspicious)))
+
+  (test "master key - revealed but no quid pro quo"
+    :setup ((set-flag! @master-key TOUCHBIT))
+    :action (do @hacker :ask-for @master-key)
+    :expect ((outcome? blocked)
+             (reason? quid-pro-quo))))

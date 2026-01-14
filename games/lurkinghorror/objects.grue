@@ -1,0 +1,108 @@
+; === Puzzle Objects ===
+; These are stub definitions for testing the hacker trade puzzle.
+; Full definitions would come from converted/objects.grue
+
+(object @master-key
+  :description "master key"
+  :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
+  :flags (TAKEBIT KEYBIT)
+  :properties ())
+
+(object @keyring
+  :description "keyring"
+  :location @hacker
+  :flags (CONTBIT NDESCBIT SEARCHBIT)  ; NDESCBIT hides from room listing; SEARCHBIT makes it searchable
+  :properties ())
+
+(object @carton
+  :description "white carton"
+  :location @refrigerator  ; In the kitchen refrigerator
+  :flags (TAKEBIT CONTBIT OPENBIT)
+  :properties (:heat 0))  ; Heatable object - can be warmed in microwave
+
+(object @chinese-food
+  :description "chinese food"
+  :location @carton  ; Inside the carton
+  :flags (FOODBIT)
+  :properties (:heat 0))  ; 0=cold, 12+=hot, higher=overcooked
+
+(object @snack
+  :description "package of Funny Bones"
+  :location @kitchen-counter  ; In ZIL: (IN KITCHEN-COUNTER)
+  :flags (TAKEBIT FOODBIT READBIT OPENABLE)
+  :properties (:heat 0))
+
+(object @coke
+  :description "two liter bottle of Classic Coke"
+  :location @refrigerator  ; In ZIL: (IN REFRIGERATOR)
+  :flags (TAKEBIT FOODBIT OPENABLE)
+  :properties (:size 5 :heat 0))
+
+; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
+
+(object @keys
+  :description "keys"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @food
+  :description "food"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @students
+  :description "missing students"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @program
+  :description "the program"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @lovecraft
+  :description "Lovecraft"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @smooth-stone
+  :description "smooth stone"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @urchins
+  :description "urchins"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @repeater
+  :description "repeater"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @cable
+  :description "cable"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
+
+(object @hand
+  :description "your hand"
+  :location @player
+  :flags (INVISIBLE NDESCBIT)
+  :properties ())
+
+(object @dead-rat
+  :description "dead rat"
+  :location nil
+  :flags (TAKEBIT)
+  :properties ())
+
