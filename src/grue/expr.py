@@ -52,6 +52,29 @@ from typing import Any, Callable, Protocol, Optional
 from .sexpr import SExpr, Symbol, Keyword, SList, parse
 
 
+def quote_to_data(expr: SExpr) -> Any:
+    """Convert quoted AST to Python data structures.
+
+    This is used to convert quoted expressions to runtime values:
+    - SList → list (recursively)
+    - Symbol → str (the symbol name)
+    - Keyword → Keyword (preserved for (:key map) lookup)
+    - Primitives → as-is
+
+    Examples:
+        '(a b c) → ["a", "b", "c"]
+        'foo → "foo"
+        '(:foo "bar") → [Keyword("foo"), "bar"]
+    """
+    if isinstance(expr, SList):
+        return [quote_to_data(item) for item in expr.items]
+    if isinstance(expr, Symbol):
+        return expr.name
+    # Keyword preserved for (:key map) lookup
+    # Primitives (int, str, bool, None) pass through
+    return expr
+
+
 @dataclass
 class GrueFn:
     """A first-class function (lambda/closure).
@@ -1565,9 +1588,9 @@ class ExprEvaluator:
         if isinstance(target, dict):
             return target.get(key_name, default)
 
-        # Handle SList (quoted keyword-value list like '(:foo "bar" :baz "qux"))
-        if isinstance(target, SList):
-            items = target.items
+        # Handle list (quoted keyword-value list like '(:foo "bar" :baz "qux"))
+        if isinstance(target, (list, tuple)):
+            items = target
             for i in range(0, len(items) - 1, 2):
                 if isinstance(items[i], Keyword) and items[i].name == key_name:
                     return items[i + 1]
@@ -1583,16 +1606,23 @@ class ExprEvaluator:
     # === Data constructors ===
 
     def _eval_quote(self, form: SList, env: Optional[Environment] = None) -> Any:
-        """(quote EXPR) or 'EXPR - return EXPR unevaluated.
+        """(quote EXPR) or 'EXPR - return EXPR unevaluated, as Python data.
+
+        Converts AST types to Python native types:
+        - SList → list (recursively)
+        - Symbol → str (the symbol name)
+        - Keyword → Keyword (preserved for keyword lookup)
+        - Primitives → as-is
 
         Examples:
-            '(a b c) => SList([Symbol(a), Symbol(b), Symbol(c)])
-            'foo => Symbol(foo)
+            '(a b c) => ["a", "b", "c"]
+            'foo => "foo"
+            '(:foo "bar") => [Keyword("foo"), "bar"]
             '42 => 42
         """
         if len(form) != 2:
             raise EvalError("'quote' requires exactly one argument")
-        return form[1]
+        return quote_to_data(form[1])
 
     def _eval_list(self, form: SList, env: Optional[Environment] = None) -> list[Any]:
         """(list EXPR ...) - construct a list from evaluated arguments.
@@ -1641,9 +1671,8 @@ class ExprEvaluator:
 
         if coll is None:
             return ""
-        elif isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return separator.join(str(item) for item in items)
+        elif isinstance(coll, (list, tuple)):
+            return separator.join(str(item) for item in coll)
         else:
             raise EvalError(f"'join' expects sequence, got {type(coll).__name__}")
 
@@ -1665,14 +1694,13 @@ class ExprEvaluator:
         if not isinstance(idx, int):
             raise EvalError(f"'nth' index must be int, got {type(idx).__name__}")
 
-        if isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            if 0 <= idx < len(items):
-                return items[idx]
+        if isinstance(coll, (list, tuple)):
+            if 0 <= idx < len(coll):
+                return coll[idx]
             elif len(form) > 3:
                 return not_found
             else:
-                raise EvalError(f"Index {idx} out of bounds for collection of size {len(items)}")
+                raise EvalError(f"Index {idx} out of bounds for collection of size {len(coll)}")
         elif isinstance(coll, str):
             if 0 <= idx < len(coll):
                 return coll[idx]
@@ -1699,8 +1727,8 @@ class ExprEvaluator:
         if not isinstance(idx, int):
             raise EvalError(f"'list-set' index must be int, got {type(idx).__name__}")
 
-        if isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+        if isinstance(coll, (list, tuple)):
+            items = list(coll)
             if 0 <= idx < len(items):
                 result = items.copy()
                 result[idx] = value
@@ -1716,9 +1744,8 @@ class ExprEvaluator:
             raise EvalError(f"'first' expects 1 argument, got {len(form) - 1}")
         coll = self.eval(form.items[1], env)
 
-        if isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return items[0] if items else None
+        if isinstance(coll, (list, tuple)):
+            return coll[0] if coll else None
         elif isinstance(coll, str):
             return coll[0] if coll else None
         else:
@@ -1730,9 +1757,8 @@ class ExprEvaluator:
             raise EvalError(f"'rest' expects 1 argument, got {len(form) - 1}")
         coll = self.eval(form.items[1], env)
 
-        if isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return items[1:] if items else []
+        if isinstance(coll, (list, tuple)):
+            return list(coll[1:]) if coll else []
         elif isinstance(coll, str):
             return list(coll[1:]) if coll else []
         else:
@@ -1746,9 +1772,8 @@ class ExprEvaluator:
 
         if coll is None:
             return 0
-        elif isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return len(items)
+        elif isinstance(coll, (list, tuple)):
+            return len(coll)
         elif isinstance(coll, str):
             return len(coll)
         else:
@@ -1770,9 +1795,8 @@ class ExprEvaluator:
 
         if coll is None:
             return [elem]
-        elif isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return [elem] + items
+        elif isinstance(coll, (list, tuple)):
+            return [elem] + list(coll)
         else:
             raise EvalError(f"'cons' expects sequence as second argument, got {type(coll).__name__}")
 
@@ -1793,9 +1817,8 @@ class ExprEvaluator:
 
         if coll is None:
             return True
-        elif isinstance(coll, (list, tuple, SList)):
-            items = list(coll.items) if isinstance(coll, SList) else list(coll)
-            return len(items) == 0
+        elif isinstance(coll, (list, tuple)):
+            return len(coll) == 0
         elif isinstance(coll, str):
             return len(coll) == 0
         else:
@@ -1929,36 +1952,6 @@ class ExprEvaluator:
             bindings[f"?{name}"] = value
         new_env = (env or Environment()).extend(bindings)
         return self.eval(expr, new_env)
-
-    def _substitute(self, expr: SExpr, name: str, value: Any) -> SExpr:
-        """Substitute all occurrences of symbol `name` with `value`.
-
-        When substituting, SList values are converted to Python lists so they
-        are treated as data (not code) when the expression is later evaluated.
-        """
-        if isinstance(expr, Symbol):
-            if expr.name == name:
-                if isinstance(value, str):
-                    return Symbol(value)
-                # Convert SList to Python list so it's treated as data, not code
-                if isinstance(value, SList):
-                    return list(value.items)
-                return value
-            return expr
-        elif isinstance(expr, SList):
-            # Check for nested lambda that shadows the variable
-            if (len(expr) >= 2 and
-                isinstance(expr[0], Symbol) and expr[0].name == "lambda"):
-                params = expr[1]
-                if isinstance(params, SList):
-                    for p in params:
-                        if isinstance(p, Symbol) and p.name == name:
-                            # Variable is shadowed, don't substitute in body
-                            return expr
-            # Recursively substitute in list items
-            return SList([self._substitute(item, name, value) for item in expr.items])
-        else:
-            return expr
 
 
 class EffectExecutor:

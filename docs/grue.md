@@ -834,11 +834,11 @@ Universal quantifier. Returns true if PRED is true for all elements.
 ```
 
 #### `'EXPR` or `(quote EXPR)`
-Quote prevents evaluation. Returns EXPR as data rather than evaluating it.
+Quote prevents evaluation. Returns EXPR as Python data (symbols become strings):
 ```scheme
-'(a b c)           ; => the list (a b c), not a function call
-'@hacker           ; => the symbol @hacker
-(quote (foo bar))  ; => same as '(foo bar)
+'(a b c)           ; => ["a", "b", "c"]
+'@hacker           ; => "@hacker" (string)
+'(:foo "bar")      ; => [Keyword("foo"), "bar"]
 ```
 
 #### `(list EXPR ...)`

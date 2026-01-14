@@ -23,7 +23,7 @@ from copy import deepcopy
 
 from .parser import GrueWorld, GrueBehavior
 from .expr import (
-    ExprEvaluator, EffectExecutor, GrueFn,
+    ExprEvaluator, EffectExecutor, GrueFn, quote_to_data,
     BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
 )
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
@@ -146,16 +146,10 @@ class GrueRuntime:
                     # Could be reference to global or another scoped value
                     scoped_values[name] = value_expr.name
                 elif isinstance(value_expr, SList) and len(value_expr) >= 1:
-                    # Handle (quote ...) forms - evaluate them immediately
+                    # Handle (quote ...) forms - convert to Python data
                     if isinstance(value_expr[0], Symbol) and value_expr[0].name == "quote":
-                        # (quote x) => x, converting SList to tuple to avoid eval as code
                         if len(value_expr) == 2:
-                            inner = value_expr[1]
-                            # Convert SList to tuple so it's treated as data, not code
-                            if isinstance(inner, SList):
-                                scoped_values[name] = tuple(inner.items)
-                            else:
-                                scoped_values[name] = inner
+                            scoped_values[name] = quote_to_data(value_expr[1])
                         else:
                             scoped_values[name] = value_expr
                     else:
