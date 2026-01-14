@@ -326,12 +326,16 @@ class ExprEvaluator:
 
             # String operations
             "str": self._eval_str,
+            "join": self._eval_join,
 
             # Sequence operations (Clojure stdlib)
             "nth": self._eval_nth,
+            "list-set": self._eval_list_set,
             "first": self._eval_first,
             "rest": self._eval_rest,
             "count": self._eval_count,
+            "cons": self._eval_cons,
+            "empty?": self._eval_empty,
 
             # Side effects (require MutableWorldState)
             "set!": self._eval_set_global,
@@ -879,9 +883,12 @@ class ExprEvaluator:
         else:
             body = SList([Symbol("do")] + body_exprs)
 
-        # Evaluate bindings and substitute
+        # Evaluate bindings sequentially (let* semantics)
+        # Each binding's value can reference earlier bindings
+        bindings_list = list(bindings_expr.items)
         result_expr = body
-        for binding in bindings_expr.items:
+
+        for i, binding in enumerate(bindings_list):
             if not isinstance(binding, SList) or len(binding) != 2:
                 raise EvalError(f"'let' binding must be (name value), got {binding}")
 
@@ -894,9 +901,18 @@ class ExprEvaluator:
                 name = name[1:]
 
             value = self.eval(binding[1])
+
+            # Substitute into body
             result_expr = self._substitute(result_expr, name, value)
-            # Also substitute with ? prefix for convenience
             result_expr = self._substitute(result_expr, f"?{name}", value)
+
+            # Also substitute into subsequent bindings (let* semantics)
+            for j in range(i + 1, len(bindings_list)):
+                subseq_binding = bindings_list[j]
+                if isinstance(subseq_binding, SList) and len(subseq_binding) == 2:
+                    new_value_expr = self._substitute(subseq_binding[1], name, value)
+                    new_value_expr = self._substitute(new_value_expr, f"?{name}", value)
+                    bindings_list[j] = SList([subseq_binding[0], new_value_expr])
 
         return self.eval(result_expr)
 
@@ -1479,6 +1495,26 @@ class ExprEvaluator:
         parts = [str(self.eval(item)) for item in form.items[1:]]
         return "".join(parts)
 
+    def _eval_join(self, form: SList) -> str:
+        """(join SEPARATOR COLL) - join collection elements with separator.
+
+        Examples:
+            (join ", " '("a" "b" "c")) => "a, b, c"
+            (join "-" '(1 2 3)) => "1-2-3"
+        """
+        if len(form) != 3:
+            raise EvalError(f"'join' expects 2 arguments, got {len(form) - 1}")
+        separator = str(self.eval(form.items[1]))
+        coll = self.eval(form.items[2])
+
+        if coll is None:
+            return ""
+        elif isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return separator.join(str(item) for item in items)
+        else:
+            raise EvalError(f"'join' expects sequence, got {type(coll).__name__}")
+
     # === Sequence operations (Clojure stdlib) ===
 
     def _eval_nth(self, form: SList) -> Any:
@@ -1514,6 +1550,33 @@ class ExprEvaluator:
                 raise EvalError(f"Index {idx} out of bounds for string of length {len(coll)}")
         else:
             raise EvalError(f"'nth' expects sequence, got {type(coll).__name__}")
+
+    def _eval_list_set(self, form: SList) -> list:
+        """(list-set COLL INDEX VALUE) - return new list with element at index replaced.
+
+        Examples:
+            (list-set '(a b c) 1 'x') => '(a x c)'
+            (list-set '(1 2 3 4) 0 99) => '(99 2 3 4)'
+        """
+        if len(form) != 4:
+            raise EvalError(f"'list-set' expects 3 arguments, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+        idx = self.eval(form.items[2])
+        value = self.eval(form.items[3])
+
+        if not isinstance(idx, int):
+            raise EvalError(f"'list-set' index must be int, got {type(idx).__name__}")
+
+        if isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            if 0 <= idx < len(items):
+                result = items.copy()
+                result[idx] = value
+                return result
+            else:
+                raise EvalError(f"Index {idx} out of bounds for list of size {len(items)}")
+        else:
+            raise EvalError(f"'list-set' expects list, got {type(coll).__name__}")
 
     def _eval_first(self, form: SList) -> Any:
         """(first COLL) - get first element, or nil if empty."""
@@ -1558,6 +1621,53 @@ class ExprEvaluator:
             return len(coll)
         else:
             raise EvalError(f"'count' expects sequence, got {type(coll).__name__}")
+
+    def _eval_cons(self, form: SList) -> list:
+        """(cons ELEM COLL) - prepend element to collection.
+
+        Returns a new list with ELEM as first element.
+
+        Examples:
+            (cons 1 '(2 3)) => (1 2 3)
+            (cons "a" '()) => ("a")
+        """
+        if len(form) != 3:
+            raise EvalError(f"'cons' expects 2 arguments, got {len(form) - 1}")
+        elem = self.eval(form.items[1])
+        coll = self.eval(form.items[2])
+
+        if coll is None:
+            return [elem]
+        elif isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return [elem] + items
+        else:
+            raise EvalError(f"'cons' expects sequence as second argument, got {type(coll).__name__}")
+
+    def _eval_empty(self, form: SList) -> bool:
+        """(empty? COLL) - check if collection is empty.
+
+        Returns true if collection is nil, empty list, or empty string.
+
+        Examples:
+            (empty? '()) => true
+            (empty? nil) => true
+            (empty? '(1 2)) => false
+            (empty? "") => true
+        """
+        if len(form) != 2:
+            raise EvalError(f"'empty?' expects 1 argument, got {len(form) - 1}")
+        coll = self.eval(form.items[1])
+
+        if coll is None:
+            return True
+        elif isinstance(coll, (list, tuple, SList)):
+            items = list(coll.items) if isinstance(coll, SList) else list(coll)
+            return len(items) == 0
+        elif isinstance(coll, str):
+            return len(coll) == 0
+        else:
+            raise EvalError(f"'empty?' expects sequence, got {type(coll).__name__}")
 
     # === Side effects (require MutableWorldState) ===
 
@@ -1683,11 +1793,18 @@ class ExprEvaluator:
         return self.eval(substituted)
 
     def _substitute(self, expr: SExpr, name: str, value: Any) -> SExpr:
-        """Substitute all occurrences of symbol `name` with `value`."""
+        """Substitute all occurrences of symbol `name` with `value`.
+
+        When substituting, SList values are converted to Python lists so they
+        are treated as data (not code) when the expression is later evaluated.
+        """
         if isinstance(expr, Symbol):
             if expr.name == name:
                 if isinstance(value, str):
                     return Symbol(value)
+                # Convert SList to Python list so it's treated as data, not code
+                if isinstance(value, SList):
+                    return list(value.items)
                 return value
             return expr
         elif isinstance(expr, SList):
