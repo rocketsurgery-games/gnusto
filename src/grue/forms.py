@@ -192,8 +192,9 @@ class GrueWorld:
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
     globals: dict[str, Any] = field(default_factory=dict)  # global variables
+    constants: dict[str, Any] = field(default_factory=dict)  # immutable constants from (def name value)
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
-    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition  # name -> function definition
+    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
 
 
 # === Helper functions for form handlers ===
@@ -721,16 +722,36 @@ def _skip_test_sequence(expr: SList, world: GrueWorld) -> None:
 
 @form("defn")
 def _parse_defn(expr: SList, world: GrueWorld) -> None:
-    """Parse (defn name (params) body) and store in world.functions."""
-    if len(expr) != 4:
-        raise FormParseError(f"'defn' expects 3 arguments (name, params, body), got {len(expr) - 1}")
+    """Parse (defn name (params) body...) or (defn name "docstring" (params) body...).
+
+    Supports:
+    - (defn name (params) body)                    - single body expression
+    - (defn name (params) "docstring" body)        - Scheme-style docstring in body
+    - (defn name "docstring" (params) body)        - Clojure-style docstring before params
+    - (defn name (params) body1 body2 ...)         - multiple body expressions
+
+    If there's a docstring as first body expression, it's stripped.
+    Multiple body expressions are wrapped in (do ...).
+    """
+    if len(expr) < 4:
+        raise FormParseError(f"'defn' expects at least 3 arguments, got {len(expr) - 1}")
 
     name_expr = expr[1]
     if not isinstance(name_expr, Symbol):
         raise FormParseError(f"'defn' name must be a symbol, got: {name_expr}")
     name = name_expr.name
 
-    params_expr = expr[2]
+    # Determine where params and body start
+    # Check if expr[2] is a string (Clojure-style docstring before params)
+    if isinstance(expr[2], str):
+        # (defn name "docstring" (params) body...)
+        params_expr = expr[3]
+        body_exprs = list(expr.items[4:])
+    else:
+        # (defn name (params) body...)
+        params_expr = expr[2]
+        body_exprs = list(expr.items[3:])
+
     if not isinstance(params_expr, SList):
         raise FormParseError(f"'defn' params must be a list, got: {params_expr}")
     params: list[str] = []
@@ -741,9 +762,39 @@ def _parse_defn(expr: SList, world: GrueWorld) -> None:
         param_name = p.name[1:] if p.name.startswith("?") else p.name
         params.append(param_name)
 
-    body = expr[3]
+    # Strip leading docstring from body if present (Scheme-style)
+    if body_exprs and isinstance(body_exprs[0], str):
+        body_exprs = body_exprs[1:]
+
+    # Wrap multiple body expressions in (do ...)
+    if len(body_exprs) == 0:
+        raise FormParseError(f"'defn' requires at least one body expression")
+    elif len(body_exprs) == 1:
+        body = body_exprs[0]
+    else:
+        body = SList([Symbol("do")] + body_exprs)
 
     world.functions[name] = GrueFunction(name=name, params=params, body=body)
+
+
+@form("def")
+def _parse_def(expr: SList, world: GrueWorld) -> None:
+    """Parse (def name value) and store in world.constants.
+
+    Unlike globals, constants are immutable and evaluated at load time.
+    The value is stored as an unevaluated S-expression to be evaluated
+    when first accessed at runtime.
+    """
+    if len(expr) != 3:
+        raise FormParseError(f"'def' expects 2 arguments (name, value), got {len(expr) - 1}")
+
+    name_expr = expr[1]
+    if not isinstance(name_expr, Symbol):
+        raise FormParseError(f"'def' name must be a symbol, got: {name_expr}")
+    name = name_expr.name
+
+    value = expr[2]
+    world.constants[name] = value
 
 
 # === Form Dispatcher ===
