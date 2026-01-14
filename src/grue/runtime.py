@@ -1025,7 +1025,8 @@ class GrueRuntime:
                 executor = EffectExecutor(self, self._functions)
                 for effect in result.effects:
                     try:
-                        executor.execute(effect)
+                        # Pass the captured environment so effects can access local variables
+                        executor.execute(effect, result.env)
                         effects_applied.append(str(effect))
                     except Exception as e:
                         return ActionResult(

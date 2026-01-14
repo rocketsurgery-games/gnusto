@@ -17,7 +17,7 @@
         ((= ?from-room @platform-room)
           (success
             :effects ((queue! hacker-helps) (set! hacker-help 0))
-            :context ((nightmare-wake true))
+            :nightmare-wake true
             :message "You are awakened by the thump of your head hitting the keyboard."))
         (true (success))))
 
@@ -44,7 +44,8 @@
                         (= ?target "@more-box")))
               (not (and (= ?verb "read") (= ?target "@odd-paper"))))
           (blocked :reason possessed
-                   :context ((compelled true) (forced-target @more-box))
+                   :compelled true
+                   :forced-target @more-box
                    :message "Instead, you find your finger moving towards the MORE box, and you touch it. The screen feels oddly cold."))
 
         ; Default - allow action to proceed
@@ -85,7 +86,8 @@
   (defn stage (n desc)
     (success
       :effects ((inc! hacker-help))
-      :context ((stage n) (description desc))))
+      :stage n
+      :description desc))
 
   :location @terminal-room
   :on-turn (condp = hacker-help
@@ -94,7 +96,8 @@
     2 (stage 3 stage3-desc)
     (success
       :effects ((dequeue! hacker-helps) (move! @hacker @terminal-room))
-      :context ((stage 4) (description stage4-desc)))))
+      :stage 4
+      :description stage4-desc)))
 
 ; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
@@ -126,7 +129,8 @@
   (defn read-page (p desc)
     (success
       :effects ((inc! comp-cnt) (set-prop! @odd-paper read-page true))
-      :context ((page p) (description desc))))
+      :page p
+      :description desc))
 
   :location @terminal-room
   :on-turn (condp = comp-cnt
@@ -137,7 +141,8 @@
         :effects ((inc! comp-cnt) (dequeue! compulsion)
                   (move! @more-box nil) (move! @menu-box @pc)
                   (move! @player @yuggoth))
-        :context ((page 4) (description page4-desc)
-                  (transition "You faint, and when you awaken...")))
+        :page 4
+        :description page4-desc
+        :transition "You faint, and when you awaken...")
     (success :effects ((dequeue! compulsion)))))
 

@@ -589,10 +589,10 @@ class TestRedirectFollowing:
         (object THING :location LOBBY
           :behaviors (
             :target (fn ()
-              (cond (true (success :context ((final true))))))
+              (cond (true (success :final true))))
             :source (fn ()
               (cond (true (redirect :action (do THING :target)
-                                    :context ((redirected true))))))))
+                                    :redirected true))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -1035,7 +1035,8 @@ class TestRoomBehaviors:
             :on-enter (fn (?from-room)
               (success
                 :effects ((set! entered-from ?from-room))
-                :context ((welcome true) (from ?from-room))))))
+                :welcome true
+                :from ?from-room))))
 
         (object PLAYER :location LOBBY)
         """
@@ -1122,10 +1123,10 @@ class TestGeneralizedFn:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object DOOR :location LOBBY :flags (locked)
+        (object DOOR :location LOBBY :flags (LOCKED)
           :behaviors (
             :open (fn ()
-              (if (has-flag ?self locked)
+              (if (has-flag ?self LOCKED)
                   (blocked :reason locked :message "The door is locked.")
                   (success :message "The door opens.")))))
         """
@@ -1138,7 +1139,7 @@ class TestGeneralizedFn:
         assert result.reason == "locked"
 
         # Unlock the door
-        runtime.clear_object_flag("DOOR", "locked")
+        runtime.clear_object_flag("DOOR", "LOCKED")
         result = runtime.do("DOOR", "open")
         assert result.outcome == "success"
 
@@ -1185,31 +1186,31 @@ class TestGeneralizedFn:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object BOX :location LOBBY :flags (locked sealed)
+        (object BOX :location LOBBY :flags (LOCKED SEALED)
           :behaviors (
             :open (fn ()
-              (if (has-flag ?self locked)
+              (if (has-flag ?self LOCKED)
                   (blocked :reason locked)
-                  (if (has-flag ?self sealed)
+                  (if (has-flag ?self SEALED)
                       (blocked :reason sealed)
                       (success))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        # Both flags set - locked takes precedence
+        # Both flags set - LOCKED takes precedence
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
         assert result.reason == "locked"
 
-        # Remove locked flag
-        runtime.clear_object_flag("BOX", "locked")
+        # Remove LOCKED flag
+        runtime.clear_object_flag("BOX", "LOCKED")
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
         assert result.reason == "sealed"
 
-        # Remove sealed flag
-        runtime.clear_object_flag("BOX", "sealed")
+        # Remove SEALED flag
+        runtime.clear_object_flag("BOX", "SEALED")
         result = runtime.do("BOX", "open")
         assert result.outcome == "success"
 

@@ -461,8 +461,14 @@ class TestRunner:
                 expected = pred[2]
                 if isinstance(key, Symbol):
                     key = key.name
+                # Handle boolean literals
                 if isinstance(expected, Symbol):
-                    expected = expected.name
+                    if expected.name.lower() == "true":
+                        expected = True
+                    elif expected.name.lower() == "false":
+                        expected = False
+                    else:
+                        expected = expected.name
 
                 context_dict = dict(result.context)
                 if key not in context_dict:
