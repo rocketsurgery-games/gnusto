@@ -110,21 +110,21 @@
 ; === Snow Drift Barriers ===
 ; Impenetrable snow blocks the street in both directions.
 
+(def snow-drift-behaviors
+  '(:through (fn ()
+      (blocked :reason snow-drifts :message "Impenetrable snow drifts block the street."))))
+
 (object @snow-drifts-west
   :location @smith-st
   :description "snow drifts"
   :flags (INVISIBLE)
-  :behaviors (
-    :through (fn ()
-      (blocked :reason snow-drifts :message "Impenetrable snow drifts block the street."))))
+  :behaviors snow-drift-behaviors)
 
 (object @snow-drifts-east
   :location @smith-st-2
   :description "snow drifts"
   :flags (INVISIBLE)
-  :behaviors (
-    :through (fn ()
-      (blocked :reason snow-drifts :message "Impenetrable snow drifts block the street."))))
+  :behaviors snow-drift-behaviors)
 
 ; === Freezing Event ===
 ; When outside in the blizzard, player gradually freezes to death.

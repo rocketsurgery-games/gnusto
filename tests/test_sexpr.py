@@ -189,9 +189,9 @@ class TestRealWorldExamples:
         assert expr[0] == Symbol("when")
 
     def test_quantifier(self):
-        expr = parse('(any (inventory PLAYER) (lambda (obj) (has-flag obj LIGHTBIT)))')
+        expr = parse('(some (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))')
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("any")
+        assert expr[0] == Symbol("some")
 
 
 class TestParseAll:

@@ -19,6 +19,13 @@
 
 (def floor-names '("basement" "first floor" "second floor" "third floor"))
 
+; Lookup tables for floor dispatch
+(def floor-doors '(@elevator-door-b @elevator-door-1 @elevator-door-2 @elevator-door-3))
+(def floor-rooms '(@cs-basement @comp-center @cs-2nd @cs-3rd))
+
+; All elevator doors for iteration (interior + all exterior)
+(def all-elevator-doors '(@elevator-door @elevator-door-b @elevator-door-1 @elevator-door-2 @elevator-door-3))
+
 ; === Helper Functions ===
 
 (defn elevator-at-floor? (?floor)
@@ -32,11 +39,7 @@
 
 (defn door-at-elevator ()
   "Returns the elevator door at the elevator's current location"
-  (cond
-    ((= elevator-loc 0) @elevator-door-b)
-    ((= elevator-loc 1) @elevator-door-1)
-    ((= elevator-loc 2) @elevator-door-2)
-    (true @elevator-door-3)))
+  (nth floor-doors elevator-loc))
 
 (defn this-floor-door ()
   "Returns the elevator door at the player's current floor"
@@ -82,10 +85,8 @@
 
 (defn elevator-called? ()
   "Returns true if elevator is called from any floor other than current"
-  (or (and (any-button-pressed? 0) (not (= elevator-loc 0)))
-      (and (any-button-pressed? 1) (not (= elevator-loc 1)))
-      (and (any-button-pressed? 2) (not (= elevator-loc 2)))
-      (and (any-button-pressed? 3) (not (= elevator-loc 3)))))
+  (some (fn (?f) (and (any-button-pressed? ?f) (not (= elevator-loc ?f))))
+        (range 4)))
 
 (defn should-stop-at? (?floor)
   "Check if elevator should stop at a floor based on button state and direction"
@@ -147,10 +148,7 @@
           (blocked :reason elevator-moving :message "The elevator is still moving."))
         ((not (has-flag @elevator-door OPENBIT))
           (blocked :reason door-closed :message "The elevator doors are closed."))
-        ((= elevator-loc 0) (redirect :to @cs-basement))
-        ((= elevator-loc 1) (redirect :to @comp-center))
-        ((= elevator-loc 2) (redirect :to @cs-2nd))
-        (true (redirect :to @cs-3rd))))))
+        (true (redirect :to (nth floor-rooms elevator-loc)))))))
 
 ; === Interior Elevator Objects ===
 
@@ -233,21 +231,19 @@
   '(:examine (fn () (floor-button-examine ?self))
     :push (fn () (floor-button-push ?self))))
 
+(def floor-labels '("B" "1" "2" "3"))
+
 ; Generic "floor buttons" object for examining all at once
-; Note: Uses functional accumulation since set! doesn't work on let-bound locals
-; (substitution replaces ?glowing with its value, making (set! VALUE ...) invalid)
 (object @floor-button
   :description "floor button"
   :location @cs-elevator-room
   :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
-      ; Build glowing list by chaining cons calls
-      (let ((?g0 '())
-            (?g1 (if (go-button-pressed? 0) (cons "B" ?g0) ?g0))
-            (?g2 (if (go-button-pressed? 1) (cons "1" ?g1) ?g1))
-            (?g3 (if (go-button-pressed? 2) (cons "2" ?g2) ?g2))
-            (?glowing (if (go-button-pressed? 3) (cons "3" ?g3) ?g3)))
+      (let ((?glowing (keep (fn (?f) (if (go-button-pressed? ?f)
+                                        (nth floor-labels ?f)
+                                        nil))
+                            (range 4))))
         (if (empty? ?glowing)
           (success :message "The floor buttons are labeled B, 1, 2, and 3. None are glowing.")
           (success :message (str "The floor buttons are labeled B, 1, 2, and 3. Glowing: " (join ", " ?glowing) ".")))))))
@@ -485,11 +481,7 @@
   :on-turn
     (cond
       ; Don't move if any door is open
-      ((or (has-flag @elevator-door OPENBIT)
-           (has-flag @elevator-door-b OPENBIT)
-           (has-flag @elevator-door-1 OPENBIT)
-           (has-flag @elevator-door-2 OPENBIT)
-           (has-flag @elevator-door-3 OPENBIT))
+      ((some (fn (?d) (has-flag ?d OPENBIT)) all-elevator-doors)
         (success :effects ((queue! elevator-moves 1))))
 
       ; Starting to move from stopped

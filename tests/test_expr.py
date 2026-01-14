@@ -260,28 +260,28 @@ class TestQuantifiers:
         assert "DOOR" in contents
         assert "HACKER" in contents
 
-    def test_any_true(self):
+    def test_some_true(self):
         state = MockWorldState()
-        # Any item in inventory has LIGHTBIT
-        expr = "(any (inventory PLAYER) (lambda (obj) (has-flag obj LIGHTBIT)))"
+        # Some item in inventory has LIGHTBIT - returns truthy value
+        expr = "(some (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is True
 
-    def test_any_false(self):
+    def test_some_false(self):
         state = MockWorldState()
-        # Any item in inventory has PERSONBIT
-        expr = "(any (inventory PLAYER) (lambda (obj) (has-flag obj PERSONBIT)))"
+        # No item in inventory has PERSONBIT - returns nil
+        expr = "(some (fn (?obj) (has-flag ?obj PERSONBIT)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is False
 
-    def test_all_true(self):
+    def test_every_true(self):
         state = MockWorldState()
         # All items in inventory have TAKEBIT
-        expr = "(all (inventory PLAYER) (lambda (obj) (has-flag obj TAKEBIT)))"
+        expr = "(every? (fn (?obj) (has-flag ?obj TAKEBIT)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is True
 
-    def test_all_false(self):
+    def test_every_false(self):
         state = MockWorldState()
-        # All items in inventory have LIGHTBIT (KEY doesn't)
-        expr = "(all (inventory PLAYER) (lambda (obj) (has-flag obj LIGHTBIT)))"
+        # Not all items in inventory have LIGHTBIT (KEY doesn't)
+        expr = "(every? (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is False
 
 
@@ -421,10 +421,10 @@ class TestRealWorldScenarios:
         light_check = """
         (or
           (prop (loc PLAYER) lit)
-          (any (inventory PLAYER)
-               (lambda (obj)
-                 (and (has-flag obj LIGHTBIT)
-                      (has-flag obj ONBIT)))))
+          (some (fn (?obj)
+                  (and (has-flag ?obj LIGHTBIT)
+                       (has-flag ?obj ONBIT)))
+                (inventory PLAYER)))
         """
         # Room is dark but flashlight is on
         assert eval_predicate(light_check, state) is True

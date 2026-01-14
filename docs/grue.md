@@ -104,8 +104,8 @@ true false      ; booleans
 (not EXPR)
 
 ; Quantifiers (see Formal Semantics for details)
-(any (inventory) (lambda (x) (has-flag x LIGHT)))
-(all (contents @chest) (lambda (x) (has-flag x SMALL)))
+(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
+(every? (fn (?x) (has-flag ?x SMALL)) (contents @chest))
 
 ; Event queue
 (queued? HACKER-HELPS)        ; is event currently active?
@@ -470,9 +470,9 @@ For static analysis, we model time as part of state: each turn increments
 
 (defeat eaten-by-grue
   :when (and (not (room-has-flag? LIT))
-             (not (any (inventory)
-                       (lambda (obj) (and (has-flag obj LIGHT)
-                                          (has-flag obj ON))))))
+             (not (some (fn (?obj) (and (has-flag ?obj LIGHT)
+                                        (has-flag ?obj ON)))
+                        (inventory))))
   :context ((death-type grue)))
 
 (defeat fell-in-pit
@@ -844,16 +844,18 @@ Sequential effect execution. Effects are executed in order.
      (set-flag! ?self MOVEDBIT))
 ```
 
-#### `(any COLLECTION (lambda (VAR) PRED))`
-Existential quantifier. Returns true if PRED is true for any element.
+#### `(some PRED COLL)`
+Existential quantifier (Clojure-style). Returns first truthy result of `(PRED x)`, or nil.
 ```scheme
-(any (inventory) (lambda (x) (has-flag x LIGHT)))
+(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
+(some (fn (?x) (> ?x 5)) '(1 3 7 9))  ; => true (from 7)
 ```
 
-#### `(all COLLECTION (lambda (VAR) PRED))`
-Universal quantifier. Returns true if PRED is true for all elements.
+#### `(every? PRED COLL)`
+Universal quantifier. Returns true if `(PRED x)` is truthy for all elements.
 ```scheme
-(all (contents @chest) (lambda (x) (has-flag x SMALL)))
+(every? (fn (?x) (has-flag ?x SMALL)) (contents @chest))
+(every? (fn (?x) (> ?x 0)) '(1 2 3))  ; => true
 ```
 
 #### `'EXPR` or `(quote EXPR)`
@@ -966,6 +968,8 @@ Standard library functions for working with strings and lists:
 | `remove` | PRED COLL | list | Remove elements where PRED returns truthy |
 | `keep` | FN COLL | list | Like map but removes nil results |
 | `reduce` | FN INIT COLL | any | Fold with accumulator: `(fn (?acc ?x) ...)` |
+| `some` | PRED COLL | any | First truthy pred result, or nil |
+| `every?` | PRED COLL | bool | True if pred is truthy for all elements |
 | `for` | (VAR SEQ ...) BODY | list | Comprehension returning results |
 | `doseq` | (VAR SEQ ...) BODY | nil | Comprehension for side effects |
 
@@ -1043,11 +1047,11 @@ The `?` prefix retrieves the binding value. If a binding is not set, it returns 
 
 #### Lexical Bindings (Lambda Parameters)
 
-In `any` and `all` quantifiers, the lambda parameter is lexically scoped:
+In `some` and `every?` quantifiers, the lambda parameter is lexically scoped:
 ```scheme
-(any (inventory) (lambda (x) (has-flag x LIGHT)))
+(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
 ```
-Here `x` is bound to each inventory item in turn, shadowing any outer `x`.
+Here `?x` is bound to each inventory item in turn, shadowing any outer `?x`.
 
 #### User-Defined Functions (defn)
 

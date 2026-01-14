@@ -23,8 +23,8 @@ Built-in Predicates:
     (in? OBJ CONTAINER)       - Is object in container
     (room? LOC)               - Is location a room
     (in-room? OBJ ROOM ...)   - Is object in any of listed rooms
-    (any COLL PRED)           - Any element satisfies predicate
-    (all COLL PRED)           - All elements satisfy predicate
+    (some PRED COLL)          - First truthy predicate result, or nil
+    (every? PRED COLL)        - True if all elements satisfy predicate
     (exit? ACTOR DIR)         - Check if exit exists from actor's room
     (exit-to ACTOR DIR)       - Get destination room for exit
     (exit-via ACTOR DIR)      - Get door object for exit (if any)
@@ -357,8 +357,8 @@ class ExprEvaluator:
             "room-has-flag?": self._eval_room_has_flag,
 
             # Collections/quantifiers
-            "any": self._eval_any,
-            "all": self._eval_all,
+            "some": self._eval_some,
+            "every?": self._eval_every,
             "inventory": self._eval_inventory,
             "contents": self._eval_contents,
 
@@ -2150,61 +2150,50 @@ class ExprEvaluator:
 
     # === Quantifiers ===
 
-    def _eval_any(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(any COLLECTION (lambda (x) PRED))"""
+    def _eval_some(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(some PRED COLL) - returns first truthy result of (pred x), or nil.
+
+        Examples:
+            (some (fn (?x) (> ?x 5)) '(1 3 7 9))  ; => true (from 7)
+            (some (fn (?x) (> ?x 10)) '(1 3 7 9)) ; => nil
+        """
         if len(form) != 3:
-            raise EvalError(f"'any' expects 2 arguments, got {len(form) - 1}")
+            raise EvalError(f"'some' expects 2 arguments, got {len(form) - 1}")
 
-        collection = self.eval(form[1], env)
-        lambda_form = form[2]
+        pred = self.eval(form.items[1], env)
+        collection = self.eval(form.items[2], env)
 
-        if not isinstance(lambda_form, SList) or len(lambda_form) < 3:
-            raise EvalError("'any' requires a lambda as second argument")
-        if lambda_form[0] != Symbol("lambda"):
-            raise EvalError("'any' requires a lambda as second argument")
+        if not isinstance(pred, GrueFn):
+            raise EvalError(f"'some' first argument must be a function, got {type(pred).__name__}")
+        if not isinstance(collection, (list, tuple)):
+            raise EvalError(f"'some' second argument must be a sequence, got {type(collection).__name__}")
 
-        # Extract parameter name and body
-        params = lambda_form[1]
-        if not isinstance(params, SList) or len(params) != 1:
-            raise EvalError("Lambda must have exactly 1 parameter")
-        param_name = params[0]
-        if not isinstance(param_name, Symbol):
-            raise EvalError("Lambda parameter must be a symbol")
-
-        body = lambda_form[2]
-
-        # Evaluate predicate for each item
         for item in collection:
-            # Create environment with the bound variable
-            result = self._eval_with_binding(param_name.name, item, body, env)
+            result = self.call_fn(pred, [item])
             if result:
-                return True
-        return False
+                return result
+        return None
 
-    def _eval_all(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(all COLLECTION (lambda (x) PRED))"""
+    def _eval_every(self, form: SList, env: Optional[Environment] = None) -> bool:
+        """(every? PRED COLL) - returns true if (pred x) is truthy for all x.
+
+        Examples:
+            (every? (fn (?x) (> ?x 0)) '(1 3 7 9))  ; => true
+            (every? (fn (?x) (> ?x 5)) '(1 3 7 9))  ; => false
+        """
         if len(form) != 3:
-            raise EvalError(f"'all' expects 2 arguments, got {len(form) - 1}")
+            raise EvalError(f"'every?' expects 2 arguments, got {len(form) - 1}")
 
-        collection = self.eval(form[1], env)
-        lambda_form = form[2]
+        pred = self.eval(form.items[1], env)
+        collection = self.eval(form.items[2], env)
 
-        if not isinstance(lambda_form, SList) or len(lambda_form) < 3:
-            raise EvalError("'all' requires a lambda as second argument")
-        if lambda_form[0] != Symbol("lambda"):
-            raise EvalError("'all' requires a lambda as second argument")
-
-        params = lambda_form[1]
-        if not isinstance(params, SList) or len(params) != 1:
-            raise EvalError("Lambda must have exactly 1 parameter")
-        param_name = params[0]
-        if not isinstance(param_name, Symbol):
-            raise EvalError("Lambda parameter must be a symbol")
-
-        body = lambda_form[2]
+        if not isinstance(pred, GrueFn):
+            raise EvalError(f"'every?' first argument must be a function, got {type(pred).__name__}")
+        if not isinstance(collection, (list, tuple)):
+            raise EvalError(f"'every?' second argument must be a sequence, got {type(collection).__name__}")
 
         for item in collection:
-            result = self._eval_with_binding(param_name.name, item, body, env)
+            result = self.call_fn(pred, [item])
             if not result:
                 return False
         return True

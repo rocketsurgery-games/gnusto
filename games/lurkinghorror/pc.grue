@@ -4,6 +4,13 @@
   :logged-in false  ; Set true after valid password
   :username false)  ; Set to login ID after first step (true or 'xyzzy for easter egg)
 
+; Screen objects that can appear on the PC (in priority order)
+(def screen-objects '(@odd-paper @menu-box @more-box @yak-window))
+
+(defn current-screen-content ()
+  "Find the first screen object currently in the PC, or nil"
+  (some (fn (?o) (if (in? ?o @pc) ?o nil)) screen-objects))
+
 (object @pc
   :description "pc"
   :fdesc "A really whiz-bang pc is right inside the door."
@@ -18,30 +25,21 @@
   :behaviors (
     ; EXAMINE - Show PC description with power state and screen contents
     ; ZIL: "On the screen you see a <FIRST? PC>." when powered and has screen content
-    ; Note: Check specific screen objects in priority order (not mouse/help-key which are physical parts)
     :examine (fn ()
-      (cond
-        ; PC is off
-        ((not (has-flag ?self POWER))
-          (success :context ((power off))
-                   :message (str pc-desc " It is currently turned off.")))
-        ; PC is on with screen content
-        ((in? @odd-paper ?self)
-          (success :context ((power on) (screen-contents @odd-paper))
-                   :message (str pc-desc " On the screen you see " @odd-paper ".")))
-        ((in? @menu-box ?self)
-          (success :context ((power on) (screen-contents @menu-box))
-                   :message (str pc-desc " On the screen you see " @menu-box ".")))
-        ((in? @more-box ?self)
-          (success :context ((power on) (screen-contents @more-box))
-                   :message (str pc-desc " On the screen you see " @more-box ".")))
-        ((in? @yak-window ?self)
-          (success :context ((power on) (screen-contents @yak-window))
-                   :message (str pc-desc " On the screen you see " @yak-window ".")))
-        ; PC is on but no screen content (pre-login state)
-        (true
-          (success :context ((power on))
-                   :message pc-desc))))
+      (let ((?screen (current-screen-content)))
+        (cond
+          ; PC is off
+          ((not (has-flag ?self POWER))
+            (success :context ((power off))
+                     :message (str pc-desc " It is currently turned off.")))
+          ; PC is on with screen content
+          (?screen
+            (success :context ((power on) (screen-contents ?screen))
+                     :message (str pc-desc " On the screen you see " ?screen ".")))
+          ; PC is on but no screen content (pre-login state)
+          (true
+            (success :context ((power on))
+                     :message pc-desc)))))
 
     ; LISTEN - Hums when powered on
     :listen (fn ()
@@ -72,28 +70,20 @@
 
     ; PUT-ON / PUT - Not a good surface
     :put-on (fn (?item)
-      (cond
-        (true
-          (blocked :reason not-a-surface :message "That's not a good surface for that."))))
+      (blocked :reason not-a-surface :message "That's not a good surface for that."))
 
     ; READ - Show screen contents
     :read (fn ()
-      (cond
-        ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
-          (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
-        ((not (has-flag ?self POWER))
-          (blocked :reason not-powered :message "The screen is dark."))
-        ; Check for objects on screen (in PC container)
-        ((in? @odd-paper ?self)
-          (redirect :action (do @odd-paper :read)))
-        ((in? @menu-box ?self)
-          (redirect :action (do @menu-box :read)))
-        ((in? @more-box ?self)
-          (redirect :action (do @more-box :read)))
-        ((in? @yak-window ?self)
-          (redirect :action (do @yak-window :read)))
-        (true
-          (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now."))))
+      (let ((?screen (current-screen-content)))
+        (cond
+          ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
+            (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
+          ((not (has-flag ?self POWER))
+            (blocked :reason not-powered :message "The screen is dark."))
+          (?screen
+            (redirect :action (do ?screen :read)))
+          (true
+            (blocked :reason nothing-on-screen :message "There's nothing to read on the screen now.")))))
 
     ; TURN-ON (LAMP-ON) - Power up computer
     :turn-on (fn ()
@@ -323,9 +313,7 @@
 
   :behaviors (
     :examine (fn ()
-      (cond
-        (true
-          (redirect :action (do @odd-paper :read)))))
+      (redirect :action (do @odd-paper :read)))
 
     ; READ - triggers possession (I-COMPULSION)
     :read (fn ()

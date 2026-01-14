@@ -226,14 +226,8 @@
 
     ; === TELL-ABOUT (tell hacker about X) ===
     ; ZIL: same as ASK-ABOUT for most topics
-    ; ?topic is the thing being told about
-    :tell-about (fn (?topic) (cond
-      ; Possessed state
-      ((> lair-cnt 6) (success :context ((response "The hacker replies, \"Meld!\""))))
-
-      ; For most topics, redirect to ask-about behavior
-      ; The hacker treats "tell about" the same as "ask about"
-      (true (success :context ((response "The hacker studiously ignores you, loath to admit there is something he doesn't know about."))))))
+    :tell-about (fn (?topic)
+      (redirect :action (do @hacker :ask-about ?topic)))
 
     ; === FOLLOW ===
     :follow (fn () (cond
