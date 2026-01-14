@@ -490,7 +490,7 @@ class ExprEvaluator:
             env: Current lexical environment
         """
         if len(form) == 0:
-            raise EvalError("Empty form")
+            raise EvalError("Cannot evaluate empty list () - use nil or '() for empty values")
 
         head = form[0]
 
