@@ -472,8 +472,8 @@ class ExprEvaluator:
                 # Unknown symbol - raise error
                 raise UnboundVariableError(name)
         if isinstance(expr, Keyword):
-            # Keywords evaluate to their string name (for property names)
-            return expr.name
+            # Keywords are self-evaluating (Clojure-style)
+            return expr
         if isinstance(expr, SList):
             return self._eval_form(expr, env)
         if isinstance(expr, GrueFn):

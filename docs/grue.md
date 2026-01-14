@@ -59,7 +59,7 @@ and generates narrative from outcomes. This separation allows:
 @entity         ; entities (objects, rooms) - @ prefix, lowercase
 ?binding        ; context bindings - ? prefix
 FLAG            ; flags/constants - UPPERCASE
-:keyword        ; keyword arguments
+:keyword        ; keywords (self-evaluating, Clojure-style)
 "string"        ; string literals
 42              ; numbers
 true false      ; booleans
