@@ -1,0 +1,23 @@
+; PC Tests
+
+(test-group "take/drop"
+  (test "take PC"
+    :action (do @pc :take)
+    :expect ((outcome? success)
+             (held? @pc)))
+
+  (test "cannot take non-takeable object"
+    :action (do @hacker :take)
+    :expect ((outcome? blocked)
+             (reason? not-takeable)))
+
+  (test "drop PC"
+    :setup ((move! @pc @player))
+    :action (do @pc :drop)
+    :expect ((outcome? success)
+             (loc? @pc @terminal-room)))
+
+  (test "cannot drop object not held"
+    :action (do @pc :drop)
+    :expect ((outcome? blocked)
+             (reason? not-held))))

@@ -1,0 +1,41 @@
+; Chair Tests
+
+(test-group "chair behaviors"
+  (test "examine"
+    :action (do @chair :examine)
+    :expect ((outcome? success)))
+
+  (test "take - blocked when hacker in it"
+    :setup ((move! @hacker @chair))
+    :action (do @chair :take)
+    :expect ((outcome? blocked)
+             (reason? in-use)))
+
+  (test "take - success when hacker not in it"
+    :action (do @chair :take)
+    :expect ((outcome? success)
+             (held? @chair))))
+
+(test-group "sit/stand"
+  (test "sit - success"
+    :action (do @chair :sit)
+    :expect ((outcome? success)
+             (loc? @player @chair)))
+
+  (test "sit - blocked when hacker using it"
+    :setup ((move! @hacker @chair))
+    :action (do @chair :sit)
+    :expect ((outcome? blocked)
+             (reason? occupied)))
+
+  (test "sit - blocked when already sitting"
+    :setup ((move! @player @chair))
+    :action (do @chair :sit)
+    :expect ((outcome? blocked)
+             (reason? already-there)))
+
+  (test "stand from chair"
+    :setup ((move! @player @chair))
+    :action (do @chair :stand)
+    :expect ((outcome? success)
+             (loc? @player @terminal-room))))

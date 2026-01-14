@@ -1,0 +1,248 @@
+; Terminal Room Tests
+; Tests for the hacker-exit-barrier, hacker-helps event, compulsion, etc.
+
+; =============================================================================
+; BASIC MOVEMENT - hacker-exit-barrier
+; =============================================================================
+; The @hacker-exit-barrier prevents the player from leaving the terminal room
+; while carrying "Tech property" (@pc or @chair).
+
+(test-group "basic movement"
+  (test "can exit south without carrying anything"
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @cs-2nd)))
+
+  (test "can exit out without carrying anything"
+    :setup ((move! @player @terminal-room))
+    :action (go :direction out)
+    :expect ((outcome? success)
+             (player-at? @cs-2nd))))
+
+(test-group "blocked when carrying tech property"
+  (test "blocked when carrying PC - south"
+    :setup ((move! @pc @player))
+    :action (go :direction south)
+    :expect ((outcome? blocked)
+             (reason? tech-property)))
+
+  (test "blocked when carrying PC - out"
+    :setup ((move! @pc @player))
+    :action (go :direction out)
+    :expect ((outcome? blocked)
+             (reason? tech-property)))
+
+  (test "blocked when carrying chair - south"
+    :setup ((move! @chair @player))
+    :action (go :direction south)
+    :expect ((outcome? blocked)
+             (reason? tech-property)))
+
+  (test "can leave after putting PC back"
+    :setup ((move! @pc @player)
+            (move! @pc @terminal-room))
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @cs-2nd))))
+
+; === Take/drop sequences ===
+
+(test-sequence "take PC then blocked at exit"
+  (step :action (do @pc :take)
+        :expect ((outcome? success)
+                 (held? @pc)))
+  (step :action (go :direction south)
+        :expect ((outcome? blocked)
+                 (reason? tech-property))))
+
+(test-sequence "take PC, drop PC, then exit"
+  (step :action (do @pc :take)
+        :expect ((outcome? success)))
+  (step :action (do @pc :drop)
+        :expect ((outcome? success)
+                 (loc? @pc @terminal-room)))
+  (step :action (go :direction south)
+        :expect ((outcome? success)
+                 (player-at? @cs-2nd))))
+
+; =============================================================================
+; HACKER-HELPS EVENT
+; =============================================================================
+; The hacker-helps event is a 4-stage cutscene triggered by :help behavior.
+; Each turn, while the player is in terminal-room, the event advances.
+
+(test-group "hacker-helps event"
+  (test "ask hacker for help queues event"
+    :action (do @hacker :help)
+    :expect ((outcome? success)
+             (queued? hacker-helps)
+             (global? hacker-help 0)))
+
+  (test "event fires in terminal room"
+    :setup ((queue! hacker-helps) (set! hacker-help 0))
+    :action (process-events)
+    :expect ((outcome? success)
+             (context? stage 1)
+             (global? hacker-help 1)))
+
+  (test "event doesn't fire outside terminal room"
+    :setup ((queue! hacker-helps) (set! hacker-help 0) (move! @player @cs-2nd))
+    :action (process-events)
+    :expect ((context? events-processed 0)
+             (global? hacker-help 0)))
+
+  (test "asking for help when already helping"
+    :setup ((queue! hacker-helps))
+    :action (do @hacker :help)
+    :expect ((outcome? success)
+             (queued? hacker-helps)))
+
+  (test "asking for help when already helped"
+    :setup ((set! hacker-help 3))
+    :action (do @hacker :help)
+    :expect ((outcome? success))))
+
+(test-sequence "hacker-helps full 4-stage sequence"
+  ; Stage 0->1: "The hacker wanders over..."
+  (step :setup ((queue! hacker-helps) (set! hacker-help 0))
+        :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 1)
+                 (global? hacker-help 1)
+                 (queued? hacker-helps)))
+  ; Stage 1->2: "The hacker, mumbling..."
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 2)
+                 (global? hacker-help 2)
+                 (queued? hacker-helps)))
+  ; Stage 2->3: "The hacker types furiously..."
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 3)
+                 (global? hacker-help 3)
+                 (queued? hacker-helps)))
+  ; Stage 3->done: "The hacker wanders back..." + event dequeues
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? stage 4)
+                 (not-queued? hacker-helps)
+                 (loc? @hacker @terminal-room))))
+
+; =============================================================================
+; HACKER BLOCKING ACTIONS DURING HELP
+; =============================================================================
+
+(test-group "hacker blocks PC actions during help"
+  :setup ((queue! hacker-helps))
+
+  (test "can't turn off PC"
+    :setup ((set-flag! @pc POWER))
+    :action (do @pc :turn-off)
+    :expect ((outcome? blocked)
+             (reason? hacker-interference)))
+
+  (test "can't unplug PC"
+    :action (do @pc :unplug)
+    :expect ((outcome? blocked)
+             (reason? hacker-interference)))
+
+  (test "can't click on menu-box"
+    :action (do @menu-box :click)
+    :expect ((outcome? blocked)
+             (reason? hacker-interference)
+             (context? blocker @hacker)))
+
+  (test "can't rub more-box"
+    :setup ((move! @more-box @pc))
+    :action (do @more-box :rub)
+    :expect ((outcome? blocked)
+             (reason? hacker-interference)))
+
+  (test "examine is allowed"
+    :action (do @pc :examine)
+    :expect ((outcome? success))))
+
+; =============================================================================
+; NIGHTMARE WAKE-UP
+; =============================================================================
+; When player enters terminal-room from platform-room (waking from nightmare),
+; the :on-enter hook triggers and queues hacker-helps.
+
+(test-group "nightmare wake-up"
+  (test "entering from platform-room triggers wake-up"
+    :setup ((move! @player @platform-room))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @terminal-room)
+             (context? nightmare-wake true)
+             (queued? hacker-helps)))
+
+  (test "entering from cs-2nd does not trigger wake-up"
+    :setup ((move! @player @cs-2nd))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @terminal-room)
+             (not-queued? hacker-helps))))
+
+; =============================================================================
+; COMPULSION - possession mechanic
+; =============================================================================
+; When compulsion event is queued (player is possessed), room :before-action
+; blocks most actions, redirecting to touching the MORE box.
+
+(test-group "compulsion blocking"
+  :setup ((queue! compulsion))
+
+  (test "blocks unrelated actions"
+    :action (do @chair :examine)
+    :expect ((outcome? blocked)
+             (reason? possessed)
+             (context? compelled true)
+             (context? forced-target @more-box)))
+
+  (test "allows click on more-box"
+    :setup ((move! @more-box @pc)
+            (set-prop! @odd-paper read-page true))
+    :action (do @more-box :click)
+    :expect ((outcome? success)))
+
+  (test "allows read odd-paper"
+    :setup ((move! @odd-paper @pc))
+    :action (do @odd-paper :read)
+    :expect ((outcome? success))))
+
+(test-group "compulsion event"
+  (test "page 1"
+    :setup ((queue! compulsion) (set! comp-cnt 0))
+    :action (process-events)
+    :expect ((outcome? success)
+             (context? page 1)
+             (global? comp-cnt 1))))
+
+(test-sequence "compulsion full 4-page sequence"
+  ; Page 1: First glimpse
+  (step :setup ((queue! compulsion) (set! comp-cnt 0))
+        :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 1)
+                 (global? comp-cnt 1)
+                 (queued? compulsion)))
+  ; Page 2: Hints of summoning
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 2)
+                 (global? comp-cnt 2)
+                 (queued? compulsion)))
+  ; Page 3: The poem/ritual
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 3)
+                 (global? comp-cnt 3)
+                 (queued? compulsion)))
+  ; Page 4: The photograph - teleport to yuggoth
+  (step :action (process-events)
+        :expect ((outcome? success)
+                 (context? page 4)
+                 (not-queued? compulsion)
+                 (player-at? @yuggoth))))

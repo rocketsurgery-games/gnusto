@@ -1,0 +1,179 @@
+; Elevator System Tests
+
+; === Initial State Tests ===
+
+(test-group "elevator initial state"
+  :setup ()
+
+  (test "elevator starts at first floor"
+    :action (do @elevator-door-1 :examine)
+    :expect ((global? elevator-loc 1)))
+
+  (test "elevator starts stopped"
+    :action (do @elevator-door-1 :examine)
+    :expect ((global? elevator-stopped true)))
+
+  (test "elevator doors start closed"
+    :action (do @elevator-door-1 :examine)
+    :expect ((no-flag? @elevator-door-1 OPENBIT))))
+
+; === Call Button Tests ===
+
+(test-group "elevator call buttons"
+  :setup ((move! @player @cs-2nd))
+
+  (test "push down button calls elevator when elevator not here"
+    :setup ((move! @player @cs-2nd)
+            (set! elevator-loc 1)
+            (set! elevator-stopped true))
+    :action (do @down-button :push)
+    :expect ((outcome? success)
+             (queued? elevator-moves)))
+
+  (test "push up button when elevator already here opens doors"
+    :setup ((move! @player @cs-basement)
+            (set! elevator-loc 0)
+            (set! elevator-stopped true))
+    :action (do @up-button :push)
+    :expect ((outcome? success)
+             (queued? elevator-door-opens))))
+
+; === Enter/Exit Elevator Tests ===
+
+(test-group "enter elevator"
+  :setup ((move! @player @comp-center)
+          (set! elevator-loc 1)
+          (set! elevator-stopped true)
+          (set-flag! @elevator-door OPENBIT)
+          (set-flag! @elevator-door-1 OPENBIT))
+
+  (test "can enter elevator through open doors"
+    :action (go :direction south)
+    :expect ((loc? @player @cs-elevator-room)))
+
+  (test "cannot enter through closed doors"
+    :setup ((move! @player @comp-center)
+            (set! elevator-loc 1)
+            (set! elevator-stopped true)
+            (clear-flag! @elevator-door OPENBIT)
+            (clear-flag! @elevator-door-1 OPENBIT))
+    :action (go :direction south)
+    :expect ((outcome? blocked)
+             (loc? @player @comp-center))))
+
+(test-group "exit elevator"
+  :setup ((move! @player @cs-elevator-room)
+          (set! elevator-loc 1)
+          (set! elevator-stopped true)
+          (set-flag! @elevator-door OPENBIT)
+          (set-flag! @elevator-door-1 OPENBIT))
+
+  (test "can exit elevator through open doors"
+    :action (go :direction north)
+    :expect ((loc? @player @comp-center)))
+
+  (test "cannot exit through closed doors"
+    :setup ((move! @player @cs-elevator-room)
+            (set! elevator-loc 1)
+            (set! elevator-stopped true)
+            (clear-flag! @elevator-door OPENBIT))
+    :action (go :direction north)
+    :expect ((outcome? blocked)
+             (loc? @player @cs-elevator-room)))
+
+  (test "cannot exit moving elevator"
+    :setup ((move! @player @cs-elevator-room)
+            (set! elevator-stopped false))
+    :action (go :direction north)
+    :expect ((outcome? blocked)
+             (loc? @player @cs-elevator-room))))
+
+; === Floor Button Tests ===
+
+(test-group "floor buttons"
+  :setup ((move! @player @cs-elevator-room)
+          (set! elevator-loc 2)
+          (set! elevator-stopped true))
+
+  (test "push button 3 starts elevator"
+    :action (do @button-3 :push)
+    :expect ((outcome? success)
+             (queued? elevator-moves)))
+
+  (test "button doesn't light for current floor"
+    :setup ((move! @player @cs-elevator-room)
+            (set! elevator-loc 1))
+    :action (do @button-1 :push)
+    :expect ((outcome? success)))
+
+  (test "push basement button"
+    :setup ((move! @player @cs-elevator-room)
+            (set! elevator-loc 2))
+    :action (do @basement-button :push)
+    :expect ((queued? elevator-moves))))
+
+; === Open/Close Button Tests ===
+
+(test-group "open and close buttons"
+  :setup ((move! @player @cs-elevator-room)
+          (set! elevator-loc 1)
+          (set! elevator-stopped true))
+
+  (test "open button opens doors"
+    :setup ((clear-flag! @elevator-door OPENBIT)
+            (clear-flag! @elevator-door-1 OPENBIT))
+    :action (do @open-button :push)
+    :expect ((has-flag? @elevator-door OPENBIT)
+             (has-flag? @elevator-door-1 OPENBIT)))
+
+  (test "close button schedules close"
+    :setup ((set-flag! @elevator-door OPENBIT)
+            (set-flag! @elevator-door-1 OPENBIT))
+    :action (do @close-button :push)
+    :expect ((queued? elevator-door-closes)))
+
+  (test "open button does nothing when moving"
+    :setup ((set! elevator-stopped false)
+            (clear-flag! @elevator-door OPENBIT))
+    :action (do @open-button :push)
+    :expect ((no-flag? @elevator-door OPENBIT))))
+
+; === Door Auto-Close Tests ===
+
+(test-group "door auto-close"
+  :setup ((move! @player @comp-center)
+          (set! elevator-loc 1)
+          (set! elevator-stopped true)
+          (set-flag! @elevator-door OPENBIT)
+          (set-flag! @elevator-door-1 OPENBIT)
+          (queue! elevator-door-closes 0))
+
+  (test "doors close when event fires"
+    :action (process-events)
+    :expect ((no-flag? @elevator-door OPENBIT)
+             (no-flag? @elevator-door-1 OPENBIT))))
+
+; === Movement Event Tests ===
+
+(test-group "elevator movement"
+  :setup ((move! @player @cs-elevator-room)
+          (set! elevator-loc 1)
+          (set! elevator-stopped true)
+          (clear-flag! @elevator-door OPENBIT)
+          (clear-flag! @elevator-door-1 OPENBIT)
+          (set! elevator-go-buttons '(false false false true))
+          (queue! elevator-moves 0))
+
+  (test "elevator starts moving on event"
+    :action (process-events)
+    :expect ((global? elevator-stopped false)))
+
+  (test "elevator moves to next floor"
+    :setup ((set! elevator-stopped false)
+            (set! elevator-loc 1)
+            (set! elevator-direction 1)
+            (set! elevator-go-buttons '(false false false true))
+            (queue! elevator-moves 0))
+    :action (process-events)
+    :expect ((global? elevator-loc 2))))
+

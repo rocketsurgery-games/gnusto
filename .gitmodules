@@ -1,6 +1,9 @@
-[submodule "omnigen2_repo"]
-	path = illustrations/omnigen2_repo
-	url = https://github.com/VectorSpaceLab/OmniGen2.git
-[submodule "infocom/lurkinghorror"]
-	path = infocom/lurkinghorror
+[submodule "games/lurkinghorror/source"]
+	path = games/lurkinghorror/source
 	url = https://github.com/the-infocom-files/lurkinghorror.git
+[submodule "games/zork1/source"]
+	path = games/zork1/source
+	url = https://github.com/the-infocom-files/zork1.git
+[submodule "games/enchanter/source"]
+	path = games/enchanter/source
+	url = https://github.com/the-infocom-files/enchanter

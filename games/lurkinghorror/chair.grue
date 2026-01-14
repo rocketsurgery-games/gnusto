@@ -1,0 +1,36 @@
+(object @chair
+  :description "chair"
+  :fdesc "Nearby is one of those ugly molded plastic chairs."
+  :location @terminal-room
+  :flags (TAKEBIT VEHBIT SEARCHBIT CONTBIT OPENBIT FURNITURE SURFACEBIT)
+  :properties (:size 100)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (true
+          (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable."))))
+
+    :take (fn ()
+      (cond
+        ((in? @hacker @chair)
+          (blocked :reason in-use :message "It's in use."))
+        (true
+          (default))))
+
+    :sit (fn ()
+      (cond
+        ((in? @hacker @chair)
+          (blocked :reason occupied :message "The hacker is already using it."))
+        ((in? ?actor @chair)
+          (blocked :reason already-there :message "You are."))
+        (true
+          (success :effects ((move! ?actor @chair)) :message "You are now sitting in the chair."))))
+
+    :stand (fn ()
+      (cond
+        ((in? ?actor @chair)
+          (success :effects ((move! ?actor (loc @chair))) :message "You get out of the chair."))
+        (true
+          (blocked :reason not-in-vehicle :message "You're not in the chair."))))))
+

@@ -1,0 +1,18 @@
+; The Lurking Horror
+; Converted from ZIL source
+; A text adventure by Infocom
+;
+; Objects marked [NEEDS-TRANSLATION] have ZIL source that needs
+; to be converted to GRUE behaviors by an LLM or human.
+
+(world
+  :name "The Lurking Horror"
+  :description "A text adventure by Infocom"
+  :player @player)
+
+; === PLAYER ===
+
+(object @player
+  :location @terminal-room
+  :flags (PERSON))
+

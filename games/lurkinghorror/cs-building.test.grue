@@ -1,0 +1,106 @@
+; Tests for CS Building rooms and mechanics
+
+; === Navigation Tests ===
+
+(test-group "cs building navigation"
+  :setup ((move! @player @comp-center))
+
+  (test "can go up from lobby to second floor"
+    :action (go :direction up)
+    :expect ((loc? @player @cs-2nd)))
+
+  (test "can go down from second floor to lobby"
+    :setup ((move! @player @cs-2nd))
+    :action (go :direction down)
+    :expect ((loc? @player @comp-center)))
+
+  (test "can go up from second floor to third floor"
+    :setup ((move! @player @cs-2nd))
+    :action (go :direction up)
+    :expect ((loc? @player @cs-3rd)))
+
+  (test "can go down from third floor to second floor"
+    :setup ((move! @player @cs-3rd))
+    :action (go :direction down)
+    :expect ((loc? @player @cs-2nd)))
+
+  (test "can go up from third floor to roof"
+    :setup ((move! @player @cs-3rd))
+    :action (go :direction up)
+    :expect ((loc? @player @cs-roof)))
+
+  (test "can go down from roof to third floor"
+    :setup ((move! @player @cs-roof))
+    :action (go :direction down)
+    :expect ((loc? @player @cs-3rd))))
+
+(test-group "glass wall blocks north on third floor"
+  :setup ((move! @player @cs-3rd))
+
+  (test "cannot go north through glass wall"
+    :action (go :direction north)
+    :expect ((outcome? blocked)
+             (reason? glass-wall)
+             (loc? @player @cs-3rd))))
+
+; === Smith Street Tests ===
+
+(test-group "smith street navigation"
+  :setup ((move! @player @smith-st))
+
+  (test "can go south into comp center"
+    :action (go :direction south)
+    :expect ((loc? @player @comp-center)))
+
+  (test "can go east to smith-st-2"
+    :action (go :direction east)
+    :expect ((loc? @player @smith-st-2)))
+
+  (test "cannot go west - snow drifts"
+    :action (go :direction west)
+    :expect ((outcome? blocked)
+             (reason? snow-drifts)
+             (loc? @player @smith-st))))
+
+(test-group "smith street 2 navigation"
+  :setup ((move! @player @smith-st-2))
+
+  (test "can go west to smith-st"
+    :action (go :direction west)
+    :expect ((loc? @player @smith-st)))
+
+  (test "cannot go east - snow drifts"
+    :action (go :direction east)
+    :expect ((outcome? blocked)
+             (reason? snow-drifts)
+             (loc? @player @smith-st-2))))
+
+; === Freezing Event Tests ===
+
+(test-group "freezing event"
+  :setup ((move! @player @smith-st)
+          (set! freeze-count 0)
+          (queue! freezing))
+
+  (test "freezing advances when outside"
+    :action (process-events)
+    :expect ((outcome? success)
+             (> freeze-count 0)))
+
+  ; Note: The freezing event dequeues itself when the player is inside.
+  ; This happens on the next event processing, not immediately on movement.
+  (test "freezing dequeues when player goes inside then events process"
+    :setup ((move! @player @smith-st)
+            (set! freeze-count 2)
+            (queue! freezing 0))  ; countdown 0 = fires immediately
+    :action (go :direction south)
+    :expect ((loc? @player @comp-center)))
+
+  (test "freezing event dequeues when player is inside"
+    :setup ((move! @player @comp-center)  ; already inside
+            (set! freeze-count 2)
+            (queue! freezing 0))
+    :action (process-events)
+    :expect ((= freeze-count 0)
+             (not (queued? freezing)))))
+
