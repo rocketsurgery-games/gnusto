@@ -254,6 +254,7 @@ class ExprEvaluator:
             "and": self._eval_and,
             "or": self._eval_or,
             "not": self._eval_not,
+            "nil?": self._eval_nil,
 
             # Comparisons
             "=": self._eval_eq,
@@ -320,6 +321,9 @@ class ExprEvaluator:
             "quote": self._eval_quote,
             "list": self._eval_list,
 
+            # Sequencing (like Clojure's do)
+            "do": self._eval_do_seq,
+
             # String operations
             "str": self._eval_str,
 
@@ -328,6 +332,10 @@ class ExprEvaluator:
             "first": self._eval_first,
             "rest": self._eval_rest,
             "count": self._eval_count,
+
+            # Side effects (require MutableWorldState)
+            "set!": self._eval_set_global,
+            "inc!": self._eval_inc_global,
         }
 
     def eval(self, expr: SExpr) -> Any:
@@ -504,6 +512,16 @@ class ExprEvaluator:
         if len(form) != 2:
             raise EvalError(f"'not' expects 1 argument, got {len(form) - 1}")
         return not self.eval(form[1])
+
+    def _eval_nil(self, form: SList) -> bool:
+        """(nil? EXPR) - check if value is nil/None.
+
+        Unlike (not x), this only returns true for nil/None,
+        not for other falsy values like 0 or false.
+        """
+        if len(form) != 2:
+            raise EvalError(f"'nil?' expects 1 argument, got {len(form) - 1}")
+        return self.eval(form[1]) is None
 
     # === Comparisons ===
 
@@ -836,20 +854,30 @@ class ExprEvaluator:
             return None
 
     def _eval_let(self, form: SList) -> Any:
-        """(let ((name value) ...) body) - local bindings.
+        """(let ((name value) ...) body ...) - local bindings.
+
+        Supports multiple body expressions (like Scheme/Clojure).
+        Returns the value of the last body expression.
 
         Examples:
             (let ((x 1)) (+ x 2))
             (let ((a (loc @player)) (b @room)) (= a b))
+            (let ((?n 10)) (print ?n) (* ?n 2))  ; multiple body expressions
         """
-        if len(form) != 3:
-            raise EvalError(f"'let' expects 2 arguments, got {len(form) - 1}")
+        if len(form) < 3:
+            raise EvalError(f"'let' expects at least 2 arguments, got {len(form) - 1}")
 
         bindings_expr = form[1]
-        body = form[2]
+        body_exprs = list(form.items[2:])  # All remaining expressions are body
 
         if not isinstance(bindings_expr, SList):
             raise EvalError(f"'let' bindings must be a list, got {bindings_expr}")
+
+        # Wrap multiple body expressions in (do ...)
+        if len(body_exprs) == 1:
+            body = body_exprs[0]
+        else:
+            body = SList([Symbol("do")] + body_exprs)
 
         # Evaluate bindings and substitute
         result_expr = body
@@ -1222,14 +1250,15 @@ class ExprEvaluator:
         return BehaviorBlocked(reason=reason, context=context)
 
     def _eval_redirect(self, form: SList) -> BehaviorRedirect:
-        """(redirect ACTION [:key value ...]) or (redirect :action ACTION)
+        """(redirect ACTION [:key value ...]) or (redirect :action ACTION) or (redirect :to ROOM)
 
         Examples:
             (redirect (do @other-door :open))
             (redirect :action (do @other-door :open))
+            (redirect :to @room)  ; Redirect movement to a specific room
         """
         if len(form) < 2:
-            raise EvalError("'redirect' requires an action")
+            raise EvalError("'redirect' requires an action or :to destination")
 
         action = None
         context: dict[str, Any] = {}
@@ -1245,6 +1274,14 @@ class ExprEvaluator:
             if k == "action":
                 # Don't evaluate action - keep as SExpr
                 action = v
+            elif k == "to":
+                # (redirect :to @room) - create a synthetic go action to the room
+                # This is used in :through behaviors to redirect movement
+                room = self.eval(v) if not isinstance(v, Symbol) else v.name
+                # Store the destination in context, runtime will handle the move
+                context["redirect_to"] = room
+                # Create a placeholder action (runtime will use redirect_to instead)
+                action = SList([Symbol("go"), Keyword("to"), Symbol(room) if isinstance(room, str) else v])
             elif k == "context":
                 context.update(self._parse_context_list(v))
             else:
@@ -1254,7 +1291,7 @@ class ExprEvaluator:
                     context[k] = self.eval(v)
 
         if action is None:
-            raise EvalError("'redirect' requires an action")
+            raise EvalError("'redirect' requires an action or :to destination")
 
         return BehaviorRedirect(action=action, context=context)
 
@@ -1418,6 +1455,20 @@ class ExprEvaluator:
         """
         return [self.eval(item) for item in form.items[1:]]
 
+    def _eval_do_seq(self, form: SList) -> Any:
+        """(do EXPR ...) - evaluate expressions in sequence, return last.
+
+        Like Clojure's do. Useful for side effects.
+
+        Examples:
+            (do (set! x 1) (set! y 2) (+ x y))
+            (do (print "hello") 42)
+        """
+        result = None
+        for item in form.items[1:]:
+            result = self.eval(item)
+        return result
+
     def _eval_str(self, form: SList) -> str:
         """(str EXPR ...) - concatenate arguments as strings.
 
@@ -1507,6 +1558,62 @@ class ExprEvaluator:
             return len(coll)
         else:
             raise EvalError(f"'count' expects sequence, got {type(coll).__name__}")
+
+    # === Side effects (require MutableWorldState) ===
+
+    def _eval_set_global(self, form: SList) -> None:
+        """(set! GLOBAL VALUE) - Set a global variable.
+
+        Requires the state to be MutableWorldState.
+        Returns None (like assignment in imperative languages).
+        """
+        if len(form) != 3:
+            raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
+
+        # First arg must be a symbol (the global name)
+        if not isinstance(form[1], Symbol):
+            raise EvalError("'set!' first argument must be a symbol")
+        global_name = form[1].name
+
+        # Evaluate the value
+        value = self.eval(form[2])
+
+        # Requires mutable state
+        if not hasattr(self.state, "set_global"):
+            raise EvalError("'set!' requires mutable state")
+        self.state.set_global(global_name, value)
+
+        return None
+
+    def _eval_inc_global(self, form: SList) -> int:
+        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Increment a global.
+
+        Requires the state to be MutableWorldState.
+        Returns the new value.
+        """
+        if len(form) < 2 or len(form) > 3:
+            raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
+
+        # First arg must be a symbol (the global name)
+        if not isinstance(form[1], Symbol):
+            raise EvalError("'inc!' first argument must be a symbol")
+        global_name = form[1].name
+
+        # Amount defaults to 1
+        amount = 1
+        if len(form) == 3:
+            amount = self.eval(form[2])
+
+        # Get current value and compute new
+        current = self.state.get_global(global_name)
+        new_value = current + amount
+
+        # Requires mutable state
+        if not hasattr(self.state, "set_global"):
+            raise EvalError("'inc!' requires mutable state")
+        self.state.set_global(global_name, new_value)
+
+        return new_value
 
     # === Quantifiers ===
 
@@ -1643,10 +1750,13 @@ class EffectExecutor:
             raise EvalError(f"Expected effect name, got: {head}")
 
         name = head.name
-        if name not in self._effects:
+        if name in self._effects:
+            self._effects[name](expr)
+        elif name in self._functions:
+            # Call user-defined function (for side effects)
+            self._predicates.eval(expr)
+        else:
             raise EvalError(f"Unknown effect: {name}")
-
-        self._effects[name](expr)
 
     def _eval(self, expr: SExpr) -> Any:
         """Evaluate a value expression."""

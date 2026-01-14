@@ -14,9 +14,9 @@
      (out :to @smith-st)
      (up :to @cs-2nd)
      (down :to @cs-basement)
-     ; TODO: (south :to @cs-elevator :via @elevator-door-1)
-     ; TODO: (in :to @cs-elevator :via @elevator-door-1)
-     ))
+     (south :to @cs-elevator-room :via @elevator-door-1)
+     (in :to @cs-elevator-room :via @elevator-door-1))
+  :globals (@up-button @down-button))
 
 ; === Second Floor (already exists in cs-2nd.grue, update exits) ===
 ; cs-2nd.grue defines @cs-2nd with exits to @terminal-room and @kitchen
@@ -33,9 +33,9 @@
      (up :to @cs-roof)
      (out :to @cs-roof)
      (down :to @cs-2nd)
-     ; TODO: (south :to @cs-elevator :via @elevator-door-3)
-     ; TODO: (in :to @cs-elevator :via @elevator-door-3)
-     ))
+     (south :to @cs-elevator-room :via @elevator-door-3)
+     (in :to @cs-elevator-room :via @elevator-door-3))
+  :globals (@down-button))
 
 (object @glass-wall-barrier
   :location @cs-3rd
@@ -65,9 +65,9 @@
   :exits
     ((up :to @comp-center)
      ; TODO: (north :to @storage-room)
-     ; TODO: (south :to @cs-elevator :via @elevator-door-b)
-     ; TODO: (in :to @cs-elevator :via @elevator-door-b)
-     ))
+     (south :to @cs-elevator-room :via @elevator-door-b)
+     (in :to @cs-elevator-room :via @elevator-door-b))
+  :globals (@up-button))
 
 ; === Smith Street (outside) ===
 

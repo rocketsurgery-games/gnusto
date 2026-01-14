@@ -8,7 +8,7 @@
      (west :to @kitchen)
      (up :to @cs-3rd)
      (down :to @comp-center)
-     ; TODO: (south :to @cs-elevator :via @elevator-door-2)
-     ; TODO: (in :to @cs-elevator :via @elevator-door-2)
-     ))
+     (south :to @cs-elevator-room :via @elevator-door-2)
+     (in :to @cs-elevator-room :via @elevator-door-2))
+  :globals (@up-button @down-button))
 

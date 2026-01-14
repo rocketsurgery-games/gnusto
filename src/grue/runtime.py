@@ -265,6 +265,16 @@ class GrueRuntime:
             return self.state.globals.get(name.lower(), 0)
         if name in self.state.globals:
             return self.state.globals[name]
+
+        # Check constants (from top-level (def name value))
+        if name in self.world.constants:
+            const_expr = self.world.constants[name]
+            # Evaluate the constant expression (lazy evaluation on first access)
+            # Use a temporary evaluator to evaluate the constant
+            from src.grue.expr import ExprEvaluator
+            evaluator = ExprEvaluator(self, self._functions)
+            return evaluator.eval(const_expr)
+
         raise KeyError(f"Unknown global: {name}")
 
     def get_player_location(self) -> str:
@@ -887,13 +897,33 @@ class GrueRuntime:
 
         # Check if exit has a :via door
         if via:
-            result = self.do(via, "through")
+            # Use _do_single to avoid auto-following redirects
+            result = self._do_single(via, "through")
             if result.outcome == "blocked":
                 return result
-            if result.outcome not in ("success", "default"):
+            if result.outcome == "redirect":
+                # Check for redirect_to in context - this redirects the destination
+                redirect_dest = None
+                for key, val in result.context:
+                    if key == "redirect_to":
+                        redirect_dest = val
+                        break
+                if redirect_dest:
+                    # Use the redirected destination instead of the original
+                    dest = redirect_dest
+                    # Filter out redirect_to from context
+                    context = [(k, v) for k, v in result.context if k != "redirect_to"]
+                else:
+                    # Redirect to a do action - not allowed in :through
+                    return ActionResult(
+                        outcome="error",
+                        error=f":through behaviors should use (redirect :to @room), not action redirects"
+                    )
+            elif result.outcome not in ("success", "default"):
                 return result  # Pass through errors
-            # Door approved - continue to movement below
-            context = result.context
+            else:
+                # Door approved - continue to movement below
+                context = result.context
         else:
             context = []
 

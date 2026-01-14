@@ -1,0 +1,642 @@
+; === Elevator System ===
+; The CS building elevator serves 4 floors: basement (0), first (1), second (2), third (3).
+; The elevator has a complex state machine handling movement, door opening/closing, and call buttons.
+
+; === Elevator State Globals ===
+(globals
+  ; elevator-loc: 0=basement, 1=first floor, 2=second floor, 3=third floor
+  :elevator-loc 1
+  ; elevator-direction: 1=going up, -1=going down
+  :elevator-direction 1
+  ; elevator-stopped: true if elevator is stopped, false if moving
+  :elevator-stopped true
+
+  ; Button states - separate lists for interior (go) and exterior (call up/down) buttons
+  ; Each is a list of 4 booleans for floors 0-3
+  :elevator-go-buttons (false false false false)       ; Interior floor buttons
+  :elevator-up-buttons (false false false false)       ; Exterior up arrows
+  :elevator-down-buttons (false false false false))    ; Exterior down arrows
+
+(def floor-names '("basement" "first floor" "second floor" "third floor"))
+
+; === Helper Functions ===
+
+(defn elevator-at-floor? (?floor)
+  "Returns true if elevator is at the given floor"
+  (= elevator-loc ?floor))
+
+(defn elevator-here? ()
+  "Returns true if elevator is at the current room's floor"
+  (let ((?floor (prop (loc @player) floor)))
+    (and ?floor elevator-stopped (= ?floor elevator-loc))))
+
+(defn door-at-elevator ()
+  "Returns the elevator door at the elevator's current location"
+  (cond
+    ((= elevator-loc 0) @elevator-door-b)
+    ((= elevator-loc 1) @elevator-door-1)
+    ((= elevator-loc 2) @elevator-door-2)
+    (true @elevator-door-3)))
+
+(defn this-floor-door ()
+  "Returns the elevator door at the player's current floor"
+  (cond
+    ((here? @cs-basement) @elevator-door-b)
+    ((here? @comp-center) @elevator-door-1)
+    ((here? @cs-2nd) @elevator-door-2)
+    ((here? @cs-3rd) @elevator-door-3)
+    ((here? @cs-elevator-room) (door-at-elevator))
+    (true nil)))
+
+; Button getters
+(defn go-button-pressed? (?floor)
+  (nth elevator-go-buttons ?floor))
+
+(defn up-button-pressed? (?floor)
+  (nth elevator-up-buttons ?floor))
+
+(defn down-button-pressed? (?floor)
+  (nth elevator-down-buttons ?floor))
+
+; Button setters - update the list at a specific index
+(defn set-go-button! (?floor ?val)
+  (set! elevator-go-buttons
+    (cond
+      ((= ?floor 0) (list ?val (nth elevator-go-buttons 1) (nth elevator-go-buttons 2) (nth elevator-go-buttons 3)))
+      ((= ?floor 1) (list (nth elevator-go-buttons 0) ?val (nth elevator-go-buttons 2) (nth elevator-go-buttons 3)))
+      ((= ?floor 2) (list (nth elevator-go-buttons 0) (nth elevator-go-buttons 1) ?val (nth elevator-go-buttons 3)))
+      (true (list (nth elevator-go-buttons 0) (nth elevator-go-buttons 1) (nth elevator-go-buttons 2) ?val)))))
+
+(defn set-up-button! (?floor ?val)
+  (set! elevator-up-buttons
+    (cond
+      ((= ?floor 0) (list ?val (nth elevator-up-buttons 1) (nth elevator-up-buttons 2) (nth elevator-up-buttons 3)))
+      ((= ?floor 1) (list (nth elevator-up-buttons 0) ?val (nth elevator-up-buttons 2) (nth elevator-up-buttons 3)))
+      ((= ?floor 2) (list (nth elevator-up-buttons 0) (nth elevator-up-buttons 1) ?val (nth elevator-up-buttons 3)))
+      (true (list (nth elevator-up-buttons 0) (nth elevator-up-buttons 1) (nth elevator-up-buttons 2) ?val)))))
+
+(defn set-down-button! (?floor ?val)
+  (set! elevator-down-buttons
+    (cond
+      ((= ?floor 0) (list ?val (nth elevator-down-buttons 1) (nth elevator-down-buttons 2) (nth elevator-down-buttons 3)))
+      ((= ?floor 1) (list (nth elevator-down-buttons 0) ?val (nth elevator-down-buttons 2) (nth elevator-down-buttons 3)))
+      ((= ?floor 2) (list (nth elevator-down-buttons 0) (nth elevator-down-buttons 1) ?val (nth elevator-down-buttons 3)))
+      (true (list (nth elevator-down-buttons 0) (nth elevator-down-buttons 1) (nth elevator-down-buttons 2) ?val)))))
+
+(defn clear-all-buttons-at! (?floor)
+  "Clear all button presses for a floor"
+  (set-go-button! ?floor false)
+  (set-up-button! ?floor false)
+  (set-down-button! ?floor false))
+
+(defn any-button-pressed? (?floor)
+  "Check if any button is pressed for a floor"
+  (or (go-button-pressed? ?floor)
+      (up-button-pressed? ?floor)
+      (down-button-pressed? ?floor)))
+
+(defn elevator-called? ()
+  "Returns true if elevator is called from any floor other than current"
+  (or (and (any-button-pressed? 0) (not (= elevator-loc 0)))
+      (and (any-button-pressed? 1) (not (= elevator-loc 1)))
+      (and (any-button-pressed? 2) (not (= elevator-loc 2)))
+      (and (any-button-pressed? 3) (not (= elevator-loc 3)))))
+
+(defn should-stop-at? (?floor)
+  "Check if elevator should stop at a floor based on button state and direction"
+  (or (go-button-pressed? ?floor)
+      (and (> elevator-direction 0) (up-button-pressed? ?floor))
+      (and (< elevator-direction 0) (down-button-pressed? ?floor))))
+
+(defn pick-elevator-direction ()
+  "Determine which direction elevator should go based on pending calls"
+  (cond
+    ; At basement - can only go up
+    ((= elevator-loc 0)
+      (set! elevator-direction 1))
+    ; At top floor - can only go down
+    ((= elevator-loc 3)
+      (set! elevator-direction -1))
+    ; In middle - check if there are calls in current direction
+    (true
+      (cond
+        ; Going down, check if we should reverse
+        ((= elevator-direction -1)
+          (cond
+            ((and (= elevator-loc 1) (not (any-button-pressed? 0)))
+              (set! elevator-direction 1))
+            ((and (= elevator-loc 2) (not (any-button-pressed? 0)) (not (any-button-pressed? 1)))
+              (set! elevator-direction 1))))
+        ; Going up, check if we should reverse
+        ((= elevator-direction 1)
+          (cond
+            ((and (= elevator-loc 2) (not (any-button-pressed? 3)))
+              (set! elevator-direction -1))
+            ((and (= elevator-loc 1) (not (any-button-pressed? 2)) (not (any-button-pressed? 3)))
+              (set! elevator-direction -1))))))))
+
+; === Elevator Room ===
+
+(room @cs-elevator-room
+  :description "Elevator"
+  :flags (ONBIT)
+  :properties (:in-elevator true)
+  :exits
+    ((north :to @cs-elevator-room :via @elevator-exit)
+     (out :to @cs-elevator-room :via @elevator-exit))
+
+  :behaviors (
+    :look (fn ()
+      (let ((?door-state (if (has-flag @elevator-door OPENBIT) "open" "closed")))
+        (success :message (str "This is a battered, rather dirty elevator. The fake wood walls are scratched and marred with graffiti. The elevator doors are " ?door-state ". To the right of the doors is an area with floor buttons (B and 1 through 3), an open button, a close button, a stop switch, and an alarm button. Below these is an access panel which is " (if (has-flag @access-panel OPENBIT) "open" "closed") "."))))))
+
+; Virtual barrier for exiting elevator
+(object @elevator-exit
+  :location @cs-elevator-room
+  :description "elevator exit"
+  :flags (INVISIBLE)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((not elevator-stopped)
+          (blocked :reason elevator-moving :message "The elevator is still moving."))
+        ((not (has-flag @elevator-door OPENBIT))
+          (blocked :reason door-closed :message "The elevator doors are closed."))
+        ((= elevator-loc 0) (redirect :to @cs-basement))
+        ((= elevator-loc 1) (redirect :to @comp-center))
+        ((= elevator-loc 2) (redirect :to @cs-2nd))
+        (true (redirect :to @cs-3rd))))))
+
+; === Interior Elevator Objects ===
+
+; The main elevator door (interior side)
+(object @elevator-door
+  :description "elevator doors"
+  :location @cs-elevator-room
+  :flags (NDESCBIT AN DOORBIT OPENABLE)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The elevator doors are " (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+    :open (fn ()
+      (redirect :action (do @open-button :push)))
+    :close (fn ()
+      (redirect :action (do @close-button :push)))
+    :through (fn ()
+      (redirect :action (go north)))))
+
+; Open button - opens doors when stopped
+(object @open-button
+  :description "open button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT AN)
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a white button labeled \"OPEN\"."))
+    :push (fn ()
+      (cond
+        ((not elevator-stopped)
+          (success :message "The elevator is still moving. Nothing happens."))
+        ((has-flag @elevator-door OPENBIT)
+          (success :effects ((queue! elevator-door-closes 2))
+                   :message "The doors stay open."))
+        (true
+          (success :effects ((set-flag! (door-at-elevator) OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :message "The doors spring open."))))))
+
+; Close button - closes doors
+(object @close-button
+  :description "close button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a white button labeled \"CLOSE\"."))
+    :push (fn ()
+      (cond
+        ((not elevator-stopped)
+          (success :message "The elevator is moving, the door is closed."))
+        ((not (has-flag @elevator-door OPENBIT))
+          (success :message "The door is already closed."))
+        (true
+          (success :effects ((queue! elevator-door-closes 2))
+                   :message "You push the button."))))))
+
+; Floor buttons (B, 1, 2, 3)
+(object @floor-button
+  :description "floor button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (let ((?glowing '()))
+        (if (go-button-pressed? 0) (set! ?glowing (cons "B" ?glowing)))
+        (if (go-button-pressed? 1) (set! ?glowing (cons "1" ?glowing)))
+        (if (go-button-pressed? 2) (set! ?glowing (cons "2" ?glowing)))
+        (if (go-button-pressed? 3) (set! ?glowing (cons "3" ?glowing)))
+        (if (empty? ?glowing)
+          (success :message "The floor buttons are labeled B, 1, 2, and 3. None are glowing.")
+          (success :message (str "The floor buttons are labeled B, 1, 2, and 3. Glowing: " (join ", " ?glowing) ".")))))))
+
+(object @basement-button
+  :description "B button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The basement button is " (if (go-button-pressed? 0) "glowing" "dark") ".")))
+    :push (fn ()
+      (cond
+        ((= elevator-loc 0)
+          (success :message "The button doesn't light."))
+        ((go-button-pressed? 0)
+          (success :message "That button is already glowing."))
+        (true
+          (success :effects ((set-go-button! 0 true)
+                            (pick-elevator-direction)
+                            (queue! elevator-moves 1))
+                   :message "The button for the basement begins to glow."))))))
+
+(object @button-1
+  :description "1 button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The first floor button is " (if (go-button-pressed? 1) "glowing" "dark") ".")))
+    :push (fn ()
+      (cond
+        ((= elevator-loc 1)
+          (success :message "The button doesn't light."))
+        ((go-button-pressed? 1)
+          (success :message "That button is already glowing."))
+        (true
+          (success :effects ((set-go-button! 1 true)
+                            (pick-elevator-direction)
+                            (queue! elevator-moves 1))
+                   :message "The button for the first floor begins to glow."))))))
+
+(object @button-2
+  :description "2 button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The second floor button is " (if (go-button-pressed? 2) "glowing" "dark") ".")))
+    :push (fn ()
+      (cond
+        ((= elevator-loc 2)
+          (success :message "The button doesn't light."))
+        ((go-button-pressed? 2)
+          (success :message "That button is already glowing."))
+        (true
+          (success :effects ((set-go-button! 2 true)
+                            (pick-elevator-direction)
+                            (queue! elevator-moves 1))
+                   :message "The button for the second floor begins to glow."))))))
+
+(object @button-3
+  :description "3 button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The third floor button is " (if (go-button-pressed? 3) "glowing" "dark") ".")))
+    :push (fn ()
+      (cond
+        ((= elevator-loc 3)
+          (success :message "The button doesn't light."))
+        ((go-button-pressed? 3)
+          (success :message "That button is already glowing."))
+        (true
+          (success :effects ((set-go-button! 3 true)
+                            (pick-elevator-direction)
+                            (queue! elevator-moves 1))
+                   :message "The button for the third floor begins to glow."))))))
+
+; Alarm button - just makes noise
+(object @alarm-button
+  :description "alarm button"
+  :location @cs-elevator-room
+  :flags (NDESCBIT AN)
+  :behaviors (
+    :examine (fn () (success :message "A red button labeled \"ALARM\"."))
+    :push (fn ()
+      (success :message "For as long as you hold the button down, an ear-splitting alarm bell rings."))))
+
+; Stop switch - does nothing
+(object @stop-switch
+  :description "stop switch"
+  :location @cs-elevator-room
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn () (success :message "A small switch labeled \"STOP\"."))
+    :turn (fn () (success :message "You flip the switch, but nothing happens."))
+    :turn-on (fn () (success :message "You flip the switch, but nothing happens."))
+    :turn-off (fn () (success :message "You flip the switch, but nothing happens."))))
+
+; Access panel
+(object @access-panel
+  :description "access panel"
+  :location @cs-elevator-room
+  :flags (NDESCBIT AN CONTBIT SEARCHBIT OPENABLE)
+  :properties (:capacity 20)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "A small access panel in the wall. It is " (if (has-flag ?self OPENBIT) "open" "closed") ".")))))
+
+; === Call Buttons (outside elevator on each floor) ===
+
+; Up arrow button - calls elevator to come up
+(object @up-button
+  :description "up-arrow"
+  :location nil  ; Global object, present on floors with up capability
+  :flags (NDESCBIT AN)
+  :behaviors (
+    :examine (fn ()
+      (let ((?floor (prop (loc @player) floor)))
+        (if (and ?floor (up-button-pressed? ?floor))
+          (success :message "The up-arrow is glowing.")
+          (success :message "A white button with an up arrow."))))
+    :push (fn ()
+      (let ((?floor (prop (loc @player) floor)))
+        (cond
+          ((nil? ?floor)
+            (blocked :reason no-floor :message "There's no elevator here."))
+          ((up-button-pressed? ?floor)
+            (success :message "That button is already glowing."))
+          ((and elevator-stopped (= ?floor elevator-loc))
+            ; Elevator is here - just open the doors
+            (success :effects ((queue! elevator-door-opens 1))
+                     :message "You push the up-arrow."))
+          (true
+            ; Call the elevator
+            (success :effects ((set-up-button! ?floor true)
+                              (pick-elevator-direction)
+                              (queue! elevator-moves 1))
+                     :message "The up-arrow begins to glow.")))))))
+
+; Down arrow button - calls elevator to come down
+(object @down-button
+  :description "down-arrow"
+  :location nil  ; Global object
+  :flags (NDESCBIT)
+  :behaviors (
+    :examine (fn ()
+      (let ((?floor (prop (loc @player) floor)))
+        (if (and ?floor (down-button-pressed? ?floor))
+          (success :message "The down-arrow is glowing.")
+          (success :message "A white button with a down arrow."))))
+    :push (fn ()
+      (let ((?floor (prop (loc @player) floor)))
+        (cond
+          ((nil? ?floor)
+            (blocked :reason no-floor :message "There's no elevator here."))
+          ((down-button-pressed? ?floor)
+            (success :message "That button is already glowing."))
+          ((and elevator-stopped (= ?floor elevator-loc))
+            ; Elevator is here - just open the doors
+            (success :effects ((queue! elevator-door-opens 1))
+                     :message "You push the down-arrow."))
+          (true
+            ; Call the elevator
+            (success :effects ((set-down-button! ?floor true)
+                              (pick-elevator-direction)
+                              (queue! elevator-moves 1))
+                     :message "The down-arrow begins to glow.")))))))
+
+; === Elevator Doors (one per floor) ===
+
+(object @elevator-door-b
+  :description "elevator doors"
+  :location @cs-basement
+  :flags (AN DOORBIT OPENABLE SEARCHBIT CONTBIT)
+  :behaviors (
+    :examine (fn ()
+      (let ((?here (elevator-at-floor? 0)))
+        (success :message (str "The elevator doors are " (if (has-flag ?self OPENBIT) "open" "closed") "."
+                              (if (and (has-flag ?self OPENBIT) ?here) " The elevator is beyond." "")))))
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "The doors are already open."))
+        ((not (elevator-at-floor? 0))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :message "The doors slide open."))))
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "The doors are already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (clear-flag! @elevator-door OPENBIT))
+                   :message "The doors slide closed."))))
+    :through (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason door-closed :message "The elevator doors aren't open."))
+        ((not (elevator-at-floor? 0))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (redirect :to @cs-elevator-room))))))
+
+(object @elevator-door-1
+  :description "elevator doors"
+  :location @comp-center
+  :flags (AN DOORBIT OPENABLE SEARCHBIT CONTBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The elevator doors are " (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "The doors are already open."))
+        ((not (elevator-at-floor? 1))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :message "The doors slide open."))))
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "The doors are already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (clear-flag! @elevator-door OPENBIT))
+                   :message "The doors slide closed."))))
+    :through (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason door-closed :message "The elevator doors aren't open."))
+        ((not (elevator-at-floor? 1))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (redirect :to @cs-elevator-room))))))
+
+(object @elevator-door-2
+  :description "elevator doors"
+  :location @cs-2nd
+  :flags (AN DOORBIT OPENABLE SEARCHBIT CONTBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The elevator doors are " (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "The doors are already open."))
+        ((not (elevator-at-floor? 2))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :message "The doors slide open."))))
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "The doors are already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (clear-flag! @elevator-door OPENBIT))
+                   :message "The doors slide closed."))))
+    :through (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason door-closed :message "The elevator doors aren't open."))
+        ((not (elevator-at-floor? 2))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (redirect :to @cs-elevator-room))))))
+
+(object @elevator-door-3
+  :description "elevator doors"
+  :location @cs-3rd
+  :flags (AN DOORBIT OPENABLE SEARCHBIT CONTBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "The elevator doors are " (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "The doors are already open."))
+        ((not (elevator-at-floor? 3))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :message "The doors slide open."))))
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "The doors are already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (clear-flag! @elevator-door OPENBIT))
+                   :message "The doors slide closed."))))
+    :through (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason door-closed :message "The elevator doors aren't open."))
+        ((not (elevator-at-floor? 3))
+          (blocked :reason elevator-not-here :message "The elevator isn't here."))
+        (true
+          (redirect :to @cs-elevator-room))))))
+
+; === Elevator Movement Events ===
+
+; Door opens event - triggered when elevator stops at a floor
+(event elevator-door-opens
+  :on-turn
+    (cond
+      ((has-flag @elevator-door OPENBIT)
+        ; Doors already open, just keep them open longer
+        (success :effects ((queue! elevator-door-closes 2))))
+      (true
+        ; Open the doors
+        (let ((?door (door-at-elevator)))
+          (success :effects ((set-flag! ?door OPENBIT)
+                            (set-flag! @elevator-door OPENBIT)
+                            (queue! elevator-door-closes 2))
+                   :context ((description (if (elevator-here?) "The elevator doors slide open." nil))))))))
+
+; Door closes event - auto-closes doors after 2 turns
+(event elevator-door-closes
+  :on-turn
+    (cond
+      ((not (has-flag @elevator-door OPENBIT))
+        ; Already closed
+        (success))
+      ; TODO: Check for objects wedged in door
+      (true
+        ; Close the doors and check if elevator should move
+        (let ((?door (door-at-elevator)))
+          (success :effects ((clear-flag! ?door OPENBIT)
+                            (clear-flag! @elevator-door OPENBIT)
+                            (if (elevator-called?) (queue! elevator-moves 1) nil))
+                   :context ((description (if (elevator-here?) "The elevator doors slide closed." nil))))))))
+
+; Main elevator movement event
+(event elevator-moves
+  :on-turn
+    (cond
+      ; Don't move if any door is open
+      ((or (has-flag @elevator-door OPENBIT)
+           (has-flag @elevator-door-b OPENBIT)
+           (has-flag @elevator-door-1 OPENBIT)
+           (has-flag @elevator-door-2 OPENBIT)
+           (has-flag @elevator-door-3 OPENBIT))
+        (success :effects ((queue! elevator-moves 1))))
+
+      ; Starting to move from stopped
+      (elevator-stopped
+        (cond
+          ((not (elevator-called?))
+            ; Nothing to do
+            (success))
+          (true
+            ; Start moving
+            (success :effects ((set! elevator-stopped false)
+                              (pick-elevator-direction)
+                              (queue! elevator-moves 1))
+                     :context ((description (if (here? @cs-elevator-room)
+                                              (str "The elevator begins to move " (if (> elevator-direction 0) "upward" "downward") ".")
+                                              (if (prop (loc @player) floor) "You hear the elevator begin moving." nil))))))))
+
+      ; Elevator is moving
+      (true
+        (let ((?new-loc (+ elevator-loc elevator-direction)))
+          ; Move the elevator
+          (set! elevator-loc ?new-loc)
+          (pick-elevator-direction)
+
+          ; Check if we should stop at this floor
+          (cond
+            ((should-stop-at? ?new-loc)
+              ; Stop at this floor, clear button states
+              (let ((?was-go (go-button-pressed? ?new-loc)))
+                (clear-all-buttons-at! ?new-loc)
+                (success :effects ((set! elevator-stopped true)
+                                  (queue! elevator-door-opens 1))
+                         :context ((description (if (here? @cs-elevator-room)
+                                                  (str "The elevator slows and comes to a stop."
+                                                       (if ?was-go
+                                                         (str " The button for the " (nth floor-names ?new-loc) " blinks off.")
+                                                         ""))
+                                                  (if (prop (loc @player) floor)
+                                                    "You no longer hear the elevator moving."
+                                                    nil)))))))
+            (true
+              ; Keep moving
+              (success :effects ((queue! elevator-moves 1))
+                       :context ((description (if (here? @cs-elevator-room)
+                                                (str "The elevator continues to move " (if (> elevator-direction 0) "upward" "downward") ".")
+                                                nil))))))))))
+
