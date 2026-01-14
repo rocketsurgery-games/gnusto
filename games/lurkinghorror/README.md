@@ -150,3 +150,150 @@ The runtime checks these flags in several places:
 - Default behaviors use TAKEBIT, CONTBIT, OPENBIT, etc. to determine valid actions
 - Events can use `has-flag` and `set-flag!`/`clear-flag!` to check and modify flags
 
+
+# ZIL to Grue Conversion Pitfalls
+
+This section documents patterns in ZIL that are easy to miss or misunderstand when converting to Grue.
+
+## Verb-Level State Machines
+
+**Problem**: Some mechanics live in verb handlers, not object behaviors. These are easy to miss because
+our conversion process focuses on objects.
+
+**Example**: The PC login flow uses V-TYPE, V-LOGIN, and V-PASSWORD verb routines with global state
+variables (USERNAME?, LOGGED-IN?) to implement a multi-step interaction:
+
+```zil
+; In ZIL, the TYPE verb redirects based on state
+<ROUTINE V-TYPE ()
+   <COND (<NOT ,USERNAME?>
+          <NEW-VERB ,V?LOGIN>)    ; Redirect to login
+         (<NOT ,LOGGED-IN?>
+          <NEW-VERB ,V?PASSWORD>) ; Redirect to password
+         ...>>
+```
+
+**In Grue**: Convert to object behaviors that check global state:
+
+```scheme
+(globals
+  :logged-in false
+  :username false)
+
+:type (fn (?value)
+  (cond
+    ((not username) (redirect :action (do ?self :login ?value)))
+    ((not logged-in) (redirect :action (do ?self :password ?value)))
+    ...))
+```
+
+**How to spot**: Look for:
+- `NEW-VERB` calls that redirect to other verbs based on state
+- Global variables like `FOO?` that track multi-step flows
+- SYNTAX definitions for custom verbs (LOGIN, PASSWORD, etc.)
+
+## INIT-* Routines for State Reset
+
+**Problem**: ZIL often has INIT-FOO routines that reset state when objects change (power off, close, etc.).
+These are called from multiple places and easy to miss.
+
+**Example**: INIT-PC resets login state and removes screen elements:
+
+```zil
+<ROUTINE INIT-PC ()
+   <FCLEAR ,PC ,POWERBIT>
+   <SETG LOGGED-IN? <>>
+   <SETG USERNAME? <>>
+   <REMOVE ,MENU-BOX>
+   <REMOVE ,MORE-BOX>
+   ...>
+```
+
+**In Grue**: Include these effects in all relevant behaviors:
+
+```scheme
+:turn-off (fn ()
+  (success :effects ((clear-flag! ?self POWER)
+                     (set! logged-in false)
+                     (set! username false)
+                     (move! @menu-box nil)
+                     (move! @more-box nil)
+                     ...)))
+```
+
+**How to spot**: Search for `INIT-` routines and trace all call sites.
+
+## Objects That Start in Limbo
+
+**Problem**: Some objects start with no location (REMOVE'd or never placed) and only appear after
+certain actions. Easy to assume they start somewhere visible.
+
+**Example**: MENU-BOX only appears on the PC screen after successful login:
+
+```zil
+; MENU-BOX has no (IN ...) declaration - starts in limbo
+<OBJECT MENU-BOX
+   (DESC "menu box")
+   ...>
+
+; Only moved to PC after password succeeds
+<ROUTINE V-PASSWORD ()
+   ...
+   <MOVE ,MENU-BOX ,PC>
+   ...>
+```
+
+**In Grue**: Set `:location nil` and move via effects:
+
+```scheme
+(object @menu-box
+  :location nil  ; Starts hidden
+  ...)
+
+:password (fn (?value)
+  (success :effects ((move! @menu-box @pc)) ...))
+```
+
+**How to spot**: Objects without `(IN ...)` in ZIL, or with `(IN GLOBAL-OBJECTS)` or `(IN LOCAL-GLOBALS)`.
+
+## Physical Parts vs. Conceptual Contents
+
+**Problem**: Objects can contain both physical parts (always present) and conceptual contents
+(appear/disappear based on state). Need to distinguish them for descriptions.
+
+**Example**: The PC contains mouse and help-key (physical, always there) plus screen elements
+(menu-box, yak-window, etc. that come and go):
+
+```zil
+; Physical parts - always in PC
+<OBJECT MOUSE (IN PC) (FLAGS NDESCBIT) ...>
+<OBJECT HELP-KEY (IN PC) (FLAGS NDESCBIT) ...>
+
+; Screen elements - moved in/out dynamically
+<OBJECT MENU-BOX ...>  ; Moved to PC after login
+```
+
+**In Grue**: Filter by flag or explicitly check specific objects:
+
+```scheme
+; Don't just use (first (contents ?self)) - that might return @mouse!
+:examine (fn ()
+  (cond
+    ((in? @odd-paper ?self) ...)   ; Check screen elements specifically
+    ((in? @menu-box ?self) ...)
+    ...))
+```
+
+**How to spot**: Objects with NDESCBIT inside containers are usually "part of" not "contents of".
+
+## Testing Against the Original
+
+**Best practice**: Run `dfrotz games/lurkinghorror/compiled/lurking.dat` to test the original game's
+behavior. This reveals interaction flows that aren't obvious from reading ZIL source.
+
+Common discoveries:
+- Multi-step sequences (login flow, combination locks)
+- Required preconditions (must be seated? must be holding X?)
+- State dependencies (only works after Y happens)
+- Custom rejection messages
+
