@@ -1,8 +1,3 @@
-# Development Philosophy
-
-This is a single-developer research project. There are no other users of this code.
-Always prefer hard cutovers to backward-compatible migrations - just change things directly.
-
 
 # Issue Tracking
 
@@ -16,38 +11,6 @@ bd update <id> --status=in_progress   # Claim work
 bd close <id>                         # Mark complete
 bd sync                               # Sync with git remote
 ```
-
-Do NOT start work on a bead without claiming it.
-
-
-# Converting ZIL to Grue
-
-When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their beads P1, so we fix them before moving on to the rest of the conversion.
-
-As we work through converting The Lurking Horror as a starting point, we're keeping notes on what we learn in
-./games/lurkinghorror/README.md.
-
-
-# The Grue Language
-
-Remember that we're building a language in the spirit of LISP/Scheme/Clojure, so use those idioms to add language
-features that support Interactive Fiction development.
-
-**Standard library:** Add Scheme/Clojure stdlib functions as needed (e.g., `str`, `nth`, `first`, `rest`). Default to
-Clojure style, but fall back to Scheme/Racket when Clojure depends on syntax we don't have (like `[vectors]`).
-No need to ask permission for obvious stdlib additions.
-
-**Purity:** Keep functions pure. All side-effects must go through the formal effects system (`:effects` in outcomes).
-This enables future state-space exploration for winnability analysis.
-
-**LLM interface:** The game will be played via an LLM, so prefer explicit formal action interfaces like
-`(do @hacker :ask @master-key)` over fiddly parser-dependent constructs. Don't rely on adjectives or other
-parser-level distinctions.
-
-IMPORTANT: As you convert to Grue, always look for opportunities to improve the language design for flexibility and expressiveness. If you see such an opportunity, or any language construct that isn't generalized, or doesn't behave as an experienced Scheme/Clojure developer might expect, stop and initiate a discussion with the user.
-
-We're keeping the bead "Language & runtime design tweaks" (frotzlm-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
-
 
 # Session Completion Workflow
 
