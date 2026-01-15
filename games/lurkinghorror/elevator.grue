@@ -312,7 +312,7 @@
 ; Up arrow button - calls elevator to come up
 (object @up-button
   :description "up-arrow"
-  :location nil  ; Global object, present on floors with up capability
+  :location @global  ; Visible on all elevator floors
   :flags (NDESCBIT AN)
   :behaviors (
     :examine (fn ()
@@ -341,7 +341,7 @@
 ; Down arrow button - calls elevator to come down
 (object @down-button
   :description "down-arrow"
-  :location nil  ; Global object
+  :location @global  ; Visible on all elevator floors
   :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()

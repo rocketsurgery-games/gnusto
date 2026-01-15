@@ -181,12 +181,26 @@ class TestPart3Basement:
     3. Get the gloves from the alchemy lab
     4. Get the knife
     5. Use the forklift to access the "Tomb of the Unknown Tool"
-
-    NOTE: Access to brown building/alchemy requires passing through the
-    infinite corridor, which is currently blocked by bugs:
-    - frotzlm-rk2: Elevator buttons not visible
-    - frotzlm-68x: Floor waxer never starts patrolling
     """
+
+    def test_can_call_elevator(self, game):
+        """Can call the elevator using call buttons."""
+        # Go to cs-2nd (has floor property)
+        game.do("_movement", "go", "south")
+        assert game.get_player_location() == "@cs-2nd"
+
+        # Push the down button to call elevator
+        result = game.do("@down-button", "push")
+        assert result.outcome == "success"
+
+        # Wait for elevator to arrive and open doors
+        # Takes ~6 turns: queue(1) -> start moving(2) -> arrive(4) -> open doors(6)
+        for _ in range(8):
+            game.process_events()
+
+        # Elevator door should be open
+        door = game.state.objects.get("@elevator-door-2")
+        assert "OPENBIT" in door.flags
 
     def test_can_reach_aero_basement(self, game):
         """Can navigate to aero basement via stairs."""
@@ -210,9 +224,12 @@ class TestPart3Basement:
 
         assert game.get_player_location() == "@inf-1"
 
-    @pytest.mark.xfail(reason="BUG frotzlm-68x: waxer blocks corridor, never patrols")
     def test_can_traverse_infinite_corridor(self, game):
-        """Can traverse full infinite corridor to reach chemistry building."""
+        """Can traverse full infinite corridor to reach chemistry building.
+
+        The floor waxer patrols the corridor. You must wait for it to pass
+        before you can proceed through each section.
+        """
         # Navigate to inf-1
         game.do("_movement", "go", "south")
         game.do("_movement", "go", "down")
@@ -222,15 +239,24 @@ class TestPart3Basement:
         game.do("_movement", "go", "up")
         game.do("_movement", "go", "south")  # inf-1
 
-        # Traverse to inf-5
+        # Traverse to inf-5, waiting for waxer when blocked
         for _ in range(4):
             result = game.do("_movement", "go", "east")
+            if result.outcome == "blocked" and result.reason == "waxer-blocking":
+                # Wait for waxer to patrol away (it moves every 5 turns)
+                for _ in range(6):
+                    game.process_events()
+                result = game.do("_movement", "go", "east")
             assert result.outcome == "success", f"Failed at {game.get_player_location()}"
 
         assert game.get_player_location() == "@inf-5"
 
-        # Go to chemistry building
+        # Go to chemistry building (may need to wait for waxer to leave)
         result = game.do("_movement", "go", "south")
+        if result.outcome == "blocked" and result.reason == "waxer-blocking":
+            for _ in range(6):
+                game.process_events()
+            result = game.do("_movement", "go", "south")
         assert result.outcome == "success"
         assert game.get_player_location() == "@chemistry-bldg"
 

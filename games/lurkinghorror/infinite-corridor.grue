@@ -8,6 +8,12 @@
 ;              @aero-lobby             @great-dome (up)      @nutrition-bldg  @chemistry-bldg
 ;              @engineering-bldg       @great-court (south)
 
+; === Waxer Patrol Initialization ===
+; The waxer patrol starts when the player first enters the corridor
+
+(globals
+  :waxer-patrol-started false)
+
 ; === Helper for corridor position description ===
 
 (defn inf-corridor-position (?room)
@@ -47,7 +53,15 @@
         ((description
           (str "The so-called infinite corridor runs from east to west in the main campus building."
                (inf-corridor-position ?self)
-               (inf-corridor-features ?self))))))))
+               (inf-corridor-features ?self))))))
+
+    :on-enter (fn (?from-room)
+      ; Start the waxer patrol when player first enters the corridor
+      (cond
+        (waxer-patrol-started (success))
+        (true
+          (success :effects ((set! waxer-patrol-started true)
+                             (queue! waxer-moves 3))))))))
 
 ; === INF-2: Middle ===
 

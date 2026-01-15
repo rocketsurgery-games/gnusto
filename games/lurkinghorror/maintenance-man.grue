@@ -348,51 +348,52 @@
 ; EVENTS
 ; ============================================================
 
+; Helper to determine waxer next location
+(defn waxer-next-loc (?loc ?going-west)
+  (cond
+    (?going-west
+      (cond
+        ((= ?loc @inf-5) @inf-4)
+        ((= ?loc @inf-4) @inf-3)
+        ((= ?loc @inf-3) @inf-2)
+        ((= ?loc @inf-2) @inf-1)
+        (true @inf-1)))
+    (true
+      (cond
+        ((= ?loc @inf-1) @inf-2)
+        ((= ?loc @inf-2) @inf-3)
+        ((= ?loc @inf-3) @inf-4)
+        ((= ?loc @inf-4) @inf-5)
+        (true @inf-5)))))
+
 ; Floor waxer movement - patrols the corridor every 5 turns
 (event waxer-moves
   :on-turn
-    (let ((?loc (loc @floor-waxer))
-          (?next-loc nil))
-      ; Determine direction change at ends
+    (let ((?loc (loc @floor-waxer)))
+      ; Update direction at ends FIRST
       (cond
         ((and wax-west (= ?loc @inf-1))
           (set! wax-west false))
         ((and (not wax-west) (= ?loc @inf-5))
           (set! wax-west true)))
 
-      ; Determine next location
-      (set! ?next-loc
-        (cond
-          (wax-west
-            (cond
-              ((= ?loc @inf-5) @inf-4)
-              ((= ?loc @inf-4) @inf-3)
-              ((= ?loc @inf-3) @inf-2)
-              ((= ?loc @inf-2) @inf-1)
-              (true @inf-1)))
-          (true
-            (cond
-              ((= ?loc @inf-1) @inf-2)
-              ((= ?loc @inf-2) @inf-3)
-              ((= ?loc @inf-3) @inf-4)
-              ((= ?loc @inf-4) @inf-5)
-              (true @inf-5)))))
+      ; Now compute next location using current wax-west value
+      (let ((?next-loc (waxer-next-loc ?loc wax-west)))
+        ; Generate message
+        (let ((?msg
+                (cond
+                  ((= (loc @player) ?next-loc)
+                    (str "The floor waxer, approaching from the "
+                         (if wax-west "east" "west")
+                         ", is now here."))
+                  ((= (loc @player) ?loc)
+                    (str "The floor waxer waxes away to the "
+                         (if wax-west "west" "east")
+                         "."))
+                  (true nil))))
 
-      ; Generate message
-      (let ((?msg
-              (cond
-                ((= (loc @player) ?next-loc)
-                  (str "The floor waxer, approaching from the "
-                       (if wax-west "east" "west")
-                       ", is now here."))
-                ((= (loc @player) ?loc)
-                  (str "The floor waxer waxes away to the "
-                       (if wax-west "west" "east")
-                       "."))
-                (true nil))))
-
-        (success :effects ((move! @floor-waxer ?next-loc) (queue! waxer-moves 5))
-                 :context (if ?msg ((description ?msg)) nil)))))
+          (success :effects ((move! @floor-waxer ?next-loc) (queue! waxer-moves 5))
+                   :context (if ?msg ((description ?msg)) nil))))))
 
 ; Maintenance man attack - chases player after cord is cut
 (event maint-attack
