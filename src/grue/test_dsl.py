@@ -531,6 +531,9 @@ class TestRunner:
                     obj = obj.name
                 if isinstance(expected, Symbol):
                     expected = expected.name
+                # Handle nil as Python None
+                if expected == "nil":
+                    expected = None
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
                 else:

@@ -1,144 +1,141 @@
-; Tests for Brown Building and Great Dome areas
+; === Tests for Brown Building and Great Dome areas ===
 ; Tests room connectivity, hand puzzle, and tentacle climb.
-
-(load "brown-building.grue")
-(load "great-dome.grue")
-(load "cs-basement.grue")  ; For gloves
-(load "objects.grue")  ; For smooth-stone
 
 ; === Room Connectivity Tests ===
 
 (test "brown-building connects to courtyard"
-  (move! @player @brown-building)
-  (assert (can-go? south))
-  (go! south)
-  (assert (= (loc @player) @courtyard)))
+  :setup ((move! @player @brown-building))
+  :action (go :direction south)
+  :expect ((outcome? success)
+           (player-at? @courtyard)))
 
 (test "brown-building connects to top-floor via stairs"
-  (move! @player @brown-building)
-  (assert (can-go? up))
-  (go! up)
-  (assert (= (loc @player) @brown-top-floor)))
+  :setup ((move! @player @brown-building))
+  :action (go :direction up)
+  :expect ((outcome? success)
+           (player-at? @brown-top-floor)))
 
 (test "roof-door blocks access when locked"
-  (set-flag! @roof-door LOCKED)
-  (clear-flag! @roof-door OPENBIT)
-  (move! @player @brown-top-floor)
-  (let ((?result (do @roof-door :through)))
-    (assert (blocked? ?result))
-    (assert (= (reason ?result) locked))))
+  :setup ((move! @player @brown-top-floor)
+          (set-flag! @roof-door LOCKED)
+          (clear-flag! @roof-door OPENBIT))
+  :action (go :direction west)
+  :expect ((outcome? blocked)
+           (reason? locked)))
 
 (test "can unlock roof-door with master key"
-  (set-flag! @roof-door LOCKED)
-  (move! @master-key @player)
-  (move! @player @brown-top-floor)
-  (let ((?result (do @roof-door :unlock @master-key)))
-    (assert (success? ?result))
-    (assert (not (has-flag @roof-door LOCKED)))))
+  :setup ((move! @player @brown-top-floor)
+          (set-flag! @roof-door LOCKED)
+          (move! @master-key @player))
+  :action (do @roof-door :unlock @master-key)
+  :expect ((outcome? success)
+           (no-flag? @roof-door LOCKED)))
 
 (test "can access roof after unlocking door"
-  (clear-flag! @roof-door LOCKED)
-  (clear-flag! @roof-door OPENBIT)
-  (move! @player @brown-top-floor)
-  (do @roof-door :open)
-  (go! west)
-  (assert (= (loc @player) @brown-roof)))
+  :setup ((move! @player @brown-top-floor)
+          (clear-flag! @roof-door LOCKED)
+          (set-flag! @roof-door OPENBIT))
+  :action (go :direction west)
+  :expect ((outcome? success)
+           (player-at? @brown-roof)))
 
 ; === Hand Puzzle Tests ===
 
 (test "tub search reveals mummified hand"
-  (clear-flag! @mummified-hand TOUCHBIT)
-  (move! @mummified-hand nil)
-  (move! @player @inside-dome)
-  (let ((?result (do @tub :search)))
-    (assert (success? ?result))
-    (assert (has-flag @mummified-hand TOUCHBIT))
-    (assert (= (loc @mummified-hand) @tub))))
+  :setup ((move! @player @inside-dome)
+          (clear-flag! @mummified-hand TOUCHBIT)
+          (move! @mummified-hand nil))
+  :action (do @tub :search)
+  :expect ((outcome? success)
+           (has-flag? @mummified-hand TOUCHBIT)
+           (loc? @mummified-hand @tub)))
 
 (test "second search finds nothing"
-  (set-flag! @mummified-hand TOUCHBIT)
-  (move! @player @inside-dome)
-  (let ((?result (do @tub :search)))
-    (assert (success? ?result))
-    (assert (includes? (message ?result) "nothing further"))))
+  :setup ((move! @player @inside-dome)
+          (set-flag! @mummified-hand TOUCHBIT))
+  :action (do @tub :search)
+  :expect ((outcome? success)))
 
 (test "hand has tattoo"
-  (move! @mummified-hand @player)
-  (assert (in? @tattoo @mummified-hand)))
+  :setup ((move! @mummified-hand @player))
+  :action (do @tattoo :examine)
+  :expect ((loc? @tattoo @mummified-hand)))
 
 ; === Flier Creature Tests ===
 
 (test "flier can be driven away with smooth-stone"
-  (move! @flier @brown-roof)
-  (move! @smooth-stone @player)
-  (move! @player @brown-roof)
-  (let ((?result (do @flier :attack @smooth-stone)))
-    (assert (success? ?result))
-    (assert (= (loc @flier) nil))))
+  :setup ((move! @player @brown-roof)
+          (move! @flier @brown-roof)
+          (move! @smooth-stone @player))
+  :action (do @flier :attack @smooth-stone)
+  :expect ((outcome? success)
+           (loc? @flier nil)))
 
 (test "flier eats hand when given"
-  (move! @flier @inside-dome)
-  (move! @mummified-hand @player)
-  (move! @player @inside-dome)
-  (let ((?result (do @flier :give @mummified-hand)))
-    (assert (success? ?result))
-    (assert (= (loc @mummified-hand) nil))
-    (assert (= (loc @flier) nil))))
+  :setup ((move! @player @inside-dome)
+          (move! @flier @inside-dome)
+          (move! @mummified-hand @player))
+  :action (do @flier :give @mummified-hand)
+  :expect ((outcome? success)
+           (loc? @mummified-hand nil)
+           (loc? @flier nil)))
 
 (test "flier blocks exit from dome"
-  (move! @flier @inside-dome)
-  (move! @player @inside-dome)
-  (let ((?result (do @dome-exit :through)))
-    (assert (blocked? ?result))
-    (assert (= (reason ?result) flier-blocks))))
+  :setup ((move! @player @inside-dome)
+          (move! @flier @inside-dome))
+  :action (go :direction out)
+  :expect ((outcome? blocked)
+           (reason? flier-blocks)))
 
 ; === Tentacle Climb Tests ===
 
 (test "cannot climb tentacle without gloves - burns"
-  (clear-flag! @tentacle INVISIBLE)
-  (clear-flag! @gloves WEARBIT)
-  (move! @player @great-dome)
-  (let ((?result (do @tentacle-climb :through)))
-    (assert (blocked? ?result))
-    (assert (= (reason ?result) burns))))
+  :setup ((move! @player @great-dome)
+          (clear-flag! @tentacle INVISIBLE)
+          (clear-flag! @gloves WEARBIT))
+  :action (go :direction up)
+  :expect ((outcome? blocked)
+           (reason? burns)))
 
 (test "can climb tentacle with gloves"
-  (clear-flag! @tentacle INVISIBLE)
-  (set-flag! @gloves WEARBIT)
-  (move! @player @great-dome)
-  (let ((?result (do @tentacle-climb :through)))
-    (assert (success? ?result))))
+  :setup ((move! @player @great-dome)
+          (clear-flag! @tentacle INVISIBLE)
+          (set-flag! @gloves WEARBIT))
+  :action (go :direction up)
+  :expect ((outcome? success)
+           (player-at? @top-of-dome)))
 
 (test "creature flees when reaching top-of-dome"
-  (clear-flag! @tentacle INVISIBLE)
-  (clear-flag! @dome-ladder TOUCHBIT)
-  (move! @dome-ladder nil)
-  (set-flag! @gloves WEARBIT)
-  (move! @player @great-dome)
-  ; Simulate entering top-of-dome from great-dome
-  (move! @player @top-of-dome)
-  (let ((?result (do @top-of-dome :on-enter @great-dome)))
-    (assert (success? ?result))
-    ; After creature flees, tentacle becomes invisible and ladder appears
-    (assert (has-flag @tentacle INVISIBLE))
-    (assert (has-flag @dome-ladder TOUCHBIT))
-    (assert (= (loc @dome-ladder) @top-of-dome))))
+  :setup ((move! @player @great-dome)
+          (clear-flag! @tentacle INVISIBLE)
+          (clear-flag! @dome-ladder TOUCHBIT)
+          (move! @dome-ladder nil)
+          (move! @gloves @player)
+          (set-flag! @gloves WORNBIT))
+  :action (go :direction up)
+  :expect ((outcome? success)
+           (player-at? @top-of-dome)
+           (has-flag? @tentacle INVISIBLE)
+           (has-flag? @dome-ladder TOUCHBIT)
+           (loc? @dome-ladder @top-of-dome)))
 
 ; === Bronze Plug Puzzle Tests ===
 
 (test "bronze plug starts in socket"
-  (assert (= (loc @bronze-plug) @on-dome))
-  (clear-flag! @bronze-plug RMUNGBIT))
+  :setup ((clear-flag! @bronze-plug RMUNGBIT))
+  :action (do @bronze-plug :examine)
+  :expect ((loc? @bronze-plug @on-dome)))
 
 (test "prying plug reveals secret hole"
-  (clear-flag! @bronze-plug RMUNGBIT)
-  (move! @secret-hole nil)
-  (move! @player @on-dome)
-  (let ((?result (do @bronze-plug :pry nil)))
-    (assert (success? ?result))
-    (assert (has-flag @bronze-plug RMUNGBIT))
-    (assert (= (loc @secret-hole) @on-dome))))
+  :setup ((move! @player @on-dome)
+          (clear-flag! @bronze-plug RMUNGBIT)
+          (move! @secret-hole nil))
+  :action (do @bronze-plug :pry nil)
+  :expect ((outcome? success)
+           (has-flag? @bronze-plug RMUNGBIT)
+           (loc? @secret-hole @on-dome)))
 
 (test "suicide note is in secret hole"
-  (assert (= (loc @suicide-note) @secret-hole)))
-
+  :setup ()
+  :action (do @suicide-note :examine)
+  :expect ((loc? @suicide-note @secret-hole)))

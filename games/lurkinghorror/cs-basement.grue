@@ -70,7 +70,7 @@
   :exits
     ((west :to @dead-storage)
      (down :to @brick-tunnel :via @manhole-passage))
-  :globals (@junk @pool)
+  :globals (@junk @pool @manhole @manhole-cover)
 
   :behaviors (
     :on-enter (fn (?from)

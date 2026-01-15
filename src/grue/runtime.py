@@ -297,17 +297,27 @@ class GrueRuntime:
         - Held by player
         - In player's current room
         - Player is inside the object (e.g., sitting in a chair)
-        - In current room's :globals list
+        - In current room's :globals list (overrides INVISIBLE)
         - In an open container that is visible (recursive)
         - On a surface (SURFACEBIT) that is visible
         """
         if obj not in self.state.objects:
             return False
         obj_state = self.state.objects[obj]
-        # Check INVISIBLE flag
+        loc = obj_state.location
+
+        player_room = self.get_player_location()
+
+        # Check if object is in current room's :globals list first
+        # Room globals override INVISIBLE - they represent "known" scenery
+        room_def = self.world.rooms.get(player_room)
+        if room_def and obj in room_def.globals:
+            return True
+
+        # Check INVISIBLE flag (only for non-global objects)
         if "INVISIBLE" in obj_state.flags:
             return False
-        loc = obj_state.location
+
         if loc is None:
             return False
         # Global objects are always visible
@@ -315,15 +325,10 @@ class GrueRuntime:
             return True
         if loc == self.player_name:
             return True
-        player_room = self.get_player_location()
         # Player is inside this object (e.g., sitting in chair)
         if player_room == obj:
             return True
         if loc == player_room:
-            return True
-        # Check if object is in current room's :globals list
-        room_def = self.world.rooms.get(player_room)
-        if room_def and obj in room_def.globals:
             return True
         # Check if in a container/on a surface
         if loc in self.state.objects:
@@ -733,8 +738,10 @@ class GrueRuntime:
             return self._do_go(direction, actor=actor)
 
         # Check room's :before-action behavior (if any)
+        # Only short-circuit if result is blocking (blocked, error, redirect)
+        # A 'success' from before-action means "proceed with the main action"
         room_result = self._check_room_before_action(verb, target, actor, args)
-        if room_result is not None and room_result.outcome != "default":
+        if room_result is not None and room_result.outcome in ("blocked", "error", "redirect"):
             return room_result
 
         # Check visibility - object must be accessible to the player
@@ -894,7 +901,9 @@ class GrueRuntime:
 
         # Set up bindings
         # :on-enter (fn (?from-room) ...)
+        # ?self is the room being entered
         bindings = {
+            "self": room_name,
             "actor": actor,
         }
 

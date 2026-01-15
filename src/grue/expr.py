@@ -382,6 +382,7 @@ class ExprEvaluator:
             "if": self._eval_if,
             "let": self._eval_let,
             "cond": self._eval_cond,
+            "when": self._eval_when,
             "match": self._eval_match,
             "condp": self._eval_condp,
             "cond->": self._eval_cond_thread,
@@ -429,6 +430,9 @@ class ExprEvaluator:
             # Side effects (require MutableWorldState)
             "set!": self._eval_set_global,
             "inc!": self._eval_inc_global,
+            "set-prop!": self._eval_set_prop,
+            "set-flag!": self._eval_set_flag,
+            "clear-flag!": self._eval_clear_flag,
         }
 
     def eval(self, expr: SExpr, env: Optional[Environment] = None) -> Any:
@@ -1016,6 +1020,26 @@ class ExprEvaluator:
             return self.eval(form[3], env)
         else:
             return None
+
+    def _eval_when(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(when condition body...) - conditional with multiple body forms.
+
+        Evaluates body forms only if condition is truthy. Returns last body result or None.
+
+        Examples:
+            (when (held? @key) (print "has key") (success))
+            (when (> heat 20) (set-flag! @food RMUNGBIT))
+        """
+        if len(form) < 3:
+            raise EvalError(f"'when' expects at least 2 arguments, got {len(form) - 1}")
+
+        condition = self.eval(form[1], env)
+        if condition:
+            result = None
+            for expr in form.items[2:]:
+                result = self.eval(expr, env)
+            return result
+        return None
 
     def _eval_let(self, form: SList, env: Optional[Environment] = None) -> Any:
         """(let ((name value) ...) body ...) - local bindings.
@@ -2199,6 +2223,80 @@ class ExprEvaluator:
 
         return new_value
 
+    def _eval_set_prop(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set-prop! OBJ PROP VALUE) - Set an object property.
+
+        Property name is implicitly quoted if it's a symbol or keyword.
+        Requires the state to be MutableWorldState.
+        """
+        if len(form) != 4:
+            raise EvalError(f"'set-prop!' expects 3 arguments, got {len(form) - 1}")
+
+        obj = self.eval(form[1], env)
+        if isinstance(obj, Symbol):
+            obj = obj.name
+
+        # Implicitly quote symbol/keyword property names
+        prop_arg = form[2]
+        if isinstance(prop_arg, Symbol):
+            prop = prop_arg.name
+        elif isinstance(prop_arg, Keyword):
+            prop = prop_arg.name
+        else:
+            prop = self.eval(prop_arg, env)
+
+        value = self.eval(form[3], env)
+
+        if not hasattr(self.state, "set_object_property"):
+            raise EvalError("'set-prop!' requires mutable state")
+        self.state.set_object_property(obj, prop, value)
+
+        return None
+
+    def _eval_set_flag(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set-flag! OBJ FLAG) - Set an object flag.
+
+        Requires the state to be MutableWorldState.
+        """
+        if len(form) != 3:
+            raise EvalError(f"'set-flag!' expects 2 arguments, got {len(form) - 1}")
+
+        obj = self.eval(form[1], env)
+        if isinstance(obj, Symbol):
+            obj = obj.name
+
+        flag = self.eval(form[2], env)
+        if isinstance(flag, Symbol):
+            flag = flag.name
+
+        if not hasattr(self.state, "set_object_flag"):
+            raise EvalError("'set-flag!' requires mutable state")
+        self.state.set_object_flag(obj, flag)
+
+        return None
+
+    def _eval_clear_flag(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(clear-flag! OBJ FLAG) - Clear an object flag.
+
+        Requires the state to be MutableWorldState.
+        """
+        if len(form) != 3:
+            raise EvalError(f"'clear-flag!' expects 2 arguments, got {len(form) - 1}")
+
+        obj = self.eval(form[1], env)
+        if isinstance(obj, Symbol):
+            obj = obj.name
+
+        flag = self.eval(form[2], env)
+        if isinstance(flag, Symbol):
+            flag = flag.name
+
+        if not hasattr(self.state, "clear_object_flag"):
+            raise EvalError("'clear-flag!' requires mutable state")
+        self.state.clear_object_flag(obj, flag)
+
+        return None
+
     # === Quantifiers ===
 
     def _eval_some(self, form: SList, env: Optional[Environment] = None) -> Any:
@@ -2292,6 +2390,7 @@ class EffectExecutor:
             "defn": self._exec_defn,
             "queue!": self._exec_queue,
             "dequeue!": self._exec_dequeue,
+            "take!": self._exec_take,
         }
         # Current environment for variable lookups (set by execute())
         self._env: Optional[Environment] = None
@@ -2489,6 +2588,16 @@ class EffectExecutor:
             event = self._eval(event_arg)
 
         self.state.dequeue_event(event)
+
+    def _exec_take(self, form: SList) -> None:
+        """(take! OBJ) - Move object to player's inventory."""
+        if len(form) != 2:
+            raise EvalError(f"'take!' expects 1 argument, got {len(form) - 1}")
+
+        obj = self._eval(form[1])
+        # Move to player - state is the runtime which has player_name
+        player = getattr(self.state, "player_name", "@player")
+        self.state.move_object(obj, player)
 
 
 def eval_predicate(expr: str | SExpr, state: WorldState) -> bool:
