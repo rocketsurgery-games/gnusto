@@ -1,0 +1,186 @@
+; Tests for Lair endgame area
+
+; === Lair Maze Navigation ===
+
+(test-group "lair maze structure"
+  :setup ((move! @floor-waxer @inf-5)  ; Move waxer out of the way
+          (set! urchin-freed true))     ; Allow passage to lair
+
+  (test "lair-1 up exits to large-chamber"
+    :setup ((move! @player @lair-1))
+    :action (go :direction up)
+    :expect ((outcome? success)
+             (player-at? @large-chamber)))
+
+  (test "lair-5 down exits to outer-lair"
+    :setup ((move! @player @lair-5))
+    :action (go :direction down)
+    :expect ((outcome? success)
+             (player-at? @outer-lair))))
+
+; === Outer Lair & Curtain ===
+
+(test-group "slime curtain"
+  :setup ((move! @player @outer-lair)
+          (move! @slime-curtain @outer-lair)
+          (set-flag! @curtain-door INVISIBLE))
+
+  (test "can examine curtain"
+    :action (do @slime-curtain :examine)
+    :expect ((outcome? success)))
+
+  (test "curtain blocks south without protection"
+    :action (go :direction south)
+    :expect ((outcome? success)))  ; You get slime but pass
+
+  (test "nitrogen freezes curtain"
+    :setup ((move! @nitrogen @player)
+            (set! nitrogen-cnt 2))  ; Already used 2x
+    :action (do @slime-curtain :pour @nitrogen)
+    :expect ((outcome? success)
+             (loc? @slime-curtain nil))))  ; Curtain destroyed
+
+; === Curtain Door ===
+
+(test-group "curtain door"
+  :setup ((move! @player @outer-lair)
+          (move! @slime-curtain nil)  ; Curtain destroyed
+          (clear-flag! @curtain-door INVISIBLE)
+          (set-flag! @curtain-door LOCKED)
+          (clear-flag! @curtain-door OPENBIT))
+
+  (test "door starts locked"
+    :action (do @curtain-door :open)
+    :expect ((outcome? blocked)
+             (reason? locked)))
+
+  (test "master key unlocks door"
+    :setup ((move! @master-key @player))
+    :action (do @curtain-door :unlock @master-key)
+    :expect ((outcome? success)
+             (not-flag? @curtain-door LOCKED)))
+
+  (test "can open unlocked door"
+    :setup ((clear-flag! @curtain-door LOCKED))
+    :action (do @curtain-door :open)
+    :expect ((outcome? success)
+             (has-flag? @curtain-door OPENBIT))))
+
+; === Inner Lair & Mass ===
+
+(test-group "inner lair mass"
+  :setup ((move! @player @inner-lair)
+          (move! @mass @inner-lair))
+
+  (test "can examine mass"
+    :action (do @mass :examine)
+    :expect ((outcome? success)))
+
+  (test "can listen to mass"
+    :action (do @mass :listen)
+    :expect ((outcome? success)))
+
+  (test "touching mass is fatal"
+    :action (do @mass :attack @hands)
+    :expect ((outcome? blocked)
+             (death? true))))
+
+; === Repeater Box ===
+
+(test-group "repeater puzzle"
+  :setup ((move! @player @inner-lair)
+          (move! @repeater @inner-lair)
+          (move! @input-cable @input-socket)
+          (clear-flag! @repeater OPENBIT))
+
+  (test "can examine repeater"
+    :action (do @repeater :examine)
+    :expect ((outcome? success)))
+
+  (test "can take cover to open"
+    :action (do @repeater-cover :take)
+    :expect ((outcome? success)
+             (has-flag? @repeater OPENBIT)))
+
+  (test "can unplug input cable"
+    :setup ((set-flag! @repeater OPENBIT))
+    :action (do @input-cable :unplug)
+    :expect ((outcome? success)
+             (loc? @input-cable @repeater)))
+
+  (test "can cut output cable with axe"
+    :setup ((set-flag! @repeater OPENBIT)
+            (move! @axe @player))
+    :action (do @output-cable :cut @axe)
+    :expect ((outcome? success)
+             (has-flag? @output-cable RMUNGBIT))))
+
+; === High Voltage Line ===
+
+(test-group "power line"
+  :setup ((move! @player @inner-lair)
+          (move! @high-voltage @inner-lair)
+          (clear-flag! @high-voltage POWERBIT)
+          (clear-flag! @high-voltage RMUNGBIT))
+
+  (test "can take power line (pulls it up)"
+    :action (do @high-voltage :take)
+    :expect ((outcome? success)
+             (has-flag? @high-voltage POWERBIT)))
+
+  (test "need axe to cut line"
+    :setup ((set-flag! @high-voltage POWERBIT)
+            (move! @high-voltage @player))
+    :action (do @high-voltage :cut @bolt-cutters)
+    :expect ((outcome? blocked)
+             (reason? too-thick)))
+
+  (test "axe cuts line after 3 hits"
+    :setup ((set-flag! @high-voltage POWERBIT)
+            (move! @high-voltage @player)
+            (move! @axe @player)
+            (set! hv-cnt 2))  ; Already hit twice
+    :action (do @high-voltage :cut @axe)
+    :expect ((outcome? success)
+             (has-flag? @high-voltage RMUNGBIT))))
+
+; === Boots (electrical safety) ===
+
+(test-group "rubber boots"
+  :setup ((move! @player @brown-basement))
+
+  (test "boots start in brown-basement"
+    :action (do @boots :examine)
+    :expect ((outcome? success)
+             (loc? @boots @brown-basement)))
+
+  (test "can take boots"
+    :action (do @boots :take)
+    :expect ((outcome? success)
+             (held? @boots)))
+
+  (test "can wear boots"
+    :setup ((move! @boots @player))
+    :action (do @boots :wear)
+    :expect ((outcome? success)
+             (has-flag? @boots WEARBIT))))
+
+; === Victory Sequence ===
+
+(test-group "frob battle"
+  :setup ((move! @player @inner-lair)
+          (move! @frob @inner-lair)
+          (move! @smooth-stone @player)
+          (set! end-cnt 2))  ; Frob is at stage 2, ready for second hit
+
+  (test "throwing stone at frob wins"
+    :action (do @frob :attack @smooth-stone)
+    :expect ((outcome? success)
+             (victory? true)
+             (loc? @frob nil)))  ; Frob destroyed
+
+  (test "first stone hit at stage 1"
+    :setup ((set! end-cnt 1))
+    :action (do @frob :attack @smooth-stone)
+    :expect ((outcome? success)
+             (loc? @smooth-stone nil))))  ; Stone swallowed

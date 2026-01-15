@@ -289,10 +289,4 @@
           ; Let the target object handle cutting
           (redirect :action (do ?target :cut @bolt-cutters)))))))
 
-; === Stub Room (lair entrance - not implemented yet) ===
-
-(room @lair-1
-  :description "Lair Entrance"
-  :ldesc "This is the entrance to something unspeakable below. The air is thick and foul."
-  :flags ()
-  :exits ((up :to @large-chamber)))
+; Note: @lair-1 and the full lair maze are defined in lair.grue

@@ -1,0 +1,1062 @@
+; The Lair - Final dungeon and endgame
+; From frob.zil - The Lurking Horror
+;
+; This file contains:
+;   - LAIR-1 through LAIR-11: The wet tunnel maze
+;   - OUTER-LAIR: Slime curtain puzzle
+;   - INNER-LAIR: Final confrontation with the Mass and Frob
+;   - Repeater puzzle (cables and high voltage)
+;   - Victory sequence with smooth-stone
+;
+; Key items needed:
+;   - @nitrogen: To freeze slime curtain (from alchemy)
+;   - @master-key: To unlock ancient door (from hacker)
+;   - @boots: Rubber boots for electrical safety (from brown-basement)
+;   - @gloves: For handling power line (from cs-basement)
+;   - @axe: To cut power line (from maintenance-man)
+;   - @smooth-stone: Final weapon against the Frob (from yuggoth)
+
+; === State Globals ===
+
+(globals
+  :lair-flag nil              ; Currently visited lair room (for hand pointing)
+  :slime-cnt 0                ; Counter for slime progression on player
+  :nitrogen-cnt 0             ; Counter for nitrogen uses on curtain
+  :hv-cnt 0                   ; Counter for axe hits on power line
+  :lair-cnt 0                 ; Counter for hacker sequence in inner-lair
+  :end-cnt 0)                 ; Counter for final frob encounter
+
+; === Lair Maze Rooms ===
+; Each room has a :point property indicating the "correct" direction.
+; The hand (with ring) will point this direction to guide the player.
+
+(room @lair-1
+  :description "Wet Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @large-chamber)
+     (south :to @lair-6)
+     (north :to @lair-2)
+     (east :to @lair-1))  ; Loop back
+  :globals (@pool)
+  :properties (:point "north")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-2
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((east :to @lair-1)
+     (west :to @lair-7)
+     (up :to @lair-8)
+     (down :to @lair-3))
+  :globals (@pool)
+  :properties (:point "down")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-3
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((west :to @lair-7)
+     (south :to @lair-4)
+     (north :to @lair-6)
+     (east :to @lair-2))
+  :globals (@pool)
+  :properties (:point "south")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-4
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((up :to @lair-3)
+     (east :to @lair-10)
+     (down :to @lair-10)
+     (south :to @lair-5)
+     (west :to @lair-11))
+  :globals (@pool)
+  :properties (:point "south")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-5
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((down :to @outer-lair)
+     (up :to @lair-5)      ; Loop
+     (north :to @lair-4)
+     (west :to @lair-3)
+     (east :to @lair-11))
+  :globals (@pool)
+  :properties (:point "down")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-6
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((east :to @lair-1)
+     (west :to @lair-3)
+     (down :to @lair-8)
+     (north :to @lair-6))  ; Loop
+  :globals (@pool)
+  :properties (:point "west")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-7
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((west :to @lair-1)
+     (down :to @lair-7)    ; Loop
+     (up :to @lair-10)
+     (east :to @lair-3)
+     (south :to @lair-2))
+  :globals (@pool)
+  :properties (:point "east")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-8
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((east :to @lair-2)
+     (up :to @lair-6)
+     (down :to @lair-9))
+  :globals (@pool)
+  :properties (:point "east")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-9
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((up :to @lair-2)
+     (east :to @lair-8)
+     (north :to @lair-6)
+     (down :to @lair-10))
+  :globals (@pool)
+  :properties (:point "up")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-10
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((north :to @lair-10)  ; Loop
+     (west :to @lair-7)
+     (up :to @lair-9))
+  :globals (@pool)
+  :properties (:point "west")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+(room @lair-11
+  :description "Wet Tunnel"
+  :flags ()
+  :exits
+    ((east :to @lair-9)
+     (up :to @lair-11)     ; Loop
+     (south :to @lair-11)) ; Loop
+  :globals (@pool)
+  :properties (:point "east")
+
+  :behaviors (
+    :describe (fn () (lair-describe))
+    :on-exit (fn (?to)
+      (success :effects ((set! lair-flag nil) (clear-flag! ?self TOUCHBIT))))))
+
+; Shared description function for lair maze rooms
+(defn lair-describe ()
+  (success :context
+    ((description "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily water covers the floor."))))
+
+; === Outer Lair (slime curtain) ===
+
+(room @outer-lair
+  :description "Wet Tunnel"
+  :flags (ONBIT)  ; Lit by phosphorescence
+  :exits
+    ((up :to @lair-5)
+     (in :to @inner-lair :via @curtain-door)
+     (south :to @inner-lair :via @curtain-door))
+  :globals (@curtain-door @pool)
+  :properties (:point "south")
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "You are lost in narrow, wet tunnels burrowed through the mud. Muddy, oily water covers the floor."
+               (if (in? @slime-curtain @outer-lair)
+                 " A curtain of moldy slime covers the south wall."
+                 (str " There is an ancient door in the south wall. "
+                      (if (has-flag @curtain-door OPENBIT) "It is open." "It is closed."))))))))
+
+    ; Block south movement if curtain present
+    :before-action (fn (?verb ?target)
+      (cond
+        ((and (= ?verb "go") (= ?target "south") (in? @slime-curtain @outer-lair))
+          (redirect :action (do @slime-curtain :through)))
+        (true (success))))))
+
+; === Inner Lair (final boss room) ===
+
+(room @inner-lair
+  :description "Inner Lair"
+  :flags (ONBIT)  ; Wan sourceless light
+  :exits
+    ((up :to @outer-lair :via @curtain-door))
+  :globals (@curtain-door @pool)
+  :properties (:point "down")
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "The floor here is a stagnant, slime infested pool of water. It feels to "
+               (if (not (has-flag @boots WEARBIT)) "your sodden feet to " "")
+               "be about six inches deep."
+               (if (in? @mass @inner-lair)
+                 " Ropes or wires tumble down the slope, where they enter a large whitish mass which takes up much of the chamber. The noise is loud here, and comes from the mass, which undulates in synchrony with the noise."
+                 "")
+               " Wan, sourceless light illuminates the chamber.")))))
+
+    :on-enter (fn (?from)
+      ; Lock door, start hacker sequence, hand dives into pool
+      (success :effects ((set-flag! @curtain-door LOCKED)
+                        (clear-flag! @curtain-door OPENBIT)
+                        (move! @hacker @lair-5)
+                        (queue! hacker-returns 2)
+                        (queue! hand-dives -1))
+               :message "As you enter, the door closes and locks behind you."))
+
+    :before-action (fn (?verb ?target)
+      (cond
+        ((and (= ?verb "listen") (not ?target))
+          (redirect :action (do @mass :listen)))
+        (true (success))))))
+
+; === Pool (global for lair rooms) ===
+
+(object @pool
+  :location nil  ; Global
+  :description "pool"
+  :flags (NDESCBIT VEHBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((= (loc @player) @inner-lair)
+          (success :message "The floor is covered by a pool of stagnant water. Near your feet there is a slightly deeper part that seems to have something in it."))
+        (true
+          (success :message "It's a pool of rather yucky water."))))
+
+    :enter (fn ()
+      (blocked :reason already-in :message "You're already standing in it! It covers most of the floor!"))
+
+    :swim (fn ()
+      (blocked :reason already-in :message "You're already standing in it! It covers most of the floor!"))
+
+    :look-inside (fn ()
+      (cond
+        ((= (loc @player) @inner-lair)
+          (success :message "You can't see a thing, as the water is foul and murky."))
+        (true
+          (success :message "It's about as clear as mud."))))
+
+    :reach-in (fn ()
+      (cond
+        ((= (loc @player) @inner-lair)
+          (cond
+            ((in? @high-voltage @inner-lair)
+              (success :message "You find nothing you would wish to touch again."))
+            ((queued? hand-dives)
+              (success :effects ((dequeue! hand-dives) (move! @high-voltage @inner-lair))
+                       :message "You root around blindly in the gooey, slimy water. You feel something thick and slippery! A tentacle? No, it's cold and dead. It seems to be a line of some kind, just below the surface."))
+            (true
+              (success :message "You find nothing."))))
+        (true
+          (success :message "It feels greasy, cold, and generally unpleasant."))))
+
+    :search (fn ()
+      (redirect :action (do @pool :reach-in)))
+
+    :drink (fn ()
+      (cond
+        ((= (loc @player) @inner-lair)
+          (blocked :reason disgusting :message "You couldn't bear to drink the water from this pool."))
+        (true
+          (blocked :reason disgusting :message "The water looks unfit to drink."))))))
+
+; === Slime Curtain ===
+
+(object @slime-curtain
+  :location @outer-lair
+  :description "slime curtain"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The entire south wall is covered with a curtain of moldy phosphorescent slime. There is something about the slime that makes it appear unhealthy, as though the influences here are bad for anything living."))
+
+    :through (fn ()
+      ; Touching the curtain without gloves gets slime on you
+      (cond
+        ((and (held? @gloves) (has-flag @gloves WEARBIT))
+          (success :message "The curtain is very slick and wet. Some of it sticks to your gloves."))
+        ((in? @crawling-slime @player)
+          (success :effects ((set! slime-cnt (+ slime-cnt 1)))
+                   :message "More slime flows onto you."))
+        (true
+          (success :effects ((move! @crawling-slime @player) (queue! slime-attack -1))
+                   :message "The feel is greasy, wet, and at first cold. Then you get a burning sensation, like that from a sea-nettle sting. You jerk away, but some of the slime sticks to you!"))))
+
+    :take (fn ()
+      (redirect :action (do @slime-curtain :through)))
+
+    :touch (fn ()
+      (redirect :action (do @slime-curtain :through)))
+
+    :attack (fn (?weapon)
+      (redirect :action (do @slime-curtain :through)))
+
+    ; Pour nitrogen on curtain to freeze it
+    :pour (fn (?liquid)
+      (cond
+        ((= ?liquid @nitrogen)
+          (set! nitrogen-cnt (+ nitrogen-cnt 1))
+          (cond
+            ((< nitrogen-cnt 3)
+              (success :effects ((move! @nitrogen nil) (dequeue! nitrogen-goes))
+                       :message "The liquid splashes onto the curtain, and a cold mist fills the room. The slime begins to freeze. Patches of it shatter and fall, but the rest of the slime oozes into the ruined spots, and the curtain appears unharmed."))
+            (true
+              (success :effects ((move! @nitrogen nil)
+                                (dequeue! nitrogen-goes)
+                                (move! @slime-curtain nil)
+                                (clear-flag! @curtain-door INVISIBLE))
+                       :message "The liquid splashes onto the curtain, and a cold mist fills the room. Nearly the entire curtain solidifies, shatters, and drops to the ground, revealing an ancient wooden door."))))
+        (true
+          (blocked :reason wrong-liquid :message "That doesn't seem to have any effect."))))))
+
+; === Crawling Slime (hazard) ===
+
+(def slime-parts '("wrist" "elbow" "bicep" "shoulder" "neck"))
+
+(object @crawling-slime
+  :location nil  ; Appears when touching curtain
+  :description "crawling slime"
+  :flags ()
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((in? ?self @player)
+          (success :context
+            ((description (str "There is slime crawling up your arm. It has reached your "
+                              (nth slime-parts slime-cnt) ".")))))
+        (true (success))))
+
+    :examine (fn ()
+      (success :message "It's flowing, dark-green, and undulates slowly as it crawls up your arm."))
+
+    :drop (fn ()
+      (blocked :reason stuck :message "You try to scrape it off, but to no avail. It just flows back into place around your arm."))
+
+    :attack (fn ()
+      (blocked :reason ineffective :message "There is no effect. You only succeed in hurting your arm."))
+
+    :pour (fn (?liquid)
+      (cond
+        ((= ?liquid @nitrogen)
+          (blocked :reason death
+                   :context ((death true)
+                             (description "You succeed in pouring the freezing liquid all over your arm. This kills the slime. It also kills you, but then, one must make sacrifices, right?"))))
+        (true
+          (blocked :reason ineffective :message "That has no effect on the slime."))))))
+
+; Slime attack event - progresses slime up player's arm
+(event slime-attack
+  :on-turn
+    (cond
+      ((not (in? @crawling-slime @player))
+        (success :effects ((dequeue! slime-attack))))
+      ((> (+ slime-cnt 1) 5)
+        (blocked :reason death
+                 :effects ((dequeue! slime-attack))
+                 :context ((death true)
+                           (description "The slime engulfs your nose! You cough, choke, and begin to suffocate! You fall to the floor, splashing in the water. You either suffocate or drown. After you're dead, it makes no difference."))))
+      (true
+        (set! slime-cnt (+ slime-cnt 1))
+        (success :context
+          ((description (str "The slime is creeping slowly up your arm! It's reached your "
+                            (nth slime-parts slime-cnt) ".")))))))
+
+; === Curtain Door ===
+
+(object @curtain-door
+  :location @outer-lair
+  :description "ancient door"
+  :flags (AN INVISIBLE NDESCBIT DOORBIT LOCKED OPENABLE)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "This door, blackened by age, is built of ancient, rotting timbers, but still looks very strong. It is set in a rough-hewn arch. Oddly, in addition to an old, rusted-away lock, there is another which looks new and shiny. "
+             (if (has-flag ?self OPENBIT) "It is open." "It is closed."))))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        ((has-flag ?self LOCKED)
+          (blocked :reason locked :message "The door is securely locked."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT))
+                   :message "The door creaks open."))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT))
+                   :message "You close the door."))))
+
+    :unlock (fn (?key)
+      (cond
+        ((= (loc @player) @inner-lair)
+          (blocked :reason wrong-side :message "The lock doesn't appear to work from this side!"))
+        ((not (= ?key @master-key))
+          (blocked :reason wrong-key :message "That key doesn't fit."))
+        ((not (has-flag ?self LOCKED))
+          (blocked :reason already-unlocked :message "It's already unlocked."))
+        (true
+          (success :effects ((clear-flag! ?self LOCKED))
+                   :message "The door is now unlocked."))))
+
+    :lock (fn (?key)
+      (cond
+        ((not (= ?key @master-key))
+          (blocked :reason wrong-key :message "That key doesn't fit."))
+        ((has-flag ?self LOCKED)
+          (blocked :reason already-locked :message "It's already locked."))
+        (true
+          (success :effects ((set-flag! ?self LOCKED))
+                   :message "The door is now locked."))))
+
+    :attack (fn (?weapon)
+      (cond
+        ((or (not ?weapon) (= ?weapon @hands))
+          (blocked :reason tough :message "You only bruise your hands."))
+        (true
+          (blocked :reason tough :message "The door is surprisingly solid."))))
+
+    :through (fn ()
+      (cond
+        ((in? @slime-curtain @outer-lair)
+          (blocked :reason hidden :message "You don't see any door here."))
+        ((has-flag ?self LOCKED)
+          (blocked :reason locked :message "The door is locked."))
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason closed :message "The door is closed."))
+        (true (success))))))
+
+; === The Mass ===
+
+(object @mass
+  :location @inner-lair
+  :description "whitish mass"
+  :flags (NDESCBIT PERSON)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The mass is strangely, even wrongly, shaped. It is hard to get a fix on what's wrong with it, but it doesn't look like it could or should exist in any sane universe. It quivers and bubbles as though air were pumping through it. Many wires, tentacles, and combinations of the two enter the mass from all sides, making it almost fuzzy in appearance."))
+
+    :listen (fn ()
+      (success :message "You listen closely to the sounds, which are loud and at first seem random. The more you listen, the more you sense a strange regularity to them. You get impressions, one after another, of electronic music, a simple sine wave pattern, and telephone crosstalk. They are all overlaid with speech, or something like speech, nearer random babbling, or many people talking at once. You can't understand any of it, but it's so near intelligibility that you feel that if you moved closer, you just might get it."))
+
+    :talk-to (fn ()
+      (success :message "When you speak, the noise stops, if only briefly. When it resumes, it's more insistent."))
+
+    :give (fn (?item)
+      (success :message "There is no reaction that you can detect."))
+
+    :show (fn (?item)
+      (success :message "There is no reaction that you can detect."))
+
+    :attack (fn (?weapon)
+      (cond
+        ((or (not ?weapon) (= ?weapon @hands))
+          (blocked :reason death
+                   :context ((death true)
+                             (description "You approach the mass and grab onto it. Immediately, your mind is overwhelmed with visions and vistas it cannot assimilate. As the mass pulls you into itself, it all becomes clearer, but it's much too late by then."))))
+        ((= ?weapon @high-voltage)
+          (cond
+            ((has-flag @high-voltage RMUNGBIT)
+              ; Tentacles grab you even avoiding the exposed wire
+              (blocked :reason death
+                       :context ((death true)
+                                 (description "Deftly avoiding the exposed wire, the tentacles grab you and pull you into the rippling slime. Immediately, your mind is overwhelmed with visions and vistas it cannot assimilate. As the mass pulls you into itself, it all becomes clearer, but it's much too late by then."))))
+            (true
+              (blocked :reason death
+                       :context ((death true)
+                                 (description "The tentacles grab you and pull you into the rippling slime. Immediately, your mind is overwhelmed with visions and vistas it cannot assimilate. As the mass pulls you into itself, it all becomes clearer, but it's much too late by then."))))))
+        ((has-flag ?weapon WEAPONBIT)
+          (success :effects ((move! ?weapon nil))
+                   :message (str "The " (desc ?weapon) " is engulfed by the mass and disappears. The mass itself is unchanged.")))
+        (true
+          (blocked :reason ineffective :message "That has no effect on the mass."))))
+
+    :touch (fn ()
+      (redirect :action (do @mass :attack @hands)))
+
+    :rub (fn ()
+      (redirect :action (do @mass :attack @hands)))))
+
+; === Repeater Box (network interface) ===
+
+(object @repeater
+  :location @inner-lair
+  :description "metal box"
+  :flags (TRANSBIT CONTBIT SEARCHBIT OPENABLE)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "Set on the wall, incongruous in its surroundings, is a metal box. "
+               "On one side a coaxial cable enters the box. On the other, a cablelike appendage leads from the box "
+               (if (in? @mass @inner-lair) "to the mass" "and ends in a blackened stump")
+               ". "
+               (if (has-flag ?self OPENBIT)
+                 "The cover is off the box, revealing electronic innards."
+                 "There is a metal cover on the box."))))))
+
+    :examine (fn ()
+      (success :message
+        (str "On one side a coaxial cable enters the box. On the other, a cablelike appendage leads from the box "
+             (if (in? @mass @inner-lair) "to the mass" "and ends in a blackened stump")
+             ". "
+             (if (has-flag ?self OPENBIT)
+               (str "The cover is off the box, revealing electronic innards. Most prominent are a socket "
+                    (if (in? @input-cable @input-socket)
+                      "into which the coaxial cable is plugged"
+                      "(now empty) next to which a coaxial cable hangs")
+                    ", and a connector into which the glistening output appendage disappears.")
+               "There is a metal cover on the box."))))
+
+    :open (fn ()
+      (redirect :action (do @repeater-cover :take)))
+
+    :close (fn ()
+      (redirect :action (do @repeater-cover :put @repeater)))))
+
+(object @repeater-cover
+  :location @repeater
+  :description "metal cover"
+  :flags (TAKEBIT OPENABLE)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a metal cover with simple finger screws to hold it on."))
+
+    :take (fn ()
+      (cond
+        ((has-flag @repeater OPENBIT)
+          (blocked :reason already-open :message "You already opened it."))
+        (true
+          (success :effects ((set-flag! @repeater OPENBIT) (take! ?self))
+                   :message (str "You remove the cover, revealing a plethora of electronic innards. Most prominent are a socket "
+                                (if (in? @input-cable @input-socket)
+                                  "into which the coaxial cable is plugged"
+                                  "(now empty) next to which a coaxial cable hangs")
+                                ", and a connector into which the glistening output appendage disappears.")))))
+
+    :put (fn (?container)
+      (cond
+        ((= ?container @repeater)
+          (cond
+            ((not (has-flag @repeater OPENBIT))
+              (blocked :reason already-closed :message "It's already screwed on tightly."))
+            (true
+              (success :effects ((clear-flag! @repeater OPENBIT) (move! ?self @repeater))
+                       :message "You screw it back on."))))
+        (true (default))))
+
+    :close (fn ()
+      (redirect :action (do @repeater-cover :put @repeater)))))
+
+(object @input-cable
+  :location @input-socket
+  :description "coaxial cable"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "This looks like pretty standard coax to you. It appears almost spontaneously from high in the wall, and enters the box, where "
+             (if (has-flag @repeater OPENBIT)
+               (str "it's "
+                    (cond
+                      ((and (has-flag ?self RMUNGBIT) (not (in? ?self @input-socket)))
+                       "ends next to an empty socket.")
+                      ((has-flag ?self RMUNGBIT)
+                       "cut.")
+                      ((not (in? ?self @input-socket))
+                       "hanging loose next to a socket.")
+                      (true
+                       "plugged into the socket.")))
+               "it disappears from sight."))))
+
+    :unplug (fn ()
+      (cond
+        ((in? ?self @input-socket)
+          (success :effects ((move! ?self @repeater))
+                   :message "You unscrew the cable. It now hangs unconnected inside the box."))
+        (true
+          (blocked :reason already-unplugged :message "It's already unplugged."))))
+
+    :take (fn ()
+      (cond
+        ((in? ?self @input-socket)
+          (redirect :action (do ?self :unplug)))
+        (true
+          (blocked :reason fixed :message "It's threaded through the box: impossible to take."))))
+
+    :plug (fn (?socket)
+      (cond
+        ((= ?socket @input-socket)
+          (cond
+            ((in? ?self @input-socket)
+              (blocked :reason already-plugged :message "It's already plugged in."))
+            (true
+              (success :effects ((move! ?self @input-socket))
+                       :message "You screw it back on."))))
+        (true
+          (blocked :reason wrong-socket :message "That doesn't fit there."))))
+
+    :cut (fn (?tool)
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (blocked :reason already-cut :message "It's already cut."))
+        ((or (= ?tool @bolt-cutters) (= ?tool @axe))
+          (success :effects ((set-flag! ?self RMUNGBIT))
+                   :message "You neatly snip the cable in two."))
+        (true
+          (blocked :reason wrong-tool :message "That won't cut through this cable."))))))
+
+(object @input-socket
+  :location @repeater
+  :description "socket"
+  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((in? @input-cable @input-socket)
+          (success :message "It has a coaxial cable plugged into it."))
+        ((in? @high-voltage @input-socket)
+          (success :message "It has a power line jammed into it."))
+        (true
+          (success :message "It's empty."))))))
+
+(object @output-cable
+  :location @repeater
+  :description "cablelike appendage"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((in? @mass @inner-lair)
+          (success :message
+            (str "This is a cablelike appendage of the mass in the end of the cave. It enters the box and "
+                 (cond
+                   ((has-flag ?self RMUNGBIT)
+                    "is cut.")
+                   ((has-flag @repeater OPENBIT)
+                    "connects to a connector inside it.")
+                   (true
+                    "disappears from sight."))
+                 " The cable twitches periodically.")))
+        (true
+          (success :message "The cablelike appendage ends in a blackened stump."))))
+
+    :unplug (fn ()
+      (blocked :reason fused :message "There is no way to do that. The appendage and its socket blend together indistinguishably."))
+
+    :take (fn ()
+      (redirect :action (do @output-cable :unplug)))
+
+    :cut (fn (?tool)
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (blocked :reason already-cut :message "It's already cut."))
+        ((not (has-flag @repeater OPENBIT))
+          (blocked :reason protected :message "The tentacle whips out of your way."))
+        ((or (= ?tool @bolt-cutters) (= ?tool @axe))
+          (success :effects ((set-flag! ?self RMUNGBIT))
+                   :message "You cut the tentacle in two inside the box, where it can't get away, precipitating a deafening shriek from the direction of the mass."))
+        (true
+          (blocked :reason wrong-tool :message "That won't cut through this appendage."))))
+
+    :attack (fn (?weapon)
+      (redirect :action (do @output-cable :cut ?weapon)))))
+
+; === High Voltage Power Line ===
+
+(object @high-voltage
+  :location nil  ; Found by searching pool in inner-lair
+  :description "power line"
+  :flags (TAKEBIT WEAPONBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (success :message "This is one end of a high voltage power line. The conductors are visible within the slashed outer insulation."))
+        ((has-flag ?self POWERBIT)
+          (success :message "This is a thick, hard cable. It reminds you of a high voltage power line."))
+        (true
+          (success :message "It's still under the water."))))
+
+    :take (fn ()
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          ; Line is cut - dangerous to take without gloves
+          (success :effects ((dequeue! line-in-water) (dequeue! hand-dives))
+                   :then
+                     (cond
+                       ((has-flag ?self POWERBIT)
+                         (success :effects ((take! ?self))
+                                  :message "You carefully grab the line just as it's about to drop into the water."))
+                       ((and (held? @gloves) (has-flag @gloves WEARBIT))
+                         (success :effects ((take! ?self))
+                                  :message "Taken."))
+                       (true
+                         (blocked :reason death
+                                  :context ((death true)
+                                            (description "As you foolishly reach into the water for the line, your hands become electrified. Nanoseconds later, the rest of you does as well.")))))))
+        (true
+          ; Pull line out of water
+          (success :effects ((set-flag! ?self POWERBIT) (take! ?self))
+                   :message "You pull a length of the line out of the water. It's like holding a large, heavy snake."))))
+
+    :drop (fn ()
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (success :effects ((move! ?self (loc @player)) (queue! line-in-water 2))
+                   :message "You release the line."))
+        (true
+          (success :effects ((move! ?self (loc @player)))
+                   :message "You release the line."))))
+
+    :cut (fn (?tool)
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (blocked :reason already-cut :message "It's already cut."))
+        ((not (has-flag ?self POWERBIT))
+          (blocked :reason underwater :message "You splash around in the water, to no avail. You can't see the line."))
+        ((= ?tool @axe)
+          (set! hv-cnt (+ hv-cnt 1))
+          (cond
+            ((> hv-cnt 2)
+              (success :effects ((set-flag! ?self RMUNGBIT) (move! ?self (loc @player)) (queue! line-in-water 2))
+                       :message "The line parts! The two ends begin to sink towards the water as they straighten out."))
+            ((= hv-cnt 2)
+              (success :message "Your blow cuts through more insulation and into the conductors."))
+            (true
+              (success :message "You strike the line with the axe, making a deep gash in the insulation."))))
+        ((= ?tool @bolt-cutters)
+          (blocked :reason too-thick :message "The jaws of the bolt cutter won't open far enough to fit around the line."))
+        (true
+          (blocked :reason inadequate :message "You'd probably have as much success trying to bite it in two."))))
+
+    :plug (fn (?socket)
+      (cond
+        ((= ?socket @input-socket)
+          (cond
+            ((not (has-flag ?self RMUNGBIT))
+              (blocked :reason no-end :message "There's no end to the line that you could plug in."))
+            ((first-in @input-socket)
+              (blocked :reason occupied :message (str "There's already something in the socket.")))
+            (true
+              ; This is the key action - plugging in the power line!
+              (plug-power-line))))
+        (true
+          (blocked :reason wrong-socket :message "That doesn't fit there."))))))
+
+; Function to handle plugging the power line into the socket
+(defn plug-power-line ()
+  (cond
+    ((not (and (held? @gloves) (has-flag @gloves WEARBIT)))
+      ; No gloves - sparks burn hands
+      (success :effects ((move! @high-voltage (loc @player)) (queue! line-in-water 2))
+               :message "You shove the exposed conductors into the socket, producing a shower of sparks! The sparks burn your hands! You jerk back, dropping the line!"))
+    ((not (has-flag @boots WEARBIT))
+      ; No boots - electrocuted through water
+      (blocked :reason death
+               :context ((death true)
+                         (description "You shove the exposed conductors into the socket, producing a shower of sparks! You are standing in electrified water. You are even grounded. Do you know what this means? Can you say \"dead?\""))))
+    ((has-flag @output-cable RMUNGBIT)
+      ; Output cable already cut - just fries the stump
+      (success :effects ((move! @high-voltage @input-socket))
+               :message "You shove the exposed conductors into the socket, producing a shower of sparks! The stump of the tentacle still connected to the connector shrivels and fries."))
+    ((not (queued? frob-appears))
+      ; This triggers the endgame!
+      (success :effects ((move! @high-voltage @input-socket) (dequeue! hacker-returns) (queue! frob-appears -1))
+               :message (str "You shove the exposed conductors into the socket, producing a shower of sparks! The tentacle connected to the other socket begins to jerk and twitch spasmodically. The mass it's connected to quivers, and a horrible noise, almost like a huge machine running without oil, issues from the thing."
+                            (if (and (in? @hacker @inner-lair) (not (has-flag @hacker INVISIBLE)))
+                              " The hacker screams soundlessly and drops into the water."
+                              "")
+                            "\n\nThe mass begins to change shape, compacting, darkening. You can briefly see human outlines within the grey, gelatinous mass. They surround something larger, of a shape not human, not animal, like nothing you've seen before.")))
+    (true
+      (success :effects ((move! @high-voltage @input-socket))
+               :message "You shove the exposed conductors into the socket, producing a shower of sparks!"))))
+
+; Event: power line drops into water
+(event line-in-water
+  :on-turn
+    (cond
+      ((has-flag @high-voltage POWERBIT)
+        (clear-flag! @high-voltage POWERBIT)
+        (cond
+          ((not (has-flag @boots WEARBIT))
+            (blocked :reason death
+                     :context ((death true)
+                               (description "The exposed ends of the high voltage line drop into the water! Four thousand volts of electricity, only slightly attenuated by the resistance of the water, course through your body! The result is shocking."))))
+          (true
+            (success :effects ((queue! line-in-water -1))
+                     :context ((description "The exposed ends of the high voltage line drop into the water! Sparks and bubbles burst from the electrified water."))))))
+      (true
+        (cond
+          ((not (has-flag @boots WEARBIT))
+            (blocked :reason death
+                     :context ((death true)
+                               (description "Four thousand volts of electricity, only slightly attenuated by the resistance of the water, course through your body! The result is shocking."))))
+          (true
+            (success :effects ((queue! line-in-water -1))
+                     :context ((description "Sparks and bubbles burst from the electrified water."))))))))
+
+; === Hand Points Event (navigation help) ===
+
+(event hand-points
+  :on-turn
+    (cond
+      ((and (held? @mummified-hand)
+            (has-flag @mummified-hand PERSON)
+            (in? @ring @mummified-hand)
+            (not (= (loc @player) lair-flag)))
+        (set! lair-flag (loc @player))
+        (let ((?point (get-prop (loc @player) :point)))
+          (cond
+            (?point
+              (success :context ((description (str "The hand points its mutilated ring finger " ?point " and grips your shoulder tightly.")))))
+            (true (success)))))
+      (true (success))))
+
+; === Hand Dives Event (in inner-lair) ===
+
+(event hand-dives
+  :on-turn
+    (cond
+      ((and (has-flag @mummified-hand PERSON) (= (loc @player) @inner-lair))
+        (cond
+          ((held? @mummified-hand)
+            (success :effects ((move! @mummified-hand @inner-lair))
+                     :context ((description "Suddenly, the hand leaps from your shoulder into the slime-encrusted puddle. It dives beneath the water."))))
+          ((in? @mummified-hand @inner-lair)
+            (success :context ((description "The hand repeatedly dives and bobs to the surface in one part of the pool near your feet."))))
+          (true (success))))
+      (true (success))))
+
+; === Hacker Returns Event ===
+
+(event hacker-returns
+  :on-turn
+    (cond
+      ((in? @hacker @inner-lair)
+        (let ((?stage (+ lair-cnt 1)))
+          (set! lair-cnt ?stage)
+          (cond
+            ((= ?stage 1)
+              (success :context
+                ((description "The hacker stares at the thing in the cave. \"I got very suspicious about your problems with the net. I began to trace some coax, found some repeaters and bridges that weren't on the layout charts, and started following them. Anyway, here I am. That thing there, whatever it is, and those wires, are interfaced to the whole campus net. And that means it's tied into all the nets, commercial, government, even military, potentially.\""))))
+            ((= ?stage 2)
+              (success :context
+                ((description "\"I guess I better do something. It could be a serious compromise of system integrity if this thing isn't dealt with.\" He peers at the mass, as if evaluating it. He then reaches into a pocket and pulls out a small pair of wire strippers."))))
+            ((= ?stage 3)
+              (success :effects ((set-flag! @hacker INVISIBLE) (set-flag! @hacker RMUNGBIT))
+                :context
+                ((description "The hacker advances on the mass, apparently planning to cut some of the wires leading into it. As he approaches it, the sound stops completely, and the wires begin a frantic, looping, twining dance. The mass begins to flow towards the hacker almost as quickly as he walks toward it. They reach each other and begin to merge together. He screams; a long, ululating cry that echoes through the cavern. Then he is engulfed."))))
+            ((or (= ?stage 4) (= ?stage 5))
+              (success :context
+                ((description "The mass is bulging, vibrating, and rippling."))))
+            ((= ?stage 6)
+              (success :context
+                ((description "The mass is bulging, vibrating, and rippling. A huge tear is forming near where the hacker was absorbed."))))
+            ((= ?stage 7)
+              (success :effects ((clear-flag! @hacker INVISIBLE))
+                :context
+                ((description "The hacker pulls himself out of the side of the mass. As he does, you think you can see many pairs of eyes appear briefly in the semitransparent mass, watching curiously. Wires and tentacles trail from his body, and tiny, almost rat-like creatures cling to his body everywhere, crawling about like ants. He walks slowly, jerkily towards you. \"Be one!\" he says, haltingly but fervently."))))
+            ((= ?stage 8)
+              (success :context
+                ((description "The hacker grabs for you. \"Join us! Serve the master!\" he croaks. Some of the creatures leap onto you, biting at exposed skin."))))
+            ((>= ?stage 9)
+              (blocked :reason death
+                :context ((death true)
+                          (description "The hacker is surprisingly strong. He drags you toward the thing in the corner, exhorting you to join it, and at last, forcibly, you do. You are not the first, or the last."))))
+            (true (success)))))
+      ((in? @hacker @outer-lair)
+        (success :effects ((move! @hacker @inner-lair))
+                 :context ((description "You hear a stumbling noise behind you, turn and see the hacker staggering into the cavern.\n\nThe hacker stares at you, shocked. \"It's you! When I gave you my key, I never suspected you'd get this far!\""))))
+      ((in? @hacker @lair-5)
+        (success :effects ((queue! hacker-returns -1) (move! @hacker @outer-lair))
+                 :context ((description "You hear noises outside the door."))))
+      (true (success))))
+
+; === The Frob (Final Creature) ===
+
+(object @frob
+  :location nil  ; Appears when mass is electrocuted
+  :description "thing"
+  :flags (NDESCBIT PERSON)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It is not from any wholesome place. It is the stuff of nightmares. It is the thing that waits in the dark, the thing that scratches at your windows late at night. It is not death, for next to this, death is a friend to be cherished."))
+
+    :attack (fn (?weapon)
+      (cond
+        ((= ?weapon @smooth-stone)
+          ; Throwing the stone at the frob
+          (cond
+            ((= end-cnt 1)
+              (success :effects ((move! @smooth-stone nil))
+                :message "The stone hurtles through the air and is swallowed by the black nothing at its center. The creature howls in pain!"))
+            ((= end-cnt 2)
+              (success :effects ((move! @frob nil) (move! @smooth-stone (loc @player)) (clear-flag! @smooth-stone TOUCHBIT) (set! score 100))
+                :context ((victory true)
+                          (description "The stone smashes into the creature, sticking to its ichorous hide. The thing thrashes about, trying to bite at the stone, which is glowing brighter and brighter. Small hands issue from beneath its scales to tug in vain at the irritant. The creature begins to show gaping holes of dark, light-devouring nothingness around the stone. Its wings spread painfully, as though it were trying to fly away, and then fold. It widens its jaw in an almost human scream of agony. The black hole of its maw overwhelms it, and indeed the creature appears to be swallowing itself. At last, a grey cloud of greasy smoke surrounds the glowing stone, still suspended in midair. Then even that vanishes, and the stone drops to the ground, no longer glowing. The thing is gone."))))
+            (true
+              (blocked :reason invulnerable :message "You can't force yourself to get that close to it."))))
+        ((= ?weapon @high-voltage)
+          (blocked :reason fear :message "You can't force yourself to get that close to it."))
+        (true
+          (blocked :reason ineffective :message "Defiantly, the creature shrugs off your puny attack."))))
+
+    :throw (fn (?item)
+      (cond
+        ((= ?item @smooth-stone)
+          (redirect :action (do @frob :attack @smooth-stone)))
+        (true
+          (blocked :reason ineffective :message "Defiantly, the creature shrugs off your puny attack."))))
+
+    :give (fn (?item)
+      (blocked :reason fear :message "You can't force yourself to get that close to it."))
+
+    :talk-to (fn ()
+      (blocked :reason incomprehensible :message "It has no ears that you can see, and wouldn't understand you anyway."))))
+
+; === Frob Appears Event ===
+
+(event frob-appears
+  :on-turn
+    (let ((?stage (+ end-cnt 1)))
+      (set! end-cnt ?stage)
+      (cond
+        ((= ?stage 1)
+          (success :effects ((move! @hacker nil) (move! @mass nil) (set-flag! @output-cable RMUNGBIT) (move! @frob (loc @player)))
+            :context
+            ((description (str "The gelatinous mass solidifies and compacts, leaving behind a litter of smoking debris. In the debris squats a being. Huge, misshapen, it stares at you with baleful yellow eyes. Its scaly wings beat slowly, driving a fetid stench through the stale air of the cavern. A barbed tongue slides across its broken, daggerlike fangs."
+                              (if (held? @smooth-stone)
+                                "\n\nThe smooth stone vibrates. It starts to feel warm."
+                                ""))))))
+        ((= ?stage 2)
+          (success :context
+            ((description (str "The thing tenses, preparing to leap. Its mouth opens, revealing not the glistening interior, but a dead-black outline like a hole into nothingness."
+                              (if (held? @smooth-stone)
+                                "\n\nThe smooth stone is now glowing with a bright-red heat that nevertheless fails to burn you."
+                                ""))))))
+        ((= ?stage 3)
+          (cond
+            ((in? @frob (loc @player))
+              (blocked :reason death
+                       :context ((death true)
+                                 (description (str "The creature leaps, a mountain falling on you, and the darkness swallows you, never to brighten again."
+                                                  (if (held? @smooth-stone)
+                                                    "\n\nThe smooth stone, all that's left where you were standing, drops quietly into the pool."
+                                                    ""))))))
+            (true (success))))
+        (true (success)))))
+
+; === Rubber Boots ===
+; These start in @brown-basement and are needed for the power line puzzle
+
+(object @boots
+  :location @brown-basement
+  :description "pair of rubber boots"
+  :flags (TAKEBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "They are well-used rubber boots."))
+
+    :wear (fn ()
+      (cond
+        ((has-flag ?self WEARBIT)
+          (blocked :reason already-wearing :message "You're already wearing them."))
+        ((not (held? ?self))
+          (blocked :reason not-held :message "You're not holding them."))
+        (true
+          (success :effects ((set-flag! ?self WEARBIT))
+                   :message "Snug, but okay."))))
+
+    :remove (fn ()
+      (cond
+        ((not (has-flag ?self WEARBIT))
+          (blocked :reason not-wearing :message "You're not wearing them."))
+        (true
+          (success :effects ((clear-flag! ?self WEARBIT))
+                   :message "You take off the boots."))))))
