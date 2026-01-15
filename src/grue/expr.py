@@ -2206,6 +2206,10 @@ class ExprEvaluator:
 
         Requires the state to be MutableWorldState.
         Returns None (like assignment in imperative languages).
+
+        Note: set! only works on globals. If you try to set! a let-bound
+        variable, you'll get an error. Use helper functions or pass values
+        directly to effects instead.
         """
         if len(form) != 3:
             raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
@@ -2214,6 +2218,13 @@ class ExprEvaluator:
         if not isinstance(form[1], Symbol):
             raise EvalError("'set!' first argument must be a symbol")
         global_name = form[1].name
+
+        # Error if trying to set! a let-bound variable (prevents silent shadowing bugs)
+        if env is not None and env.has(global_name):
+            raise EvalError(
+                f"'set!' cannot modify let-bound variable '{global_name}'. "
+                "Use a helper function or pass the computed value directly to effects."
+            )
 
         # Evaluate the value
         value = self.eval(form[2], env)
@@ -2230,6 +2241,8 @@ class ExprEvaluator:
 
         Requires the state to be MutableWorldState.
         Returns the new value.
+
+        Note: inc! only works on globals, not let-bound variables.
         """
         if len(form) < 2 or len(form) > 3:
             raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
@@ -2238,6 +2251,13 @@ class ExprEvaluator:
         if not isinstance(form[1], Symbol):
             raise EvalError("'inc!' first argument must be a symbol")
         global_name = form[1].name
+
+        # Error if trying to inc! a let-bound variable
+        if env is not None and env.has(global_name):
+            raise EvalError(
+                f"'inc!' cannot modify let-bound variable '{global_name}'. "
+                "Use a helper function or pass the computed value directly."
+            )
 
         # Amount defaults to 1
         amount = 1
@@ -2525,24 +2545,39 @@ class EffectExecutor:
         self.state.set_object_property(obj, prop, value)
 
     def _exec_set_global(self, form: SList) -> None:
-        """(set! GLOBAL VALUE)"""
+        """(set! GLOBAL VALUE) - Only works on globals, not let-bound variables."""
         if len(form) != 3:
             raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
         # Don't evaluate the global name - use it as-is
         if not isinstance(form[1], Symbol):
             raise EvalError("'set!' first argument must be a symbol")
         global_name = form[1].name
+
+        # Error if trying to set! a let-bound variable
+        if self._env is not None and self._env.has(global_name):
+            raise EvalError(
+                f"'set!' cannot modify let-bound variable '{global_name}'. "
+                "Use a helper function or pass the computed value directly to effects."
+            )
+
         value = self._eval(form[2])
         self.state.set_global(global_name, value)
 
     def _exec_inc(self, form: SList) -> None:
-        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT)"""
+        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Only works on globals."""
         if len(form) < 2 or len(form) > 3:
             raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
 
         if not isinstance(form[1], Symbol):
             raise EvalError("'inc!' first argument must be a symbol")
         global_name = form[1].name
+
+        # Error if trying to inc! a let-bound variable
+        if self._env is not None and self._env.has(global_name):
+            raise EvalError(
+                f"'inc!' cannot modify let-bound variable '{global_name}'. "
+                "Use a helper function or pass the computed value directly."
+            )
 
         amount = 1
         if len(form) == 3:

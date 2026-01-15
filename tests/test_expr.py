@@ -4,6 +4,7 @@ import pytest
 from grue.expr import (
     ExprEvaluator,
     EffectExecutor,
+    Environment,
     EvalError,
     eval_predicate,
     execute_effect,
@@ -321,6 +322,33 @@ class TestEffects:
         assert state.globals["SCORE"] == 1
         execute_effect("(inc! SCORE 5)", state)
         assert state.globals["SCORE"] == 6
+
+    def test_set_rejects_let_bound_variable(self):
+        """set! should error when targeting a let-bound variable."""
+        state = MockWorldState()
+        env = Environment(bindings={"?local-var": 42})
+        executor = EffectExecutor(state)
+
+        with pytest.raises(EvalError, match="cannot modify let-bound variable"):
+            executor.execute(parse("(set! ?local-var 100)"), env)
+
+    def test_inc_rejects_let_bound_variable(self):
+        """inc! should error when targeting a let-bound variable."""
+        state = MockWorldState()
+        env = Environment(bindings={"?counter": 0})
+        executor = EffectExecutor(state)
+
+        with pytest.raises(EvalError, match="cannot modify let-bound variable"):
+            executor.execute(parse("(inc! ?counter)"), env)
+
+    def test_set_works_on_global_when_no_local_shadow(self):
+        """set! should work fine on globals even when an env is present."""
+        state = MockWorldState()
+        env = Environment(bindings={"?other-var": 42})  # Different variable
+        executor = EffectExecutor(state)
+
+        executor.execute(parse("(set! SCORE 999)"), env)
+        assert state.globals["SCORE"] == 999
 
     def test_seq(self):
         state = MockWorldState()

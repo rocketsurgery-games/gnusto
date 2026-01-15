@@ -98,10 +98,8 @@
 (object @air
   :description "air"
   :location @global
-  :flags (NDESCBIT NOABIT)
-  :behaviors (
-    :examine (fn ()
-      (success :message "It's all around you."))))
+  :flags (NDESCBIT NOABIT))
+  ; No :examine - falls through to default "You see nothing special about the air."
 
 (object @ground
   :description "floor"
@@ -118,10 +116,8 @@
 (object @dirt
   :description "dirt"
   :location @global
-  :flags (NDESCBIT NOABIT)
-  :behaviors (
-    :examine (fn ()
-      (success :message "Just ordinary dirt and debris."))))
+  :flags (NDESCBIT NOABIT))
+  ; No :examine - falls through to default "You see nothing special about the dirt."
 
 (object @corridor
   :description "passage"
@@ -138,9 +134,8 @@
   :description "noise"
   :location @global
   :flags (NDESCBIT)
+  ; No :examine - falls through to default "You see nothing special about the noise."
   :behaviors (
-    :examine (fn ()
-      (success :message "It's hard to tell where it's coming from."))
     :listen (fn ()
       (success :message "You listen carefully."))))
 

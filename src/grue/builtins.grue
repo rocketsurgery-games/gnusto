@@ -76,3 +76,9 @@
 
   (true
     (success :effects ((move! ?self ?value)) :message "Done."))))
+
+; === examine ===
+; Default examine behavior - returns generic message when object has no :examine handler
+
+(default examine
+  (success :message (str "You see nothing special about the " (desc ?self) ".")))
