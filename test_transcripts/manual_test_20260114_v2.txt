@@ -1,0 +1,154 @@
+============================================================
+Manual Test Session - 2026-01-14T23:07:40.621499
+============================================================
+
+============================================================
+TERMINAL ROOM TESTS
+============================================================
+
+>>> look (current room: @terminal-room)
+Description: This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
+  Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
+  empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.
+
+--- Object state: @player ---
+  location: @terminal-room
+  flags: {'PERSON'}
+  properties: {}
+
+>>> (do @pc :examine)
+Outcome: success
+  power: off
+  message: This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key. It is currently turned off.
+
+>>> (do @pc :turn-on)
+Outcome: success
+  booting: True
+  message: The computer powers up, goes through a remarkably fast self-check, and greets you, requesting "LOGIN PLEASE:" The only sound you hear is a very low hum.
+
+>>> (do @pc :type help)
+Outcome: success
+  message: The computer responds "PASSWORD PLEASE:"
+
+>>> (do @pc :type ustrex)
+Outcome: success
+  message: The computer responds "INVALID LOGIN" and then "LOGIN PLEASE:"
+
+>>> (do @pc :type bazbar)
+Outcome: success
+  message: The computer responds "PASSWORD PLEASE:"
+
+>>> (do @assignment :examine)
+Outcome: error
+ERROR: Unknown object: @assignment
+
+>>> (do @assignment :take)
+Outcome: error
+ERROR: Unknown object: @assignment
+
+--- Object state: @assignment ---
+  (no state)
+
+>>> (do @container :examine)
+Outcome: error
+ERROR: Unknown object: @container
+
+============================================================
+ELEVATOR TESTS
+============================================================
+
+>>> (do @player :go north)
+Outcome: blocked
+  direction: north
+
+>>> look (current room: @terminal-room)
+Description: This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
+  Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
+  empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.
+
+>>> (do @elevator-door :examine)
+Outcome: success
+  message: The elevator doors are closed.
+
+>>> (do @elevator-button :push)
+Outcome: error
+ERROR: Unknown object: @elevator-button
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+--- Object state: @elevator-door ---
+  location: @cs-elevator-room
+  flags: {'DOORBIT', 'AN', 'OPENABLE', 'NDESCBIT'}
+  properties: {}
+
+>>> (do @player :go east)
+Outcome: blocked
+  direction: east
+
+>>> look (current room: @terminal-room)
+Description: This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
+  Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
+  empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.
+
+>>> (do @5-button :push)
+Outcome: error
+ERROR: Unknown object: @5-button
+
+>>> (do @player :wait)
+Outcome: blocked
+  verb: wait
+  object: @player
+
+============================================================
+HACKER TESTS
+============================================================
+
+>>> (do @hacker :examine)

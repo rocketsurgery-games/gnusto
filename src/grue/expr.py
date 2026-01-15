@@ -1395,7 +1395,13 @@ class ExprEvaluator:
                     if isinstance(val, SList):
                         result[key_str] = self.eval(val, env)
                     elif isinstance(val, Symbol):
-                        result[key_str] = val.name
+                        # Try to evaluate symbol in environment
+                        # This handles defs like hacker-desc
+                        # If not found, fall back to symbol name as literal
+                        try:
+                            result[key_str] = self.eval(val, env)
+                        except EvalError:
+                            result[key_str] = val.name
                     else:
                         result[key_str] = str(val)
         return result
