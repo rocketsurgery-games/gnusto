@@ -139,3 +139,35 @@
   :setup ()
   :action (do @suicide-note :examine)
   :expect ((loc? @suicide-note @secret-hole)))
+
+; === Peach Tree Additional Behaviors ===
+
+(test "can rub peach tree"
+  :setup ((move! @player @inside-dome))
+  :action (do @peach-tree :rub)
+  :expect ((outcome? success)))
+
+(test "can't attack peach tree"
+  :setup ((move! @player @inside-dome)
+          (move! @axe @player))
+  :action (do @peach-tree :attack @axe)
+  :expect ((outcome? blocked)
+           (reason? vandalism)))
+
+; === Flier Additional Behaviors ===
+
+(test "giving smooth-stone to flier makes it edge away"
+  :setup ((move! @player @brown-roof)
+          (move! @flier @brown-roof)
+          (move! @smooth-stone @player))
+  :action (do @flier :give @smooth-stone)
+  :expect ((outcome? success)
+           (loc? @flier @brown-roof)))  ; Still there, just edged away
+
+(test "throwing non-stone item at flier dodges"
+  :setup ((move! @player @brown-roof)
+          (move! @flier @brown-roof)
+          (move! @carton @player))
+  :action (do @flier :throw @carton)
+  :expect ((outcome? success)
+           (loc? @carton @brown-roof)))

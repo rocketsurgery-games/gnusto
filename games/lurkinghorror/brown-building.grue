@@ -287,7 +287,14 @@
 
     :climb (fn ()
       (blocked :reason slippery
-               :message "You start to climb the tree, but as you get partway up, your hands encounter a slippery substance which covers the limbs at this height. Not only is it extremely unpleasant to touch, it makes the tree too slippery to climb any further."))))
+               :message "You start to climb the tree, but as you get partway up, your hands encounter a slippery substance which covers the limbs at this height. Not only is it extremely unpleasant to touch, it makes the tree too slippery to climb any further."))
+
+    :rub (fn ()
+      (success :message "It feels like wood, but there is something slippery on it higher up."))
+
+    :attack (fn (?weapon)
+      (blocked :reason vandalism
+               :message "At the last second, you realize it would be an unspeakable act of vandalism."))))
 
 (object @tub
   :location @inside-dome
@@ -384,8 +391,21 @@
           ; Feeding the hand to the flier is the solution
           (success :effects ((move! @mummified-hand nil) (move! @flier nil) (set! flier-count 0) (dequeue! flier-approach))
                    :message "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale."))
+        ((= ?item @smooth-stone)
+          ; Smooth stone scares it but doesn't drive it away
+          (success :message "The creature edges away from the stone."))
         (true
-          (blocked :reason not-interested :message "The creature shows no interest in that."))))))
+          (blocked :reason not-interested :message "The creature shows no interest in that."))))
+
+    :throw (fn (?item)
+      (cond
+        ((= ?item @smooth-stone)
+          ; Throwing smooth-stone drives it away (same as attack with stone)
+          (redirect :action (do ?self :attack @smooth-stone)))
+        (true
+          ; Flier dodges other thrown items
+          (success :effects ((move! ?item (loc @player)))
+                   :message (str "The creature darts to the side, dodging the " (desc ?item) ".")))))))
 
 ; === Flier Approach Event ===
 ; Multi-stage creature approach. Each turn advances the counter.
