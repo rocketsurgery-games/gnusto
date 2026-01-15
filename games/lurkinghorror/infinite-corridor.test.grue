@@ -2,8 +2,11 @@
 
 ; === Navigation Through Corridor ===
 
+; Note: floor waxer starts at @inf-2 with maintenance man riding it
+; so tests need to move it out of the way
+
 (test-group "corridor navigation east-west"
-  :setup ()
+  :setup ((move! @floor-waxer @inf-5))  ; Move waxer out of the way
 
   (test "inf-1 to inf-2 east"
     :setup ((move! @player @inf-1))

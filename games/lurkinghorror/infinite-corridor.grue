@@ -36,10 +36,10 @@
   :exits
     ((west :to @mass-ave)
      (north :to @aero-lobby)
-     (east :to @inf-2)
+     (east :to @inf-2 :via @waxer-exit-barrier)
      (south :to @engineering-bldg)
      (out :to @mass-ave))
-  :globals (@office-door)
+  :globals (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -56,8 +56,8 @@
   :flags (ONBIT)
   :exits
     ((west :to @inf-1)
-     (east :to @inf-3))
-  :globals (@office-door)
+     (east :to @inf-3 :via @waxer-exit-barrier))
+  :globals (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -74,11 +74,11 @@
   :flags (ONBIT)
   :exits
     ((west :to @inf-2)
-     (east :to @inf-4)
+     (east :to @inf-4 :via @waxer-exit-barrier)
      (south :to @great-court :via @great-court-exit-barrier)
      (out :to @great-court :via @great-court-exit-barrier)
      (up :to @great-dome))
-  :globals (@office-door)
+  :globals (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -95,8 +95,8 @@
   :flags (ONBIT)
   :exits
     ((west :to @inf-3)
-     (east :to @inf-5))
-  :globals (@office-door)
+     (east :to @inf-5 :via @waxer-exit-barrier))
+  :globals (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -113,8 +113,9 @@
   :flags (ONBIT)
   :exits
     ((west :to @inf-4)
-     (north :to @nutrition-bldg)
-     (south :to @chemistry-bldg))
+     (north :to @nutrition-bldg :via @waxer-exit-barrier)
+     (south :to @chemistry-bldg :via @waxer-exit-barrier))
+  :globals (@power-cord)
 
   :behaviors (
     :describe (fn ()

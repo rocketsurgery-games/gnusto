@@ -1,0 +1,200 @@
+; Tests for Maintenance Man & Floor Waxer puzzle
+
+; === Floor Waxer Tests ===
+
+(test-group "floor waxer initial state"
+  :setup ((move! @player @inf-2))  ; Player needs to be in same room
+
+  (test "waxer starts at inf-2"
+    :action (do @floor-waxer :examine)
+    :expect ((outcome? success)
+             (loc? @floor-waxer @inf-2)))
+
+  (test "maintenance man starts on waxer"
+    :action (do @maintenance-man :examine)
+    :expect ((outcome? success)
+             (loc? @maintenance-man @floor-waxer))))
+
+(test-group "waxer blocking"
+  :setup ((move! @player @inf-2)
+          (move! @floor-waxer @inf-2)
+          (move! @maintenance-man @floor-waxer)
+          (set! cord-severed false))
+
+  (test "waxer blocks east passage when present"
+    :action (go :direction east)
+    :expect ((outcome? blocked)
+             (reason? waxer-blocking)))
+
+  (test "can move west when waxer present"
+    :action (go :direction west)
+    :expect ((outcome? success)
+             (player-at? @inf-1))))
+
+; === Power Cord Tests ===
+
+(test-group "power cord"
+  :setup ((move! @player @inf-1)
+          (move! @axe @player)
+          (set! cord-severed false))
+
+  (test "can examine cord"
+    :action (do @power-cord :examine)
+    :expect ((outcome? success)))
+
+  (test "cannot take cord"
+    :action (do @power-cord :take)
+    :expect ((outcome? blocked)
+             (reason? immovable)))
+
+  (test "cannot cut cord without axe"
+    :setup ((move! @axe @inf-1))  ; Drop axe
+    :action (do @power-cord :cut)
+    :expect ((outcome? blocked)
+             (reason? no-tool)))
+
+  (test "can cut cord with axe"
+    :action (do @power-cord :cut)
+    :expect ((outcome? success)
+             (global? cord-severed true))))
+
+; === Plastic Container Tests ===
+
+(test-group "plastic container"
+  :setup ((move! @player @inf-1)
+          (move! @plastic-container @inf-1))
+
+  (test "container starts in inf-1"
+    :action (do @plastic-container :examine)
+    :expect ((outcome? success)
+             (loc? @plastic-container @inf-1)))
+
+  (test "can examine container"
+    :action (do @plastic-container :examine)
+    :expect ((outcome? success)))
+
+  (test "can read container"
+    :action (do @plastic-container :read)
+    :expect ((outcome? success)))
+
+  (test "can take container"
+    :action (do @plastic-container :take)
+    :expect ((outcome? success)
+             (held? @plastic-container))))
+
+; === Floor Wax Tests ===
+
+(test-group "floor wax"
+  :setup ((move! @player @inf-3)
+          (move! @plastic-container @player)
+          (move! @floor-wax @plastic-container)
+          (set-flag! @plastic-container OPENBIT))  ; Open container to access wax
+
+  (test "wax starts in container"
+    :action (do @plastic-container :examine)
+    :expect ((outcome? success)
+             (loc? @floor-wax @plastic-container)))
+
+  (test "can examine wax in open container"
+    :action (do @floor-wax :examine)
+    :expect ((outcome? success)))
+
+  (test "can pour wax on floor"
+    :action (do @floor-wax :pour)
+    :expect ((outcome? success)
+             (loc? @floor-wax @inf-3))))
+
+; === Emergency Cabinet Tests ===
+
+(test-group "emergency cabinet"
+  :setup ((move! @player @inf-4)
+          (clear-flag! @emergency-cabinet RMUNGBIT)
+          (clear-flag! @emergency-cabinet OPENBIT)
+          (move! @axe @emergency-cabinet))
+
+  (test "cabinet in inf-4"
+    :action (do @emergency-cabinet :examine)
+    :expect ((outcome? success)
+             (loc? @emergency-cabinet @inf-4)))
+
+  (test "can examine cabinet"
+    :action (do @emergency-cabinet :examine)
+    :expect ((outcome? success)))
+
+  (test "can read cabinet"
+    :action (do @emergency-cabinet :read)
+    :expect ((outcome? success)))
+
+  (test "cannot open cabinet without breaking"
+    :action (do @emergency-cabinet :open)
+    :expect ((outcome? blocked)
+             (reason? read-sign)))
+
+  (test "cannot break cabinet with bare hands"
+    :action (do @emergency-cabinet :break)
+    :expect ((outcome? blocked)
+             (reason? bare-hands)))
+
+  (test "can break cabinet with gloves"
+    :setup ((move! @gloves @player))
+    :action (do @emergency-cabinet :break)
+    :expect ((outcome? success)
+             (has-flag? @emergency-cabinet RMUNGBIT))))
+
+; === Axe Tests ===
+
+(test-group "axe"
+  :setup ((move! @player @inf-4)
+          (move! @axe @emergency-cabinet)
+          (clear-flag! @emergency-cabinet RMUNGBIT))
+
+  (test "cannot take axe through glass"
+    :action (do @axe :take)
+    :expect ((outcome? blocked)
+             (reason? enclosed)))
+
+  (test "can take axe after breaking glass"
+    :setup ((set-flag! @emergency-cabinet RMUNGBIT))
+    :action (do @axe :take)
+    :expect ((outcome? success)
+             (held? @axe))))
+
+; === Maintenance Man Combat ===
+
+(test-group "maintenance man combat"
+  :setup ((move! @player @inf-3)
+          (move! @floor-waxer @inf-3)
+          (move! @maintenance-man @inf-3)  ; Not on waxer
+          (set! cord-severed true)
+          (move! @axe @player))
+
+  (test "cannot attack with hands"
+    :setup ((move! @axe @inf-1))  ; Drop axe
+    :action (do @maintenance-man :attack)
+    :expect ((outcome? blocked)
+             (reason? no-weapon)))
+
+  (test "can attack with axe when off waxer"
+    :action (do @maintenance-man :attack)
+    :expect ((outcome? success)
+             (loc? @maintenance-man nil))))  ; Killed
+
+; === Waxer Exit Barrier - Maintenance Man Loose ===
+
+(test-group "loose maintenance man blocking"
+  :setup ((move! @player @inf-3)
+          (move! @floor-waxer @inf-5)  ; Waxer elsewhere
+          (move! @maintenance-man @inf-3)  ; MM in same room
+          (set! cord-severed true)
+          (set-flag! @maintenance-man PERSON))
+
+  (test "loose maintenance man blocks passage"
+    :action (go :direction east)
+    :expect ((outcome? blocked)
+             (reason? mm-blocking)))
+
+  (test "can pass if floor wax present"
+    :setup ((move! @floor-wax @inf-3))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-4))))
