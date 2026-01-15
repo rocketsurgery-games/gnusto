@@ -1,0 +1,291 @@
+; Great Dome - Interior dome climb and tentacle puzzle
+; Connected to the Infinite Corridor (stub) and Brown Building.
+;
+; Rooms:
+;   @great-dome - Walkway at dome base with tentacle
+;   @top-of-dome - Catwalk at top of dome
+;   @dome-roof - Outside on the dome
+;   @on-dome - Very top with bronze plug puzzle
+;
+; Key puzzles:
+;   - Climb tentacle wearing gloves
+;   - Find ladder dropped by fleeing creature
+;   - Bronze plug reveals secret note
+
+; === Stub Rooms ===
+
+(room @inf-3
+  :description "Infinite Corridor"
+  :ldesc "This is part of the Infinite Corridor. The Great Dome rises above you to the north."
+  :flags (ONBIT)
+  :exits ((up :to @great-dome)))
+
+; === Main Rooms ===
+
+(room @great-dome
+  :description "Great Dome"
+  :flags (ONBIT)
+  :exits
+    ((down :to @inf-3)
+     (up :to @top-of-dome :via @tentacle-climb))
+  :globals (@tentacle)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "Here a walkway circles the base of a huge ornate dome. Below is the Infinite Corridor."
+               (if (not (has-flag @dome-ladder TOUCHBIT))
+                 " From stories of Tech Exploring trips, you recall that there is supposed to be a ladder here."
+                 "")
+               (if (not (has-flag @tentacle INVISIBLE))
+                 " On the other hand, there is a shiny rope-like thing hanging near where the ladder used to be, and leading upward."
+                 ""))))))))
+
+(room @top-of-dome
+  :description "Top of Dome"
+  :flags (ONBIT)
+  :exits
+    ((out :to @dome-roof :via @dome-door)
+     (north :to @dome-roof :via @dome-door)
+     (down :to @great-dome :via @tentacle-descend))
+  :globals (@tentacle @dome-door @catwalk)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "Inside the great dome, near the top, a metal catwalk is precariously perched. There is no way further up, but a small metal door is set in the side of the dome."
+               (if (has-flag @dome-door OPENBIT)
+                 " Frigid wind and snow blow through the open door."
+                 ""))))))
+
+    ; When entering from tentacle, the creature flees and drops the ladder
+    :on-enter (fn (?from)
+      (cond
+        ((and (= ?from @great-dome) (not (has-flag @tentacle INVISIBLE)))
+          (success :effects ((set-flag! @tentacle INVISIBLE) (set-flag! @dome-ladder TOUCHBIT) (move! @dome-ladder ?self))
+                   :message "You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone."))
+        (true (success))))))
+
+(room @dome-roof
+  :description "Roof of Great Dome"
+  :ldesc "You are perched precariously on the roof of the Great Dome. A set of narrow indentations in the dome provides a dangerous route to the very tip-top of the dome."
+  :flags (ONBIT OUTSIDE)
+  :exits
+    ((in :to @top-of-dome :via @dome-door)
+     (south :to @top-of-dome :via @dome-door)
+     (up :to @on-dome))
+  :globals (@dome-door)
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (cond
+        ((= ?from @top-of-dome)
+          (success :effects ((queue! freezing))
+                   :message "You enter the freezing, biting cold of the blizzard."))
+        (true (success))))))
+
+(room @on-dome
+  :description "On the Great Dome"
+  :ldesc "This is the very top of the Great Dome, a favorite place for Tech fraternities to install cows, Volkswagen Beetles, giant birthday candles, and other bizarre objects. The top is flat, round, and about five feet in diameter. It's very windy, which has kept the snow from accumulating here. The only way off is down."
+  :flags (ONBIT OUTSIDE)
+  :exits ((down :to @dome-roof))
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (success :message "You scramble up the icy surface of the dome, almost slipping a few times, but finally you make it to the top."))))
+
+; === Tentacle Barrier Objects ===
+
+(object @tentacle-climb
+  :location @great-dome
+  :description "tentacle"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((has-flag @tentacle INVISIBLE)
+          (blocked :reason no-tentacle :message "There's no way up from here."))
+        ((not (has-flag @gloves WEARBIT))
+          (blocked :reason burns
+                   :message "You start to climb up the strand, but the glistening wet stuff begins to burn your hands. You get a few feet up before the pain is too much. You drop back to the floor."))
+        (true
+          (success :message "The wet stuff on the strand sticks to the gloves, but doesn't otherwise affect you. You have a little trouble climbing up to the catwalk, but grab the rail just before your strength gives out. You heave yourself up onto the catwalk."))))))
+
+(object @tentacle-descend
+  :location @top-of-dome
+  :description "way down"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((in? @dome-ladder @top-of-dome)
+          ; Use ladder to climb down
+          (success))
+        ((not (has-flag @tentacle INVISIBLE))
+          ; Tentacle is still there
+          (cond
+            ((has-flag @gloves WEARBIT)
+              (success))
+            (true
+              (blocked :reason burns :message "The tentacle would burn your hands."))))
+        (true
+          (blocked :reason no-way :message "There's no way down from here."))))))
+
+; === Tentacle Object ===
+
+(object @tentacle
+  :location nil  ; Global, present via room :globals
+  :description "ropy strand"
+  :flags (NDESCBIT)  ; Not INVISIBLE initially - visible when in @great-dome
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The strand is wet and glistening. It extends upward into the dome, leading to a narrow catwalk."))
+
+    :take (fn ()
+      (success :message "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it."))
+
+    :rub (fn ()
+      (success :message "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it."))
+
+    :climb (fn ()
+      (redirect :action (do (loc @player) :go up)))))
+
+; === Catwalk ===
+
+(object @catwalk
+  :location nil  ; Global
+  :description "catwalk"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a narrow metal catwalk that circles the interior of the dome near the top."))))
+
+; === Dome Ladder ===
+
+(object @dome-ladder
+  :location nil  ; Appears after creature flees
+  :description "wooden ladder"
+  :flags (TAKEBIT)
+  :properties (:size 120)
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((not (has-flag ?self TOUCHBIT))
+          (success :context ((description "Where the pulpy mass was squatting, a wooden ladder lies on the catwalk."))))
+        ((in? ?self @top-of-dome)
+          (success :context ((description "A wooden ladder leans against the railing."))))
+        (true
+          (success :context ((description "A wooden ladder is here."))))))
+
+    :examine (fn ()
+      (success :message "It's a sturdy wooden ladder, about eight feet long."))))
+
+; === Dome Door ===
+
+(object @dome-door
+  :location nil  ; Global, present via room :globals
+  :description "door"
+  :flags (NDESCBIT DOORBIT OPENABLE)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a small metal door, the same color as the dome."))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT))
+                   :message "You open the door, and freezing air, blowing snow, and howling wind enter and whip around you."))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT))
+                   :message "You close the door, blocking out the howling wind."))))
+
+    :through (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason closed :message "The door is closed."))
+        (true (success))))))
+
+; === Bronze Plug Puzzle ===
+
+(object @bronze-plug
+  :location @on-dome
+  :description "bronze plug"
+  :fdesc "In the exact center of the flat area is a bronze plug."
+  :flags (TAKEBIT TRYTAKEBIT WEAPONBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "This is a cylindrical bronze plug about two inches in diameter"
+             (if (not (has-flag ?self TOUCHBIT))
+               ". It is set in the center of the flat part of the dome."
+               " and one inch high.")
+             "")))
+
+    :take (fn ()
+      (cond
+        ((not (has-flag ?self RMUNGBIT))
+          (redirect :action (do ?self :pry nil)))
+        (true
+          (default))))
+
+    :pry (fn (?tool)
+      (cond
+        ((has-flag ?self RMUNGBIT)
+          (blocked :reason already-removed :message "You've already removed it."))
+        (true
+          (success :effects ((set-flag! ?self RMUNGBIT) (set-flag! ?self TOUCHBIT) (move! @secret-hole @on-dome) (take! ?self))
+                   :message
+                     (str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
+                          (if (not (has-flag @suicide-note TOUCHBIT))
+                            "There is a piece of paper in the hole."
+                            (if (in? @suicide-note @secret-hole)
+                              "There is a piece of paper in the hole."
+                              "The hole is empty.")))))))
+
+    :put (fn (?container)
+      (cond
+        ((= ?container @secret-hole)
+          (success :effects ((clear-flag! ?self RMUNGBIT) (move! @secret-hole nil) (move! ?self @on-dome))
+                   :message "You insert the plug in the hole."))
+        (true
+          (default))))))
+
+(object @secret-hole
+  :location nil  ; Appears when plug is removed
+  :description "cylindrical hole"
+  :flags (CONTBIT OPENBIT SEARCHBIT)
+  :properties (:capacity 5))
+
+(object @suicide-note
+  :location @secret-hole
+  :description "piece of paper"
+  :flags (TAKEBIT READBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (redirect :action (do ?self :read)))
+
+    :read (fn ()
+      (success :effects ((set-flag! ?self RMUNGBIT) (if (not (held? ?self)) (take! ?self)))
+               :message "You unroll the piece of paper and read the shaky handwriting:
+
+\"I can no longer face what I've been doing. I can't sleep, I start at the slightest noise, and even dulling my senses with alcohol or drugs is no longer enough. I refuse to participate in what he is doing any more. Either he is insane, or I am insane, or (and this is what I fear most) the universe itself is insane. I have only one final warning: I am the only suicide, but I will not be the final death.\"
+
+The name signed to it is oddly familiar."))))
+

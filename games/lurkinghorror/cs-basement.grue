@@ -320,6 +320,32 @@
     :examine (fn ()
       (success :message "It's a rusty, somewhat battered crowbar."))))
 
+; === Gloves (protection for tentacle climbing) ===
+; Needed to climb the tentacle in the Great Dome without getting burned.
+
+(object @gloves
+  :location @temporary-basement
+  :description "pair of electrician's gloves"
+  :flags (TAKEBIT WEARBIT)
+  :properties (:size 5)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "This is a pair of electrician's rubber gloves. They look well used but serviceable."))
+
+    :look-inside (fn ()
+      (success :message "They're kind of dirty inside, but there's nothing nasty hidden there."))
+
+    :wear (fn ()
+      (cond
+        ((has-flag ?self WEARBIT)
+          ; Already wearing check would be handled by runtime
+          (success :effects ((set-flag! ?self WEARBIT))
+                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))
+        (true
+          (success :effects ((set-flag! ?self WEARBIT))
+                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))))))
+
 ; === Pool (global object for puddles/water) ===
 
 (object @pool
