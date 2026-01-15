@@ -22,9 +22,10 @@
 
 (room @aero-basement
   :description "Aero Basement"
-  :ldesc "This is the basement of the Aeronautics building. A wide corridor leads east."
+  :ldesc "This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues."
   :flags (ONBIT)
-  :exits ((east :to @cs-basement)))
+  :exits ((east :to @cs-basement)
+          (west :to @aero-stairs)))
 
 (room @temporary-lab
   :description "Temporary Lab"

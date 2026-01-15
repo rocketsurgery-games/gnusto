@@ -347,12 +347,7 @@
                    :message "The tunnel ends here, in a dank, dripping brick wall."))
         (true (default))))))
 
-; Stub for tomb connection
-(room @tomb
-  :description "Tomb"
-  :ldesc "This is an ancient crypt. An access hatch in the floor leads down."
-  :flags ()  ; Dark!
-  :exits ((down :to @tunnel :via @access-hatch-barrier)))
+; @tomb is now defined in aero-building.grue
 
 ; Stub for elevator pit
 (room @elevator-pit
