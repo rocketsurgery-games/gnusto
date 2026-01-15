@@ -2,6 +2,17 @@
 ; These are stub definitions for testing the hacker trade puzzle.
 ; Full definitions would come from converted/objects.grue
 
+; Helper: temperature description for heated food
+(defn heat-desc (?obj)
+  (let ((?h (prop ?obj heat)))
+    (cond
+      ((>= ?h 20) "radioactive")
+      ((>= ?h 16) "volcanic")
+      ((>= ?h 12) "hot")
+      ((>= ?h 8) "warm")
+      ((>= ?h 4) "lukewarm")
+      (true "cold"))))
+
 (object @master-key
   :description "master key"
   :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
@@ -18,25 +29,129 @@
   :description "white carton"
   :location @refrigerator  ; In the kitchen refrigerator
   :flags (TAKEBIT CONTBIT OPENBIT)
-  :properties (:heat 0))  ; Heatable object - can be warmed in microwave
+  :properties (:heat 0)  ; Heatable object - can be warmed in microwave
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((and (in? @chinese-food @carton) (> (prop @chinese-food heat) 8))
+         (success :message "It's a Chinese food carton with a symbol on the front. The carton feels warm."))
+        (true
+         (success :message "It's a Chinese food carton with a symbol on the front."))))
+
+    :read (fn ()
+      (success :message "The symbol doesn't look like Chinese, English, or any other language you know. It looks more like an occult symbol."))
+
+    :eat (fn ()
+      (blocked :reason inedible
+        :message "You might find the contents more agreeable than the carton itself."))))
 
 (object @chinese-food
-  :description "chinese food"
+  :description "Chinese food"
   :location @carton  ; Inside the carton
   :flags (FOODBIT)
-  :properties (:heat 0))  ; 0=cold, 12+=hot, higher=overcooked
+  :properties (:heat 0)  ; 0=cold, 12+=hot, higher=overcooked
+
+  :behaviors (
+    :examine (fn ()
+      (success :message (str "This is a carton of " (heat-desc ?self)
+        " Szechuan shrimp. Lovely red peppers poke out of the sauce.")))
+
+    :take (fn ()
+      (cond
+        ((in? ?self @carton)
+         (blocked :reason spill
+           :message "If you take it out, it will spill all over you. Why not take the carton instead?"))
+        (true
+         (success :effects ((take! ?self))
+           :message "Taken."))))
+
+    :eat (fn ()
+      (success
+        :effects ((move! ?self nil))
+        :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
+          ". You immediately want to drink something to wash it down.")))
+
+    :taste (fn ()
+      (success :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self) ".")))))
 
 (object @snack
   :description "package of Funny Bones"
   :location @kitchen-counter  ; In ZIL: (IN KITCHEN-COUNTER)
   :flags (TAKEBIT FOODBIT READBIT OPENABLE)
-  :properties (:heat 0))
+  :properties (:heat 0)
+
+  :behaviors (
+    :examine (fn ()
+      (let ((?state (cond
+                      ((has-flag ?self RMUNGBIT) "an empty")
+                      ((has-flag ?self OPENBIT)
+                       (if (> (prop ?self heat) 0)
+                           (str "an open, " (heat-desc ?self))
+                           "an open"))
+                      (true "a"))))
+        (success :message (str "This is " ?state " package of Funny Bones, a snack food made with peanut butter and chocolate cake."))))
+
+    :read (fn ()
+      (success :message "The wrapper says \"Funny Bones\" in colorful letters."))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+         (blocked :reason already-open :message "It's already open."))
+        (true
+         (success :effects ((set-flag! ?self OPENBIT))
+           :message "You open the package, revealing yummy junk food inside."))))
+
+    :eat (fn ()
+      (cond
+        ((has-flag ?self RMUNGBIT)
+         (blocked :reason empty :message "You already did. There's nothing left but the wrapper."))
+        ((> (prop ?self heat) 12)
+         (blocked :reason too-hot :message "You discover that they are too hot to eat."))
+        ((has-flag ?self OPENBIT)
+         (success :effects ((set-flag! ?self RMUNGBIT))
+           :message "You devour the delicious food-like substance."))
+        (true
+         (success :effects ((set-flag! ?self OPENBIT) (set-flag! ?self RMUNGBIT))
+           :message "You tear open the package and devour the delicious food-like substance."))))))
 
 (object @coke
   :description "two liter bottle of Classic Coke"
   :location @refrigerator  ; In ZIL: (IN REFRIGERATOR)
   :flags (TAKEBIT FOODBIT OPENABLE)
-  :properties (:size 5 :heat 0))
+  :properties (:size 5 :heat 0)  ; size: 5=full, 4=partly empty, 3=partly full, 2=nearly empty, 1=empty
+
+  :behaviors (
+    :examine (fn ()
+      (let ((?siz (prop ?self size))
+            (?fullness (cond
+                         ((= ?siz 1) "n empty")
+                         ((= ?siz 2) " nearly empty")
+                         ((= ?siz 3) " partly full")
+                         ((= ?siz 4) " partly empty")
+                         (true " full"))))
+        (success :message (str "This is a" ?fullness " two-liter bottle of "
+                               (if (> ?siz 1) (str (heat-desc ?self) " ") "")
+                               "Classic Coke."))))
+
+    :taste (fn ()
+      (success :message "Tastes like the real thing."))
+
+    :drink (fn ()
+      (let ((?siz (prop ?self size)))
+        (cond
+          ((> ?siz 1)
+           (success :effects ((set-prop! ?self size (- ?siz 1)))
+             :message "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now."))
+          (true
+           (blocked :reason empty :message "The bottle is empty.")))))
+
+    :open (fn ()
+      (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))
+
+    :close (fn ()
+      (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))))
 
 ; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
 

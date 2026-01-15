@@ -399,3 +399,121 @@
     :action (process-events)
     :expect ((prop? @chinese-food heat 22)
              (has-flag? @chinese-food RMUNGBIT))))
+
+; =============================================================================
+; FOOD OBJECT BEHAVIORS
+; =============================================================================
+
+(test-group "chinese food behaviors"
+  :setup ((move! @player @kitchen)
+          (move! @carton @player)
+          (move! @chinese-food @carton))
+
+  (test "can examine chinese food"
+    :action (do @chinese-food :examine)
+    :expect ((outcome? success)))
+
+  (test "can taste chinese food"
+    :action (do @chinese-food :taste)
+    :expect ((outcome? success)))
+
+  (test "can't take food out of carton (spill)"
+    :action (do @chinese-food :take)
+    :expect ((outcome? blocked)
+             (reason? spill)))
+
+  (test "can eat chinese food"
+    :action (do @chinese-food :eat)
+    :expect ((outcome? success)
+             (loc? @chinese-food nil))))
+
+(test-group "carton behaviors"
+  :setup ((move! @player @kitchen)
+          (move! @carton @player)
+          (move! @chinese-food @carton))
+
+  (test "can examine carton"
+    :action (do @carton :examine)
+    :expect ((outcome? success)))
+
+  (test "can read carton symbol"
+    :action (do @carton :read)
+    :expect ((outcome? success)))
+
+  (test "can't eat carton"
+    :action (do @carton :eat)
+    :expect ((outcome? blocked)
+             (reason? inedible))))
+
+(test-group "snack behaviors"
+  :setup ((move! @player @kitchen)
+          (move! @snack @player)
+          (clear-flag! @snack OPENBIT)
+          (clear-flag! @snack RMUNGBIT))
+
+  (test "can examine snack"
+    :action (do @snack :examine)
+    :expect ((outcome? success)))
+
+  (test "can read snack"
+    :action (do @snack :read)
+    :expect ((outcome? success)))
+
+  (test "can open snack"
+    :action (do @snack :open)
+    :expect ((outcome? success)
+             (has-flag? @snack OPENBIT)))
+
+  (test "can eat snack (opens and eats)"
+    :setup ((clear-flag! @snack OPENBIT))
+    :action (do @snack :eat)
+    :expect ((outcome? success)
+             (has-flag? @snack OPENBIT)
+             (has-flag? @snack RMUNGBIT)))
+
+  (test "can't eat empty snack"
+    :setup ((set-flag! @snack RMUNGBIT))
+    :action (do @snack :eat)
+    :expect ((outcome? blocked)
+             (reason? empty)))
+
+  (test "can't eat too hot snack"
+    :setup ((set-flag! @snack OPENBIT)
+            (set-prop! @snack heat 15))
+    :action (do @snack :eat)
+    :expect ((outcome? blocked)
+             (reason? too-hot))))
+
+(test-group "coke behaviors"
+  :setup ((move! @player @kitchen)
+          (move! @coke @player)
+          (set-prop! @coke size 5))
+
+  (test "can examine coke"
+    :action (do @coke :examine)
+    :expect ((outcome? success)))
+
+  (test "can taste coke"
+    :action (do @coke :taste)
+    :expect ((outcome? success)))
+
+  (test "can drink coke"
+    :action (do @coke :drink)
+    :expect ((outcome? success)
+             (prop? @coke size 4)))
+
+  (test "can drink until empty"
+    :setup ((set-prop! @coke size 2))
+    :action (do @coke :drink)
+    :expect ((outcome? success)
+             (prop? @coke size 1)))
+
+  (test "can't drink empty coke"
+    :setup ((set-prop! @coke size 1))
+    :action (do @coke :drink)
+    :expect ((outcome? blocked)
+             (reason? empty)))
+
+  (test "can open/close coke"
+    :action (do @coke :open)
+    :expect ((outcome? success))))
