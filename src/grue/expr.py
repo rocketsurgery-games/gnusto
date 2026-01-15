@@ -1352,11 +1352,13 @@ class ExprEvaluator:
                 i += 1
         return kwargs
 
-    def _parse_context_list(self, expr: SExpr) -> dict[str, Any]:
-        """Parse context in LEGACY format ((key value) (key value) ...).
+    def _parse_context_list(
+        self, expr: SExpr, env: Optional[Environment] = None
+    ) -> dict[str, Any]:
+        """Parse context in format ((key value) (key value) ...).
 
-        Both keys and values are treated as literal identifiers (not evaluated).
-        For variable interpolation, use keyword arguments: (success :key value).
+        Keys are literal identifiers. Values are evaluated if they're expressions
+        (SLists like (str ...) or (if ...)), otherwise treated as literals.
         """
         result: dict[str, Any] = {}
         if isinstance(expr, SList):
@@ -1365,9 +1367,13 @@ class ExprEvaluator:
                     key = item[0]
                     val = item[1]
                     key_str = key.name if isinstance(key, Symbol) else str(key)
-                    # Value is treated as literal (legacy format)
-                    val_str = val.name if isinstance(val, Symbol) else str(val)
-                    result[key_str] = val_str
+                    # Evaluate expressions, keep simple values as literals
+                    if isinstance(val, SList):
+                        result[key_str] = self.eval(val, env)
+                    elif isinstance(val, Symbol):
+                        result[key_str] = val.name
+                    else:
+                        result[key_str] = str(val)
         return result
 
     def _eval_success(self, form: SList, env: Optional[Environment] = None) -> BehaviorSuccess:
@@ -1391,8 +1397,8 @@ class ExprEvaluator:
                 if isinstance(val, SList):
                     effects.extend(val.items)
             elif key == "context":
-                # Legacy format: ((key value) ...) - both key and value are literals
-                context.update(self._parse_context_list(val))
+                # Format: ((key value) ...) - values evaluated if expressions
+                context.update(self._parse_context_list(val, env))
             elif key == "message":
                 # Message should always be evaluated to a string
                 context[key] = self.eval(val, env)

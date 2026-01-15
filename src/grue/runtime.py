@@ -472,16 +472,40 @@ class GrueRuntime:
     # -------------------------------------------------------------------------
 
     def get_room_description(self, room_name: str | None = None) -> str:
-        """Get a room's description. Returns ldesc if available, otherwise description."""
+        """Get a room's description.
+
+        Checks for :describe behavior first (for dynamic descriptions),
+        then falls back to ldesc, then description.
+        """
         if room_name is None:
             room_name = self.get_player_location()
         room = self.world.rooms.get(room_name)
-        if room:
-            # Prefer ldesc (long description) if available
-            if room.ldesc:
-                return room.ldesc
-            return room.description
-        return ""
+        if not room:
+            return ""
+
+        # Check for :describe behavior (dynamic description)
+        describe_behavior = None
+        for b in room.behaviors:
+            if b.verb == "describe":
+                describe_behavior = b
+                break
+
+        if describe_behavior is not None:
+            # Evaluate the :describe behavior
+            bindings = {"self": room_name}
+            entity_scope = self._build_entity_scope(room.nested_forms)
+            result = self._evaluate_behavior(describe_behavior, bindings, entity_scope)
+
+            # Extract description from context
+            if result.context:
+                for key, value in result.context:
+                    if key == "description":
+                        return str(value)
+
+        # Fall back to static description
+        if room.ldesc:
+            return room.ldesc
+        return room.description
 
     def get_object_description(self, obj_name: str) -> str:
         """Get an object's description."""
@@ -657,13 +681,17 @@ class GrueRuntime:
 
         # Handle movement specially - target is a pseudo-object
         if verb == "go":
-            if args:
-                direction = args[0]
-                return self._do_go(direction, actor=actor)
-            return ActionResult(
-                outcome="error",
-                error="go requires a direction"
-            )
+            if not args:
+                return ActionResult(
+                    outcome="error",
+                    error="go requires a direction"
+                )
+            direction = args[0]
+            # Check room's :before-action for movement (verb="go", target=direction)
+            room_result = self._check_room_before_action("go", direction, actor, ())
+            if room_result is not None and room_result.outcome != "default":
+                return room_result
+            return self._do_go(direction, actor=actor)
 
         # Check room's :before-action behavior (if any)
         room_result = self._check_room_before_action(verb, target, actor, args)

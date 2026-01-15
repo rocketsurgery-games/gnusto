@@ -45,6 +45,14 @@ views:
       - name: In Progress
         query: status = in_progress
         color: '#54A0FF'
+  - name: bugs
+    columns:
+      - name: Blocked
+        query: status = open and blocked = true
+        color: '#AABBCC'
+      - name: Ready
+        query: status = open and type = bug and ready = true
+        color: '#AABBCC'
 # View options:
 #   name: Display name for the view (required)
 #   columns: List of columns for this view (required)

@@ -63,11 +63,12 @@
         (true (success))))
 
     ; Block most movement - crowd holds you
-    :before-action (fn (?action)
+    ; :before-action receives (?verb ?target) - for "go", target is the direction
+    :before-action (fn (?verb ?target)
       (cond
-        ((= (action-verb ?action) :go)
+        ((= ?verb "go")
           (cond
-            ((= (action-direction ?action) up)
+            ((= ?target "up")
               (blocked :reason crowd-holds :message "You are prevented, as the crowd holds you back."))
             (true
               (blocked :reason crowd-blocks :message "The crowding is such that you can barely move, much less walk."))))
