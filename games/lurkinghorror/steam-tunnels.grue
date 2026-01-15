@@ -107,7 +107,7 @@
   :behaviors (
     :examine (fn ()
       (cond
-        ((here? @cave-altar)
+        ((= (loc @player) @cave-altar)
           (success :message "The carvings are in a variety of styles. Some are almost like graffiti, and have carved dates as early as 1655 and as recent as last year. Some are creatures, or people, or combinations of the two. Some are obscene, or revolting, or just indescribable. One is a strange incised symbol. Most are at least partly spotted with brown stains."))
         (true
           (blocked :reason too-far :message "You aren't close enough."))))
@@ -548,12 +548,14 @@
   :flags (INVISIBLE)
 
   :behaviors (
-    :through (fn ()
+    ; :through receives ?dest (destination room) and ?from (current room)
+    :through (fn (?dest ?from)
       (cond
-        ((and (in? @rats (loc @player)) (not on-cable))
-          (success :effects ((set! rats-anger (+ rats-anger 1)))
-                   :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past."
-                   :outcome blocked))
+        ; Block if rats are at destination OR current location (unless on cable)
+        ((and (or (in? @rats ?dest) (in? @rats ?from)) (not on-cable))
+          (blocked :reason rats-blocking
+                   :effects ((set! rats-anger (+ rats-anger 1)))
+                   :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past."))
         (true (success))))))
 
 ; Event: rats disperse after steam valve opened for a while

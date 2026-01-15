@@ -1,0 +1,236 @@
+============================================================
+Steam Tunnels Manual Test - 2026-01-14T23:37:37.635050
+============================================================
+
+============================================================
+CAVE AREA TESTS
+============================================================
+
+>>> look (current room: @@brick-tunnel)
+Description: This is an ancient tunnel constructed of roughly mortared bricks and stones. The tunnel continues a long way north and south from here.
+
+>>> (go north)
+  # Go north to cave room
+  Outcome: success
+  Message: moved north
+  Effects: ['@player moved to @cave-room']
+
+>>> look (current room: @@cave-room)
+Description: You are in a huge, cave-like construction. A path leads down to a floor partly covered with rough concrete. The walls and ceiling are high and reinforced with beams of wood, iron, and steel. In the center of the floor you can see a large, flat slab. The only exit is behind you to the south.
+
+>>> (go down)
+  # Go down to cave altar
+  Outcome: success
+  Message: moved down
+  Effects: ['@player moved to @cave-altar']
+
+>>> look (current room: @@cave-altar)
+Description: You are at the bottom of the cave. The huge slab in the center is a sort of altar. It is carved with strange and disturbing symbols, the largest of which looks very familiar. Some of the symbols are obscured by rusty red stains. Nearby is an iron plate set in the concrete of the floor.
+
+>>> (do @knife :examine)
+  # Examine the knife
+  Outcome: success
+
+>>> (do @knife :take)
+  # Take the knife
+  Outcome: success
+  Effects: ['(Symbol(move!) Symbol(?self) Symbol(?actor))']
+
+>>> (do @slab :examine)
+  # Examine the stone slab
+  Outcome: success
+
+>>> (do @slab :touch)
+  # Try to touch the slab (should cause revulsion)
+  Outcome: blocked
+  Reason: revulsion
+    message: An inexplicable revulsion prevents you from touching it.
+
+>>> (do @carvings :examine)
+  # Examine the carvings
+  Outcome: success
+
+>>> (do @iron-plate :examine)
+  # Examine the iron plate
+  Outcome: success
+
+>>> (do @iron-plate :open)
+  # Open the iron plate
+  Outcome: success
+  Effects: ['(Symbol(set-flag!) Symbol(?self) Symbol(OPENBIT))', '(Symbol(queue!) Symbol(panel-noises) -1)']
+--- Object @iron-plate not found ---
+
+>>> (do @iron-plate :look-inside)
+  # Look inside the pit (traumatic!)
+  Outcome: success
+  Effects: ['(Symbol(clear-flag!) Symbol(?self) Symbol(OPENBIT))', '(Symbol(dequeue!) Symbol(panel-noises))', '(Symbol(set!) Symbol(seen-pit) True)']
+
+  Global seen-pit = True
+
+>>> (do @iron-plate :look-inside)
+  # Try to look again (should be blocked)
+  Outcome: blocked
+  Reason: traumatized
+    message: You would sooner die than open that panel again.
+
+>>> (do @iron-plate :open)
+  # Try to open again (should be blocked)
+  Outcome: blocked
+  Reason: traumatized
+    message: You would sooner die than open that panel again.
+
+>>> (go up)
+  # Go back up to cave room
+  Outcome: success
+  Message: moved up
+  Effects: ['@player moved to @cave-room']
+
+>>> look (current room: @@cave-room)
+Description: You are in a huge, cave-like construction. A path leads down to a floor partly covered with rough concrete. The walls and ceiling are high and reinforced with beams of wood, iron, and steel. In the center of the floor you can see a large, flat slab. The only exit is behind you to the south.
+
+============================================================
+STEAM TUNNEL TESTS
+============================================================
+
+>>> look (current room: @@tunnel)
+Description: You have gone from the arctic to the tropics. The concrete tunnel has odd molds and fungi growing on its walls and ceiling, and the floor is squishy. Torn clots of insulation litter the floor. Along the ceiling runs a thick tangle of coaxial cable. The tunnel heads east and west. A rusty metal ladder leads up.
+
+  Global on-cable = False
+
+>>> (do @cable :climb)
+  # Climb onto the cable
+  Outcome: success
+  Effects: ['(Symbol(set!) Symbol(on-cable) True)']
+  Global on-cable = True
+
+>>> (do @cable :climb)
+  # Climb off the cable
+  Outcome: success
+  Effects: ['(Symbol(set!) Symbol(on-cable) False)']
+  Global on-cable = False
+
+>>> (do @access-hatch :examine)
+  # Examine access hatch
+  Outcome: success
+
+>>> (do @access-hatch :open)
+  # Open access hatch
+  Outcome: success
+  Effects: ['(Symbol(set-flag!) Symbol(?self) Symbol(OPENBIT))']
+--- Object @access-hatch not found ---
+
+>>> (do @access-hatch :close)
+  # Close access hatch
+  Outcome: success
+  Effects: ['(Symbol(clear-flag!) Symbol(?self) Symbol(OPENBIT))']
+--- Object @access-hatch not found ---
+
+============================================================
+PRESSURE VALVE / STEAM TESTS
+============================================================
+
+>>> look (current room: @@tunnel-east)
+Description: A thick bundle of coaxial cable runs east to west along the ceiling. There is a pressure release valve on the steam pipe here.
+
+>>> (do @pressure-valve :examine)
+  # Examine pressure valve
+  Outcome: success
+
+>>> (do @pressure-valve :turn)
+  # Turn valve ON
+  Outcome: success
+  Effects: ['(Symbol(set-flag!) Symbol(?self) Symbol(OPENBIT))', '(Symbol(set-flag!) Symbol(@steam-pipes) Symbol(HOT))', '(Symbol(set!) Symbol(valve-turns) (Symbol(+) Symbol(valve-turns) 1))', '(Symbol(queue!) Symbol(rats-go-away) 3)']
+--- Object @pressure-valve not found ---
+--- Object @steam-pipes not found ---
+
+>>> (go east)
+  # Try to go east through steam (should be blocked)
+  Outcome: blocked
+  Reason: scalding
+    message: You would be plunging into scalding steam. Not such a smart idea, if you ask me.
+
+>>> (do @pressure-valve :turn)
+  # Turn valve OFF
+  Outcome: success
+  Effects: ['(Symbol(clear-flag!) Symbol(?self) Symbol(OPENBIT))', '(Symbol(clear-flag!) Symbol(@steam-pipes) Symbol(HOT))', '(Symbol(set!) Symbol(valve-turns) 0)']
+--- Object @pressure-valve not found ---
+--- Object @steam-pipes not found ---
+
+>>> (go east)
+  # Go east with valve closed (should work)
+  Outcome: success
+  Message: moved east
+  Effects: ['@player moved to @tunnel-east (via @steam-barrier)']
+
+>>> look (current room: @@tunnel-east)
+Description: A thick bundle of coaxial cable runs east to west along the ceiling. There is a pressure release valve on the steam pipe here.
+
+============================================================
+BRICK WALL TESTS
+============================================================
+
+>>> look (current room: @@steam-tunnel-east)
+Description: The steam pipe and coaxial cable turn upwards and disappear into the ceiling here. The tunnel itself comes to an end in a grimy, damp, and dripping triad of crumbling brick walls. The south wall looks particularly decrepit.
+
+>>> (do @brick-wall :examine)
+  # Examine brick wall
+  Outcome: success
+  Effects: ['(Symbol(set-flag!) Symbol(?self) Symbol(TOUCHBIT))']
+
+>>> (do @brick-wall :push)
+  # Push through brick wall
+  Outcome: success
+  Effects: ['(Symbol(set!) Symbol(brick-wall-broken) True)', '(Symbol(move!) Symbol(@broken-brick) Symbol(?self))']
+
+  Global brick-wall-broken = True
+
+>>> (go south)
+  # Go south through broken wall
+  Outcome: success
+  Message: moved south
+  Effects: ['@player moved to @elevator-pit (via @brick-wall-barrier)']
+
+>>> look (current room: @@elevator-pit)
+Description: You are in a grimy pit beneath an elevator shaft.
+
+============================================================
+RATS BARRIER TEST
+============================================================
+
+>>> look (current room: @@tunnel)
+Description: You have gone from the arctic to the tropics. The concrete tunnel has odd molds and fungi growing on its walls and ceiling, and the floor is squishy. Torn clots of insulation litter the floor. Along the ceiling runs a thick tangle of coaxial cable. The tunnel heads east and west. A rusty metal ladder leads up.
+
+>>> (go west)
+  # Try to go west through rats (should be blocked)
+  Outcome: blocked
+  Reason: rats-blocking
+    message: You plunge into the mass of rats, but there are too many of them, and you can't force your way past.
+
+>>> (do @cable :climb)
+  # Climb onto cable
+  Outcome: success
+  Effects: ['(Symbol(set!) Symbol(on-cable) True)']
+  Global on-cable = True
+
+>>> (go west)
+  # Try to go west on cable (should pass)
+  Outcome: success
+  Message: moved west
+  Effects: ['@player moved to @tunnel-west (via @rats-barrier)']
+
+>>> look (current room: @@tunnel-west)
+Description: The steam tunnel continues east and west. The coaxial cable runs along the ceiling.
+
+============================================================
+DEAD END (EAST WALL) TEST
+============================================================
+
+>>> (go east)
+  # Try to go east (dead end)
+  Outcome: blocked
+  Reason: dead-end
+    message: The tunnel ends here, in a dank, dripping brick wall.
+
+============================================================
+TEST SESSION COMPLETE
+============================================================

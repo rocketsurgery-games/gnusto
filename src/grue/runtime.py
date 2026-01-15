@@ -942,8 +942,9 @@ class GrueRuntime:
 
         # Check if exit has a :via door
         if via:
-            # Use _do_single to avoid auto-following redirects
-            result = self._do_single(via, "through")
+            # Call barrier's :through behavior with destination info
+            # Bindings: ?dest = destination room, ?from = current room
+            result = self._do_single(via, "through", dest, from_room)
             if result.outcome == "blocked":
                 return result
             if result.outcome == "redirect":
@@ -1090,10 +1091,24 @@ class GrueRuntime:
             )
 
         if isinstance(result, BehaviorBlocked):
+            # Execute effects even when blocked (e.g., tracking failed attempts)
+            effects_applied = []
+            if result.effects:
+                executor = EffectExecutor(self, self._functions)
+                for effect in result.effects:
+                    try:
+                        executor.execute(effect, result.env)
+                        effects_applied.append(str(effect))
+                    except Exception as e:
+                        return ActionResult(
+                            outcome="error",
+                            error=f"Error executing blocked effect: {e}"
+                        )
             return ActionResult(
                 outcome="blocked",
                 reason=result.reason,
-                context=list(result.context.items())
+                context=list(result.context.items()),
+                effects_applied=effects_applied
             )
 
         if isinstance(result, BehaviorRedirect):

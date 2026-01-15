@@ -130,9 +130,15 @@ class BehaviorBlocked:
     Usage in behaviors:
         (blocked :reason locked)
         (blocked :reason no-key :message "The door is locked.")
+        (blocked :reason rats :effects ((set! anger (+ anger 1))))
+
+    Effects may be executed even when an action is blocked (e.g., to track
+    failed attempts).
     """
     reason: str = "unknown"
     context: dict[str, Any] = field(default_factory=dict)
+    effects: list[SExpr] = field(default_factory=list)
+    env: Optional["Environment"] = None
 
 
 @dataclass
@@ -1445,10 +1451,12 @@ class ExprEvaluator:
         Examples:
             (blocked :reason locked)
             (blocked :reason no-key :message "The door is locked.")
+            (blocked :reason rats :effects ((set! anger (+ anger 1))))
         """
         kwargs = self._parse_kwargs(form)
         reason = "unknown"
         context: dict[str, Any] = {}
+        effects: list[SExpr] = []
 
         for key, val in kwargs.items():
             if key == "reason":
@@ -1457,6 +1465,12 @@ class ExprEvaluator:
                     reason = val.name
                 else:
                     reason = str(self.eval(val, env))
+            elif key == "effect":
+                effects.append(val)  # Keep as SExpr for later execution
+            elif key == "effects":
+                # Allow list of effects
+                if isinstance(val, SList):
+                    effects.extend(val.items)
             elif key == "context":
                 # Legacy format - literals only
                 context.update(self._parse_context_list(val))
@@ -1464,7 +1478,8 @@ class ExprEvaluator:
                 # Other context values - evaluate to resolve variables
                 context[key] = self.eval(val, env)
 
-        return BehaviorBlocked(reason=reason, context=context)
+        # Capture current environment for effects to use during execution
+        return BehaviorBlocked(reason=reason, context=context, effects=effects, env=env)
 
     def _eval_redirect(self, form: SList, env: Optional[Environment] = None) -> BehaviorRedirect:
         """(redirect ACTION [:key value ...]) or (redirect :action ACTION) or (redirect :to ROOM)
