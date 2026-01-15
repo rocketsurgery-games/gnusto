@@ -53,6 +53,9 @@ views:
       - name: Ready Bugs
         query: status = open and type = bug and ready = true
         color: '#AABBCC'
+      - name: Closed bugs
+        query: status = closed and type = bug
+        color: '#AABBCC'
   - name: LH
     columns:
       - name: Open
