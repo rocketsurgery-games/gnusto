@@ -347,6 +347,7 @@ class ExprEvaluator:
             "has-flag?": self._eval_has_flag,  # alias
             "loc": self._eval_loc,
             "prop": self._eval_prop,
+            "desc": self._eval_desc,
             "flags": self._eval_flags,
 
             # Convenience predicates
@@ -412,6 +413,7 @@ class ExprEvaluator:
             # Sequence operations (Clojure stdlib)
             "nth": self._eval_nth,
             "list-set": self._eval_list_set,
+            "concat": self._eval_concat,
             "first": self._eval_first,
             "rest": self._eval_rest,
             "count": self._eval_count,
@@ -737,6 +739,18 @@ class ExprEvaluator:
         else:
             prop = self.eval(prop_arg, env)
         return self.state.get_object_property(obj, prop)
+
+    def _eval_desc(self, form: SList, env: Optional[Environment] = None) -> str:
+        """(desc OBJ)
+
+        Returns the :description property of an object.
+        Shorthand for (prop OBJ :description).
+        """
+        if len(form) != 2:
+            raise EvalError(f"'desc' expects 1 argument, got {len(form) - 1}")
+        obj = self.eval(form[1], env)
+        desc = self.state.get_object_property(obj, "description")
+        return desc if desc is not None else ""
 
     def _eval_flags(self, form: SList, env: Optional[Environment] = None) -> set[str]:
         """(flags OBJ)"""
@@ -1852,6 +1866,24 @@ class ExprEvaluator:
                 raise EvalError(f"Index {idx} out of bounds for list of size {len(items)}")
         else:
             raise EvalError(f"'list-set' expects list, got {type(coll).__name__}")
+
+    def _eval_concat(self, form: SList, env: Optional[Environment] = None) -> list:
+        """(concat LIST ...) - concatenate lists.
+
+        Examples:
+            (concat '(1 2) '(3 4)) => [1, 2, 3, 4]
+            (concat '(a b) '(c) '(d e)) => ["a", "b", "c", "d", "e"]
+            (concat) => []
+        """
+        result = []
+        for item in form.items[1:]:
+            coll = self.eval(item, env)
+            if coll is None:
+                continue  # nil is treated as empty list
+            if not isinstance(coll, (list, tuple)):
+                raise EvalError(f"'concat' expects lists, got {type(coll).__name__}")
+            result.extend(coll)
+        return result
 
     def _eval_first(self, form: SList, env: Optional[Environment] = None) -> Any:
         """(first COLL) - get first element, or nil if empty."""

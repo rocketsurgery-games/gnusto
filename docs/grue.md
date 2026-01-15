@@ -937,11 +937,14 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `has-flag` | OBJ FLAG | bool | Does object have flag? |
 | `loc` | OBJ | string | Object's location |
 | `prop` | OBJ PROP | any | Property value (nil if missing) |
+| `desc` | OBJ | string | Object's :description (shorthand for `(prop OBJ :description)`) |
 | `flags` | OBJ | set | All flags on object |
 | `visible?` | OBJ | bool | Is object visible to player? |
 | `held?` | OBJ | bool | Is object in player's inventory? |
 | `here?` | OBJ | bool | Is object in player's room? |
 | `in?` | OBJ CONTAINER | bool | Is object inside container? |
+| `contained-in?` | OBJ CONTAINER | bool | Alias for `in?` |
+| `inside?` | OBJ CONTAINER | bool | Recursive containment check (checks nested containers) |
 | `held-by?` | OBJ ENTITY | bool | Is object held by entity? |
 | `at?` | OBJ ROOM | bool | Is object at room? |
 | `room?` | NAME | bool | Is this a room? |
@@ -974,6 +977,7 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `>=` | A B | bool | Greater or equal |
 | `<=` | A B | bool | Less or equal |
 | `not` | EXPR | bool | Boolean negation |
+| `nil?` | EXPR | bool | Is value nil? |
 
 #### String and List Functions
 
@@ -982,7 +986,11 @@ Standard library functions for working with strings and lists:
 | Function | Arguments | Returns | Description |
 |----------|-----------|---------|-------------|
 | `str` | ARGS... | string | Concatenate arguments into string |
+| `join` | SEP LIST | string | Join list elements with separator |
+| `list` | ARGS... | list | Construct list from arguments |
+| `range` | END or START END [STEP] | list | Generate integer sequence |
 | `nth` | LIST N | any | Get nth element (0-indexed) |
+| `list-set` | LIST N VALUE | list | Return new list with element N replaced |
 | `first` | LIST | any | Get first element |
 | `rest` | LIST | list | Get all but first element |
 | `count` | LIST | number | Get list length |
@@ -1025,6 +1033,7 @@ Effects describe state changes. By convention, their names end with `!`.
 | Effect | Arguments | Description |
 |--------|-----------|-------------|
 | `move!` | OBJ DEST | Move object to destination |
+| `take!` | OBJ | Move object to player's inventory (shorthand for `(move! OBJ @player)`) |
 | `set-flag!` | OBJ FLAG | Add flag to object |
 | `clear-flag!` | OBJ FLAG | Remove flag from object |
 | `set-prop!` | OBJ PROP VAL | Set property on object |
