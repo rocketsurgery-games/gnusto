@@ -105,6 +105,7 @@ class GrueRoom:
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list["GrueBehavior"] = field(default_factory=list)
     nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
+    globals: list[str] = field(default_factory=list)  # Objects visible in this room (via :globals)
 
 
 @dataclass
@@ -586,6 +587,13 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
         room.properties = parse_properties(kwargs["properties"])
     if "behaviors" in kwargs:
         room.behaviors = parse_behaviors(kwargs["behaviors"], world)
+    if "globals" in kwargs:
+        # Parse :globals (@obj1 @obj2 ...) - list of objects visible in this room
+        globals_expr = kwargs["globals"]
+        if isinstance(globals_expr, SList):
+            room.globals = [expect_symbol(item, "globals item") for item in globals_expr]
+        else:
+            raise FormParseError(f"room :globals must be a list, got {type(globals_expr)}")
 
     world.rooms[room.name] = room
 

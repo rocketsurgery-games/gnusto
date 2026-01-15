@@ -44,6 +44,7 @@
   :exits ((se :to @sub-basement :via @tomb-squeeze-barrier)
           (out :to @sub-basement :via @tomb-squeeze-barrier)
           (down :to @tunnel :via @tomb-hatch-barrier))
+  :globals (@graffiti @padlock @access-hatch)
 
   :behaviors (
     :describe (fn ()

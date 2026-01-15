@@ -296,7 +296,10 @@ class GrueRuntime:
         Visible means:
         - Held by player
         - In player's current room
+        - Player is inside the object (e.g., sitting in a chair)
+        - In current room's :globals list
         - In an open container that is visible (recursive)
+        - On a surface (SURFACEBIT) that is visible
         """
         if obj not in self.state.objects:
             return False
@@ -312,12 +315,23 @@ class GrueRuntime:
             return True
         if loc == self.player_name:
             return True
-        if loc == self.get_player_location():
+        player_room = self.get_player_location()
+        # Player is inside this object (e.g., sitting in chair)
+        if player_room == obj:
             return True
-        # Check if in an open container
+        if loc == player_room:
+            return True
+        # Check if object is in current room's :globals list
+        room_def = self.world.rooms.get(player_room)
+        if room_def and obj in room_def.globals:
+            return True
+        # Check if in a container/on a surface
         if loc in self.state.objects:
             container = self.state.objects[loc]
-            # Container must be open and visible
+            # Surface objects (SURFACEBIT) make contents always visible
+            if "SURFACEBIT" in container.flags and self.is_visible(loc):
+                return True
+            # Container objects require OPENBIT to see contents
             if "OPENBIT" in container.flags and self.is_visible(loc):
                 return True
         return False
@@ -722,6 +736,15 @@ class GrueRuntime:
         room_result = self._check_room_before_action(verb, target, actor, args)
         if room_result is not None and room_result.outcome != "default":
             return room_result
+
+        # Check visibility - object must be accessible to the player
+        # Skip check for: player acting on self, :through (barrier checks)
+        if target != actor and verb != "through" and not self.is_visible(target):
+            return ActionResult(
+                outcome="blocked",
+                reason="not-here",
+                context=[("object", target), ("message", "You can't see any such thing.")]
+            )
 
         # Get the object's definition
         obj_def = self.world.objects.get(target)

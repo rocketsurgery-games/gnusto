@@ -161,3 +161,23 @@
   :action (do @urchin-clothes :take)
   :expect ((outcome? blocked)
            (reason? refused)))
+
+; === Visibility Enforcement ===
+; Objects should not be accessible from rooms where they aren't visible
+
+(test "cannot examine slots from terminal-room"
+  :setup ((move! @player @terminal-room))
+  :action (do @slots :examine)
+  :expect ((outcome? blocked)
+           (reason? not-here)))
+
+(test "cannot examine urchin from large-chamber"
+  :setup ((move! @player @large-chamber))
+  :action (do @urchin :examine)
+  :expect ((outcome? blocked)
+           (reason? not-here)))
+
+(test "can examine slots from large-chamber"
+  :setup ((move! @player @large-chamber))
+  :action (do @slots :examine)
+  :expect ((outcome? success)))
