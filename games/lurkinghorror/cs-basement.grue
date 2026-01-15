@@ -32,11 +32,7 @@
   :flags (ONBIT)
   :exits ((down :to @temporary-basement)))
 
-(room @brick-tunnel
-  :description "Brick Tunnel"
-  :ldesc "You are in a cramped brick-lined tunnel. Crude handholds lead up to a manhole."
-  :flags ()  ; Dark!
-  :exits ((up :to @storage-room :via @manhole-passage)))
+; @brick-tunnel is now defined in steam-tunnels.grue
 
 ; === Main Rooms ===
 

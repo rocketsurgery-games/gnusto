@@ -1,0 +1,158 @@
+; Tests for steam tunnels
+
+; === Cave Altar Tests ===
+
+(test-group "cave altar objects"
+  :setup ((move! @player @cave-altar))
+
+  (test "knife can be examined"
+    :action (do @knife :examine)
+    :expect ((outcome? success)
+             (context? message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")))
+
+  (test "knife can be taken"
+    :action (do @knife :take)
+    :expect ((outcome? success)))
+
+  (test "slab revulsion prevents touching"
+    :action (do @slab :touch)
+    :expect ((outcome? blocked)
+             (reason? revulsion)))
+
+  (test "iron plate can be opened"
+    :action (do @iron-plate :open)
+    :expect ((outcome? success)))
+
+  (test "looking in open pit reveals truth"
+    :setup ((set-flag! @iron-plate OPENBIT))
+    :action (do @iron-plate :look-inside)
+    :expect ((outcome? success)
+             (global? seen-pit true))))
+
+(test-group "cave altar after seeing pit"
+  :setup ((move! @player @cave-altar)
+          (set! seen-pit true))
+
+  (test "cannot look in pit after seeing it"
+    :action (do @iron-plate :look-inside)
+    :expect ((outcome? blocked)
+             (reason? traumatized)))
+
+  (test "cannot open pit after seeing it"
+    :action (do @iron-plate :open)
+    :expect ((outcome? blocked)
+             (reason? traumatized))))
+
+; === Steam Valve Tests ===
+
+(test-group "pressure valve"
+  :setup ((move! @player @tunnel-east)
+          (clear-flag! @pressure-valve OPENBIT)
+          (clear-flag! @steam-pipes HOT))
+
+  (test "valve can be turned on"
+    :action (do @pressure-valve :turn)
+    :expect ((outcome? success)
+             (has-flag? @pressure-valve OPENBIT)
+             (has-flag? @steam-pipes HOT)))
+
+  (test "valve can be turned off"
+    :setup ((set-flag! @pressure-valve OPENBIT)
+            (set-flag! @steam-pipes HOT))
+    :action (do @pressure-valve :turn)
+    :expect ((outcome? success)
+             (not (has-flag? @pressure-valve OPENBIT))
+             (not (has-flag? @steam-pipes HOT)))))
+
+(test-group "steam blocking"
+  :setup ((move! @player @tunnel)
+          (set-flag! @pressure-valve OPENBIT)
+          (set-flag! @steam-pipes HOT))
+
+  (test "steam blocks east passage"
+    :action (do @player :go east)
+    :expect ((outcome? blocked)
+             (reason? scalding))))
+
+(test-group "passage when valve closed"
+  :setup ((move! @player @tunnel)
+          (clear-flag! @pressure-valve OPENBIT)
+          (clear-flag! @steam-pipes HOT))
+
+  (test "can pass when valve closed"
+    :action (do @player :go east)
+    :expect ((outcome? success)
+             (loc? @player @tunnel-east))))
+
+; === Brick Wall Tests ===
+
+(test-group "brick wall"
+  :setup ((move! @player @steam-tunnel-east)
+          (set! brick-wall-broken false))
+
+  (test "wall can be pushed through"
+    :action (do @brick-wall :push)
+    :expect ((outcome? success)
+             (global? brick-wall-broken true)))
+
+  (test "wall can be examined"
+    :action (do @brick-wall :examine)
+    :expect ((outcome? success))))
+
+; === Cable Tests ===
+
+(test-group "cable climbing"
+  :setup ((move! @player @tunnel)
+          (set! on-cable false))
+
+  (test "can climb onto cable"
+    :action (do @cable :climb)
+    :expect ((outcome? success)
+             (global? on-cable true)))
+
+  (test "can drop from cable"
+    :setup ((set! on-cable true))
+    :action (do @cable :climb)
+    :expect ((outcome? success)
+             (global? on-cable false))))
+
+; === Access Hatch Tests ===
+
+(test-group "access hatch"
+  :setup ((move! @player @tunnel)
+          (clear-flag! @access-hatch OPENBIT))
+
+  (test "hatch can be opened"
+    :action (do @access-hatch :open)
+    :expect ((outcome? success)
+             (has-flag? @access-hatch OPENBIT)))
+
+  (test "hatch can be closed"
+    :setup ((set-flag! @access-hatch OPENBIT))
+    :action (do @access-hatch :close)
+    :expect ((outcome? success)
+             (not (has-flag? @access-hatch OPENBIT)))))
+
+; === Navigation Tests ===
+
+(test-group "tunnel navigation"
+  :setup ()
+
+  (test "brick tunnel connects north to cave"
+    :setup ((move! @player @brick-tunnel))
+    :action (do @player :go north)
+    :expect ((outcome? success)
+             (loc? @player @cave-room)))
+
+  (test "cave room connects down to altar"
+    :setup ((move! @player @cave-room))
+    :action (do @player :go down)
+    :expect ((outcome? success)
+             (loc? @player @cave-altar)))
+
+  (test "cave altar connects up to cave room"
+    :setup ((move! @player @cave-altar))
+    :action (do @player :go up)
+    :expect ((outcome? success)
+             (loc? @player @cave-room))))
+

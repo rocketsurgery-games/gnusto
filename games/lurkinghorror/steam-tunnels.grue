@@ -1,0 +1,642 @@
+; Steam Tunnels - Underground tunnel network beneath MIT
+;
+; This file covers:
+;   - Brick tunnel (connects to cs-basement via manhole)
+;   - Cave system with altar (sacrificial site)
+;   - Steam tunnel network (leads to elevator pit and tomb)
+;
+; Key puzzles:
+;   - Pressure valve controls steam (must close to pass)
+;   - Rats block passage (distract with food or use cable)
+;   - Brick wall can be broken to reach elevator pit
+;   - Iron plate/pit reveals fate of missing students
+
+; === State Globals ===
+
+(globals
+  :seen-pit false           ; Set after looking in the pit under iron-plate
+  :brick-wall-broken false  ; Set when brick wall is destroyed
+  :rats-anger 0             ; Increments when trying to pass rats
+  :on-cable false           ; True when player is on the cable
+  :valve-turns 0)           ; Counter for turning pressure valve
+
+; === Cave System (north of brick tunnel) ===
+
+(room @cave-room
+  :description "Renovated Cave"
+  :flags ()  ; Dark!
+  :exits
+    ((south :to @brick-tunnel)
+     (down :to @cave-altar))
+  :globals (@slab @carvings)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "You are in a huge, cave-like construction. A path leads down to a floor partly covered with rough concrete. The walls and ceiling are high and reinforced with beams of wood, iron, and steel. In the center of the floor you can see a large, flat slab. The only exit is behind you to the south."))))))
+
+(room @cave-altar
+  :description "Before the Altar"
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @cave-room))
+  :globals (@carvings)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "You are at the bottom of the cave. The huge slab in the center is a sort of altar. It is carved with strange and disturbing symbols, the largest of which looks very familiar. Some of the symbols are obscured by rusty red stains. Nearby is an iron plate set in the concrete of the floor."))))
+
+    :on-enter (fn (?from)
+      (cond
+        ((has-flag @iron-plate OPENBIT)
+          (success :effects ((queue! panel-noises -1))))
+        (true (success))))))
+
+; === Altar Objects ===
+
+(object @slab
+  :location @cave-altar
+  :description "slab of granite"
+  :flags (NDESCBIT SEARCHBIT VEHBIT OPENBIT SURFACEBIT CONTBIT)
+  :properties (:capacity 200)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "The slab is roughly circular, made of indifferently dressed New England granite, and about three feet high."
+             (if (here? @cave-altar)
+               " It is carved all over with odd glyphs, symbols, and strange animal (or part-animal?) figures. The top is covered with a brown stain shading to red at the edges."
+               ""))))
+
+    :touch (fn ()
+      (blocked :reason revulsion
+               :message "An inexplicable revulsion prevents you from touching it."))
+
+    :rub (fn ()
+      (blocked :reason revulsion
+               :message "An inexplicable revulsion prevents you from touching it."))
+
+    :read (fn ()
+      (redirect :action (do @carvings :read)))
+
+    :walk-to (fn ()
+      (cond
+        ((here? @cave-room)
+          (redirect :action (go down)))
+        (true
+          (success :message "You approach the slab warily. It is disquieting to look at."))))))
+
+(object @carving-symbol
+  :location @slab
+  :description "incised symbol"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The symbol appears to be the oldest thing carved on the altar. It is beautifully incised in the rocks. Its age is apparent from its wear and the overlay of newer carvings and scratchings over it. It depicts a strange, tentacled creature with a single great eye."))
+
+    :read (fn ()
+      (redirect :action (do ?self :examine)))))
+
+(object @carvings
+  :location nil  ; Global object
+  :description "carvings"
+  :flags (NDESCBIT READBIT SEARCHBIT OPENBIT CONTBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((here? @cave-altar)
+          (success :message "The carvings are in a variety of styles. Some are almost like graffiti, and have carved dates as early as 1655 and as recent as last year. Some are creatures, or people, or combinations of the two. Some are obscene, or revolting, or just indescribable. One is a strange incised symbol. Most are at least partly spotted with brown stains."))
+        (true
+          (blocked :reason too-far :message "You aren't close enough."))))
+
+    :read (fn ()
+      (redirect :action (do ?self :examine)))
+
+    :rub (fn ()
+      (redirect :action (do @slab :rub)))))
+
+(object @knife
+  :location @cave-altar
+  :description "knife"
+  :fdesc "Lying to one side of the altar stone is a sharp, thin-bladed knife."
+  :flags (TAKEBIT WEAPONBIT TOOLBIT)
+  :properties (:size 5)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used."))
+
+    :sharpen (fn ()
+      (success :message "The blade doesn't look any different after this operation."))))
+
+(object @iron-plate
+  :location @cave-altar
+  :description "iron plate"
+  :flags (AN NDESCBIT CONTBIT TRANSBIT OPENABLE)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "The plate is iron, about two feet square, and "
+             (if (not (has-flag ?self OPENBIT)) "looks like it could be slid " "")
+             "open. A curious feature of the plate is that it has upward projecting dents in it which appear to have been punched from below.")))
+
+    :open (fn ()
+      (cond
+        (seen-pit
+          (blocked :reason traumatized
+                   :message "You would sooner die than open that panel again."))
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT) (queue! panel-noises -1))
+                   :message "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below."))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT) (dequeue! panel-noises))
+                   :message "You close the panel. You no longer hear the noises, much to your relief."))))
+
+    :move (fn ()
+      (redirect :action (do ?self :open)))
+
+    :raise (fn ()
+      (blocked :reason slides :message "It doesn't lift, it slides."))
+
+    :listen (fn ()
+      (cond
+        (seen-pit
+          (blocked :reason traumatized :message "You find yourself unable to do that again."))
+        ((has-flag ?self OPENBIT)
+          (success :message "Disturbing noises issue from the open panel."))
+        (true
+          (success :message "You hear very faint noises through the closed panel."))))
+
+    :look-inside (fn ()
+      (cond
+        (seen-pit
+          (blocked :reason traumatized :message "You would sooner die than open that panel again."))
+        ((has-flag ?self OPENBIT)
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (dequeue! panel-noises)
+                            (set! seen-pit true))
+                   :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students."))
+        (true
+          (blocked :reason closed :message "The panel isn't open."))))))
+
+; Panel noises event - plays while iron-plate is open
+(event panel-noises
+  :location @cave-altar
+  :on-turn (cond
+    ((not (or (here? @cave-altar) (here? @cave-room)))
+      (success :effects ((dequeue! panel-noises))))
+    ((here? @cave-altar)
+      (success :context ((ambient "A low, guttural, groaning and snarling issues from the opening."))))
+    (true
+      (success :context ((ambient "You can still hear faint groans and snarls from the larger cave."))))))
+
+; === Steam Tunnel Network ===
+
+; Update brick-tunnel to connect south to under-alchemy-lab (stub) and north to cave-room
+(room @brick-tunnel
+  :description "Brick Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @storage-room :via @manhole-passage)
+     (north :to @cave-room)
+     (south :to @under-alchemy-lab))
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "This is an ancient tunnel constructed of roughly mortared bricks and stones. "
+               "The tunnel continues a long way north and south from here.")))))
+
+    :on-enter (fn (?from)
+      (cond
+        ((= ?from @storage-room)
+          (success :message "You push your way through cobwebs, damp fungus, and other obstructions."))
+        ((or (= ?from @under-alchemy-lab) (= ?from @cave-room))
+          (success :message "You make your way along the long tunnel."))
+        (true (success))))
+
+    :on-leave (fn (?to)
+      (cond
+        ((or (= ?to @under-alchemy-lab) (= ?to @cave-room))
+          (success :message "You make your way along the long tunnel."))
+        (true (success))))))
+
+; Stub room for alchemy connection
+(room @under-alchemy-lab
+  :description "Under the Alchemy Lab"
+  :ldesc "This is a cramped passage beneath the Alchemy building. The brick tunnel continues north."
+  :flags ()  ; Dark!
+  :exits
+    ((north :to @brick-tunnel)
+     (up :to @alchemy-lab-stub)))
+
+(room @alchemy-lab-stub
+  :description "Alchemy Lab"
+  :ldesc "This is the Alchemy Department laboratory. Stairs lead down."
+  :flags (ONBIT)
+  :exits ((down :to @under-alchemy-lab)))
+
+; === Main Steam Tunnels ===
+
+(room @tunnel
+  :description "Steam Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @tomb :via @access-hatch-barrier)
+     (east :to @tunnel-east :via @steam-barrier)
+     (west :to @tunnel-west :via @rats-barrier))
+  :globals (@cable @steam-pipes @ladder)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str (if (has-flag @steam-pipes HOT)
+                 "Clouds of steam obscure the passageway to the east. "
+                 "")
+               "You have gone from the arctic to the tropics. The concrete tunnel has odd molds and fungi growing on its walls and ceiling, and the floor is squishy. Torn clots of insulation litter the floor. Along the ceiling runs a thick tangle of coaxial cable. The tunnel heads east and west. A rusty metal ladder leads up.")))))
+
+    :on-enter (fn (?from)
+      (cond
+        ((> valve-turns 0)
+          (success :effects ((dequeue! rats-go-away) (queue! rats-event -1))))
+        (true (success))))))
+
+(room @tunnel-west
+  :description "Steam Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((east :to @tunnel :via @rats-barrier)
+     (west :to @tunnel-entrance :via @rats-barrier))
+  :globals (@cable @steam-pipes)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "The steam tunnel continues east and west. The coaxial cable runs along the ceiling."))))))
+
+(room @tunnel-entrance
+  :description "Steam Tunnel Entrance"
+  :flags ()  ; Dark!
+  :exits
+    ((east :to @tunnel-west))
+  :globals (@cable @steam-pipes)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "This is the western end of the steam tunnel network. The tunnel continues east. Cool air flows from that direction."))))))
+
+(room @tunnel-east
+  :description "Steam Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((west :to @tunnel :via @rats-barrier)
+     (east :to @steam-tunnel))
+  :globals (@cable @steam-pipes @pressure-valve)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "A thick bundle of coaxial cable runs east to west along the ceiling. There is a pressure release valve on the steam pipe here."
+               (if (has-flag @pressure-valve OPENBIT) " The valve is wide open." ""))))))))
+
+(room @steam-tunnel
+  :description "Steam Tunnel"
+  :ldesc "The steam tunnel is narrow here, and its construction is more archaic. It's now mostly brick, although the floor is concrete. The steam pipe and coaxial cable continue along their appointed paths. The tunnel is damp and even a little muddy."
+  :flags ()  ; Dark!
+  :exits
+    ((west :to @tunnel-east :via @rats-barrier)
+     (east :to @steam-tunnel-east))
+  :globals (@cable @steam-pipes))
+
+(room @steam-tunnel-east
+  :description "Steam Tunnel"
+  :flags ()  ; Dark!
+  :exits
+    ((west :to @steam-tunnel :via @rats-barrier)
+     (south :to @elevator-pit :via @brick-wall-barrier))
+  :globals (@cable @steam-pipes @brick-wall)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "The steam pipe and coaxial cable turn upwards and disappear into the ceiling here. The tunnel itself comes to an end in a grimy, damp, and dripping triad of crumbling brick walls."
+               (if (and (not brick-wall-broken) (not (has-flag @brick-wall TOUCHBIT)))
+                 " The south wall looks particularly decrepit."
+                 ""))))))
+
+    :before-action (fn (?verb ?target)
+      (cond
+        ((and (= ?verb "go") (= ?target "east"))
+          (blocked :reason dead-end
+                   :message "The tunnel ends here, in a dank, dripping brick wall."))
+        (true (default))))))
+
+; Stub for tomb connection
+(room @tomb
+  :description "Tomb"
+  :ldesc "This is an ancient crypt. An access hatch in the floor leads down."
+  :flags ()  ; Dark!
+  :exits ((down :to @tunnel :via @access-hatch-barrier)))
+
+; Stub for elevator pit
+(room @elevator-pit
+  :description "Elevator Pit"
+  :ldesc "You are in a grimy pit beneath an elevator shaft."
+  :flags ()  ; Dark!
+  :exits ((north :to @steam-tunnel-east)))
+
+; === Steam Tunnel Objects ===
+
+(object @cable
+  :location nil  ; Global object
+  :description "coaxial cable"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "A thick bundle of coaxial cables runs along the ceiling. It looks sturdy enough to support your weight."))
+
+    :climb (fn ()
+      (cond
+        (on-cable
+          (success :effects ((set! on-cable false))
+                   :message "You drop from the cable to the floor."))
+        (true
+          (success :effects ((set! on-cable true))
+                   :message "You grab the cable bundle and pull yourself up, dangling above the floor."))))
+
+    :swing (fn ()
+      (cond
+        ((not on-cable)
+          (blocked :reason not-on :message "You're not on the cable."))
+        (true
+          (success :message "You swing along the cable. Not particularly useful at the moment."))))))
+
+(object @steam-pipes
+  :location nil  ; Global object
+  :description "steam pipes"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "Thick, insulated steam pipes run through the tunnel. "
+             (if (has-flag ?self HOT)
+               "They're hissing and radiating intense heat."
+               "They're warm to the touch."))))))
+
+(object @ladder
+  :location @tunnel
+  :description "rusty ladder"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "A rusty metal ladder is bolted to the wall, leading up to an access hatch."))
+
+    :climb (fn ()
+      (redirect :action (go up)))))
+
+(object @access-hatch-barrier
+  :location @tunnel
+  :description "access hatch"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((not (has-flag @access-hatch OPENBIT))
+          (blocked :reason closed :message "The access hatch is closed."))
+        (true (success))))))
+
+(object @access-hatch
+  :location @tunnel
+  :description "access hatch"
+  :flags (NDESCBIT OPENABLE)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "A metal hatch in the ceiling. It is "
+             (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (success :effects ((set-flag! ?self OPENBIT))
+                   :message "With some effort, you push open the heavy hatch."))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success :effects ((clear-flag! ?self OPENBIT))
+                   :message "You pull the hatch closed."))))))
+
+; === Pressure Valve ===
+
+(object @pressure-valve
+  :location @tunnel-east
+  :description "pressure valve"
+  :flags (NDESCBIT)
+  :properties (:turns 0)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "A large pressure release valve on the steam pipe. It has a wheel handle. "
+             (if (has-flag ?self OPENBIT)
+               "The valve is wide open, releasing clouds of scalding steam."
+               "The valve is closed."))))
+
+    :turn (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          ; Closing the valve
+          (success :effects ((clear-flag! ?self OPENBIT)
+                            (clear-flag! @steam-pipes HOT)
+                            (set! valve-turns 0))
+                   :message "You turn the valve closed. The steam dissipates, and the passage east clears."))
+        (true
+          ; Opening the valve
+          (success :effects ((set-flag! ?self OPENBIT)
+                            (set-flag! @steam-pipes HOT)
+                            (set! valve-turns (+ valve-turns 1))
+                            (queue! rats-go-away 3))
+                   :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east."))))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (redirect :action (do ?self :turn)))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (redirect :action (do ?self :turn)))))))
+
+; Steam barrier - blocks east passage when valve is open
+(object @steam-barrier
+  :location @tunnel
+  :description "steam"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((has-flag @pressure-valve OPENBIT)
+          (blocked :reason scalding
+                   :message "You would be plunging into scalding steam. Not such a smart idea, if you ask me."))
+        (true (success))))))
+
+; === Rats ===
+
+(object @rats
+  :location @tunnel-west  ; Start location
+  :description "rats"
+  :flags (NDESCBIT ATTACKBIT)
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((in? ?self (loc @player))
+          (success :context ((description "A mass of large, hungry-looking rats fills the tunnel."))))
+        (true (success))))
+
+    :examine (fn ()
+      (success :message "Hundreds of large, dark rats mill about, their eyes glittering in the light. They look hungry and aggressive."))
+
+    :attack (fn ()
+      (blocked :reason too-many
+               :message "There are too many of them. You'd be overwhelmed."))
+
+    :give (fn (?item)
+      (cond
+        ((has-flag ?item FOODBIT)
+          (success :effects ((move! ?item nil))
+                   :message (str "A small contingent of rats falls greedily upon the " (name ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however.")))
+        (true
+          (blocked :reason not-interested :message "The rats aren't interested in that."))))))
+
+; Rats barrier - blocks passage when rats are present
+(object @rats-barrier
+  :location nil  ; Used in multiple rooms
+  :description "rats"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((and (in? @rats (loc @player)) (not on-cable))
+          (success :effects ((set! rats-anger (+ rats-anger 1)))
+                   :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past."
+                   :outcome blocked))
+        (true (success))))))
+
+; Event: rats disperse after steam valve opened for a while
+(event rats-go-away
+  :on-turn
+    (cond
+      ((not (has-flag @pressure-valve OPENBIT))
+        (success :effects ((dequeue! rats-go-away))))
+      (true
+        (success :effects ((move! @rats nil) (dequeue! rats-go-away))
+                 :context ((description "You hear squealing in the distance. The rats seem to have fled."))))))
+
+; Recurring rats event
+(event rats-event
+  :on-turn
+    (cond
+      ((not (in? @rats (loc @player)))
+        (success))
+      (true
+        (success :context ((ambient "The rats mill about, squeaking and fighting among themselves."))))))
+
+; === Brick Wall ===
+
+(object @brick-wall
+  :location @steam-tunnel-east
+  :description "brick wall"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (cond
+        (brick-wall-broken
+          (success :message "The south wall has been broken through, revealing a passage beyond."))
+        (true
+          (success :effects ((set-flag! ?self TOUCHBIT))
+                   :message "The south wall is made of crumbling old bricks. Some look loose."))))
+
+    :attack (fn ()
+      (cond
+        (brick-wall-broken
+          (blocked :reason already-broken :message "There's already a hole in the wall."))
+        (true
+          (success :effects ((set! brick-wall-broken true) (move! @broken-brick ?self))
+                   :message "You smash through the decrepit brickwork, revealing a dark opening beyond."))))
+
+    :push (fn ()
+      (cond
+        (brick-wall-broken
+          (blocked :reason already-broken :message "There's already a hole in the wall."))
+        (true
+          (success :effects ((set! brick-wall-broken true) (move! @broken-brick ?self))
+                   :message "The wall crumbles easily under your push, revealing a dark passage beyond."))))
+
+    :kick (fn ()
+      (redirect :action (do ?self :attack)))))
+
+(object @brick-wall-barrier
+  :location @steam-tunnel-east
+  :description "brick wall"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((not brick-wall-broken)
+          (blocked :reason solid :message "You are trying to walk through a brick wall."))
+        (true (success))))))
+
+(object @broken-brick
+  :location nil  ; Appears when wall is broken
+  :description "broken brick"
+  :flags (NDESCBIT TAKEBIT WEAPONBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "A chunk of broken brick from the wall."))))
+
+(object @new-brick
+  :location nil  ; May appear in different contexts
+  :description "new brick"
+  :flags (NDESCBIT TAKEBIT WEAPONBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "This brick looks newer and more recent than the others. It must have been used to patch the wall."))))
+
