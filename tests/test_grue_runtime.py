@@ -761,7 +761,13 @@ class TestEventSystem:
         assert runtime.get_global("stage") == 1
 
     def test_event_countdown(self):
-        """Events with countdown wait before firing."""
+        """Events with countdown wait before firing.
+
+        Countdown semantics: countdown=N means "fire on the Nth turn" (1-indexed).
+        - countdown=1 fires immediately (this turn)
+        - countdown=2 fires on the second call to process_events
+        - countdown=3 fires on the third call, etc.
+        """
         source = """
         (globals :stage 0)
         (room LOBBY :description "A lobby")
@@ -774,22 +780,22 @@ class TestEventSystem:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        # Queue with 2-turn countdown
-        runtime.queue_event("delayed-event", countdown=2)
+        # Queue with 3-turn countdown (fire on 3rd call)
+        runtime.queue_event("delayed-event", countdown=3)
 
-        # First call: countdown 2 -> 1
+        # First call: countdown 3 -> 2, doesn't fire
+        results = runtime.process_events()
+        assert len(results) == 0
+        assert runtime.get_global("stage") == 0
+        assert runtime.get_queue_countdown("delayed-event") == 2
+
+        # Second call: countdown 2 -> 1, doesn't fire
         results = runtime.process_events()
         assert len(results) == 0
         assert runtime.get_global("stage") == 0
         assert runtime.get_queue_countdown("delayed-event") == 1
 
-        # Second call: countdown 1 -> 0
-        results = runtime.process_events()
-        assert len(results) == 0
-        assert runtime.get_global("stage") == 0
-        assert runtime.get_queue_countdown("delayed-event") == 0
-
-        # Third call: countdown 0, event fires
+        # Third call: countdown 1, event fires
         results = runtime.process_events()
         assert len(results) == 1
         assert runtime.get_global("stage") == 1

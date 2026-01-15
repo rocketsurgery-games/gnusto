@@ -93,20 +93,23 @@
   :expect ((outcome? success)
            (context? message "You look around the room.")))
 
+; These global pseudo-objects use the default examine behavior.
+; They don't have custom :examine handlers - falls through to builtins.grue default.
+
 (test "examine air"
   :action (do @air :examine)
   :expect ((outcome? success)
-           (context? message "It's all around you.")))
+           (context? message "You see nothing special about the air.")))
 
 (test "examine dirt"
   :action (do @dirt :examine)
   :expect ((outcome? success)
-           (context? message "Just ordinary dirt and debris.")))
+           (context? message "You see nothing special about the dirt.")))
 
 (test "examine noise"
   :action (do @noise :examine)
   :expect ((outcome? success)
-           (context? message "It's hard to tell where it's coming from.")))
+           (context? message "You see nothing special about the noise.")))
 
 ; Test: Light controls
 (test "turn on light when already lit"

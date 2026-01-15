@@ -242,21 +242,29 @@ class TestPart3Basement:
         # Traverse to inf-5, waiting for waxer when blocked
         for _ in range(4):
             result = game.do("_movement", "go", "east")
-            if result.outcome == "blocked" and result.reason == "waxer-blocking":
-                # Wait for waxer to patrol away (it moves every 5 turns)
-                for _ in range(6):
+            # Wait until we can move (waxer patrol timing varies)
+            for _ in range(20):  # Max wait to avoid infinite loop
+                if result.outcome == "success":
+                    break
+                if result.outcome == "blocked" and result.reason == "waxer-blocking":
                     game.process_events()
-                result = game.do("_movement", "go", "east")
+                    result = game.do("_movement", "go", "east")
+                else:
+                    break  # Different kind of block, stop retrying
             assert result.outcome == "success", f"Failed at {game.get_player_location()}"
 
         assert game.get_player_location() == "@inf-5"
 
         # Go to chemistry building (may need to wait for waxer to leave)
         result = game.do("_movement", "go", "south")
-        if result.outcome == "blocked" and result.reason == "waxer-blocking":
-            for _ in range(6):
+        for _ in range(20):
+            if result.outcome == "success":
+                break
+            if result.outcome == "blocked" and result.reason == "waxer-blocking":
                 game.process_events()
-            result = game.do("_movement", "go", "south")
+                result = game.do("_movement", "go", "south")
+            else:
+                break
         assert result.outcome == "success"
         assert game.get_player_location() == "@chemistry-bldg"
 
@@ -264,9 +272,95 @@ class TestPart3Basement:
 class TestPart4Chemistry:
     """Part 4: Chemistry Lab & The Ceremony.
 
-    Blocked by infinite corridor traversal issues.
+    1. Knock on door to meet professor
+    2. Show suicide note to gain access to lab
+    3. Survive the ritual by escaping through trapdoor
+    4. Get the flask
     """
-    pass  # TODO: Implement after frotzlm-68x fixed
+
+    def _navigate_to_chemistry(self, game):
+        """Navigate from terminal room to chemistry building."""
+        game.do("_movement", "go", "south")  # cs-2nd
+        game.do("_movement", "go", "down")   # comp-center
+        game.do("_movement", "go", "down")   # cs-basement
+        game.do("_movement", "go", "west")   # aero-basement
+        game.do("_movement", "go", "west")   # aero-stairs
+        game.do("_movement", "go", "up")     # aero-lobby
+        game.do("_movement", "go", "south")  # inf-1
+
+        # Traverse infinite corridor, waiting for waxer if needed
+        for _ in range(4):
+            result = game.do("_movement", "go", "east")
+            for _ in range(20):
+                if result.outcome == "success":
+                    break
+                if result.outcome == "blocked" and result.reason == "waxer-blocking":
+                    game.process_events()
+                    result = game.do("_movement", "go", "east")
+                else:
+                    break
+
+        # South to chemistry building
+        result = game.do("_movement", "go", "south")
+        for _ in range(20):
+            if result.outcome == "success":
+                break
+            if result.outcome == "blocked" and result.reason == "waxer-blocking":
+                game.process_events()
+                result = game.do("_movement", "go", "south")
+            else:
+                break
+
+    def test_can_knock_on_alchemy_door(self, game):
+        """Can knock on the alchemy department door."""
+        self._navigate_to_chemistry(game)
+        assert game.get_player_location() == "@chemistry-bldg"
+
+        result = game.do("@alchemy-door", "knock")
+        assert result.outcome == "success"
+
+        # Wait for professor to answer (3 turns)
+        for _ in range(4):
+            game.process_events()
+
+        # Should now be in alchemy-dept with professor
+        assert game.get_player_location() == "@alchemy-dept"
+        assert "@professor" in game.get_visible_objects()
+
+    def test_professor_blocks_lab_without_note(self, game):
+        """Professor blocks entry to lab without showing the note."""
+        self._navigate_to_chemistry(game)
+
+        # Knock and enter
+        game.do("@alchemy-door", "knock")
+        for _ in range(4):
+            game.process_events()
+
+        # Try to go south to lab - should be blocked
+        result = game.do("_movement", "go", "south")
+        assert result.outcome == "blocked"
+        assert result.reason == "professor-blocks"
+
+    def test_can_show_note_to_professor(self, game):
+        """Can show the suicide note to the professor."""
+        self._navigate_to_chemistry(game)
+
+        # Give player the note (in real game, this comes from PC)
+        game.move_object("@note", "@player")
+
+        # Knock and enter
+        game.do("@alchemy-door", "knock")
+        for _ in range(4):
+            game.process_events()
+
+        # Show note to professor
+        result = game.do("@professor", "show", "@note")
+        assert result.outcome == "success"
+
+        # Professor should now allow lab entry
+        result = game.do("_movement", "go", "south")
+        assert result.outcome == "success"
+        assert game.get_player_location() == "@alchemy-lab"
 
 
 class TestPart5Hand:
