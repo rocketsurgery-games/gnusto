@@ -307,6 +307,9 @@ class GrueRuntime:
         loc = obj_state.location
         if loc is None:
             return False
+        # Global objects are always visible
+        if loc == "@global":
+            return True
         if loc == self.player_name:
             return True
         if loc == self.get_player_location():

@@ -1,0 +1,262 @@
+; === Global Objects ===
+; These objects are always accessible regardless of location.
+; From globals.zil - The Lurking Horror
+
+; ============================================================
+; PLAYER BODY PARTS
+; ============================================================
+
+(object @hands
+  :description "your hands"
+  :location @global  ; Always accessible
+  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "They're still attached to your wrists."))
+    :default (fn (?verb)
+      (cond
+        ((= ?verb :rub)
+          (success :message "You rub your hands together for warmth."))
+        (true (default))))))
+
+(object @feet
+  :description "your feet"
+  :location @global
+  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "They're at the ends of your legs, as usual."))))
+
+(object @head
+  :description "your head"
+  :location @global
+  :flags (NOABIT NOTHEBIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's on your shoulders."))))
+
+(object @eyes
+  :description "your eyes"
+  :location @global
+  :flags (NOABIT NOTHEBIT)
+  :behaviors (
+    :open (fn ()
+      (success :message "They are."))
+    :close (fn ()
+      (success :message "That won't help."))))
+
+(object @me
+  :description "yourself"
+  :location @global
+  :flags (PERSON TOUCHBIT NOABIT NOTHEBIT)
+  :behaviors (
+    :examine (fn ()
+      ; TODO: V-DIAGNOSE - show status/health
+      (success :message "You look tired but determined."))
+    :listen (fn ()
+      (success :message "Yes?"))
+    :wake (fn ()
+      (success :message "You already are."))
+    :follow (fn ()
+      (success :message "You're getting ahead of yourself."))
+    :look-behind (fn ()
+      (cond
+        ((< (random 100) 80)
+          (success :message "You look back over your shoulder. There's nothing there."))
+        ((< (random 100) 80)
+          (success :message "You look back over your shoulder. Was that a flicker of movement in the distance?"))
+        (true
+          (success :message "You look back over your shoulder. You see something duck back into the shadows."))))))
+
+; ============================================================
+; ENVIRONMENTAL GLOBALS
+; ============================================================
+
+(object @light
+  :description "light"
+  :location @global
+  :flags ()
+  :behaviors (
+    :turn-on (fn ()
+      (cond
+        (lit
+          (success :message "It's already light."))
+        (true
+          (blocked :reason no-source :message "You need a light source!"))))
+    :turn-off (fn ()
+      (blocked :reason waste :message "That would be a waste of time."))))
+
+(object @ceiling
+  :description "ceiling"
+  :location @global
+  :flags (NDESCBIT TOUCHBIT)
+  :behaviors (
+    :look-under (fn ()
+      ; In ZIL this redirects to V-LOOK; we just return success since look is special
+      (success :message "You look around the room."))))
+
+(object @air
+  :description "air"
+  :location @global
+  :flags (NOABIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's all around you."))))
+
+(object @ground
+  :description "floor"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's still there."))
+    :look-under (fn ()
+      (success :message "You never did master X-rays. Freshman physics was such a drag."))
+    :climb (fn ()
+      (blocked :reason waste :message "That would be a waste of time."))))
+
+(object @dirt
+  :description "dirt"
+  :location @global
+  :flags (NOABIT)
+  :behaviors (
+    :examine (fn ()
+      (success :message "Just ordinary dirt and debris."))))
+
+(object @corridor
+  :description "passage"
+  :location @global
+  :flags ()
+  :behaviors (
+    :through (fn ()
+      ; V-WALK-AROUND in ZIL
+      (success :message "Walking around reveals nothing new. To move elsewhere, just type the desired direction."))
+    :walk-to (fn ()
+      (success :message "Walking around reveals nothing new. To move elsewhere, just type the desired direction."))))
+
+(object @noise
+  :description "noise"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's hard to tell where it's coming from."))
+    :listen (fn ()
+      (success :message "You listen carefully."))))
+
+(object @snow
+  :description "snow"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((room-has-flag? OUTSIDE)
+          (success :message "It's still coming down."))
+        (true
+          (success :message "You are inside."))))))
+
+; ============================================================
+; WALLS
+; ============================================================
+
+(object @wall
+  :description "wall"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It looks like a wall."))
+    :push (fn ()
+      (blocked :reason solid :message "You can't pull down a wall that easily."))
+    :pull (fn ()
+      (blocked :reason solid :message "You can't pull down a wall that easily."))))
+
+(object @north-wall
+  :description "north wall"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It looks like a wall."))
+    :default (fn (?verb)
+      (redirect :action (do @wall ?verb)))))
+
+(object @south-wall
+  :description "south wall"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It looks like a wall."))
+    :default (fn (?verb)
+      (redirect :action (do @wall ?verb)))))
+
+(object @east-wall
+  :description "east wall"
+  :location @global
+  :flags (AN)
+  :behaviors (
+    :examine (fn ()
+      (success :message "It looks like a wall."))
+    :default (fn (?verb)
+      (redirect :action (do @wall ?verb)))))
+
+(object @west-wall
+  :description "west wall"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      (success :message "It looks like a wall."))
+    :default (fn (?verb)
+      (redirect :action (do @wall ?verb)))))
+
+; ============================================================
+; ROOM / LOCATION REFERENCE
+; ============================================================
+
+(object @global-room
+  :description "room"
+  :location @global
+  :flags ()
+  :behaviors (
+    :examine (fn ()
+      ; In ZIL this redirects to V-LOOK
+      (success :message "You look around the room."))
+    :look-inside (fn ()
+      (success :message "You look around the room."))
+    :leave (fn ()
+      ; Would need movement redirect - not supported yet
+      (blocked :reason need-direction :message "Which way do you want to go?"))
+    :exit (fn ()
+      (blocked :reason need-direction :message "Which way do you want to go?"))
+    :turn-on (fn ()
+      ; "turn on room" -> "turn on light"
+      (redirect :action (do @light :turn-on)))))
+
+(object @global-hole
+  :description "hole"
+  :location @global
+  :flags (NDESCBIT TOUCHBIT)
+  :behaviors (
+    :reach-in (fn ()
+      (success :message "You find nothing of interest."))))
+
+; ============================================================
+; SLEEP
+; ============================================================
+
+(object @global-sleep
+  :description "sleep"
+  :location @global
+  :flags (NOABIT NOTHEBIT)
+  :behaviors (
+    :take (fn ()
+      ; "take sleep" -> "sleep"
+      (redirect :action (sleep)))
+    :walk-to (fn ()
+      ; "go to sleep" -> "sleep"
+      (redirect :action (sleep)))
+    :find (fn ()
+      (success :message "Sleep anywhere."))))
