@@ -98,9 +98,8 @@
   :exits
     ((west :to @smith-st)
      (east :to @smith-st-2 :via @snow-drifts-east)  ; blocked by snow
-     ; TODO: (south :to @temporary-lab)
-     ; TODO: (in :to @temporary-lab)
-     )
+     (south :to @temporary-lab)
+     (in :to @temporary-lab))
 
   :behaviors (
     :on-enter (fn (?from-room)

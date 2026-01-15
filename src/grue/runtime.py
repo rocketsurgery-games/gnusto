@@ -336,6 +336,9 @@ class GrueRuntime:
             # Surface objects (SURFACEBIT) make contents always visible
             if "SURFACEBIT" in container.flags and self.is_visible(loc):
                 return True
+            # Transparent containers (TRANSBIT) make contents visible even when closed
+            if "TRANSBIT" in container.flags and self.is_visible(loc):
+                return True
             # Container objects require OPENBIT to see contents
             if "OPENBIT" in container.flags and self.is_visible(loc):
                 return True
@@ -435,12 +438,15 @@ class GrueRuntime:
             if event_def.location is not None and event_def.location != player_loc:
                 continue
 
-            # Decrement countdown if present
+            # Decrement countdown if present and check if ready to fire
             countdown = self.state.queues.get(event_name)
             if countdown is not None and countdown > 0:
-                # Not ready to fire yet
-                self.state.queues[event_name] = countdown - 1
-                continue
+                countdown -= 1
+                self.state.queues[event_name] = countdown
+                if countdown > 0:
+                    # Not ready to fire yet
+                    continue
+                # countdown just reached 0, fall through to fire
 
             # Fire the event
             result = self._evaluate_event(event_def)

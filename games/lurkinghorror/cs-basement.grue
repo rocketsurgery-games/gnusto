@@ -29,9 +29,21 @@
 
 (room @temporary-lab
   :description "Temporary Lab"
-  :ldesc "This is a cramped laboratory in a temporary building. Stairs lead down."
+  :ldesc "This is a laboratory of some sort. It takes up most of the building on this level, all the interior walls having been knocked down. (One reason these temporary buildings are still here is their flexibility: no one cares if they get more or less destroyed.) A stairway leads down, and a door leads north."
   :flags (ONBIT)
-  :exits ((down :to @temporary-basement)))
+  :exits ((down :to @temporary-basement)
+          (north :to @smith-st-2)
+          (out :to @smith-st-2))
+  :globals (@outside-door)
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (cond
+        ; Coming from outside - stop freezing
+        ((has-flag ?from OUTSIDE)
+          (success :effects ((dequeue! freezing) (set! freeze-count 0))
+                   :message "You push your way into the comparative warmth of a laboratory."))
+        (true (success))))))
 
 ; @brick-tunnel is now defined in steam-tunnels.grue
 
@@ -359,4 +371,146 @@
 
     :swim (fn ()
       (blocked :reason shallow :message "You're already in it. It covers most of the floor!"))))
+
+; === Flask and Liquid Nitrogen ===
+; The flask is a dewar containing liquid nitrogen, used to freeze the curtain
+; in the lair or pour on other objects.
+
+(globals
+  :nitrogen-cnt 5)  ; Countdown timer for nitrogen evaporation
+
+(object @flask
+  :location @temporary-lab
+  :description "metal flask"
+  :flags (TAKEBIT CONTBIT SEARCHBIT OPENABLE TRANSBIT)
+  :properties (:size 50 :capacity 9)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "This is a large metal flask, about the size of a water cooler bottle. "
+             (if (has-flag ?self OPENBIT)
+               (str "The flask is open"
+                    (if (in? @nitrogen ?self) ", and a thin, cold mist flows out of it" "")
+                    ".")
+               "The flask is closed."))))
+
+    :rub (fn ()
+      (success :message
+        (str "The metal of the flask is "
+             (if (in? @nitrogen ?self) "very " "")
+             "cold.")))
+
+    :open (fn ()
+      (cond
+        ((has-flag ?self OPENBIT)
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (success
+            :effects ((set-flag! ?self OPENBIT)
+                      (when (in? @nitrogen ?self)
+                        (seq (move! @mist (loc @player))
+                             (queue! nitrogen-evaporates 3))))
+            :message
+              (str "You open the flask"
+                   (if (in? @nitrogen ?self)
+                     ", and a cold, white mist boils out"
+                     "")
+                   ".")))))
+
+    :close (fn ()
+      (cond
+        ((not (has-flag ?self OPENBIT))
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success
+            :effects ((clear-flag! ?self OPENBIT)
+                      (dequeue! nitrogen-evaporates)
+                      (queue! mist-dissipates 2))
+            :message "You screw the flask closed."))))
+
+    :pour (fn ()
+      (cond
+        ((in? @nitrogen ?self)
+          (redirect :action (do @nitrogen :pour)))
+        (true
+          (blocked :reason empty :message "There's nothing in it to pour."))))))
+
+(object @nitrogen
+  :location @flask
+  :description "cold liquid"
+  :flags (TAKEBIT WEAPONBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The flask contains a clear, cold liquid with a thin white mist boiling off of it."))
+
+    :take (fn ()
+      (blocked :reason dangerous :message "The liquid is extremely cold. In fact, you burn your finger on it."))
+
+    :rub (fn ()
+      (blocked :reason dangerous :message "The liquid is extremely cold. In fact, you burn your finger on it."))
+
+    :smell (fn ()
+      (success :message "The liquid has no smell."))
+
+    :pour (fn (?target)
+      (success
+        :effects ((move! @nitrogen nil)
+                  (dequeue! nitrogen-evaporates)
+                  (queue! mist-dissipates 2))
+        :message
+          (str "The freezing liquid pours out"
+               (if ?target (str " onto the " (desc ?target)) "")
+               ", boiling into cold mist almost immediately.")))))
+
+(object @mist
+  :location nil  ; Created when flask is opened
+  :description "mist"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "The mist is boiling up "
+             (if (in? @nitrogen @flask)
+               "out of the flask"
+               "off of the ground")
+             ". It is thin, white, and cold.")))
+
+    :rub (fn ()
+      (success :message "The mist is very cold."))
+
+    :smell (fn ()
+      (success :message "The mist is odorless."))))
+
+; Nitrogen evaporates over time when flask is open
+(event nitrogen-evaporates
+  :on-turn
+    (cond
+      ((not (in? @nitrogen @flask))
+        (success :effects ((dequeue! nitrogen-evaporates))))
+      (true
+        (success
+          :effects ((set! nitrogen-cnt (- nitrogen-cnt 1))
+                    (if (<= nitrogen-cnt 0)
+                      (do (move! @nitrogen nil)
+                          (dequeue! nitrogen-evaporates)
+                          (queue! mist-dissipates 2))
+                      (queue! nitrogen-evaporates 3)))
+          :message (if (and (> nitrogen-cnt 0) (= (loc @flask) (loc @player)))
+                     "Cold white mist continues to boil out of the flask."
+                     nil)))))
+
+; Mist dissipates after source is removed
+(event mist-dissipates
+  :on-turn
+    (cond
+      ((queued? nitrogen-evaporates)
+        (success :effects ((dequeue! mist-dissipates))))  ; Still has source
+      (true
+        (let ((here? (= (loc @mist) (loc @player))))
+          (success
+            :effects ((move! @mist nil) (dequeue! mist-dissipates))
+            :message (if here? "The mist dissipates." nil))))))
 

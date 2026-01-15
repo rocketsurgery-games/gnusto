@@ -203,7 +203,7 @@
 
 ; === Steam Tunnel Network ===
 
-; Update brick-tunnel to connect south to under-alchemy-lab (stub) and north to cave-room
+; Brick tunnel connects to @under-alchemy-lab (defined in alchemy.grue)
 (room @brick-tunnel
   :description "Brick Tunnel"
   :flags ()  ; Dark!
@@ -232,21 +232,6 @@
         ((or (= ?to @under-alchemy-lab) (= ?to @cave-room))
           (success :message "You make your way along the long tunnel."))
         (true (success))))))
-
-; Stub room for alchemy connection
-(room @under-alchemy-lab
-  :description "Under the Alchemy Lab"
-  :ldesc "This is a cramped passage beneath the Alchemy building. The brick tunnel continues north."
-  :flags ()  ; Dark!
-  :exits
-    ((north :to @brick-tunnel)
-     (up :to @alchemy-lab-stub)))
-
-(room @alchemy-lab-stub
-  :description "Alchemy Lab"
-  :ldesc "This is the Alchemy Department laboratory. Stairs lead down."
-  :flags (ONBIT)
-  :exits ((down :to @under-alchemy-lab)))
 
 ; === Main Steam Tunnels ===
 
