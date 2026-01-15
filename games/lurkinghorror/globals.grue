@@ -30,7 +30,7 @@
 (object @head
   :description "your head"
   :location @global
-  :flags (NOABIT NOTHEBIT)
+  :flags (NDESCBIT NOABIT NOTHEBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It's on your shoulders."))))
@@ -38,7 +38,7 @@
 (object @eyes
   :description "your eyes"
   :location @global
-  :flags (NOABIT NOTHEBIT)
+  :flags (NDESCBIT NOABIT NOTHEBIT)
   :behaviors (
     :open (fn ()
       (success :message "They are."))
@@ -48,7 +48,7 @@
 (object @me
   :description "yourself"
   :location @global
-  :flags (PERSON TOUCHBIT NOABIT NOTHEBIT)
+  :flags (NDESCBIT PERSON TOUCHBIT NOABIT NOTHEBIT)
   :behaviors (
     :examine (fn ()
       ; TODO: V-DIAGNOSE - show status/health
@@ -75,7 +75,7 @@
 (object @light
   :description "light"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :turn-on (fn ()
       (cond
@@ -98,7 +98,7 @@
 (object @air
   :description "air"
   :location @global
-  :flags (NOABIT)
+  :flags (NDESCBIT NOABIT)
   :behaviors (
     :examine (fn ()
       (success :message "It's all around you."))))
@@ -106,7 +106,7 @@
 (object @ground
   :description "floor"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It's still there."))
@@ -118,7 +118,7 @@
 (object @dirt
   :description "dirt"
   :location @global
-  :flags (NOABIT)
+  :flags (NDESCBIT NOABIT)
   :behaviors (
     :examine (fn ()
       (success :message "Just ordinary dirt and debris."))))
@@ -126,7 +126,7 @@
 (object @corridor
   :description "passage"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :through (fn ()
       ; V-WALK-AROUND in ZIL
@@ -137,7 +137,7 @@
 (object @noise
   :description "noise"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It's hard to tell where it's coming from."))
@@ -147,7 +147,7 @@
 (object @snow
   :description "snow"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (cond
@@ -163,7 +163,7 @@
 (object @wall
   :description "wall"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -175,7 +175,7 @@
 (object @north-wall
   :description "north wall"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -185,7 +185,7 @@
 (object @south-wall
   :description "south wall"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -195,7 +195,7 @@
 (object @east-wall
   :description "east wall"
   :location @global
-  :flags (AN)
+  :flags (NDESCBIT AN)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -205,7 +205,7 @@
 (object @west-wall
   :description "west wall"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -219,7 +219,7 @@
 (object @global-room
   :description "room"
   :location @global
-  :flags ()
+  :flags (NDESCBIT)
   :behaviors (
     :examine (fn ()
       ; In ZIL this redirects to V-LOOK
@@ -250,7 +250,7 @@
 (object @global-sleep
   :description "sleep"
   :location @global
-  :flags (NOABIT NOTHEBIT)
+  :flags (NDESCBIT NOABIT NOTHEBIT)
   :behaviors (
     :take (fn ()
       ; "take sleep" -> "sleep"

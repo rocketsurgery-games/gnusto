@@ -451,14 +451,12 @@ class GrueRuntime:
                 continue
 
             # Decrement countdown if present and check if ready to fire
+            # countdown=N means "wait N turns, then fire"
+            # countdown=0 means fire now, countdown=None means indefinite (fire every turn)
             countdown = self.state.queues.get(event_name)
             if countdown is not None and countdown > 0:
-                countdown -= 1
-                self.state.queues[event_name] = countdown
-                if countdown > 0:
-                    # Not ready to fire yet
-                    continue
-                # countdown just reached 0, fall through to fire
+                self.state.queues[event_name] = countdown - 1
+                continue
 
             # Fire the event
             result = self._evaluate_event(event_def)
