@@ -70,7 +70,11 @@
   :flags (INVISIBLE)
   :properties ())
 
-; @smooth-stone is now defined in yuggoth.grue with full behavior
+(object @smooth-stone
+  :description "smooth stone"
+  :location nil
+  :flags (INVISIBLE)
+  :properties ())
 
 (object @urchins
   :description "urchins"

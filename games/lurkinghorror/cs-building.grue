@@ -55,18 +55,16 @@
     ((down :to @cs-3rd)
      (in :to @cs-3rd)))
 
-; === Basement ===
-; Full implementation of objects in cs-basement.grue
+; === Basement (stub - full implementation in cs-basement.grue) ===
 
 (room @cs-basement
   :description "Basement"
-  :ldesc "Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes."
+  :ldesc "This is the basement of the Computer Center. The elevator is to the south. Stairs lead up. There is also a door leading north."
   :flags (ONBIT)
   :properties (:floor 0)
   :exits
     ((up :to @comp-center)
-     (east :to @temporary-basement)
-     (west :to @aero-basement)
+     ; TODO: (north :to @storage-room)
      (south :to @cs-elevator-room :via @elevator-door-b)
      (in :to @cs-elevator-room :via @elevator-door-b))
   :globals (@up-button))
