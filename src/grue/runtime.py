@@ -23,7 +23,7 @@ from copy import deepcopy
 
 from .parser import GrueWorld, GrueBehavior
 from .expr import (
-    ExprEvaluator, EffectExecutor, GrueFn, quote_to_data,
+    ExprEvaluator, EffectExecutor, GrueFn, Environment, quote_to_data,
     BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
 )
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
@@ -541,15 +541,26 @@ class GrueRuntime:
             return {}
         return {exit.direction: exit.to for exit in room.exits}
 
-    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str, list[str]]:
+    def _resolve_symbol(self, sym: Symbol) -> str:
+        """Resolve a symbol, looking up ?-prefixed names in bindings."""
+        name = sym.name
+        if name.startswith("?"):
+            # Look up in current bindings
+            binding_name = name[1:]  # Strip the ?
+            if binding_name in self.bindings:
+                return self.bindings[binding_name]
+        return name
+
+    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str, list[Any]]:
         """Parse an action S-expression into (target, verb, args).
 
         Format: (do TARGET :verb arg1 arg2 ...)
 
         Examples:
-            (do @hacker :give @food)  -> ("HACKER", "give", ["FOOD"])
-            (do @lamp :examine)       -> ("LAMP", "examine", [])
-            (do @door :unlock @key)   -> ("DOOR", "unlock", ["KEY"])
+            (do @hacker :give @food)  -> ("@hacker", "give", ["@food"])
+            (do @lamp :examine)       -> ("@lamp", "examine", [])
+            (do (loc @player) :go up) -> evaluates (loc @player) first
+            (do ?self :login ?value)  -> resolves ?self and ?value from bindings
         """
         if not isinstance(action, SList) or len(action) < 3:
             raise ValueError(f"Invalid action format: {action}")
@@ -560,22 +571,33 @@ class GrueRuntime:
         if not isinstance(items[0], Symbol) or items[0].name != "do":
             raise ValueError(f"Action must start with 'do': {items[0]}")
 
-        # Second item is target
-        if not isinstance(items[1], Symbol):
-            raise ValueError(f"Target must be a symbol: {items[1]}")
-        target = items[1].name
+        # Second item is target - evaluate if it's an expression or resolve symbol
+        if isinstance(items[1], Symbol):
+            target = self._resolve_symbol(items[1])
+        elif isinstance(items[1], SList):
+            # Evaluate the expression to get the target
+            evaluator = ExprEvaluator(self, self._functions)
+            target = evaluator.eval(items[1])
+            if not isinstance(target, str):
+                raise ValueError(f"Target expression must evaluate to a string: {items[1]} -> {target}")
+        else:
+            raise ValueError(f"Target must be a symbol or expression: {items[1]}")
 
         # Third item is verb (keyword)
         if not isinstance(items[2], Keyword):
             raise ValueError(f"Verb must be a keyword: {items[2]}")
         verb = items[2].name
 
-        # Remaining items are positional args
-        args = []
+        # Remaining items are positional args - evaluate expressions and resolve symbols
+        args: list[Any] = []
+        evaluator = ExprEvaluator(self, self._functions)
         for i in range(3, len(items)):
             item = items[i]
             if isinstance(item, Symbol):
-                args.append(item.name)
+                args.append(self._resolve_symbol(item))
+            elif isinstance(item, SList):
+                # Evaluate expression
+                args.append(evaluator.eval(item))
             else:
                 args.append(item)
 
@@ -1015,11 +1037,13 @@ class GrueRuntime:
         evaluator: ExprEvaluator
     ) -> ActionResult:
         """Evaluate a behavior using its body expression."""
-        # Create a GrueFn from the behavior
-        fn = GrueFn(params=behavior.params, body=behavior.body)
-
-        # Add auto-bound symbols to captured bindings
-        fn.captured = dict(bindings)
+        # Create a GrueFn from the behavior with captured environment
+        # This allows ?self, ?actor, and other bindings to be accessible
+        fn = GrueFn(
+            params=behavior.params,
+            body=behavior.body,
+            captured_env=Environment(bindings=dict(bindings))
+        )
 
         # Build argument list from bindings in param order
         args = [bindings.get(p) for p in behavior.params]

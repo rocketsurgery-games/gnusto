@@ -47,10 +47,10 @@ views:
         color: '#54A0FF'
   - name: bugs
     columns:
-      - name: Blocked
-        query: status = open and blocked = true
+      - name: Blocked Bugs
+        query: status = open and type = bug and blocked = true
         color: '#AABBCC'
-      - name: Ready
+      - name: Ready Bugs
         query: status = open and type = bug and ready = true
         color: '#AABBCC'
 # View options:

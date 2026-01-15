@@ -1334,6 +1334,30 @@ class ExprEvaluator:
 
     # === Behavior Results ===
 
+    def _substitute_vars(self, expr: SExpr, env: Optional[Environment]) -> SExpr:
+        """Substitute ?-prefixed symbols with their values from the environment.
+
+        Used to resolve variables in redirect actions so they can be dispatched
+        later when the environment is no longer available.
+        """
+        if isinstance(expr, Symbol):
+            name = expr.name
+            if name.startswith("?") and env is not None:
+                lookup_name = name[1:]
+                if env.has(lookup_name):
+                    value = env.lookup(lookup_name)
+                    # If value is a string, convert to Symbol
+                    if isinstance(value, str):
+                        return Symbol(value)
+                    return value
+            return expr
+        elif isinstance(expr, SList):
+            # Recursively substitute in list items
+            new_items = [self._substitute_vars(item, env) for item in expr.items]
+            return SList(new_items)
+        else:
+            return expr
+
     def _parse_kwargs(self, form: SList, start: int = 1) -> dict[str, Any]:
         """Parse keyword arguments from a form starting at given index."""
         kwargs: dict[str, Any] = {}
@@ -1459,8 +1483,8 @@ class ExprEvaluator:
 
         for k, v in kwargs.items():
             if k == "action":
-                # Don't evaluate action - keep as SExpr
-                action = v
+                # Substitute ?-prefixed symbols with their values from the environment
+                action = self._substitute_vars(v, env)
             elif k == "to":
                 # (redirect :to @room) - create a synthetic go action to the room
                 # This is used in :through behaviors to redirect movement
