@@ -1,8 +1,212 @@
-; Stub for nightmare realm - player is teleported here by compulsion event
-; Full definition would be in converted/rooms.grue
+; Yuggoth - Nightmare realm / dream sequence
+; Player is teleported here by the compulsion event after reading the odd paper.
+;
+; Rooms:
+;   @yuggoth - Alien landscape entry point
+;   @bowl-room - Basalt bowl with crowd
+;   @platform-room - At the rock platform with smooth-stone
+;
+; Key mechanics:
+;   - yuggoth-advance event automatically moves player through rooms
+;   - Smooth-stone pickup triggers lurker-appears event
+;   - Lurker consumes player, who wakes up in terminal-room with stone
+;
+; See terminal-room.grue for the compulsion event that brings player here.
+
+; === State Globals ===
+
+(globals
+  :yuggoth-count 0)        ; Stage counter for lurker appearance (1-3)
+
+; === Rooms ===
+
 (room @yuggoth
-  :description "Nightmare Realm"
-  :ldesc "You find yourself in a dark, alien landscape. The geometry is wrong - angles that shouldn't exist, shadows that move against the light."
-  :flags ()
-  :exits ())
+  :description "Place"
+  :ldesc "This is a place. Things move about on a broken, rocky surface. Harsh sounds split the air. Something sticky grabs at your feet. There is no color, everything is drained of brightness, dull and lifeless. A path descends into a shallow bowl of black basalt."
+  :flags (ONBIT)
+  :exits ((down :to @bowl-room))
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (success :effects ((queue! yuggoth-advance 2))))))
+
+(room @bowl-room
+  :description "Basalt Bowl"
+  :ldesc "You are at the bottom of a deeply cut, smooth basalt bowl. Dimly seen shapes crowd you on all sides. Ahead, in the focus of the movement, is a rock platform."
+  :flags (ONBIT)
+  :exits
+    ((up :to @yuggoth)
+     (in :to @platform-room)
+     (down :to @platform-room))
+  :globals (@platform)
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (cond
+        ((= ?from @yuggoth)
+          (success :effects ((queue! yuggoth-advance 2))))
+        (true (success))))))
+
+(room @platform-room
+  :description "At Platform"
+  :ldesc "You stand before a low rock platform, more like an afterthought of piled rocks or a glacial moraine than a work of artifice. You are pushed against the pile by the crowd around you."
+  :flags (ONBIT)
+  :exits ()  ; No exits - trapped until lurker sequence completes
+  :globals (@platform)
+
+  :behaviors (
+    :on-enter (fn (?from)
+      (cond
+        ((= ?from @bowl-room)
+          ; Reveal the smooth-stone
+          (success :effects ((move! @smooth-stone ?self))))
+        (true (success))))
+
+    ; Block most movement - crowd holds you
+    :before-action (fn (?action)
+      (cond
+        ((= (action-verb ?action) :go)
+          (cond
+            ((= (action-direction ?action) up)
+              (blocked :reason crowd-holds :message "You are prevented, as the crowd holds you back."))
+            (true
+              (blocked :reason crowd-blocks :message "The crowding is such that you can barely move, much less walk."))))
+        (true (success))))))
+
+; === Yuggoth Advance Event ===
+; Automatically moves player through the nightmare sequence.
+
+(event yuggoth-advance
+  :on-turn
+    (cond
+      ((= (loc @player) @yuggoth)
+        (success :effects ((move! @player @bowl-room) (queue! yuggoth-advance 2))
+                 :context ((description "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise."))))
+      ((= (loc @player) @bowl-room)
+        (success :effects ((move! @player @platform-room))
+                 :context ((description "The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise."))))
+      (true
+        (success :effects ((dequeue! yuggoth-advance))))))
+
+; === Platform (scenery) ===
+
+(object @platform
+  :location nil  ; Global, present via room :globals
+  :description "platform"
+  :flags (NDESCBIT VEHBIT SURFACEBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The platform is made of the same rocks as the surrounding terrain. In fact, you can't tell whether it is natural or constructed."))
+
+    :enter (fn ()
+      (cond
+        ((= (loc @player) @bowl-room)
+          (redirect :action (do (loc @player) :go in)))
+        (true
+          (blocked :reason already-there :message "You're already at the platform."))))))
+
+; === Smooth Stone ===
+; The mystical stone that appears in the nightmare and returns with the player.
+; Used as weapon against the flier, and key to the endgame.
+
+(object @smooth-stone
+  :location nil  ; Appears in @platform-room during nightmare
+  :description "smooth stone"
+  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT WEAPONBIT)
+  :properties (:value 5)
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((not (has-flag ?self TOUCHBIT))
+          (success :context ((description "One small stone stands out in the pile, smooth, shiny, and glowing with a blazing light."))))
+        (true
+          (success :context ((description "A smooth, shiny stone lies here."))))))
+
+    :examine (fn ()
+      (success :message "It's a smooth, shiny piece of what might be obsidian. Scratched on it is a symbol."))
+
+    :take (fn ()
+      (cond
+        ; In nightmare realm - triggers lurker
+        ((= (loc ?self) @platform-room)
+          (success :effects ((set-flag! ?self TOUCHBIT) (move! ?self @player) (queue! lurker-appears))
+                   :message "You pick up the stone. It feels warm in your hand."))
+        ; Normal take elsewhere
+        (true
+          (default))))
+
+    :rub (fn ()
+      (success :message "The stone is smooth and cool."))))
+
+(object @stone-symbol
+  :location @smooth-stone
+  :description "carved symbol"
+  :flags (NDESCBIT)
+  :properties (:size 0)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The symbol appears carved into the smooth stone, perhaps with a claw. It depicts something that hurts to look at directly."))
+
+    :read (fn ()
+      (redirect :action (do ?self :examine)))))
+
+; === Lurker (Nightmare Entity) ===
+; Appears when the smooth-stone is taken in platform-room.
+
+(object @lurker
+  :location nil  ; Appears during lurker-appears event
+  :description "thing"
+  :flags (NDESCBIT PERSON)
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((> yuggoth-count 1)
+          (success :context ((description "A massive, incomprehensible creature towers over you."))))
+        (true
+          (success :context ((description "A visible darkness looms before you."))))))
+
+    :examine (fn ()
+      (cond
+        ((> yuggoth-count 1)
+          (success :message "It is large, smooth and yet scaly. It has too many limbs, and they are not in the right places. To look at it gives you a headache."))
+        (true
+          (success :message "You see a visible darkness, in a shape not easily grasped."))))
+
+    :smell (fn ()
+      (success :message "The thing gives off a charnel stench."))
+
+    :talk-to (fn ()
+      (success :message "There is no response. You are not even sure that you produced any sound when you spoke."))))
+
+; === Lurker Appears Event ===
+; 3-stage event triggered by taking the smooth-stone.
+; At stage 3, player is consumed and wakes up in terminal-room.
+
+(event lurker-appears
+  :on-turn
+    (let ((?stage (+ yuggoth-count 1)))
+      (set! yuggoth-count ?stage)
+      (condp = ?stage
+        1 (success
+            :effects ((move! @lurker @platform-room) (queue! lurker-appears))
+            :context ((description "Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens.")))
+
+        2 (success
+            :effects ((queue! lurker-appears))
+            :context ((description "The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand.")))
+
+        3 (success
+            :effects ((dequeue! lurker-appears)
+                      (move! @lurker nil)
+                      (set! yuggoth-count 0)
+                      (move! @player @terminal-room))
+            :context ((description "The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.")
+                      (transition "You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand.")))
+
+        ; Fallback
+        (success :effects ((dequeue! lurker-appears))))))
 

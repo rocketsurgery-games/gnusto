@@ -265,7 +265,6 @@ class GrueRuntime:
             const_expr = self.world.constants[name]
             # Evaluate the constant expression (lazy evaluation on first access)
             # Use a temporary evaluator to evaluate the constant
-            from src.grue.expr import ExprEvaluator
             evaluator = ExprEvaluator(self, self._functions)
             return evaluator.eval(const_expr)
 
@@ -283,10 +282,12 @@ class GrueRuntime:
         return self.player_name
 
     def get_inventory(self) -> list[str]:
-        """Get objects the player is carrying."""
+        """Get objects the player is carrying (excludes INVISIBLE items)."""
         return [
             name for name, obj in self.state.objects.items()
-            if obj.location == self.player_name and name != self.player_name
+            if obj.location == self.player_name
+            and name != self.player_name
+            and "INVISIBLE" not in obj.flags
         ]
 
     def is_visible(self, obj: str) -> bool:

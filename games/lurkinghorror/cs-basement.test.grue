@@ -1,0 +1,162 @@
+; Tests for CS Basement areas
+; Tests room connectivity, junk clearing puzzle, and manhole puzzle.
+
+(load "cs-building.grue")
+(load "cs-basement.grue")
+(load "elevator.grue")
+
+; === Room Connectivity Tests ===
+
+(test "cs-basement connects to temporary-basement east"
+  (move! @player @cs-basement)
+  (assert (can-go? east))
+  (go! east)
+  (assert (= (loc @player) @temporary-basement)))
+
+(test "cs-basement connects to aero-basement west"
+  (move! @player @cs-basement)
+  (assert (can-go? west))
+  (go! west)
+  (assert (= (loc @player) @aero-basement)))
+
+(test "temporary-basement connects to dead-storage east"
+  (move! @player @temporary-basement)
+  (assert (can-go? east))
+  (go! east)
+  (assert (= (loc @player) @dead-storage)))
+
+(test "crowbar is in temporary-basement"
+  (assert (= (loc @crowbar) @temporary-basement)))
+
+; === Junk Clearing Puzzle Tests ===
+
+(test "cannot go east from dead-storage initially - junk blocks"
+  (set! junk-moved 0)
+  (move! @player @dead-storage)
+  (let ((?result (do @junk-barrier :through)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) junk-blocking))))
+
+(test "junk cannot be moved by hand"
+  (move! @player @dead-storage)
+  (let ((?result (do @junk :move)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) too-heavy))))
+
+(test "forklift starts in aero-basement"
+  (assert (= (loc @forklift) @aero-basement)))
+
+(test "forklift must be turned on to move junk"
+  (set! junk-moved 0)
+  (move! @forklift @dead-storage)
+  (move! @player @forklift)
+  (clear-flag! @forklift POWER)
+  (let ((?result (do @forklift :use @junk)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) not-running))))
+
+(test "forklift can move junk when running"
+  (set! junk-moved 0)
+  (move! @forklift @dead-storage)
+  (move! @player @forklift)
+  (set-flag! @forklift POWER)
+  (let ((?result (do @forklift :use @junk)))
+    (assert (success? ?result))
+    (assert (= junk-moved 1))))
+
+(test "three junk moves clears the path"
+  (set! junk-moved 0)
+  (move! @forklift @dead-storage)
+  (move! @player @forklift)
+  (set-flag! @forklift POWER)
+  ; Move junk 4 times (3 needed, 4th confirms path)
+  (do @forklift :use @junk)
+  (assert (= junk-moved 1))
+  (do @forklift :use @junk)
+  (assert (= junk-moved 2))
+  (do @forklift :use @junk)
+  (assert (= junk-moved 3))
+  (do @forklift :use @junk)
+  (assert (= junk-moved 4))
+  ; Now path should be clear
+  (let ((?result (do @junk-barrier :through)))
+    (assert (success? ?result))))
+
+(test "can reach storage-room after clearing junk"
+  (set! junk-moved 4)
+  (move! @player @dead-storage)
+  (go! east)
+  (assert (= (loc @player) @storage-room)))
+
+; === Manhole Puzzle Tests ===
+
+(test "manhole cover starts in manhole"
+  (assert (in? @manhole-cover @manhole)))
+
+(test "cannot take manhole cover - too heavy"
+  (move! @manhole-cover @manhole)
+  (move! @player @storage-room)
+  (let ((?result (do @manhole-cover :take)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) too-heavy))))
+
+(test "cannot go down through covered manhole"
+  (move! @manhole-cover @manhole)
+  (move! @player @storage-room)
+  (let ((?result (do @manhole-passage :through)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) covered))))
+
+(test "can pry manhole cover with crowbar"
+  (move! @manhole-cover @manhole)
+  (move! @crowbar @player)
+  (move! @player @storage-room)
+  (let ((?result (do @manhole-cover :pry @crowbar)))
+    (assert (success? ?result))
+    (assert (= (loc @manhole-cover) @storage-room))))
+
+(test "can go down after prying manhole open"
+  (move! @manhole-cover @storage-room)  ; Not in manhole
+  (move! @player @storage-room)
+  (let ((?result (do @manhole-passage :through)))
+    (assert (success? ?result))))
+
+(test "can close manhole by putting cover back"
+  (move! @manhole-cover @storage-room)
+  (move! @player @storage-room)
+  (let ((?result (do @manhole :close)))
+    (assert (success? ?result))
+    (assert (in? @manhole-cover @manhole))))
+
+; === Forklift Vehicle Tests ===
+
+(test "can enter forklift"
+  (move! @forklift @aero-basement)
+  (move! @player @aero-basement)
+  (let ((?result (do @forklift :enter)))
+    (assert (success? ?result))
+    (assert (in? @player @forklift))))
+
+(test "can exit forklift"
+  (move! @forklift @aero-basement)
+  (move! @player @forklift)
+  (let ((?result (do @forklift :exit)))
+    (assert (success? ?result))
+    (assert (= (loc @player) @aero-basement))))
+
+(test "can turn on forklift when aboard"
+  (move! @forklift @aero-basement)
+  (move! @player @forklift)
+  (clear-flag! @forklift POWER)
+  (let ((?result (do @forklift :turn-on)))
+    (assert (success? ?result))
+    (assert (has-flag @forklift POWER))))
+
+(test "cannot turn on forklift when not aboard"
+  (move! @forklift @aero-basement)
+  (move! @player @aero-basement)
+  (clear-flag! @forklift POWER)
+  (let ((?result (do @forklift :turn-on)))
+    (assert (blocked? ?result))
+    (assert (= (reason ?result) not-aboard))))
+

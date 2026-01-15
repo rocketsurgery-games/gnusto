@@ -1,0 +1,100 @@
+; Tests for Yuggoth nightmare sequence
+; Tests dream state mechanics, stone pickup, and lurker encounter.
+
+(load "yuggoth.grue")
+(load "terminal-room.grue")
+
+; === Room Connectivity Tests ===
+
+(test "yuggoth connects to bowl-room"
+  (move! @player @yuggoth)
+  (assert (can-go? down))
+  (go! down)
+  (assert (= (loc @player) @bowl-room)))
+
+(test "bowl-room connects to platform-room"
+  (move! @player @bowl-room)
+  (assert (can-go? in))
+  (go! in)
+  (assert (= (loc @player) @platform-room)))
+
+; === Smooth Stone Tests ===
+
+(test "smooth-stone appears glowing when first seen"
+  (clear-flag! @smooth-stone TOUCHBIT)
+  (move! @smooth-stone @platform-room)
+  (move! @player @platform-room)
+  (let ((?result (do @smooth-stone :describe)))
+    (assert (success? ?result))
+    (assert (includes? (context ?result description) "glowing"))))
+
+(test "taking smooth-stone in platform-room triggers lurker"
+  (set! yuggoth-count 0)
+  (clear-flag! @smooth-stone TOUCHBIT)
+  (move! @smooth-stone @platform-room)
+  (move! @player @platform-room)
+  (dequeue! lurker-appears)
+  (let ((?result (do @smooth-stone :take)))
+    (assert (success? ?result))
+    (assert (has-flag @smooth-stone TOUCHBIT))
+    (assert (= (loc @smooth-stone) @player))
+    (assert (queued? lurker-appears))))
+
+(test "stone-symbol is inside smooth-stone"
+  (assert (in? @stone-symbol @smooth-stone)))
+
+; === Lurker Tests ===
+
+(test "lurker appears at stage 1"
+  (set! yuggoth-count 0)
+  (move! @lurker nil)
+  (move! @player @platform-room)
+  (queue! lurker-appears)
+  ; Simulate event firing
+  (let ((?result (fire-event lurker-appears)))
+    (assert (success? ?result))
+    (assert (= yuggoth-count 1))
+    (assert (= (loc @lurker) @platform-room))))
+
+(test "lurker stage 2 describes creature"
+  (set! yuggoth-count 1)
+  (move! @player @platform-room)
+  (queue! lurker-appears)
+  (let ((?result (fire-event lurker-appears)))
+    (assert (success? ?result))
+    (assert (= yuggoth-count 2))
+    (assert (includes? (context ?result description) "creature"))))
+
+(test "lurker stage 3 returns player to terminal-room"
+  (set! yuggoth-count 2)
+  (move! @player @platform-room)
+  (queue! lurker-appears)
+  (let ((?result (fire-event lurker-appears)))
+    (assert (success? ?result))
+    (assert (= yuggoth-count 0))
+    (assert (= (loc @player) @terminal-room))
+    (assert (= (loc @lurker) nil))))
+
+(test "lurker examine changes based on stage"
+  (set! yuggoth-count 0)
+  (move! @lurker @platform-room)
+  (let ((?result1 (do @lurker :examine)))
+    (assert (includes? (message ?result1) "visible darkness")))
+  (set! yuggoth-count 2)
+  (let ((?result2 (do @lurker :examine)))
+    (assert (includes? (message ?result2) "too many limbs"))))
+
+; === Platform Tests ===
+
+(test "platform examine describes rocks"
+  (move! @player @bowl-room)
+  (let ((?result (do @platform :examine)))
+    (assert (success? ?result))
+    (assert (includes? (message ?result) "same rocks"))))
+
+(test "platform enter redirects to go in"
+  (move! @player @bowl-room)
+  (let ((?result (do @platform :enter)))
+    ; Should redirect to movement
+    (assert (redirect? ?result))))
+

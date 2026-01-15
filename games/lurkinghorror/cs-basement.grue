@@ -1,0 +1,365 @@
+; CS Basement - Storage areas and tunnels access
+; Implements the junk-clearing puzzle (forklift) and manhole access to tunnels.
+;
+; Rooms:
+;   @cs-basement - Main basement (stub in cs-building.grue, updated here)
+;   @temporary-basement - WW2-era building basement
+;   @dead-storage - Junk-filled storage, needs forklift to clear
+;   @storage-room - Ancient storage with manhole to tunnels
+;
+; Key puzzles:
+;   - Use forklift to clear junk in dead-storage (3 moves required)
+;   - Use crowbar to pry open manhole cover in storage-room
+
+; === State Globals ===
+
+(globals
+  :junk-moved 0)           ; Counter: need > 3 to clear path through junk
+
+(def junk-moves-needed 3)  ; Constant: moves required to clear junk path
+
+; === Stub Rooms (connected areas not in scope) ===
+
+(room @aero-basement
+  :description "Aero Basement"
+  :ldesc "This is the basement of the Aeronautics building. A wide corridor leads east."
+  :flags (ONBIT)
+  :exits ((east :to @cs-basement)))
+
+(room @temporary-lab
+  :description "Temporary Lab"
+  :ldesc "This is a cramped laboratory in a temporary building. Stairs lead down."
+  :flags (ONBIT)
+  :exits ((down :to @temporary-basement)))
+
+(room @brick-tunnel
+  :description "Brick Tunnel"
+  :ldesc "You are in a cramped brick-lined tunnel. Crude handholds lead up to a manhole."
+  :flags ()  ; Dark!
+  :exits ((up :to @storage-room :via @manhole-passage)))
+
+; === Main Rooms ===
+
+(room @temporary-basement
+  :description "Temporary Basement"
+  :ldesc "During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east."
+  :flags (ONBIT)
+  :exits
+    ((west :to @cs-basement)
+     (east :to @dead-storage)
+     (up :to @temporary-lab)))
+
+(room @dead-storage
+  :description "Dead Storage"
+  :flags (ONBIT)
+  :exits
+    ((west :to @temporary-basement)
+     (east :to @storage-room :via @junk-barrier))
+  :globals (@junk)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets"
+               (if (> junk-moved junk-moves-needed)
+                 ". A narrow path winds eastward through the junk."
+                 "; you can't even see the east wall."))))))))
+
+(room @storage-room
+  :description "Ancient Storage"
+  :ldesc "What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be."
+  :flags (ONBIT)
+  :exits
+    ((west :to @dead-storage)
+     (down :to @brick-tunnel :via @manhole-passage))
+  :globals (@junk @pool)
+
+  :behaviors (
+    :on-enter (fn (?from)
+      ; Reveal the manhole when entering
+      (success :effects ((clear-flag! @manhole INVISIBLE))))))
+
+; === Junk Barrier (blocks east exit until cleared) ===
+
+(object @junk-barrier
+  :location @dead-storage
+  :description "junk pile"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((> junk-moved junk-moves-needed)
+          (success))
+        ((> junk-moved 0)
+          (blocked :reason junk-blocking
+                   :message "There is still no path all the way through the junk, but you can now tell for sure that there's a room to the east."))
+        (true
+          (blocked :reason junk-blocking
+                   :message "You climb around on the junk for a while, and you get the impression that there is an opening 'way on the east wall, but there is so much stuff in the way that you can't get to it."))))))
+
+; === Junk (global object in storage areas) ===
+
+(object @junk
+  :location nil  ; Global object, present via room :globals
+  :description "junk"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "Looking more closely only emphasizes how completely entropy has taken over this room."))
+
+    :search (fn ()
+      (success :message "You find many worthless items of hardware, old discarded memos and papers, but nothing of any use or value."))
+
+    :move (fn ()
+      (blocked :reason too-heavy
+               :message "You have obviously underestimated the amount of junk in here. It's not only voluminous, it's heavy."))
+
+    :take (fn ()
+      (blocked :reason too-much
+               :message "There's far too much of it to take."))))
+
+; === Forklift (vehicle for moving junk) ===
+; Located in AERO-BASEMENT, used to clear path through DEAD-STORAGE.
+
+(object @forklift
+  :location @aero-basement
+  :description "forklift"
+  :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
+  :properties (:capacity 100)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "This is a rusty "
+             (if (has-flag ?self POWER) "and wheezing " "")
+             "old forklift. It looks like you could control it fairly easily, though.")))
+
+    :enter (fn ()
+      (success :effects ((move! @player ?self))
+               :message "You climb onto the forklift."))
+
+    :exit (fn ()
+      (success :effects ((move! @player (loc ?self)))
+               :message "You climb off the forklift."))
+
+    :turn-on (fn ()
+      (cond
+        ((not (in? @player ?self))
+          (blocked :reason not-aboard :message "You have to get in it first."))
+        ((has-flag ?self POWER)
+          (blocked :reason already-on :message "It's wheezing away already."))
+        (true
+          (success :effects ((set-flag! ?self POWER))
+                   :message "The forklift sputters to life."))))
+
+    :turn-off (fn ()
+      (cond
+        ((not (in? @player ?self))
+          (blocked :reason not-aboard :message "You have to get in it first."))
+        ((not (has-flag ?self POWER))
+          (blocked :reason already-off :message "It's already off."))
+        (true
+          (success :effects ((clear-flag! ?self POWER))
+                   :message "The forklift coughs once, and dies."))))
+
+    ; Move junk with the forklift
+    :use (fn (?target)
+      (cond
+        ((not (in? @player ?self))
+          (blocked :reason not-aboard :message "You're trying to operate the forklift by telepathy?"))
+        ((not (has-flag ?self POWER))
+          (blocked :reason not-running :message "You can't move anything with a forklift that isn't running."))
+        ((not (= ?target @junk))
+          (blocked :reason wrong-target :message (str "The forklift is ineffective in manipulating " ?target ".")))
+        ((not (= (loc ?self) @dead-storage))
+          (blocked :reason wrong-place :message "There's nothing on pallets here, hence the forklift is useless."))
+        ((= junk-moved 0)
+          (success :effects ((set! junk-moved 1))
+                   :message "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage."))
+        ((> junk-moved junk-moves-needed)
+          (success :message "I suppose you're planning to clear the entire room? You've made a nice path to the next room already."))
+        ((= (+ junk-moved 1) (+ junk-moves-needed 1))
+          (success :effects ((set! junk-moved (+ junk-moved 1)))
+                   :message "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one."))
+        (true
+          (success :effects ((set! junk-moved (+ junk-moved 1)))
+                   :message "You continue moving junk, becoming more proficient with the forklift."))))))
+
+; === Manhole System ===
+; The manhole in storage-room leads down to brick-tunnel.
+; Requires crowbar to pry open the cover.
+
+(object @manhole-passage
+  :location @storage-room
+  :description "manhole"
+  :flags (INVISIBLE)  ; Barrier object for exit
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((in? @manhole-cover @manhole)
+          (blocked :reason covered :message "There is a steel cover on the manhole."))
+        (true
+          (success))))))
+
+(object @manhole
+  :location @storage-room
+  :description "manhole"
+  :flags (INVISIBLE OPENBIT CONTBIT SEARCHBIT DOORBIT)
+  :properties (:capacity 200)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (if (in? @manhole-cover @manhole)
+            "There is a closed, disused-looking manhole here."
+            "There is an open manhole here.")))))
+
+    :examine (fn ()
+      (cond
+        ((not (in? @manhole-cover ?self))
+          (success :message "It's a manhole. It's very dark inside, but you can see that crude brick handholds provide a slippery path down. Cool air rises out of the hole."))
+        (true
+          (success :message "It's a steel ring set in the floor. It's probably a manhole."))))
+
+    :look-inside (fn ()
+      (cond
+        ((in? @manhole-cover ?self)
+          (success :message "You see only the cover."))
+        (true
+          (success :message "You can see a dark, grimy tunnel below."))))
+
+    :enter (fn ()
+      (redirect :action (do (loc @player) :go down)))
+
+    :open (fn ()
+      (cond
+        ((not (in? @manhole-cover ?self))
+          (blocked :reason already-open :message "It's already open."))
+        (true
+          (blocked :reason need-tool :message "The only way would seem to be to remove the manhole cover."))))
+
+    :close (fn ()
+      (cond
+        ((in? @manhole-cover ?self)
+          (blocked :reason already-closed :message "It's already closed."))
+        (true
+          (success :effects ((move! @manhole-cover ?self))
+                   :message "You manage to shove the manhole cover back over the hole."))))))
+
+(object @manhole-cover
+  :location @manhole
+  :description "manhole cover"
+  :fdesc "In one corner of the room a manhole cover is partly buried in the dirt and crud."
+  :flags (TAKEBIT TRYTAKEBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
+  :properties (:size 200)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "It's an old, rusty, steel manhole cover"
+             (if (in? ?self @manhole)
+               " set in a steel ring embedded in the floor"
+               "")
+             ".")))
+
+    :take (fn ()
+      (cond
+        ((in? ?self @manhole)
+          (blocked :reason too-heavy
+                   :message "You can't get a good grip on it; it's heavy and in a steel ring; impossible to just drag it away."))
+        (true
+          (blocked :reason too-heavy
+                   :message "It's very heavy. You can move it a little way, but that's about it."))))
+
+    :move (fn ()
+      (cond
+        ((not (in? ?self @manhole))
+          (success :message "You move it a little way, but it's very heavy."))
+        (true
+          (blocked :reason stuck :message "It doesn't budge."))))
+
+    :push (fn ()
+      (cond
+        ((in? ?self @manhole)
+          (blocked :reason in-ring :message "It's sitting inside a steel ring, so pushing it does nothing."))
+        (true
+          (default))))
+
+    ; Pry open with crowbar
+    :pry (fn (?tool)
+      (cond
+        ((not (in? ?self @manhole))
+          (blocked :reason not-in-place :message "It's not in the manhole right now."))
+        ((not (= ?tool @crowbar))
+          (blocked :reason wrong-tool :message "You'll need something to pry it with."))
+        (true
+          (success :effects ((move! ?self @storage-room))
+                   :message "You lever the manhole cover aside, and crusted dirt falls into a dark hole below."))))
+
+    :open (fn ()
+      (cond
+        ((not (in? ?self @manhole))
+          (blocked :reason not-in-place :message "It's not covering anything right now."))
+        (true
+          (blocked :reason need-tool :message "An interesting idea, but how?"))))))
+
+; === Crowbar (tool for prying) ===
+
+(object @crowbar
+  :location @temporary-basement
+  :description "crowbar"
+  :flags (TAKEBIT WEAPONBIT)
+  :properties (:size 10)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It's a rusty, somewhat battered crowbar."))))
+
+; === Gloves (protection for tentacle climbing) ===
+; Needed to climb the tentacle in the Great Dome without getting burned.
+
+(object @gloves
+  :location @temporary-basement
+  :description "pair of electrician's gloves"
+  :flags (TAKEBIT WEARBIT)
+  :properties (:size 5)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "This is a pair of electrician's rubber gloves. They look well used but serviceable."))
+
+    :look-inside (fn ()
+      (success :message "They're kind of dirty inside, but there's nothing nasty hidden there."))
+
+    :wear (fn ()
+      (cond
+        ((has-flag ?self WEARBIT)
+          ; Already wearing check would be handled by runtime
+          (success :effects ((set-flag! ?self WEARBIT))
+                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))
+        (true
+          (success :effects ((set-flag! ?self WEARBIT))
+                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))))))
+
+; === Pool (global object for puddles/water) ===
+
+(object @pool
+  :location nil  ; Global object, present via room :globals
+  :description "pool of water"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "Stagnant, slime-encrusted puddles cover parts of the floor."))
+
+    :enter (fn ()
+      (blocked :reason shallow :message "You're already in it. It covers most of the floor!"))
+
+    :swim (fn ()
+      (blocked :reason shallow :message "You're already in it. It covers most of the floor!"))))
+
