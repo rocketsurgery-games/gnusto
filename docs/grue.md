@@ -183,6 +183,37 @@ by exits in exactly two rooms - one on each side. The door's `:location` is cosm
 Multiple rooms can reference the same door if the game's geometry requires it, but
 unusual configurations are the author's responsibility to keep consistent.
 
+**Global objects (`:globals`):** Rooms can declare objects that are visible/accessible
+regardless of the object's `:location`. This is useful for:
+
+- **Doors visible from both sides** - A door's `:location` is one room, but both
+  rooms need to interact with it
+- **Scenery in multiple rooms** - Snow, walls, sky visible from several locations
+- **Abstract objects** - Conceptual objects with `:location nil` that are accessible
+  in specific rooms
+
+```scheme
+(room @chemistry-bldg
+  :globals (@alchemy-door @alchemy-window @office-door)
+  :exits ((south :to @alchemy-dept :via @alchemy-door)))
+
+(room @alchemy-dept
+  :globals (@alchemy-door @alchemy-window)  ; same door, accessible from both sides
+  :exits ((north :to @chemistry-bldg :via @alchemy-door)))
+
+; Abstract scenery object with no physical location
+(object @junk
+  :location nil
+  :description "junk"
+  :flags (NDESCBIT))
+
+(room @dead-storage :globals (@junk))   ; junk visible here
+(room @storage-room :globals (@junk))   ; and here too
+```
+
+Objects in `:globals` override the `INVISIBLE` flag - they represent "known" scenery
+that the player can always see and interact with when in that room.
+
 ### The Player
 
 The player is an object identified by the `PERSON` flag. "Global" state is just player properties.
