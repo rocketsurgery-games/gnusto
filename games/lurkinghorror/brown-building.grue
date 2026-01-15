@@ -325,14 +325,85 @@
 
   :behaviors (
     :describe (fn ()
-      (success :context
-        ((description "A dried, mummified human hand lies here."))))
+      (cond
+        ((has-flag ?self PERSON)
+          ; Animated hand perches on shoulder when held
+          (cond
+            ((held? ?self)
+              (success :context ((description "The human hand is perched on your shoulder."))))
+            (true
+              (success :context ((description "A human hand is here."))))))
+        (true
+          (success :context ((description "A dried, mummified human hand lies here."))))))
 
     :examine (fn ()
-      (success :message "The hand is very old. It's dry and very light, mummified in fact. There are stains, scars, and dried blood on it. There is a tattoo on the back of it. The hand appears to have been severed by the application of very sharp teeth, perhaps an animal's."))
+      (cond
+        ((has-flag ?self PERSON)
+          ; Animated hand - show stains, scars, ring if present, tattoo
+          (success :message
+            (str "There are stains, scars, "
+                 (if (in? @ring ?self) "a brass hyrax, " "")
+                 "and a tattoo on the hand.")))
+        (true
+          ; Mummified - detailed description
+          (success :message "The hand is very old. It's dry and very light, mummified in fact. There are stains, scars, and dried blood on it. There is a tattoo on the back of it. The hand appears to have been severed by the application of very sharp teeth, perhaps an animal's."))))
 
     :rub (fn ()
-      (success :message "It's dry and cold. In fact, it's mummified."))))
+      (cond
+        ((has-flag ?self PERSON)
+          (success :message "It's warm and dry."))
+        (true
+          (success :message "It's dry and cold. In fact, it's mummified."))))
+
+    ; Animated hand wiggles away from hostile actions
+    :take (fn ()
+      (cond
+        ((has-flag ?self PERSON)
+          (cond
+            ((= (loc @player) @inner-lair)
+              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+            ((held? ?self)
+              (success :message "The human hand scuttles away to your other shoulder."))
+            (true (default))))
+        (true (default))))
+
+    :throw (fn (?target)
+      (cond
+        ((has-flag ?self PERSON)
+          (cond
+            ((= (loc @player) @inner-lair)
+              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+            ((held? ?self)
+              (success :message "The human hand scuttles away to your other shoulder."))
+            (true (default))))
+        (true (default))))
+
+    :attack (fn (?weapon)
+      (cond
+        ((has-flag ?self PERSON)
+          (cond
+            ((= (loc @player) @inner-lair)
+              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+            ((held? ?self)
+              (success :message "The human hand scuttles away to your other shoulder."))
+            (true (default))))
+        (true (default))))
+
+    ; Give/show something TO the animated hand
+    :give (fn (?item)
+      (cond
+        ((has-flag ?self PERSON)
+          (cond
+            ((in? ?self @vat)
+              (success :message "The hand is preoccupied."))
+            ((has-flag ?item PERSON)
+              (success :message "The hand doesn't react."))
+            (true
+              (success :message
+                (str "The hand scurries to the " (desc ?item)
+                     " and touches it all over, much as a blind person would examine something.")))))
+        (true
+          (blocked :reason inanimate :message "The hand doesn't react."))))))
 
 (object @tattoo
   :location @mummified-hand

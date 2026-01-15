@@ -5443,34 +5443,7 @@ crud."
   )
 )
 
-; [NEEDS-TRANSLATION] RING
-(object @ring
-  :description "brass hyrax"
-  :location @professor
-  :flags (TAKEBIT TRYTAKEBIT TOUCHBIT)
-
-  ; --- ZIL Source ---
-  ; <ROUTINE RING-F ()
-  ;   <COND
-  ;       (<VERB? EXAMINE> <TELL
-  ;         "The G.U.E. Tech class ring is a gold ring depicting a hyrax
-  ;   eating a twig. Such rings are familiarly known as \"brass
-  ;   hyraxes.\""
-  ;         CR>)
-  ;       (<AND
-  ;         <VERB? TAKE-OFF>
-  ;         <FSET? ,GLOVES ,WEARBIT>> <TELL ,YOU-HAVE-TO "take off your gloves first." CR>)
-  ;       (<VERB? WEAR> <COND
-  ;         (<FSET? ,GLOVES ,WEARBIT> <TELL CTHE ,RING " won't go on over the gloves." CR>)
-  ;         (<EQUAL? <IWEAR> T> <TELL "It fits surprisingly well." CR>)
-  ;         (ELSE <RTRUE>)>)>
-  ; >
-  ; --- End ZIL Source ---
-
-  :behaviors (
-    ; TODO: Translate from ZIL source above
-  )
-)
+; @ring is now fully implemented in alchemy.grue
 
 ; [NEEDS-TRANSLATION] ROD
 (object @rod

@@ -743,6 +743,27 @@
       (cond
         ((has-flag @gloves WEARBIT)
           (blocked :reason gloves-in-way :message "You have to take off your gloves first."))
+        ((not (has-flag ?self WEARBIT))
+          (blocked :reason not-worn :message "You're not wearing that."))
+        (true
+          (success
+            :effects ((clear-flag! ?self WEARBIT))
+            :message "You take off the ring."))))
+
+    ; PUT RING ON HAND - the key puzzle mechanic
+    :put-on (fn (?target)
+      (cond
+        ((= ?target @mummified-hand)
+          (cond
+            ((has-flag @mummified-hand PERSON)
+              ; Animated hand accepts the ring
+              (success
+                :effects ((clear-flag! ?self WEARBIT) (move! ?self @mummified-hand))
+                :message "The ring fits the hand perfectly."))
+            (true
+              ; Mummified hand is too dry
+              (blocked :reason too-dry
+                       :message "You can't get the ring onto the dry flesh of the hand."))))
         (true (default))))))
 
 ; === Professor NPC ===
