@@ -522,7 +522,7 @@
       (cond
         ((has-flag ?item FOODBIT)
           (success :effects ((move! ?item nil))
-                   :message (str "A small contingent of rats falls greedily upon the " (name ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however.")))
+                   :message (str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however.")))
         (true
           (blocked :reason not-interested :message "The rats aren't interested in that."))))))
 
@@ -543,12 +543,71 @@
                    :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past."))
         (true (success))))))
 
+; === Dead Rat ===
+; Appears when rats are killed by steam from the pressure valve
+
+(object @dead-rat
+  :location nil  ; Appears when rats killed by steam
+  :description "dead rat"
+  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
+  :properties (:heat 0)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "A dead rat lies here."))))
+
+    :examine (fn ()
+      (success :message "This rat appears to have been stepped on. A small trickle of blood has clotted around its mouth. Branded into its neck is a strange symbol."))
+
+    :take (fn ()
+      (cond
+        ((not (has-flag ?self TOUCHBIT))
+          ; First time taking - lice and fleas
+          (success
+            :effects ((set-flag! ?self TOUCHBIT) (take! ?self))
+            :message "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out."))
+        (true (default))))
+
+    :step-on (fn ()
+      (success :message "You crush the rat. You hear its bones snap. What a sadist!"))
+
+    :board (fn ()
+      (redirect :action (do ?self :step-on)))
+
+    :eat (fn ()
+      (success :message "You dangle the rat over your mouth by its tail. You think about it. You lower the rat towards your face. You think some more. Fortunately for your health, you change your mind."))
+
+    ; PUT something ON dead rat squishes it
+    :put-on (fn (?item)
+      (success :message (str "The " (desc ?item) " hits the rat with a satisfying squish.")))))
+
+(object @rat-symbol
+  :location @dead-rat
+  :description "branded symbol"
+  :flags (NDESCBIT)
+  :properties (:size 0)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "The symbol appears scarred into the hide of the rat. There is no hair growing on it, and although it looks like scar tissue, the color is wrong -- a sort of purplish green. The symbol reminds you of something, but you can't quite place it."))
+
+    :read (fn ()
+      (redirect :action (do ?self :examine)))))
+
 ; Event: rats disperse after steam valve opened for a while
+; When rats are present and killed by steam, spawns @dead-rat
 (event rats-go-away
   :on-turn
     (cond
       ((not (has-flag @pressure-valve OPENBIT))
         (success :effects ((dequeue! rats-go-away))))
+      ((in? @rats (loc @player))
+        ; Rats killed by steam in player's location - spawn dead rat
+        (success :effects ((move! @rats nil)
+                          (move! @dead-rat (loc @player))
+                          (dequeue! rats-go-away))
+                 :context ((description "The rats are caught in the full force of the steam blast. Horrible squeals can be heard from the midst of the steam cloud, and scalded rats charge past you, all interest in anything but flight forgotten. One of their number remains, dead."))))
       (true
         (success :effects ((move! @rats nil) (dequeue! rats-go-away))
                  :context ((description "You hear squealing in the distance. The rats seem to have fled."))))))

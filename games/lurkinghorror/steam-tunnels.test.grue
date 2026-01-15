@@ -156,3 +156,92 @@
     :expect ((outcome? success)
              (loc? @player @cave-room))))
 
+; === Rats Tests ===
+
+(test-group "rats blocking"
+  :setup ((move! @player @tunnel-west)
+          (move! @rats @tunnel-west)
+          (set! on-cable false))
+
+  (test "rats block passage when present"
+    :action (go :direction east)
+    :expect ((outcome? blocked)
+             (reason? rats-blocking)))
+
+  (test "can examine rats"
+    :action (do @rats :examine)
+    :expect ((outcome? success))))
+
+(test-group "throw food at rats"
+  :setup ((move! @player @tunnel-west)
+          (move! @rats @tunnel-west)
+          (move! @chinese-food @player))
+
+  (test "can throw food at rats"
+    :action (do @rats :give @chinese-food)
+    :expect ((outcome? success)
+             (loc? @chinese-food nil))))
+
+(test-group "steam kills rats"
+  :setup ((move! @player @tunnel-west)
+          (move! @rats @tunnel-west)
+          (clear-flag! @pressure-valve OPENBIT)
+          (queue! rats-go-away))
+
+  (test "valve kills rats and spawns dead rat"
+    :setup ((set-flag! @pressure-valve OPENBIT))
+    :action (process-events)
+    :expect ((outcome? success)
+             (loc? @rats nil)
+             (loc? @dead-rat @tunnel-west))))
+
+; === Dead Rat Tests ===
+
+(test-group "dead rat behaviors"
+  :setup ((move! @player @tunnel-west)
+          (move! @dead-rat @tunnel-west)
+          (clear-flag! @dead-rat TOUCHBIT))
+
+  (test "can examine dead rat"
+    :action (do @dead-rat :examine)
+    :expect ((outcome? success)))
+
+  (test "first take shows lice"
+    :action (do @dead-rat :take)
+    :expect ((outcome? success)
+             (has-flag? @dead-rat TOUCHBIT)
+             (held? @dead-rat)))
+
+  (test "can step on dead rat"
+    :setup ((move! @dead-rat @tunnel-west))
+    :action (do @dead-rat :step-on)
+    :expect ((outcome? success)))
+
+  (test "can try to eat dead rat"
+    :setup ((move! @dead-rat @player))
+    :action (do @dead-rat :eat)
+    :expect ((outcome? success))))
+
+(test-group "rat symbol"
+  :setup ((move! @player @tunnel-west)
+          (move! @dead-rat @player))
+
+  (test "can examine rat symbol"
+    :action (do @rat-symbol :examine)
+    :expect ((outcome? success)))
+
+  (test "can read rat symbol"
+    :action (do @rat-symbol :read)
+    :expect ((outcome? success))))
+
+(test-group "dead rat in elixir"
+  :setup ((move! @player @alchemy-lab)
+          (set-flag! @alchemy-lab ONBIT)
+          (move! @dead-rat @player)
+          (move! @elixir @vat))
+
+  (test "dead rat in elixir comes to life"
+    :action (do @vat :put @dead-rat)
+    :expect ((outcome? success)
+             (loc? @dead-rat nil))))
+

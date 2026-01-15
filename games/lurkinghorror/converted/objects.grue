@@ -1542,43 +1542,7 @@
   )
 )
 
-; [NEEDS-TRANSLATION] DEAD-RAT
-(object @dead-rat
-  :description "dead rat"
-  :flags (SEARCHBIT TAKEBIT OPENBIT CONTBIT)
-  :properties (:heat 0)
-
-  ; --- ZIL Source ---
-  ; <ROUTINE DEAD-RAT-F ()
-  ;   <COND
-  ;       (<VERB? EXAMINE> <TELL
-  ;         "This rat appears to have been stepped on. A small trickle of blood has
-  ;   clotted around its mouth. Branded into its neck is a strange symbol."
-  ;         CR>)
-  ;       (<VERB? TAKE> <COND
-  ;         (<NOT
-  ;           <FSET? ,PRSO ,TOUCHBIT>> <COND
-  ;           (<EQUAL? <ITAKE> T> <TELL
-  ;             "As you take the dead rat, it moves, but then you realize that it's only
-  ;   lice and fleas bailing out."
-  ;             CR>)
-  ;           (ELSE <RTRUE>)>)>)
-  ;       (<P? PUT * DEAD-RAT> <SQUISH-RAT>)
-  ;       (<VERB? BOARD STEP-ON> <TELL
-  ;         "You crush the rat. You hear its bones snap. What a sadist!"
-  ;         CR>)
-  ;       (<VERB? EAT> <TELL
-  ;         "You dangle the rat over your mouth by its tail. You think about it.
-  ;   You lower the rat towards your face. You think some more. Fortunately
-  ;   for your health, you change your mind."
-  ;         CR>)>
-  ; >
-  ; --- End ZIL Source ---
-
-  :behaviors (
-    ; TODO: Translate from ZIL source above
-  )
-)
+; @dead-rat is now fully implemented in steam-tunnels.grue
 
 (object @dirt
   :description "dirt"
@@ -5236,77 +5200,9 @@ crud."
   )
 )
 
-; [NEEDS-TRANSLATION] RAT-SYMBOL
-(object @rat-symbol
-  :description "branded symbol"
-  :location @dead-rat
-  :flags (NDESCBIT)
-  :properties (:size 0)
+; @rat-symbol is now fully implemented in steam-tunnels.grue
 
-  ; --- ZIL Source ---
-  ; <ROUTINE RAT-SYMBOL-F ()
-  ;   <COND
-  ;       (<VERB? EXAMINE READ> <TELL
-  ;         ,SYMBOL-APPEARS
-  ;         "scarred into
-  ;   the hide of the rat. There is no hair growing on it, and although it
-  ;   looks like scar tissue, the color is wrong -- a sort of purplish
-  ;   green. "> <TELL-SYMBOL ,DEAD-RAT> <CRLF>)>
-  ; >
-  ; --- End ZIL Source ---
-
-  :behaviors (
-    ; TODO: Translate from ZIL source above
-  )
-)
-
-; [NEEDS-TRANSLATION] RATS
-(object @rats
-  :description "sewer rats"
-  :flags (NOABIT)
-  :properties (:descfcn "RATS-DESC")
-
-  ; --- ZIL Source ---
-  ; <ROUTINE RATS-F ()
-  ;   <COND
-  ;       (<AND
-  ;         <IN? ,RATS ,GLOBAL-OBJECTS>
-  ;         <NOT
-  ;           <VERB? TELL-ABOUT ASK-ABOUT TELL-ME-ABOUT>>> <TELL "There are no rats here." CR>)
-  ;       (<VERB? EXAMINE> <TELL
-  ;         "These are strange rats. They don't look like the usual sewer rats.
-  ;   There is more white in their fur, even dirty and
-  ;   encrusted as it is. Some are furless, and others piebald.
-  ;   Many of the older ones are scarred and look particularly
-  ;   cunning."
-  ;         CR>)
-  ;       (<VERB? SMELL> <TELL
-  ;         "You catch a sharp odor over the background of damp and sewage.
-  ;   It's metallic, almost stinging. It's the odor of fresh blood."
-  ;         CR>)
-  ;       (<AND
-  ;         <VERB? THROW>
-  ;         <FSET? ,PRSO ,FOODBIT>> <THROW-FOOD>)
-  ;       (<VERB? ATTACK KILL> <TELL
-  ;         "You strike out at the rats, but several clamp onto your hand. The
-  ;   pain is horrible. The rest are all the more frenzied by the drops
-  ;   of blood."
-  ;         CR>)
-  ;       (<VERB? KICK> <TELL
-  ;         "You kick, throwing off a few biting at your foot and leg"> <THROUGH-THE ,BOOTS> <TELL
-  ;         ". These smash
-  ;   squealing into the wall, but others take their places."
-  ;         CR>)
-  ;       (<P? PUT * RATS> <SQUISH-RAT>)
-  ;       (<VERB? STEP-ON> <TELL "You smash a rat, but it's one of hundreds." CR>)
-  ;       (<VERB? LISTEN> <TELL CTHE ,RATS " sound annoyed and hungry." CR>)>
-  ; >
-  ; --- End ZIL Source ---
-
-  :behaviors (
-    ; TODO: Translate from ZIL source above
-  )
-)
+; @rats is fully implemented in steam-tunnels.grue
 
 ; [NEEDS-TRANSLATION] READOUT
 (object @readout

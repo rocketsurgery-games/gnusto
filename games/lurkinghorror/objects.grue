@@ -211,9 +211,5 @@
   :flags (INVISIBLE NDESCBIT)
   :properties ())
 
-(object @dead-rat
-  :description "dead rat"
-  :location nil
-  :flags (TAKEBIT)
-  :properties ())
+; @dead-rat is now fully implemented in steam-tunnels.grue
 
