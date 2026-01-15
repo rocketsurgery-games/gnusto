@@ -43,10 +43,11 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        (str "The so-called infinite corridor runs from east to west in the main campus building."
-             (inf-corridor-position ?self)
-             (inf-corridor-features ?self))))))
+      (success :context
+        ((description
+          (str "The so-called infinite corridor runs from east to west in the main campus building."
+               (inf-corridor-position ?self)
+               (inf-corridor-features ?self))))))))
 
 ; === INF-2: Middle ===
 
@@ -60,10 +61,11 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        (str "The so-called infinite corridor runs from east to west in the main campus building."
-             (inf-corridor-position ?self)
-             (inf-corridor-features ?self))))))
+      (success :context
+        ((description
+          (str "The so-called infinite corridor runs from east to west in the main campus building."
+               (inf-corridor-position ?self)
+               (inf-corridor-features ?self))))))))
 
 ; === INF-3: Center - Dome access ===
 
@@ -80,10 +82,11 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        (str "The so-called infinite corridor runs from east to west in the main campus building."
-             (inf-corridor-position ?self)
-             (inf-corridor-features ?self))))))
+      (success :context
+        ((description
+          (str "The so-called infinite corridor runs from east to west in the main campus building."
+               (inf-corridor-position ?self)
+               (inf-corridor-features ?self))))))))
 
 ; === INF-4: Middle ===
 
@@ -97,10 +100,11 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        (str "The so-called infinite corridor runs from east to west in the main campus building."
-             (inf-corridor-position ?self)
-             (inf-corridor-features ?self))))))
+      (success :context
+        ((description
+          (str "The so-called infinite corridor runs from east to west in the main campus building."
+               (inf-corridor-position ?self)
+               (inf-corridor-features ?self))))))))
 
 ; === INF-5: East End ===
 
@@ -114,10 +118,11 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        (str "The so-called infinite corridor runs from east to west in the main campus building."
-             (inf-corridor-position ?self)
-             (inf-corridor-features ?self))))))
+      (success :context
+        ((description
+          (str "The so-called infinite corridor runs from east to west in the main campus building."
+               (inf-corridor-position ?self)
+               (inf-corridor-features ?self))))))))
 
 ; === Building Stubs ===
 ; These rooms connect to the corridor. Full implementations may be elsewhere.
@@ -149,8 +154,9 @@
 
   :behaviors (
     :describe (fn ()
-      (success :message
-        "Massachusetts Avenue runs east and west here, along the south side of the main campus. The street is nearly impassable due to snow drifts; visibility is perhaps a hundred feet on a good day and tonight is not a good day. The main doors to the east lead into the Infinite Corridor."))
+      (success :context
+        ((description
+          "Massachusetts Avenue runs east and west here, along the south side of the main campus. The street is nearly impassable due to snow drifts; visibility is perhaps a hundred feet on a good day and tonight is not a good day. The main doors to the east lead into the Infinite Corridor."))))
 
     :on-enter (fn (?from-room)
       (cond
