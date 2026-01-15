@@ -235,7 +235,19 @@ class GrueRuntime:
     def get_object_property(self, obj: str, prop: str) -> Any:
         if obj not in self.state.objects:
             return None
-        return self.state.objects[obj].properties.get(prop)
+        # First check runtime state properties
+        result = self.state.objects[obj].properties.get(prop)
+        if result is not None:
+            return result
+        # Fall back to world definition for static properties like description
+        if obj in self.world.objects:
+            world_obj = self.world.objects[obj]
+            if prop == "description":
+                return world_obj.description
+            # Check world definition properties too
+            if world_obj.properties:
+                return world_obj.properties.get(prop)
+        return None
 
     def get_object_flags(self, obj: str) -> set[str]:
         if obj not in self.state.objects:
