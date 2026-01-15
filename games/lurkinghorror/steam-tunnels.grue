@@ -288,16 +288,19 @@
         ((description "The steam tunnel continues east and west. The coaxial cable runs along the ceiling."))))))
 
 (room @tunnel-entrance
-  :description "Steam Tunnel Entrance"
+  :description "Tunnel Entrance"
   :flags ()  ; Dark!
   :exits
-    ((east :to @tunnel-west))
-  :globals (@cable @steam-pipes)
+    ((east :to @tunnel-west)
+     (west :to @muddy-tunnel)
+     (down :to @muddy-tunnel)
+     (in :to @muddy-tunnel))
+  :globals (@cable)
 
   :behaviors (
     :describe (fn ()
       (success :context
-        ((description "This is the western end of the steam tunnel network. The tunnel continues east. Cool air flows from that direction."))))))
+        ((description "The tunnel continues west from here, becoming narrow, muddy, and forbidding. The walls no longer seem to be as finished as they were. The steam pipe and coaxial cable disappear into the ceiling at this point. The temperature has dropped considerably, as well."))))))
 
 (room @tunnel-east
   :description "Steam Tunnel"

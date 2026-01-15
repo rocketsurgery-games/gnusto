@@ -157,22 +157,7 @@
                       (set! padlock-on nil)
                       (move! ?self (loc @player)))))))))
 
-; Bolt cutters - placeholder (defined elsewhere, likely from urchins)
-(object @bolt-cutters
-  :location nil  ; Player obtains from urchins
-  :description "bolt cutters"
-  :flags (TAKEBIT TOOLBIT)
-
-  :behaviors (
-    :examine (fn ()
-      (success :message "Heavy-duty bolt cutters, capable of cutting through padlocks."))
-
-    :default (fn (?verb)
-      (cond
-        ((= ?verb :cut)
-          ; Redirect cut to using bolt cutters on prsi
-          (success :message "What do you want to cut?"))
-        (true (default))))))
+; Note: @bolt-cutters is now defined in urchins.grue (obtained from individual urchin)
 
 ; ============================================================
 ; GLOBALS

@@ -1,0 +1,298 @@
+; === Urchins & Underground Tunnels ===
+; From frob.zil - The Lurking Horror
+; The muddy tunnels below steam tunnels, and the urchin encounters.
+;
+; Rooms:
+;   @muddy-tunnel - Narrow muddy passage leading down
+;   @large-chamber - Wide spot with slots containing urchins
+;
+; Key puzzles:
+;   - Show/give mummified hand to individual urchin -> he drops bolt cutters and flees
+;   - Cut urchin-wire with bolt cutters -> frees urchins, they collapse and stop blocking
+;   - Urchins block passage down to lair until freed
+
+; === State Globals ===
+
+(globals
+  :urchin-freed false)  ; True after cutting the wire
+
+; === Rooms ===
+
+(room @muddy-tunnel
+  :description "Muddy Tunnel"
+  :ldesc "The tunnel you came through continues down, barely large enough to enter. It is made of sticky gelatinous mud that's been pushed by something into a semblance of a passage."
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @tunnel-entrance)
+     (east :to @tunnel-entrance)
+     (down :to @large-chamber))
+  :globals (@pool))
+
+(room @large-chamber
+  :description "Large Chamber"
+  :flags ()  ; Dark!
+  :exits
+    ((up :to @muddy-tunnel)
+     (down :to @lair-1 :via @urchins-barrier))
+  :globals (@global-hole)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description
+          (str "This is a wide spot in the tunnel, just as wet and muddy as elsewhere. The walls are slimy as well. Numerous slots or indentations about two feet wide and a foot high open here and there. "
+               (cond
+                 (urchin-freed
+                   "Stubs of the wire still enter each of the slots.")
+                 ((in? @urchins @slots)
+                   "Thin, wire or ropelike growths emerge from a hole further down and enter each of the slots. There is background noise here, almost loud enough to hear clearly.")
+                 ((= (loc @urchins) @large-chamber)
+                   (str "Thin, wire or ropelike growths emerge from a hole further down and envelop the head of each urchin. The urchins are "
+                        (if urchin-freed
+                          "catatonic."
+                          "saying or chanting something repetitive and monotonal, almost machinelike.")))
+                 (true
+                   "There is a hole leading down.")))))))))
+
+; === Urchins Barrier (blocks passage to lair) ===
+
+(object @urchins-barrier
+  :location @large-chamber
+  :description "urchins"
+  :flags (INVISIBLE)
+
+  :behaviors (
+    :through (fn ()
+      (cond
+        (urchin-freed
+          (success :message "A few of the urchins grab feebly at you as you pass, but none is a serious barrier."))
+        ((in? @urchins @slots)
+          (blocked :reason blocked
+                   :message "Something is blocking the downward passage. It's moving, slowly and painfully, trying to climb up."))
+        (true
+          (blocked :reason blocked
+                   :message "The urchins lurch, almost as one, into your way, grabbing at you feebly but effectively. Their pale, limp hands can't grab you, but they can stop you. There is no way past."))))))
+
+; === Slots (container for urchins) ===
+
+(object @slots
+  :location @large-chamber
+  :description "slots"
+  :flags (NDESCBIT OPENBIT CONTBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message
+        (str "The slots are narrow burrows apparently dug by hand out of the mud of the chamber walls."
+             (if (in? @urchins @slots)
+               " Most of the slots have a thin wire or rope heading into them. You begin to be quite certain that there is something moving inside the slot you are looking at."
+               ""))))
+
+    :enter (fn ()
+      (success :message
+        (str "You squeeze your way into one of the slots. The mud coats you with a cold, slimy coat which makes it barely possible to breathe."
+             (if (in? @urchins @slots)
+               " You are about halfway in when your hands touch something fleshy in front of you. It's cold and dead. On the other hand, it moves."
+               "")
+             " You slide out with all the speed you can muster.")))
+
+    :look-inside (fn ()
+      (success :message "You can't see anything but the wet walls of the burrow."))
+
+    :reach-in (fn ()
+      (cond
+        ((not (in? @urchins @slots))
+          (success :message "There is nothing in the slots but cold, wet mud."))
+        (true
+          (success :message "You reach inside, oblivious to the cold clammy mud. At first you feel nothing, but just at the limit of your stretch, you feel flesh. It's cold and dead. You jerk your hand back out."))))
+
+    :listen (fn ()
+      (cond
+        ((in? @urchins @slots)
+          (success :message "The noise, as you listen more carefully, resolves itself into voices. They are chanting, but the words are unknown to you."))
+        (true
+          (success :message "You hear nothing."))))))
+
+; === Urchins (group in large chamber) ===
+
+(object @urchins
+  :location @slots  ; Start in slots, emerge later
+  :description "urchins"
+  :flags (INVISIBLE PERSON)  ; Start invisible in slots
+
+  :behaviors (
+    :describe (fn ()
+      (cond
+        ((in? ?self @slots)
+          (success))  ; Don't describe when in slots
+        (true
+          (success :context ((description "There are urchins here."))))))
+
+    :examine (fn ()
+      (success :message
+        (str "These are not normal looking urchins. Their clothes are muddy and tattered. They are barefoot in midwinter, and covered with mud. Around their heads are draped the "
+             (if urchin-freed "stubs of the " "")
+             "ropy growths that you've been noticing in this area. Although their eyes are open, they stare catatonically.")))
+
+    :talk-to (fn ()
+      (cond
+        (urchin-freed
+          (success :message "There is no response. It's as though they don't hear you."))
+        (true
+          (success :message "The urchins turn to you in unison. They smile, revealing red, broken teeth. They never stop their deep-voiced, incomprehensible chant."))))
+
+    :attack (fn ()
+      (success :message "They ignore you."))
+
+    :search (fn ()
+      (success :message "They ignore you."))
+
+    :wake (fn ()
+      (success :message "They seem quite awake."))
+
+    :listen (fn ()
+      (success :message "The strange chant never stops. They don't move their lips to make it. It resonates deep within their chests."))
+
+    :give (fn (?item)
+      (success :message "They ignore your offer, caught up in something only they can sense."))))
+
+; === Urchin Wire (controls urchins, can be cut) ===
+
+(object @urchin-wire
+  :location @large-chamber
+  :description "wire"
+  :flags (NDESCBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "These are thin, fibrous, ropy growths. They look very tough."))
+
+    :follow (fn ()
+      (success :message
+        (str "They go from the "
+             (if (in? @urchins @slots) "slots" "urchins")
+             " down the tunnel.")))
+
+    :cut (fn (?tool)
+      (cond
+        ((or (not ?tool) (= ?tool nil))
+          (blocked :reason need-tool :message "You'll need something to cut with."))
+        ((= ?tool @bolt-cutters)
+          (success
+            :message (str "You strain and push the two handles of the bolt cutter together with all your strength. At first it looks like nothing will happen, but then, with a loud click, the jaws cut the wire!\n\nThe wire, as though under tension, rapidly begins to curl up, disappearing down the tunnel and away. "
+                          (if (in? @urchins @slots)
+                            "Urchins burst forth from the slots. "
+                            "")
+                          "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you.")
+            :effects ((set! urchin-freed true)
+                      (clear-flag! @urchins INVISIBLE)
+                      (move! @urchins @large-chamber)
+                      (move! @urchin-wire nil))))
+        ((or (has-flag ?tool WEAPONBIT) (has-flag ?tool TOOLBIT))
+          (success :message "That drives the wire into the mud, but doesn't cut it."))
+        (true
+          (blocked :reason wrong-tool :message "That won't cut through this wire."))))))
+
+; === Individual Urchin (wanders around, has bolt cutters) ===
+
+(object @urchin
+  :location @aero-lobby  ; Starts in aero lobby
+  :description "urchin"
+  :flags (PERSON SEARCHBIT OPENBIT CONTBIT)
+
+  :behaviors (
+    :describe (fn ()
+      (success :context
+        ((description "Slouching nearby is an urchin. He's a youngish teenager wearing a ski hat, running shoes, and a bulky, suspiciously bumpy, threadbare parka. He's jumpy, and looks suspiciously at you."))))
+
+    :examine (fn ()
+      (success :message "This is an urchin. He's a youngish teenager wearing a ski hat, running shoes, and a bulky, suspiciously bumpy, threadbare parka. He's jumpy, and looks suspiciously at you."))
+
+    :smell (fn ()
+      (success :message "He smells damp. There is also a slight odor of fast food."))
+
+    :talk-to (fn ()
+      (success :message "\"I don't hafta say anything. I ain't done nothing.\" He seems very nervous about talking to you."))
+
+    :ask-about (fn (?topic)
+      (cond
+        ((= ?topic @urchin)
+          (success :message "\"I just came in to get out of the snow. I wouldn't come in here if it wasn't snowing.\" He seems very nervous about talking to you."))
+        ((= ?topic @urchins)
+          (success :message "\"The word is out on the street, man. Don't go to Tech, or you're gonna be gone, ya know? I wouldn't be here myself if I had a warm place to go.\" He seems very nervous about talking to you."))
+        (true
+          (success :message "He doesn't reply. He seems very nervous about talking to you."))))
+
+    :attack (fn ()
+      (cond
+        ((not (has-flag @urchin RMUNGBIT))
+          (success :effects ((set-flag! @urchin RMUNGBIT))
+                   :message "The urchin backs off, and then draws a very large switchblade out of his parka. He waves it menacingly at you."))
+        (true
+          (success :message "The urchin laughs in your face, fending you off with his switchblade."))))
+
+    ; Show/give mummified hand -> urchin drops bolt cutters and flees
+    :give (fn (?item)
+      (cond
+        ((and (= ?item @mummified-hand) (has-flag @mummified-hand PERSON))
+          ; Hand is "alive" (twitching) - this scares the urchin
+          (success
+            :message "The urchin sees the hand twitching. \"I heard what happens around here! I'm not gettin' fed to a monster!\" He lets loose a scream of fear and zooms away. Something drops from beneath his parka as he departs. He slows for a moment, decides not to retrieve it, and is quickly out of sight."
+            :effects ((move! @urchin nil)
+                      (clear-flag! @bolt-cutters INVISIBLE)
+                      (move! @bolt-cutters (loc @player)))))
+        (true
+          (success :message "\"You expect me to believe garbage like that?\" the urchin sneers. He seems very nervous about talking to you."))))
+
+    :show (fn (?item)
+      ; Same as give for the hand
+      (cond
+        ((and (= ?item @mummified-hand) (has-flag @mummified-hand PERSON))
+          (redirect :action (do @urchin :give ?item)))
+        (true
+          (success :message "The urchin glances at it suspiciously but shows no interest. He seems very nervous about talking to you."))))))
+
+; === Urchin Clothes (for examining) ===
+
+(object @urchin-clothes
+  :location @urchin
+  :description "clothes"
+  :flags (NDESCBIT TRYTAKEBIT TAKEBIT)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "It bulges in odd places."))
+
+    :take (fn ()
+      (blocked :reason refused :message "\"Hey! Keep off, sucker!\""))
+
+    :search (fn ()
+      (blocked :reason refused :message "\"Hey! Keep off, sucker! You can't scare me!\""))))
+
+; === Bolt Cutters (in urchin, starts invisible) ===
+
+(object @bolt-cutters
+  :location @urchin
+  :description "bolt cutters"
+  :flags (INVISIBLE TAKEBIT TOOLBIT WEAPONBIT)
+  :properties (:size 10)
+
+  :behaviors (
+    :examine (fn ()
+      (success :message "This is a heavy duty bolt or chain cutter, standard equipment for local bicycle thieves. It will defeat any but the heaviest bicycle chains."))
+
+    :cut (fn (?target)
+      (cond
+        ((not ?target)
+          (success :message "What do you want to cut?"))
+        (true
+          ; Let the target object handle cutting
+          (redirect :action (do ?target :cut @bolt-cutters)))))))
+
+; === Stub Room (lair entrance - not implemented yet) ===
+
+(room @lair-1
+  :description "Lair Entrance"
+  :ldesc "This is the entrance to something unspeakable below. The air is thick and foul."
+  :flags ()
+  :exits ((up :to @large-chamber)))
