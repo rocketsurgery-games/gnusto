@@ -68,10 +68,10 @@
 
   :behaviors (
     :through (fn (?dest ?from)
-      ; Check if player is carrying anything heavy (size > 5)
-      ; For simplicity, we check for specific bulky items
+      ; Check if player is carrying anything heavy
+      ; TODO: Original ZIL checked total inventory size; for now just check forklift
       (cond
-        ((or (held? @forklift) (held? @flashlight))
+        ((held? @forklift)
           (blocked :reason too-bulky
                    :message "It's too tight a fit carrying that."))
         (true (success))))))

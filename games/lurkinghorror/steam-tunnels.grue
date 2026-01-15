@@ -428,7 +428,9 @@
   :behaviors (
     :examine (fn ()
       (success :message
-        (str "A metal hatch in the ceiling. It is "
+        (str "A rusty metal hatch "
+             (if (= (loc @player) @tomb) "in the floor" "in the ceiling")
+             ". It is "
              (if (has-flag ?self OPENBIT) "open" "closed") ".")))
 
     :open (fn ()
