@@ -1,0 +1,130 @@
+; Tests for Infinite Corridor
+
+; === Navigation Through Corridor ===
+
+(test-group "corridor navigation east-west"
+  :setup ()
+
+  (test "inf-1 to inf-2 east"
+    :setup ((move! @player @inf-1))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-2)))
+
+  (test "inf-2 to inf-3 east"
+    :setup ((move! @player @inf-2))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-3)))
+
+  (test "inf-3 to inf-4 east"
+    :setup ((move! @player @inf-3))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-4)))
+
+  (test "inf-4 to inf-5 east"
+    :setup ((move! @player @inf-4))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-5)))
+
+  (test "inf-5 to inf-4 west"
+    :setup ((move! @player @inf-5))
+    :action (go :direction west)
+    :expect ((outcome? success)
+             (player-at? @inf-4)))
+
+  (test "inf-2 to inf-1 west"
+    :setup ((move! @player @inf-2))
+    :action (go :direction west)
+    :expect ((outcome? success)
+             (player-at? @inf-1))))
+
+; === Building Exits ===
+
+(test-group "corridor building exits"
+  :setup ()
+
+  (test "inf-1 north to aero-lobby"
+    :setup ((move! @player @inf-1))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @aero-lobby)))
+
+  (test "inf-1 south to engineering-bldg"
+    :setup ((move! @player @inf-1))
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @engineering-bldg)))
+
+  (test "inf-1 west to mass-ave"
+    :setup ((move! @player @inf-1))
+    :action (go :direction west)
+    :expect ((outcome? success)
+             (player-at? @mass-ave)))
+
+  (test "inf-3 up to great-dome"
+    :setup ((move! @player @inf-3))
+    :action (go :direction up)
+    :expect ((outcome? success)
+             (player-at? @great-dome)))
+
+  (test "inf-5 north to nutrition-bldg"
+    :setup ((move! @player @inf-5))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @nutrition-bldg)))
+
+  (test "inf-5 south to chemistry-bldg"
+    :setup ((move! @player @inf-5))
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @chemistry-bldg))))
+
+; === Building Back Exits ===
+
+(test-group "building return exits"
+  :setup ()
+
+  (test "engineering-bldg north to inf-1"
+    :setup ((move! @player @engineering-bldg))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @inf-1)))
+
+  (test "mass-ave east to inf-1"
+    :setup ((move! @player @mass-ave))
+    :action (go :direction east)
+    :expect ((outcome? success)
+             (player-at? @inf-1)))
+
+  (test "nutrition-bldg south to inf-5"
+    :setup ((move! @player @nutrition-bldg))
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @inf-5)))
+
+  (test "chemistry-bldg north to inf-5"
+    :setup ((move! @player @chemistry-bldg))
+    :action (go :direction north)
+    :expect ((outcome? success)
+             (player-at? @inf-5))))
+
+; === Great Court Exit Warning ===
+
+(test-group "great court door warning"
+  :setup ((move! @player @inf-3)
+          (set! door-warning false))
+
+  (test "first exit attempt warns"
+    :action (go :direction south)
+    :expect ((outcome? blocked)
+             (reason? warning)
+             (global? door-warning true)))
+
+  (test "second exit attempt succeeds"
+    :setup ((set! door-warning true))
+    :action (go :direction south)
+    :expect ((outcome? success)
+             (player-at? @great-court))))

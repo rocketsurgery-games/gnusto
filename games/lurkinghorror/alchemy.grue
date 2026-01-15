@@ -25,15 +25,6 @@
   :remembered-student false  ; Has player remembered the student's death?
   :animation-count 0)     ; Hand animation stage counter
 
-; === Stub Rooms (connections not yet implemented) ===
-
-(room @inf-5
-  :description "Infinite Corridor"
-  :ldesc "This is the east end of the Infinite Corridor. The corridor extends west. Exits lead north and south."
-  :flags (ONBIT)
-  :exits
-    ((south :to @chemistry-bldg)))
-
 ; === Main Rooms ===
 
 (room @chemistry-bldg

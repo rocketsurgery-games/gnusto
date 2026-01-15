@@ -1,0 +1,179 @@
+; Infinite Corridor - The main campus corridor system
+; INF-1 through INF-5 connect various buildings together.
+;
+; Layout:
+;   @mass-ave <---> @inf-1 <---> @inf-2 <---> @inf-3 <---> @inf-4 <---> @inf-5
+;                     |                        |                         |  |
+;                     v                        v                         v  v
+;              @aero-lobby             @great-dome (up)      @nutrition-bldg  @chemistry-bldg
+;              @engineering-bldg       @great-court (south)
+
+; === Helper for corridor position description ===
+
+(defn inf-corridor-position (?room)
+  (cond
+    ((= ?room @inf-1) " This is the west end.")
+    ((= ?room @inf-5) " This is the east end.")
+    (true " The corridor extends both ways from here.")))
+
+(defn inf-corridor-features (?room)
+  (cond
+    ((= ?room @inf-1)
+     " Side corridors lead north and south, and a set of doors leads west into the howling blizzard.")
+    ((or (= ?room @inf-2) (= ?room @inf-4))
+     " Many closed and locked offices are to the north and south.")
+    ((= ?room @inf-3)
+     " A stairway leads up, and a door leads out to the Great Court.")
+    ((= ?room @inf-5)
+     " The corridor branches north and south here.")
+    (true "")))
+
+; === INF-1: West End ===
+
+(room @inf-1
+  :description "Infinite Corridor"
+  :flags (ONBIT)
+  :exits
+    ((west :to @mass-ave)
+     (north :to @aero-lobby)
+     (east :to @inf-2)
+     (south :to @engineering-bldg)
+     (out :to @mass-ave))
+  :globals (@office-door)
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        (str "The so-called infinite corridor runs from east to west in the main campus building."
+             (inf-corridor-position ?self)
+             (inf-corridor-features ?self))))))
+
+; === INF-2: Middle ===
+
+(room @inf-2
+  :description "Infinite Corridor"
+  :flags (ONBIT)
+  :exits
+    ((west :to @inf-1)
+     (east :to @inf-3))
+  :globals (@office-door)
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        (str "The so-called infinite corridor runs from east to west in the main campus building."
+             (inf-corridor-position ?self)
+             (inf-corridor-features ?self))))))
+
+; === INF-3: Center - Dome access ===
+
+(room @inf-3
+  :description "Infinite Corridor"
+  :flags (ONBIT)
+  :exits
+    ((west :to @inf-2)
+     (east :to @inf-4)
+     (south :to @great-court :via @great-court-exit-barrier)
+     (out :to @great-court :via @great-court-exit-barrier)
+     (up :to @great-dome))
+  :globals (@office-door)
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        (str "The so-called infinite corridor runs from east to west in the main campus building."
+             (inf-corridor-position ?self)
+             (inf-corridor-features ?self))))))
+
+; === INF-4: Middle ===
+
+(room @inf-4
+  :description "Infinite Corridor"
+  :flags (ONBIT)
+  :exits
+    ((west :to @inf-3)
+     (east :to @inf-5))
+  :globals (@office-door)
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        (str "The so-called infinite corridor runs from east to west in the main campus building."
+             (inf-corridor-position ?self)
+             (inf-corridor-features ?self))))))
+
+; === INF-5: East End ===
+
+(room @inf-5
+  :description "Infinite Corridor"
+  :flags (ONBIT)
+  :exits
+    ((west :to @inf-4)
+     (north :to @nutrition-bldg)
+     (south :to @chemistry-bldg))
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        (str "The so-called infinite corridor runs from east to west in the main campus building."
+             (inf-corridor-position ?self)
+             (inf-corridor-features ?self))))))
+
+; === Building Stubs ===
+; These rooms connect to the corridor. Full implementations may be elsewhere.
+
+(room @engineering-bldg
+  :description "Engineering Building"
+  :ldesc "This building extends a long way south from the Infinite Corridor. It too is full of closed, locked offices."
+  :flags (ONBIT)
+  :exits
+    ((north :to @inf-1))
+  :globals (@office-door))
+
+(room @nutrition-bldg
+  :description "Fruits and Nuts"
+  :ldesc "This is the central corridor of the Nutrition Building. The main building is south, and a stairway leads down."
+  :flags (ONBIT)
+  :exits
+    ((south :to @inf-5)
+     (down :to @brown-tunnel)))
+
+; === Mass Ave (outside) ===
+
+(room @mass-ave
+  :description "Mass. Ave."
+  :flags (OUTSIDE ONBIT)
+  :exits
+    ((east :to @inf-1)
+     (in :to @inf-1))
+
+  :behaviors (
+    :describe (fn ()
+      (success :message
+        "Massachusetts Avenue runs east and west here, along the south side of the main campus. The street is nearly impassable due to snow drifts; visibility is perhaps a hundred feet on a good day and tonight is not a good day. The main doors to the east lead into the Infinite Corridor."))
+
+    :on-enter (fn (?from-room)
+      (cond
+        ; Coming from inside - start freezing
+        ((not (has-flag ?from-room OUTSIDE))
+          (success :effects ((queue! freezing))))
+        (true (success))))))
+
+; === Great Court Exit Barrier ===
+; Warns the player they can't get back in at night
+
+(globals
+  :door-warning false)
+
+(object @great-court-exit-barrier
+  :location @inf-3
+  :description "passage"
+  :flags (INVISIBLE)
+  :behaviors (
+    :through (fn ()
+      (cond
+        (door-warning (success))
+        (true
+          (blocked :reason warning
+            :effects ((set! door-warning true))
+            :message "Remember, this is one of the doors that's always locked at night. You won't be able to get back in if you go out."))))))

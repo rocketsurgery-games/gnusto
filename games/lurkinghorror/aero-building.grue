@@ -3,16 +3,6 @@
 ; The Aeronautical Engineering Building and the secret tomb beneath
 
 ; ============================================================
-; STUB ROOMS (connected areas not fully converted yet)
-; ============================================================
-
-(room @inf-1
-  :description "Infinite Corridor"
-  :ldesc "This is a long corridor that runs through the main building. To the north is the Aero Building lobby."
-  :flags (ONBIT)
-  :exits ((north :to @aero-lobby)))
-
-; ============================================================
 ; ROOMS
 ; ============================================================
 
