@@ -2429,12 +2429,33 @@ class EffectExecutor:
         return self._predicates.eval(expr, self._env)
 
     def _exec_move(self, form: SList) -> None:
-        """(move! OBJ DEST)"""
+        """(move! OBJ DEST)
+
+        When moving the player to a room, this also triggers the room's
+        :on-enter behavior (if any), mirroring the behavior of "go" movement.
+        """
         if len(form) != 3:
             raise EvalError(f"'move!' expects 2 arguments, got {len(form) - 1}")
         obj = self._eval(form[1])
         dest = self._eval(form[2])
+
+        # Track from_room if we're moving the player to a room
+        # self.state may be a GrueRuntime (which has these methods) or a plain state
+        player_name = getattr(self.state, "player_name", "@player")
+        from_room = None
+        is_room = getattr(self.state, "is_room", None)
+        get_loc = getattr(self.state, "get_object_location", None)
+        check_enter = getattr(self.state, "_check_room_on_enter", None)
+
+        if obj == player_name and dest and is_room and get_loc and check_enter:
+            if is_room(dest):
+                from_room = get_loc(player_name)
+
         self.state.move_object(obj, dest)
+
+        # Trigger on-enter if we moved the player to a room
+        if from_room is not None and check_enter:
+            check_enter(dest, from_room, player_name)
 
     def _exec_set_flag(self, form: SList) -> None:
         """(set-flag! OBJ FLAG)"""

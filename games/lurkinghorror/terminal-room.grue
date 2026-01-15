@@ -17,7 +17,7 @@
         ((= ?from-room @platform-room)
           (success
             :effects ((queue! hacker-helps) (set! hacker-help 0))
-            :nightmare-wake true
+            :context ((nightmare-wake true))
             :message "You are awakened by the thump of your head hitting the keyboard."))
         (true (success))))
 
