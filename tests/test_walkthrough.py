@@ -366,9 +366,194 @@ class TestPart4Chemistry:
 class TestPart5Hand:
     """Part 5: The Hand.
 
-    Blocked by infinite corridor traversal issues.
+    1. Go to the Brown Building dome
+    2. Find the bathtub with the mummified hand
+    3. Take the hand
+    4. Revive it in the vat (chemistry lab)
+    5. Put the hyrax ring on the hand
     """
-    pass  # TODO
+
+    def _wait_for_waxer(self, game, direction):
+        """Try to move in direction, waiting for waxer if needed."""
+        result = game.do("_movement", "go", direction)
+        for _ in range(20):  # Max wait
+            if result.outcome == "success":
+                return result
+            if result.outcome == "blocked" and result.reason == "waxer-blocking":
+                game.process_events()
+                result = game.do("_movement", "go", direction)
+            else:
+                return result
+        return result
+
+    def _navigate_to_brown_dome(self, game):
+        """Navigate from terminal room to Brown Building dome."""
+        # Terminal room -> cs-2nd -> comp-center -> cs-basement -> aero-basement
+        game.do("_movement", "go", "south")  # cs-2nd
+        game.do("_movement", "go", "down")   # comp-center
+        game.do("_movement", "go", "down")   # cs-basement
+        game.do("_movement", "go", "west")   # aero-basement
+        game.do("_movement", "go", "west")   # aero-stairs
+        game.do("_movement", "go", "up")     # aero-lobby
+
+        # Traverse infinite corridor to inf-5 (waxer may block)
+        game.do("_movement", "go", "south")  # inf-1
+        for _ in range(4):
+            self._wait_for_waxer(game, "east")
+
+        # inf-5 -> nutrition-bldg (also via waxer barrier)
+        self._wait_for_waxer(game, "north")  # nutrition-bldg
+        game.do("_movement", "go", "down")   # brown-tunnel
+        game.do("_movement", "go", "south")  # brown-basement
+        game.do("_movement", "go", "up")     # brown-building
+        game.do("_movement", "go", "up")     # brown-top-floor
+
+    def test_can_navigate_to_brown_building(self, game):
+        """Can navigate from terminal room to Brown Building top floor."""
+        self._navigate_to_brown_dome(game)
+        assert game.get_player_location() == "@brown-top-floor"
+
+    def test_roof_door_is_locked(self, game):
+        """Roof door starts locked."""
+        self._navigate_to_brown_dome(game)
+
+        result = game.do("@roof-door", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+
+    def test_can_unlock_roof_door_with_master_key(self, game):
+        """Can unlock roof door with master key."""
+        self._navigate_to_brown_dome(game)
+
+        # Give player master key
+        game.move_object("@master-key", "@player")
+
+        # Unlock door
+        result = game.do("@roof-door", "unlock", "@master-key")
+        assert result.outcome == "success"
+
+        # Now can open
+        result = game.do("@roof-door", "open")
+        assert result.outcome == "success"
+
+        # Can go to roof
+        result = game.do("_movement", "go", "west")
+        assert result.outcome == "success"
+        assert game.get_player_location() == "@brown-roof"
+
+    def test_can_reach_inside_dome(self, game):
+        """Can reach inside the dome after unlocking roof door."""
+        self._navigate_to_brown_dome(game)
+        game.move_object("@master-key", "@player")
+
+        game.do("@roof-door", "unlock", "@master-key")
+        game.do("@roof-door", "open")
+        game.do("_movement", "go", "west")   # brown-roof
+        game.do("_movement", "go", "up")     # inside-dome
+
+        assert game.get_player_location() == "@inside-dome"
+        # Tub is NDESCBIT (scenery) so check it exists via do
+        result = game.do("@tub", "examine")
+        assert result.outcome == "success"
+
+    def test_can_find_hand_in_tub(self, game):
+        """Can search tub to find mummified hand."""
+        self._navigate_to_brown_dome(game)
+        game.move_object("@master-key", "@player")
+
+        game.do("@roof-door", "unlock", "@master-key")
+        game.do("@roof-door", "open")
+        game.do("_movement", "go", "west")
+        game.do("_movement", "go", "up")
+
+        # Search the tub
+        result = game.do("@tub", "search")
+        assert result.outcome == "success"
+        # Check message is in context
+        context_dict = dict(result.context)
+        assert "hand" in context_dict.get("message", "").lower()
+
+        # Hand should now be in tub (visible via its location)
+        hand = game.state.objects.get("@mummified-hand")
+        assert hand.location == "@tub"
+
+    def test_can_take_mummified_hand(self, game):
+        """Can take the mummified hand from the tub."""
+        self._navigate_to_brown_dome(game)
+        game.move_object("@master-key", "@player")
+
+        game.do("@roof-door", "unlock", "@master-key")
+        game.do("@roof-door", "open")
+        game.do("_movement", "go", "west")
+        game.do("_movement", "go", "up")
+        game.do("@tub", "search")
+
+        result = game.do("@mummified-hand", "take")
+        assert result.outcome == "success"
+        assert "@mummified-hand" in game.get_inventory()
+
+    def test_can_dip_hand_in_elixir(self, game):
+        """Can dip mummified hand in the elixir vat to start animation."""
+        # Set up: player has hand, is in alchemy-lab with prof dead
+        game.move_object("@mummified-hand", "@player")
+        game.move_object("@player", "@alchemy-lab")
+        game.state.globals["prof-dead"] = True  # Prof is gone
+        game.state.objects["@alchemy-lab"].flags.add("ONBIT")  # Lights on
+
+        # Dip hand in vat
+        result = game.do("@vat", "put", "@mummified-hand")
+        assert result.outcome == "success"
+
+        # Animation event should be queued
+        assert "animate-hand" in game.state.queues
+
+    def test_hand_animates_after_dipping(self, game):
+        """Hand becomes animated (PERSON flag) after dipping and waiting."""
+        game.move_object("@mummified-hand", "@player")
+        game.move_object("@player", "@alchemy-lab")
+        game.state.globals["prof-dead"] = True
+        game.state.objects["@alchemy-lab"].flags.add("ONBIT")
+
+        # Dip hand
+        game.do("@vat", "put", "@mummified-hand")
+
+        # Process animation events (takes 3 turns)
+        for _ in range(4):
+            game.process_events()
+
+        # Hand should now be animated (PERSON flag)
+        hand = game.state.objects.get("@mummified-hand")
+        assert "PERSON" in hand.flags, "Hand should be animated"
+
+    def test_can_put_ring_on_animated_hand(self, game):
+        """Can put the brass hyrax ring on the animated hand."""
+        # Set up animated hand
+        game.move_object("@mummified-hand", "@player")
+        game.state.objects["@mummified-hand"].flags.add("PERSON")
+
+        # Give player the ring
+        game.move_object("@ring", "@player")
+
+        # Put ring on hand
+        result = game.do("@ring", "put-on", "@mummified-hand")
+        assert result.outcome == "success"
+
+        # Ring should be on the hand
+        ring = game.state.objects.get("@ring")
+        assert ring.location == "@mummified-hand"
+
+    def test_ring_cannot_go_on_mummified_hand(self, game):
+        """Cannot put ring on non-animated (mummified) hand."""
+        game.move_object("@mummified-hand", "@player")
+        game.move_object("@ring", "@player")
+
+        # Hand is NOT animated
+        game.state.objects["@mummified-hand"].flags.discard("PERSON")
+
+        # Try to put ring on hand
+        result = game.do("@ring", "put-on", "@mummified-hand")
+        assert result.outcome == "blocked"
+        assert result.reason == "too-dry"
 
 
 class TestPart6SteamTunnels:
