@@ -39,3 +39,27 @@
     :action (do @chair :stand)
     :expect ((outcome? success)
              (loc? @player @terminal-room))))
+
+; Visibility from inside vehicle (META-LOC pattern)
+; When sitting in chair, player should still see room objects
+(test-group "visibility from inside vehicle"
+  (test "can see PC while sitting in chair"
+    :setup ((move! @player @chair))
+    :action (do @pc :examine)
+    :expect ((outcome? success)))
+
+  (test "can see hacker while sitting in chair"
+    :setup ((move! @player @chair)
+            (move! @hacker @terminal-room))
+    :action (do @hacker :examine)
+    :expect ((outcome? success)))
+
+  (test "can see chair while sitting in it"
+    :setup ((move! @player @chair))
+    :action (do @chair :examine)
+    :expect ((outcome? success)))
+
+  (test "can interact with room objects while sitting"
+    :setup ((move! @player @chair))
+    :action (do @pc :turn-on)
+    :expect ((outcome? success))))

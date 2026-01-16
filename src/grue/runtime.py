@@ -283,11 +283,45 @@ class GrueRuntime:
         raise KeyError(f"Unknown global: {name}")
 
     def get_player_location(self) -> str:
-        """Get the player's current room."""
+        """Get the player's immediate location (may be a vehicle/container, not room)."""
         player = self.state.objects.get(self.player_name)
         if player:
             return player.location or ""
         return ""
+
+    def get_meta_location(self, obj: str) -> str:
+        """Walk up the containment hierarchy to find the room containing an object.
+
+        Like ZIL's META-LOC routine - keeps going up through containers
+        until it reaches a room.
+        """
+        current = obj
+        visited = set()  # Prevent infinite loops
+        while current and current not in visited:
+            visited.add(current)
+            # Is this a room?
+            if current in self.state.rooms:
+                return current
+            # Get the location of this object/container
+            obj_state = self.state.objects.get(current)
+            if not obj_state or not obj_state.location:
+                return ""
+            # Global objects
+            if obj_state.location == "@global":
+                return "@global"
+            current = obj_state.location
+        return ""
+
+    def get_player_room(self) -> str:
+        """Get the room the player is in (walking up through any vehicles/containers)."""
+        player_loc = self.get_player_location()
+        if not player_loc:
+            return ""
+        # If already in a room, return it
+        if player_loc in self.state.rooms:
+            return player_loc
+        # Otherwise walk up to find the room
+        return self.get_meta_location(player_loc)
 
     def get_player_name(self) -> str:
         """Get the player entity name."""
@@ -305,20 +339,20 @@ class GrueRuntime:
     def is_visible(self, obj: str) -> bool:
         """Check if object is visible to player.
 
-        Visible means:
-        - Held by player
-        - In player's current room
-        - Player is inside the object (e.g., sitting in a chair)
-        - In current room's :globals list (overrides INVISIBLE)
-        - In an open container that is visible (recursive)
-        - On a surface (SURFACEBIT) that is visible
+        Follows ZIL's visibility model (META-LOC pattern):
+        - Object's containing room must match player's room
+        - Or object is held by player
+        - Or player is inside the object (e.g., sitting in a chair)
+        - Room globals override INVISIBLE
+        - Contents of open containers/surfaces are visible recursively
         """
         if obj not in self.state.objects:
             return False
         obj_state = self.state.objects[obj]
         loc = obj_state.location
 
-        player_room = self.get_player_location()
+        player_room = self.get_player_room()  # Walk up to actual room
+        player_loc = self.get_player_location()  # Immediate location (may be vehicle)
 
         # Check if object is in current room's :globals list first
         # Room globals override INVISIBLE - they represent "known" scenery
@@ -338,9 +372,14 @@ class GrueRuntime:
         if loc == self.player_name:
             return True
         # Player is inside this object (e.g., sitting in chair)
-        if player_room == obj:
+        if player_loc == obj:
             return True
-        if loc == player_room:
+        # Object's META-LOC must match player's room
+        obj_meta_loc = self.get_meta_location(obj)
+        if obj_meta_loc != player_room:
+            return False
+        # Direct location checks: object in room, or in player's vehicle
+        if loc == player_room or loc == player_loc:
             return True
         # Check if in a container/on a surface
         if loc in self.state.objects:
