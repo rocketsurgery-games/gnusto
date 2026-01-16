@@ -1134,9 +1134,11 @@ Entity names use lowercase with hyphens (`@outside-door`), while flags use upper
 GRUE includes a built-in test DSL for writing game behavior tests in pure GRUE syntax.
 Test files use the `.test.grue` extension and are colocated with game files.
 
-### `(test NAME :setup EFFECTS :action ACTION :expect PREDICATES)`
+### `(test NAME ...)`
 
-Single action test. Runs setup effects, executes action, checks predicates.
+The unified test form supports both single-action tests and multi-step sequences.
+
+**Single-action style** (legacy, uses `:action`/`:expect` keywords):
 
 ```scheme
 (test "can exit south without carrying anything"
@@ -1151,75 +1153,65 @@ Single action test. Runs setup effects, executes action, checks predicates.
            (reason? tech-property)))
 ```
 
-### `(test-sequence NAME (step ...) ...)`
+**Sequential style** (for multi-step tests and walkthroughs):
 
-Multi-step test sequence. State persists across all forms, enabling walkthrough-style tests.
+```scheme
+(test "take PC then blocked at exit"
+  (do @pc :take)
+  (assert (held? @pc))
+  (do @movement :go south)
+  (assert (outcome? blocked)))
+```
 
-**Available forms inside test-sequence:**
+**Available forms in sequential tests:**
 
 | Form | Description |
 |------|-------------|
-| `(step :action A :expect P)` | Execute action, check expectations (`:expect` optional) |
-| `(seq ACTION...)` | Execute actions in sequence, no assertions |
+| `(do @obj :verb args...)` | Execute action |
 | `(assert PRED)` | Check predicate, fail if false |
-| `(until PRED ACTION...)` | Loop actions until predicate is true (max 100 iterations) |
+| `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
+| `(wait)` | Process turn events (useful for timed puzzles) |
+| `(run ACTION-LIST)` | Execute a named list of actions |
 
-**Basic example:**
+### `(def NAME VALUE)` and `(run NAME)`
 
-```scheme
-(test-sequence "take PC then blocked at exit"
-  (step :action (do @pc :take)
-        :expect ((outcome? success)
-                 (held? @pc)))
-  (step :action (go :direction south)
-        :expect ((outcome? blocked)
-                 (reason? tech-property))))
-```
-
-**Walkthrough example:**
-
-The `seq`, `assert`, and `until` forms enable writing full game walkthroughs without
-setup cheats:
+Define named action lists for reusable walkthrough segments:
 
 ```scheme
-(test-sequence "walkthrough-part2-master-key"
-  ; Navigate to kitchen
-  (seq
-    (do @movement :go south)
+; Define action lists
+(def walkthrough/to-kitchen
+  '((do @movement :go south)
     (do @movement :go west)
-    (do @movement :go north))
+    (do @movement :go north)))
 
-  ; Get food from refrigerator
-  (seq
-    (do @refrigerator :open)
-    (do @carton :take))
+(def walkthrough/get-food
+  '((do @refrigerator :open)
+    (do @carton :take)))
+
+; Use in tests with (run)
+(test "walkthrough-part2-master-key"
+  (run walkthrough/to-kitchen)
+  (run walkthrough/get-food)
   (assert (held? @carton))
 
   ; Heat food in microwave
-  (seq
-    (do @microwave :open)
-    (do @carton :put @microwave)
-    (do @microwave :close)
-    (do @microwave :set-timer 300)
-    (do @microwave :start))
+  (do @microwave :open)
+  (do @carton :put @microwave)
+  (do @microwave :close)
+  (do @microwave :set-timer 300)
+  (do @microwave :start)
 
   ; Wait for food to heat
   (until (>= (prop @chinese-food heat) 12)
     (wait))
 
   ; Trade with hacker
-  (seq
-    (do @hacker :trade @carton @master-key)
-    (do @hacker :give @carton))
-
+  (do @hacker :trade @carton @master-key)
+  (do @hacker :give @carton)
   (assert (held? @master-key)))
 ```
 
-**Actions available in seq/until:**
-- `(do @object :verb args...)` - Standard object action
-- `(do @movement :go direction)` - Movement
-- `(wait)` - Process turn events (useful for timed puzzles)
-- `(process-events)` - Explicitly process event queue
+This enables building complete walkthroughs from composable segments without setup cheats.
 
 ### `(test-group NAME :setup EFFECTS TESTS...)`
 

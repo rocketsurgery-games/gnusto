@@ -1,42 +1,64 @@
 """
 Grue-native test DSL.
 
-Tests are S-expressions that exercise the full Grue stack:
+Tests are S-expressions that exercise the full Grue stack.
 
-    (test "door opens from mass-ave"
-      :action (do :verb open :object OUTSIDE-DOOR)
-      :expect ((outcome? success)
-               (context? mechanism push-bar)))
+== Test Forms ==
 
-    (test "door blocked from great-court"
-      :setup ((move! PLAYER GREAT-COURT))
-      :action (do :verb open :object OUTSIDE-DOOR)
-      :expect ((outcome? blocked)
-               (reason? locked-from-outside)))
+Simple single-action test (legacy style):
+    (test "door opens"
+      :setup ((move! @player @room))
+      :action (do @door :open)
+      :expect ((outcome? success)))
 
-Test forms:
-    (test NAME :setup EFFECTS :action ACTION :expect PREDICATES)
+Sequential test (new style - use for multi-step tests and walkthroughs):
+    (test "complete puzzle"
+      :setup ((move! @player @room))    ; optional setup
+      (do @door :unlock @key)           ; bare actions
+      (do @door :open)
+      (assert (has-flag? @door OPENBIT))
+      (until (loc? @player @goal)       ; loop until condition
+        (do @movement :go north))
+      (run walkthrough/segment)         ; run named action list
+      (assert (victory? true)))
 
-    (test-sequence NAME
-      :setup EFFECTS              ; optional, runs once at start
-      (step :action A :expect P)  ; first step
-      (step :action A :expect P)  ; second step, state persists
-      ...)
+Action lists for walkthroughs:
+    (def walkthrough/kitchen
+      '((do @movement :go south)
+        (do @refrigerator :open)
+        (do @carton :take)))
 
-Special predicates for :expect:
-    (outcome? OUTCOME)        - Check action outcome (success, blocked, error, redirect)
-    (reason? REASON)          - Check blocked/error reason
-    (context? KEY VALUE)      - Check context contains key=value
-    (changed? OBJ PROP FROM TO) - Check property changed
-    (flag-set? OBJ FLAG)      - Check flag was set by action
-    (flag-cleared? OBJ FLAG)  - Check flag was cleared by action
+Test groups with shared setup:
+    (test-group "door tests"
+      :setup ((move! @player @room))
+      (test "opens" :action (do @door :open) :expect ((outcome? success)))
+      (test "closes" :action (do @door :close) :expect ((outcome? success))))
 
-Setup effects use standard effect forms:
-    (move! OBJ DEST)
-    (set-flag! OBJ FLAG)
-    (clear-flag! OBJ FLAG)
-    (set-prop! OBJ PROP VALUE)
-    (defn NAME (PARAMS) BODY)  ; define helper functions
+== Test Body Forms ==
+
+    (do @obj :verb args...)   - Execute action
+    (assert PRED)             - Check predicate, fail if false
+    (until PRED BODY...)      - Loop until predicate true (max 100 iterations)
+    (wait)                    - Process events (shorthand for process-events)
+    (run ACTION-LIST)         - Execute a list of actions (symbol or quoted list)
+    (seq ACTIONS...)          - Execute actions in sequence (legacy, optional)
+    (step :action A :expect P) - Action with inline expectations (legacy)
+
+== Predicates ==
+
+    (outcome? success|blocked|error|redirect)
+    (reason? REASON)
+    (context? KEY VALUE)
+    (player-at? ROOM)
+    (loc? OBJ LOCATION)
+    (has-flag? OBJ FLAG)
+    (no-flag? OBJ FLAG)
+    (held? OBJ)              - Object in player inventory
+    (prop? OBJ PROP VALUE)
+    (global? NAME VALUE)
+    (queued? EVENT)
+    (victory? true|false)
+    (death? true|false)
 
 Usage:
     from grue.test import run_tests
@@ -97,14 +119,19 @@ class TestRunner:
         self.world = world
         # Shared function definitions across tests
         self._functions: dict[str, tuple[list[str], SExpr]] = {}
+        # Global definitions (def name value) for action lists etc.
+        self._globals: dict[str, SExpr] = {}
 
     def run_test(self, test_form: SList) -> TestResult:
         """
-        Run a single (test ...) form.
+        Run a (test ...) form.
 
-        Format: (test NAME :setup EFFECTS :action ACTION :expect PREDICATES)
+        Supports two styles:
+        1. Legacy single-action: (test NAME :setup S :action A :expect E)
+        2. Sequential: (test NAME :setup S (do ...) (assert ...) ...)
+
+        Detects style by presence of :action keyword.
         """
-        # Parse test form
         if len(test_form) < 2:
             return TestResult(
                 name="<invalid>",
@@ -120,7 +147,19 @@ class TestRunner:
         else:
             test_name = to_string(name)
 
-        # Parse keyword arguments
+        # Detect style: look for :action keyword
+        has_action_keyword = any(
+            isinstance(test_form[i], Keyword) and test_form[i].name == "action"
+            for i in range(2, len(test_form))
+        )
+
+        if has_action_keyword:
+            return self._run_test_legacy(test_form, test_name)
+        else:
+            return self._run_test_sequential(test_form, test_name)
+
+    def _run_test_legacy(self, test_form: SList, test_name: str) -> TestResult:
+        """Run legacy single-action test: (test NAME :setup S :action A :expect E)"""
         setup_effects: list[SExpr] = []
         action: SExpr | None = None
         expect_predicates: list[SExpr] = []
@@ -156,20 +195,14 @@ class TestRunner:
                 error="Test missing :action"
             )
 
-        # Create fresh runtime for this test
         runtime = GrueRuntime(self.world)
-        # Share function definitions - runtime implements MutableWorldState
         executor = EffectExecutor(runtime, self._functions)
 
         try:
-            # Run setup effects
             for effect in setup_effects:
                 executor.execute(effect)
 
-            # Execute action
             result = self._execute_action(runtime, action)
-
-            # Check expectations
             failures = self._check_expectations(runtime, result, expect_predicates)
 
             return TestResult(
@@ -184,6 +217,190 @@ class TestRunner:
                 passed=False,
                 error=str(e)
             )
+
+    def _run_test_sequential(self, test_form: SList, test_name: str) -> TestResult:
+        """Run sequential test: (test NAME :setup S (do ...) (assert ...) ...)"""
+        setup_effects: list[SExpr] = []
+        forms: list[SExpr] = []
+
+        i = 2
+        while i < len(test_form):
+            item = test_form[i]
+
+            if isinstance(item, Keyword):
+                if i + 1 >= len(test_form):
+                    return TestResult(
+                        name=test_name,
+                        passed=False,
+                        error=f"Missing value for :{item.name}"
+                    )
+                value = test_form[i + 1]
+
+                if item.name == "setup":
+                    if isinstance(value, SList):
+                        setup_effects = list(value.items)
+                i += 2
+
+            elif isinstance(item, SList) and len(item) > 0:
+                # Collect form bodies: do, assert, until, wait, run, seq, step
+                forms.append(item)
+                i += 1
+            else:
+                i += 1
+
+        if not forms:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                error="Test has no body forms"
+            )
+
+        runtime = GrueRuntime(self.world)
+        executor = EffectExecutor(runtime, self._functions)
+        all_failures: list[str] = []
+
+        try:
+            for effect in setup_effects:
+                executor.execute(effect)
+
+            for form_idx, form in enumerate(forms, 1):
+                failures = self._run_form(runtime, executor, form, form_idx)
+                all_failures.extend(failures)
+
+            return TestResult(
+                name=test_name,
+                passed=len(all_failures) == 0,
+                failures=all_failures
+            )
+
+        except Exception as e:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                error=str(e)
+            )
+
+    def _run_form(
+        self,
+        runtime: GrueRuntime,
+        executor: EffectExecutor,
+        form: SExpr,
+        form_idx: int
+    ) -> list[str]:
+        """Run a single form in a sequential test body."""
+        if not isinstance(form, SList) or len(form) == 0:
+            return [f"Form {form_idx}: Invalid form"]
+
+        head = form[0]
+        if not isinstance(head, Symbol):
+            return [f"Form {form_idx}: Form must start with symbol"]
+
+        form_type = head.name
+
+        if form_type == "do":
+            return self._run_do(runtime, form, form_idx)
+        elif form_type == "assert":
+            return self._run_assert(runtime, form, form_idx)
+        elif form_type == "until":
+            return self._run_until(runtime, form, form_idx)
+        elif form_type == "wait":
+            return self._run_wait(runtime, form_idx)
+        elif form_type == "run":
+            return self._run_run(runtime, form, form_idx)
+        elif form_type == "seq":
+            return self._run_seq(runtime, form, form_idx)
+        elif form_type == "step":
+            return self._run_step(runtime, executor, form, form_idx)
+        elif form_type == "go":
+            # Allow (go :direction X) as shorthand
+            try:
+                self._execute_action(runtime, form)
+                return []
+            except Exception as e:
+                return [f"Form {form_idx}: {e}"]
+        elif form_type == "process-events":
+            try:
+                self._execute_action(runtime, form)
+                return []
+            except Exception as e:
+                return [f"Form {form_idx}: {e}"]
+        else:
+            return [f"Form {form_idx}: Unknown form type '{form_type}'"]
+
+    def _run_do(
+        self,
+        runtime: GrueRuntime,
+        form: SList,
+        form_idx: int
+    ) -> list[str]:
+        """Run a bare (do ...) form."""
+        try:
+            self._execute_action(runtime, form)
+            return []
+        except Exception as e:
+            return [f"Form {form_idx}: {e}"]
+
+    def _run_wait(self, runtime: GrueRuntime, form_idx: int) -> list[str]:
+        """Run a (wait) form - process events."""
+        try:
+            runtime.process_events()
+            return []
+        except Exception as e:
+            return [f"Form {form_idx}: {e}"]
+
+    def _run_run(
+        self,
+        runtime: GrueRuntime,
+        form: SList,
+        form_idx: int
+    ) -> list[str]:
+        """Run a (run ACTION-LIST) form - execute a list of actions."""
+        failures: list[str] = []
+
+        if len(form) < 2:
+            return [f"Run {form_idx}: Missing action list"]
+
+        action_list_expr = form[1]
+
+        # Resolve the action list
+        action_list: list[SExpr] = []
+
+        if isinstance(action_list_expr, Symbol):
+            # Look up in functions/globals
+            sym_name = action_list_expr.name
+            if sym_name in self._globals:
+                action_list_expr = self._globals[sym_name]
+            else:
+                return [f"Run {form_idx}: Unknown symbol '{sym_name}'"]
+
+        if isinstance(action_list_expr, SList):
+            # Check if it's a quoted list: (quote (...))
+            if (len(action_list_expr) == 2 and
+                isinstance(action_list_expr[0], Symbol) and
+                action_list_expr[0].name == "quote"):
+                inner = action_list_expr[1]
+                if isinstance(inner, SList):
+                    action_list = list(inner.items)
+                else:
+                    return [f"Run {form_idx}: Quoted value must be a list"]
+            else:
+                # Assume it's already a list of actions
+                action_list = list(action_list_expr.items)
+
+        if not action_list:
+            return [f"Run {form_idx}: Empty action list"]
+
+        # Execute each action in the list
+        for i, action in enumerate(action_list, 1):
+            if not isinstance(action, SList):
+                failures.append(f"Run {form_idx}.{i}: Invalid action (not a list)")
+                continue
+            try:
+                self._execute_action(runtime, action)
+            except Exception as e:
+                failures.append(f"Run {form_idx}.{i}: {e}")
+
+        return failures
 
     def run_test_sequence(self, seq_form: SList) -> TestResult:
         """
@@ -976,6 +1193,19 @@ class TestRunner:
                         passed=False,
                         error=str(e)
                     ))
+            elif head.name == "def":
+                # Global constant definition: (def NAME VALUE)
+                if len(form) >= 3:
+                    def_name = form[1]
+                    def_value = form[2]
+                    if isinstance(def_name, Symbol):
+                        self._globals[def_name.name] = def_value
+                    else:
+                        results.append(TestResult(
+                            name=f"def {to_string(def_name)}",
+                            passed=False,
+                            error="def name must be a symbol"
+                        ))
 
         return results
 

@@ -1,20 +1,72 @@
-; Walkthrough test using new seq/assert/until constructs
-; This tests the walkthrough infrastructure itself
+; Walkthrough tests demonstrating the test DSL features
+; Tests both the infrastructure and actual game walkthrough segments
 
-; Simple test of seq - execute multiple actions
-(test-sequence "seq-basic"
-  (seq
-    (do @chair :sit)
-    (do @pc :turn-on))
+; =============================================================================
+; ACTION LIST DEFINITIONS
+; =============================================================================
+
+; Turn on the PC (player starts in terminal-room, in chair)
+(def walkthrough/turn-on-pc
+  '((do @chair :sit)
+    (do @pc :turn-on)))
+
+; Navigate from terminal-room to kitchen
+(def walkthrough/to-kitchen
+  '((do @movement :go south)    ; cs-2nd
+    (do @movement :go west)     ; kitchen (via door)
+    (do @movement :go north)))  ; kitchen
+
+; Get food from refrigerator
+(def walkthrough/get-food
+  '((do @refrigerator :open)
+    (do @carton :take)))
+
+; Heat food in microwave
+(def walkthrough/heat-food
+  '((do @microwave :open)
+    (do @carton :put @microwave)
+    (do @microwave :close)
+    (do @microwave :set-timer 300)
+    (do @microwave :start)))
+
+; Retrieve heated food from microwave
+(def walkthrough/get-heated-food
+  '((do @microwave :open)
+    (do @carton :take)))
+
+; Return from kitchen to terminal-room
+(def walkthrough/kitchen-to-terminal
+  '((do @movement :go south)    ; kitchen-hallway
+    (do @movement :go east)     ; cs-2nd
+    (do @movement :go north)))  ; terminal-room
+
+; Trade food for master key
+(def walkthrough/trade-for-key
+  '((do @hacker :trade @carton @master-key)
+    (do @hacker :give @carton)))
+
+; =============================================================================
+; INFRASTRUCTURE TESTS
+; =============================================================================
+
+; Test new sequential (test) form with bare (do) calls
+(test "sequential-test-basic"
+  (do @chair :sit)
+  (do @pc :turn-on)
   (assert (has-flag? @pc POWER)))
 
-; Test assert failure detection
-(test-sequence "assert-passes"
+; Test (run) with action list
+(test "run-action-list"
+  (run walkthrough/turn-on-pc)
+  (assert (has-flag? @pc POWER)))
+
+; Test assert works
+(test "assert-passes"
   :setup ((move! @player @terminal-room))
   (assert (loc? @player @terminal-room)))
 
 ; Test until loop - the waxer scenario
-(test-sequence "until-waxer-movement"
+(test "until-waxer-movement"
   :setup ((move! @player @inf-1))
   ; Keep trying to go east until we reach inf-5
   ; The waxer may block us, but wait/process-events should let it pass
@@ -22,54 +74,38 @@
     (do @movement :go east)
     (wait)))
 
-; Combined walkthrough: Part 1 - Turn on PC
-(test-sequence "walkthrough-part1-pc"
-  (seq
-    (do @chair :sit)
-    (do @pc :turn-on))
+; =============================================================================
+; WALKTHROUGH SEGMENT TESTS
+; =============================================================================
+
+; Part 1: Turn on PC
+(test "walkthrough-part1-pc"
+  (run walkthrough/turn-on-pc)
   (assert (has-flag? @pc POWER)))
 
-; Walkthrough Part 2: Get the master key
-(test-sequence "walkthrough-part2-master-key"
+; Part 2: Get the master key (full sequence)
+(test "walkthrough-part2-master-key"
   ; Navigate to kitchen
-  (seq
-    (do @movement :go south)   ; cs-2nd
-    (do @movement :go west)    ; kitchen-hallway (via door)
-    (do @movement :go north))  ; kitchen
+  (run walkthrough/to-kitchen)
 
   ; Get food from refrigerator
-  (seq
-    (do @refrigerator :open)
-    (do @carton :take))
+  (run walkthrough/get-food)
   (assert (held? @carton))
 
-  ; Heat food in microwave (timer in seconds, 300 = 5 minutes)
-  (seq
-    (do @microwave :open)
-    (do @carton :put @microwave)
-    (do @microwave :close)
-    (do @microwave :set-timer 300)
-    (do @microwave :start))
+  ; Heat food in microwave
+  (run walkthrough/heat-food)
 
   ; Wait for food to heat (chinese-food needs heat >= 12)
   (until (>= (prop @chinese-food heat) 12)
     (wait))
 
-  ; Get heated food
-  (seq
-    (do @microwave :open)
-    (do @carton :take))
+  ; Retrieve heated food
+  (run walkthrough/get-heated-food)
   (assert (held? @carton))
 
   ; Return to terminal room
-  (seq
-    (do @movement :go south)   ; kitchen-hallway
-    (do @movement :go east)    ; cs-2nd
-    (do @movement :go north))  ; terminal-room
+  (run walkthrough/kitchen-to-terminal)
 
-  ; Propose trade first, then give food
-  (seq
-    (do @hacker :trade @carton @master-key)
-    (do @hacker :give @carton))
-
+  ; Trade with hacker
+  (run walkthrough/trade-for-key)
   (assert (held? @master-key)))
