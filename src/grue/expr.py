@@ -1108,20 +1108,25 @@ class ExprEvaluator:
         return self.eval(body, current_env)
 
     def _eval_cond(self, form: SList, env: Optional[Environment] = None) -> Any:
-        """(cond (test1 result1) (test2 result2) ... (true default))
+        """(cond (test1 expr1 expr2 ...) (test2 result) ... (true default))
 
         Evaluates conditions in order and returns the result of the first
-        matching branch.
+        matching branch. When a branch matches, ALL expressions after the test
+        are evaluated in order, and the last one's value is returned.
+        This follows standard Lisp/Scheme behavior.
         """
         for clause in form.items[1:]:
             if not isinstance(clause, SList) or len(clause) < 2:
                 raise EvalError(f"Invalid cond clause: {clause}")
 
             test = clause[0]
-            result = clause[1]
 
             if self.eval(test, env):
-                return self.eval(result, env)
+                # Evaluate all expressions in the clause, return the last one
+                result = None
+                for expr in clause.items[1:]:
+                    result = self.eval(expr, env)
+                return result
 
         return None  # No clause matched
 

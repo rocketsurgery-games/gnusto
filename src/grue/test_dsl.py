@@ -601,6 +601,68 @@ class TestRunner:
                 if runtime.is_queued(event):
                     failures.append(f"Event '{event}' should not be queued")
 
+            elif name == "not-flag?":
+                # Alias for no-flag? - check object does NOT have a flag
+                if len(pred) != 3:
+                    failures.append("(not-flag? OBJ FLAG) requires 2 arguments")
+                    continue
+                obj = pred[1]
+                flag = pred[2]
+                if isinstance(obj, Symbol):
+                    obj = obj.name
+                if isinstance(flag, Symbol):
+                    flag = flag.name
+                if obj not in runtime.state.objects:
+                    failures.append(f"Unknown object: {obj}")
+                elif flag in runtime.state.objects[obj].flags:
+                    failures.append(f"Object '{obj}' has unexpected flag '{flag}'")
+
+            elif name == "death?":
+                # Check if result context contains (death true)
+                if len(pred) != 2:
+                    failures.append("(death? EXPECTED) requires 1 argument")
+                    continue
+                expected = pred[1]
+                if isinstance(expected, Symbol):
+                    expected = expected.name.lower() == "true"
+                # Look for death in context
+                death_value = None
+                for key, val in result.context:
+                    if key == "death":
+                        # Normalize to bool - context may have string "True" or bool True
+                        if isinstance(val, str):
+                            death_value = val.lower() == "true"
+                        else:
+                            death_value = bool(val)
+                        break
+                if death_value != expected:
+                    failures.append(
+                        f"Expected death={expected}, got death={death_value}"
+                    )
+
+            elif name == "victory?":
+                # Check if result context contains (victory true)
+                if len(pred) != 2:
+                    failures.append("(victory? EXPECTED) requires 1 argument")
+                    continue
+                expected = pred[1]
+                if isinstance(expected, Symbol):
+                    expected = expected.name.lower() == "true"
+                # Look for victory in context
+                victory_value = None
+                for key, val in result.context:
+                    if key == "victory":
+                        # Normalize to bool - context may have string "True" or bool True
+                        if isinstance(val, str):
+                            victory_value = val.lower() == "true"
+                        else:
+                            victory_value = bool(val)
+                        break
+                if victory_value != expected:
+                    failures.append(
+                        f"Expected victory={expected}, got victory={victory_value}"
+                    )
+
             else:
                 # Try evaluating as a general predicate
                 try:
