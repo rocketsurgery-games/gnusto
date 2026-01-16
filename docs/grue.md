@@ -942,6 +942,7 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `visible?` | OBJ | bool | Is object visible to player? |
 | `held?` | OBJ | bool | Is object in player's inventory? |
 | `here?` | OBJ | bool | Is object in player's room? |
+| `loc?` | OBJ LOC | bool | Is object at expected location? |
 | `in?` | OBJ CONTAINER | bool | Is object inside container? |
 | `contained-in?` | OBJ CONTAINER | bool | Alias for `in?` |
 | `inside?` | OBJ CONTAINER | bool | Recursive containment check (checks nested containers) |
@@ -1152,7 +1153,18 @@ Single action test. Runs setup effects, executes action, checks predicates.
 
 ### `(test-sequence NAME (step ...) ...)`
 
-Multi-step test sequence. Each step builds on the previous state.
+Multi-step test sequence. State persists across all forms, enabling walkthrough-style tests.
+
+**Available forms inside test-sequence:**
+
+| Form | Description |
+|------|-------------|
+| `(step :action A :expect P)` | Execute action, check expectations (`:expect` optional) |
+| `(seq ACTION...)` | Execute actions in sequence, no assertions |
+| `(assert PRED)` | Check predicate, fail if false |
+| `(until PRED ACTION...)` | Loop actions until predicate is true (max 100 iterations) |
+
+**Basic example:**
 
 ```scheme
 (test-sequence "take PC then blocked at exit"
@@ -1163,6 +1175,51 @@ Multi-step test sequence. Each step builds on the previous state.
         :expect ((outcome? blocked)
                  (reason? tech-property))))
 ```
+
+**Walkthrough example:**
+
+The `seq`, `assert`, and `until` forms enable writing full game walkthroughs without
+setup cheats:
+
+```scheme
+(test-sequence "walkthrough-part2-master-key"
+  ; Navigate to kitchen
+  (seq
+    (do @movement :go south)
+    (do @movement :go west)
+    (do @movement :go north))
+
+  ; Get food from refrigerator
+  (seq
+    (do @refrigerator :open)
+    (do @carton :take))
+  (assert (held? @carton))
+
+  ; Heat food in microwave
+  (seq
+    (do @microwave :open)
+    (do @carton :put @microwave)
+    (do @microwave :close)
+    (do @microwave :set-timer 300)
+    (do @microwave :start))
+
+  ; Wait for food to heat
+  (until (>= (prop @chinese-food heat) 12)
+    (wait))
+
+  ; Trade with hacker
+  (seq
+    (do @hacker :trade @carton @master-key)
+    (do @hacker :give @carton))
+
+  (assert (held? @master-key)))
+```
+
+**Actions available in seq/until:**
+- `(do @object :verb args...)` - Standard object action
+- `(do @movement :go direction)` - Movement
+- `(wait)` - Process turn events (useful for timed puzzles)
+- `(process-events)` - Explicitly process event queue
 
 ### `(test-group NAME :setup EFFECTS TESTS...)`
 
