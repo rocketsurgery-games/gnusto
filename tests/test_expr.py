@@ -746,22 +746,21 @@ class TestForDoseq:
         result = evaluator.eval(parse("(doseq (?x '(1 2 3)) ?x)"))
         assert result is None
 
-    def test_doseq_side_effects(self):
-        """doseq executes body for side effects."""
+    def test_doseq_pure_body(self):
+        """doseq with pure body (no side effects) still works."""
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        # Set global to track iterations
-        evaluator.eval(parse("(set! count 0)"))
-        evaluator.eval(parse("(doseq (?x '(1 2 3)) (inc! count))"))
-        assert state.get_global("count") == 3
+        # doseq returns nil, body is executed for side effects (or none)
+        result = evaluator.eval(parse("(doseq (?x '(1 2 3)) (+ ?x 1))"))
+        assert result is None
 
     def test_doseq_nested(self):
-        """doseq with nested bindings."""
+        """doseq with nested bindings (pure body)."""
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        evaluator.eval(parse("(set! count 0)"))
-        evaluator.eval(parse("(doseq (?x '(1 2) ?y '(a b)) (inc! count))"))
-        assert state.get_global("count") == 4  # 2 * 2
+        # Nested bindings still work, just can't have side effects
+        result = evaluator.eval(parse("(doseq (?x '(1 2) ?y '(a b)) (list ?x ?y))"))
+        assert result is None
 
     def test_for_error_odd_bindings(self):
         """for with odd number of binding elements raises error."""

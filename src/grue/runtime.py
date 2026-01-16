@@ -547,7 +547,10 @@ class GrueRuntime:
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self, merged_functions)
+            # NOTE: allow_mutations=True is temporary during migration.
+            # Once all events are migrated to pure effect lists (Phase 4),
+            # this will become allow_mutations=False.
+            evaluator = ExprEvaluator(self, merged_functions, allow_mutations=True)
 
             try:
                 result = evaluator.eval(event.body)
@@ -1134,7 +1137,10 @@ class GrueRuntime:
         old_bindings = self.bindings
         self.bindings = bindings
         try:
-            evaluator = ExprEvaluator(self, merged_functions)
+            # NOTE: allow_mutations=True is temporary during migration.
+            # Once all behaviors are migrated to pure effect lists (Phase 4),
+            # this will become allow_mutations=False.
+            evaluator = ExprEvaluator(self, merged_functions, allow_mutations=True)
             return self._evaluate_behavior_body(behavior, bindings, evaluator)
         finally:
             self.bindings = old_bindings

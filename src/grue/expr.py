@@ -646,10 +646,18 @@ class ExprEvaluator:
         evaluator.eval(parse("(double 5)"))  # Returns 10
     """
 
-    def __init__(self, state: WorldState, functions: dict[str, GrueFn] | None = None):
+    def __init__(
+        self,
+        state: WorldState,
+        functions: dict[str, GrueFn] | None = None,
+        allow_mutations: bool = False
+    ):
         self.state = state
+        self._allow_mutations = allow_mutations
         # User-defined functions: name -> GrueFn
         self._functions: dict[str, GrueFn] = functions if functions is not None else {}
+        # Mutation handlers (only used when allow_mutations=True)
+        self._mutation_handlers = self._init_mutation_handlers()
         # Map of special form names to handlers
         self._builtins: dict[str, Callable[..., Any]] = {
             # Arithmetic operators
@@ -760,12 +768,15 @@ class ExprEvaluator:
             "for": self._eval_for,
             "doseq": self._eval_doseq,
 
-            # Side effects (require MutableWorldState)
-            "set!": self._eval_set_global,
-            "inc!": self._eval_inc_global,
-            "set-prop!": self._eval_set_prop,
-            "set-flag!": self._eval_set_flag,
-            "clear-flag!": self._eval_clear_flag,
+            # Side effects - controlled by allow_mutations flag
+            # In behavior bodies (pure), these raise errors directing users to effect system
+            # In EffectExecutor context (allow_mutations=True), these work normally
+            "set!": self._eval_mutation_dispatch,
+            "inc!": self._eval_mutation_dispatch,
+            "set-prop!": self._eval_mutation_dispatch,
+            "set-flag!": self._eval_mutation_dispatch,
+            "clear-flag!": self._eval_mutation_dispatch,
+            "move!": self._eval_mutation_dispatch,
         }
 
     def eval(self, expr: SExpr, env: Optional[Environment] = None) -> Any:
@@ -2544,96 +2555,116 @@ class ExprEvaluator:
         iterate(0, base_env)
         return None
 
-    # === Side effects (require MutableWorldState) ===
+    # === Side effects - Controlled by allow_mutations flag ===
+    #
+    # In the Applicative Effect System, behaviors must be pure functions that
+    # return effect lists. Direct mutation in behavior bodies is not allowed.
+    #
+    # However, functions called from EffectExecutor (during effect application)
+    # ARE allowed to use mutations - that's the runtime applying effects.
+    #
+    # Instead of:
+    #     :examine (fn () (move! @key @player) (success :message "Got it!"))
+    #
+    # Write:
+    #     :examine (fn () '((move @key @player) (success :message "Got it!")))
+    #
+    # The runtime interprets the effect list and applies mutations.
 
-    def _eval_set_global(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set! GLOBAL VALUE) - Set a global variable.
+    def _eval_mutation_dispatch(self, form: SList, env: Optional[Environment] = None) -> None:
+        """Dispatch mutation primitives - allowed if allow_mutations=True, error otherwise."""
+        if not self._allow_mutations:
+            effect_name = form[0].name if isinstance(form[0], Symbol) else str(form[0])
+            # Map old syntax to new effect syntax
+            new_name = effect_name.rstrip("!")  # "set!" -> "set", "move!" -> "move"
+            raise EvalError(
+                f"'{effect_name}' is not allowed in behavior bodies (behaviors must be pure). "
+                f"Use the effect system instead: return a quoted list with ({new_name} ...) "
+                f"followed by a terminator like (success ...). "
+                f"Example: '(({new_name} ...) (success :message \"...\"))"
+            )
 
-        Requires the state to be MutableWorldState.
-        Returns None (like assignment in imperative languages).
+        # Dispatch to the actual mutation handler
+        effect_name = form[0].name if isinstance(form[0], Symbol) else str(form[0])
+        handler = self._mutation_handlers.get(effect_name)
+        if handler:
+            return handler(form, env)
+        else:
+            raise EvalError(f"Unknown mutation: {effect_name}")
 
-        Note: set! only works on globals. If you try to set! a let-bound
-        variable, you'll get an error. Use helper functions or pass values
-        directly to effects instead.
-        """
+    def _init_mutation_handlers(self) -> dict[str, Callable[..., Any]]:
+        """Initialize mutation handlers (used when allow_mutations=True)."""
+        return {
+            "set!": self._eval_set_global_impl,
+            "inc!": self._eval_inc_global_impl,
+            "set-prop!": self._eval_set_prop_impl,
+            "set-flag!": self._eval_set_flag_impl,
+            "clear-flag!": self._eval_clear_flag_impl,
+            "move!": self._eval_move_impl,
+        }
+
+    def _eval_move_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(move! OBJ DEST) - Move object to destination."""
+        if len(form) != 3:
+            raise EvalError(f"'move!' expects 2 arguments, got {len(form) - 1}")
+        obj = self.eval(form[1], env)
+        if isinstance(obj, Symbol):
+            obj = obj.name
+        dest = self.eval(form[2], env)
+        if isinstance(dest, Symbol):
+            dest = dest.name
+        if not hasattr(self.state, "move_object"):
+            raise EvalError("'move!' requires mutable state")
+        self.state.move_object(obj, dest)
+        return None
+
+    def _eval_set_global_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set! GLOBAL VALUE) - Set a global variable."""
         if len(form) != 3:
             raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
-
-        # First arg must be a symbol (the global name)
         if not isinstance(form[1], Symbol):
             raise EvalError("'set!' first argument must be a symbol")
         global_name = form[1].name
-
-        # Error if trying to set! a let-bound variable (prevents silent shadowing bugs)
         if env is not None and env.has(global_name):
             raise EvalError(
                 f"'set!' cannot modify let-bound variable '{global_name}'. "
                 "Use a helper function or pass the computed value directly to effects."
             )
-
-        # Evaluate the value
         value = self.eval(form[2], env)
-
-        # Requires mutable state
         if not hasattr(self.state, "set_global"):
             raise EvalError("'set!' requires mutable state")
         self.state.set_global(global_name, value)
-
         return None
 
-    def _eval_inc_global(self, form: SList, env: Optional[Environment] = None) -> int:
-        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Increment a global.
-
-        Requires the state to be MutableWorldState.
-        Returns the new value.
-
-        Note: inc! only works on globals, not let-bound variables.
-        """
+    def _eval_inc_global_impl(self, form: SList, env: Optional[Environment] = None) -> int:
+        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Increment a global."""
         if len(form) < 2 or len(form) > 3:
             raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
-
-        # First arg must be a symbol (the global name)
         if not isinstance(form[1], Symbol):
             raise EvalError("'inc!' first argument must be a symbol")
         global_name = form[1].name
-
-        # Error if trying to inc! a let-bound variable
         if env is not None and env.has(global_name):
             raise EvalError(
                 f"'inc!' cannot modify let-bound variable '{global_name}'. "
                 "Use a helper function or pass the computed value directly."
             )
-
-        # Amount defaults to 1
         amount = 1
         if len(form) == 3:
             amount = self.eval(form[2], env)
-
-        # Get current value and compute new
         current = self.state.get_global(global_name)
         new_value = current + amount
-
-        # Requires mutable state
         if not hasattr(self.state, "set_global"):
             raise EvalError("'inc!' requires mutable state")
         self.state.set_global(global_name, new_value)
-
         return new_value
 
-    def _eval_set_prop(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set-prop! OBJ PROP VALUE) - Set an object property.
-
-        Property name is implicitly quoted if it's a symbol or keyword.
-        Requires the state to be MutableWorldState.
-        """
+    def _eval_set_prop_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set-prop! OBJ PROP VALUE) - Set an object property."""
         if len(form) != 4:
             raise EvalError(f"'set-prop!' expects 3 arguments, got {len(form) - 1}")
-
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
-
-        # Implicitly quote symbol/keyword property names
         prop_arg = form[2]
         if isinstance(prop_arg, Symbol):
             prop = prop_arg.name
@@ -2641,57 +2672,40 @@ class ExprEvaluator:
             prop = prop_arg.name
         else:
             prop = self.eval(prop_arg, env)
-
         value = self.eval(form[3], env)
-
         if not hasattr(self.state, "set_object_property"):
             raise EvalError("'set-prop!' requires mutable state")
         self.state.set_object_property(obj, prop, value)
-
         return None
 
-    def _eval_set_flag(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set-flag! OBJ FLAG) - Set an object flag.
-
-        Requires the state to be MutableWorldState.
-        """
+    def _eval_set_flag_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set-flag! OBJ FLAG) - Set an object flag."""
         if len(form) != 3:
             raise EvalError(f"'set-flag!' expects 2 arguments, got {len(form) - 1}")
-
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
-
         flag = self.eval(form[2], env)
         if isinstance(flag, Symbol):
             flag = flag.name
-
         if not hasattr(self.state, "set_object_flag"):
             raise EvalError("'set-flag!' requires mutable state")
         self.state.set_object_flag(obj, flag)
-
         return None
 
-    def _eval_clear_flag(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(clear-flag! OBJ FLAG) - Clear an object flag.
-
-        Requires the state to be MutableWorldState.
-        """
+    def _eval_clear_flag_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(clear-flag! OBJ FLAG) - Clear an object flag."""
         if len(form) != 3:
             raise EvalError(f"'clear-flag!' expects 2 arguments, got {len(form) - 1}")
-
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
-
         flag = self.eval(form[2], env)
         if isinstance(flag, Symbol):
             flag = flag.name
-
         if not hasattr(self.state, "clear_object_flag"):
             raise EvalError("'clear-flag!' requires mutable state")
         self.state.clear_object_flag(obj, flag)
-
         return None
 
     # === Quantifiers ===
@@ -2774,7 +2788,7 @@ class EffectExecutor:
         self.state = state
         # Shared function registry between evaluator and executor
         self._functions: dict[str, GrueFn] = functions if functions is not None else {}
-        self._predicates = ExprEvaluator(state, self._functions)
+        self._predicates = ExprEvaluator(state, self._functions, allow_mutations=True)
         self._effects: dict[str, Callable[..., None]] = {
             "move!": self._exec_move,
             "set-flag!": self._exec_set_flag,
