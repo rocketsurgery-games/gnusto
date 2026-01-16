@@ -61,15 +61,14 @@ from .converter import (
     routine_to_zil,
 )
 
-from .testing import (
+from .test import (
+    # Python/pytest testing
     GrueTestHarness,
     GrueTestCase,
     StateSnapshot,
     ActionTrace,
     pytest_harness,
-)
-
-from .test_dsl import (
+    # DSL-based testing
     TestRunner,
     TestResult,
     TestSuiteResult,
@@ -119,13 +118,12 @@ __all__ = [
     "ConversionResult",
     "ast_to_zil",
     "routine_to_zil",
-    # Testing (Python)
+    # Testing (grue.test package)
     "GrueTestHarness",
     "GrueTestCase",
     "StateSnapshot",
     "ActionTrace",
     "pytest_harness",
-    # Testing (Grue-native)
     "TestRunner",
     "TestResult",
     "TestSuiteResult",

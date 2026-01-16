@@ -3,7 +3,7 @@ Grue Test Framework - Assert on game states, actions, and transitions.
 
 This module provides tools for testing Grue game logic:
 
-    from grue.testing import GrueTestCase, load_test_world
+    from grue.test import GrueTestCase, load_test_world
 
     class TestOutsideDoor(GrueTestCase):
         @classmethod
@@ -46,9 +46,9 @@ from pathlib import Path
 from copy import deepcopy
 import unittest
 
-from .parser import GrueWorld
-from .runtime import GrueRuntime, GameState, ObjectState, ActionResult
-from . import load_grue
+from ..parser import GrueWorld
+from ..runtime import GrueRuntime, GameState, ObjectState, ActionResult
+from .. import load_grue
 
 
 @dataclass
@@ -472,7 +472,7 @@ def pytest_harness(world_path: str | Path):
 
     Usage in conftest.py:
         import pytest
-        from grue.testing import pytest_harness
+        from grue.test import pytest_harness
 
         @pytest.fixture
         def outside_door():

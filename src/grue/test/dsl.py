@@ -39,7 +39,7 @@ Setup effects use standard effect forms:
     (defn NAME (PARAMS) BODY)  ; define helper functions
 
 Usage:
-    from grue.test_dsl import run_tests
+    from grue.test import run_tests
     results = run_tests("path/to/world.grue", "path/to/tests.grue")
 """
 
@@ -47,10 +47,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .sexpr import SExpr, Symbol, Keyword, SList, parse, parse_all, to_string
-from .parser import load_grue, GrueWorld
-from .runtime import GrueRuntime, ActionResult
-from .expr import ExprEvaluator, EffectExecutor, EvalError
+from ..sexpr import SExpr, Symbol, Keyword, SList, parse, parse_all, to_string
+from ..parser import load_grue, GrueWorld
+from ..runtime import GrueRuntime, ActionResult
+from ..expr import ExprEvaluator, EffectExecutor, EvalError
 
 
 @dataclass

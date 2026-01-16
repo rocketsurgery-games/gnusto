@@ -2,9 +2,10 @@
 Grue test CLI runner.
 
 Usage:
-    python -m grue.test games/examples/outside-door.grue
-    python -m grue.test games/**/*.grue
-    python -m grue.test --verbose games/examples/
+    grue-test games/examples/outside-door.grue
+    grue-test games/**/*.grue
+    grue-test --verbose games/examples/
+    python -m grue.test games/lurkinghorror/
 
 Options:
     -v, --verbose    Show all test names, not just failures
@@ -16,7 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .test_dsl import run_tests, TestSuiteResult, TestResult
+from .dsl import run_tests, TestSuiteResult, TestResult
 
 
 # ANSI color codes
@@ -168,7 +169,7 @@ def print_suite_result(
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for CLI."""
     parser = argparse.ArgumentParser(
-        prog="grue.test",
+        prog="grue-test",
         description="Run Grue-native tests"
     )
     parser.add_argument(

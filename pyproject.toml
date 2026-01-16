@@ -27,6 +27,7 @@ dev = [
 
 [project.scripts]
 grue-repl = "grue.repl:main"
+grue-test = "grue.test:main"
 zil-to-grue = "grue.converter:cli_main"
 
 [dependency-groups]
