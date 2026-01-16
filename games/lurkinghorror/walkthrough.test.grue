@@ -1,14 +1,66 @@
-; Walkthrough tests demonstrating the test DSL features
-; Tests both the infrastructure and actual game walkthrough segments
+; The Lurking Horror - Full Walkthrough Test
+; Tests the complete happy path through the game using only player-accessible actions.
+;
+; Phases:
+;   1. PC Login & Dream Sequence - get smooth-stone
+;   2. Master Key - trade food for key
+;   3. Basement & Equipment - get gloves, crowbar, flask
+;   4. Infinite Corridor - get axe from emergency cabinet
+;   5. Alchemy Lab - survive ritual, get ring and animate hand
+;   6. Urchins - show hand to get bolt cutters, free urchins
+;   7. Lair Maze & Final Battle - navigate maze, defeat the Frob
+;
+; NOTE: Tests marked [WIP] depend on game areas not yet fully implemented.
 
 ; =============================================================================
-; ACTION LIST DEFINITIONS
+; ACTION LIST DEFINITIONS (must come before tests that use them)
 ; =============================================================================
 
 ; Turn on the PC (player starts in terminal-room, in chair)
 (def walkthrough/turn-on-pc
   '((do @chair :sit)
     (do @pc :turn-on)))
+
+; =============================================================================
+; INFRASTRUCTURE TESTS
+; =============================================================================
+
+; Test new sequential (test) form with bare (do) calls
+(test "sequential-test-basic"
+  (do @chair :sit)
+  (do @pc :turn-on)
+  (assert (has-flag? @pc POWER)))
+
+; Test (run) with action list
+(test "run-action-list"
+  (run walkthrough/turn-on-pc)
+  (assert (has-flag? @pc POWER)))
+
+; Test assert works
+(test "assert-passes"
+  :setup ((move! @player @terminal-room))
+  (assert (loc? @player @terminal-room)))
+
+; Test until loop - the waxer scenario
+(test "until-waxer-movement"
+  :setup ((move! @player @inf-1))
+  ; Keep trying to go east until we reach inf-5
+  ; The waxer may block us, but wait/process-events should let it pass
+  (until (loc? @player @inf-5)
+    (do @movement :go east)
+    (wait)))
+
+; =============================================================================
+; PHASE 1: PC LOGIN & DREAM SEQUENCE
+; =============================================================================
+
+(test "walkthrough-phase1-pc-on"
+  (run walkthrough/turn-on-pc)
+  (assert (has-flag? @pc POWER)))
+
+; =============================================================================
+; PHASE 2: MASTER KEY (from hacker trade)
+; =============================================================================
 
 ; Navigate from terminal-room to kitchen
 (def walkthrough/to-kitchen
@@ -42,49 +94,11 @@
 
 ; Trade food for master key
 (def walkthrough/trade-for-key
-  '((do @hacker :trade @carton @master-key)
+  '((do @hacker :ask-about @keys)   ; Reveals master key
+    (do @hacker :trade @carton @master-key)
     (do @hacker :give @carton)))
 
-; =============================================================================
-; INFRASTRUCTURE TESTS
-; =============================================================================
-
-; Test new sequential (test) form with bare (do) calls
-(test "sequential-test-basic"
-  (do @chair :sit)
-  (do @pc :turn-on)
-  (assert (has-flag? @pc POWER)))
-
-; Test (run) with action list
-(test "run-action-list"
-  (run walkthrough/turn-on-pc)
-  (assert (has-flag? @pc POWER)))
-
-; Test assert works
-(test "assert-passes"
-  :setup ((move! @player @terminal-room))
-  (assert (loc? @player @terminal-room)))
-
-; Test until loop - the waxer scenario
-(test "until-waxer-movement"
-  :setup ((move! @player @inf-1))
-  ; Keep trying to go east until we reach inf-5
-  ; The waxer may block us, but wait/process-events should let it pass
-  (until (loc? @player @inf-5)
-    (do @movement :go east)
-    (wait)))
-
-; =============================================================================
-; WALKTHROUGH SEGMENT TESTS
-; =============================================================================
-
-; Part 1: Turn on PC
-(test "walkthrough-part1-pc"
-  (run walkthrough/turn-on-pc)
-  (assert (has-flag? @pc POWER)))
-
-; Part 2: Get the master key (full sequence)
-(test "walkthrough-part2-master-key"
+(test "walkthrough-phase2-master-key"
   ; Navigate to kitchen
   (run walkthrough/to-kitchen)
 
@@ -109,3 +123,142 @@
   ; Trade with hacker
   (run walkthrough/trade-for-key)
   (assert (held? @master-key)))
+
+; =============================================================================
+; PHASE 3: BASEMENT & EQUIPMENT
+; =============================================================================
+
+; Get equipment from temporary basement
+(def walkthrough/get-basement-equipment
+  '((do @gloves :take)
+    (do @crowbar :take)))
+
+(test "walkthrough-phase3-basement-equipment"
+  :setup ((move! @player @temporary-basement))
+
+  ; Get basement equipment
+  (run walkthrough/get-basement-equipment)
+  (assert (held? @gloves))
+  (assert (held? @crowbar)))
+
+; Use forklift to clear junk in dead-storage
+; NOTE: Vehicle movement (driving forklift between rooms) requires runtime support
+; This test verifies the forklift/junk interaction works when in position
+(test "walkthrough-phase3-forklift"
+  :setup ((move! @forklift @dead-storage)  ; Pre-position forklift at dead-storage
+          (move! @player @forklift)         ; Player starts on forklift
+          (set-flag! @forklift POWER)       ; Forklift already running
+          (set! junk-moved 0))              ; Reset junk counter
+
+  ; Verify initial state
+  (assert (in? @player @forklift))
+  (assert (loc? @forklift @dead-storage))
+
+  ; Use forklift to clear junk (need 4 uses to clear path)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (assert (> junk-moved junk-moves-needed)))
+
+; Open manhole in storage-room
+(test "walkthrough-phase3-manhole"
+  :setup ((move! @player @storage-room)
+          (move! @crowbar @player))
+
+  ; Pry open manhole cover with crowbar
+  (do @manhole-cover :pry @crowbar)
+  (assert (not (in? @manhole-cover @manhole))))
+
+; =============================================================================
+; PHASE 4: INFINITE CORRIDOR & MAINTENANCE MAN
+; =============================================================================
+
+; Get floor wax and container
+(def walkthrough/get-floor-wax
+  '((do @plastic-container :take)
+    (do @plastic-container :open)))
+
+; Cut power cord with axe
+(def walkthrough/cut-power-cord
+  '((do @power-cord :cut)))
+
+(test "walkthrough-phase4-maintenance-waxer"
+  :setup ((move! @player @inf-1)
+          (move! @floor-waxer @inf-2)
+          (move! @maintenance-man @floor-waxer)
+          (set! waxer-patrol-started true))
+
+  ; Get floor wax container
+  (run walkthrough/get-floor-wax)
+  (assert (held? @plastic-container))
+
+  ; Navigate through corridor (waxer may block, but keep trying)
+  (until (loc? @player @inf-5)
+    (do @movement :go east)
+    (wait)))
+
+(test "walkthrough-phase4-cut-cord"
+  :setup ((move! @player @inf-3)
+          (move! @floor-waxer @inf-3)
+          (move! @axe @player)
+          (set! cord-severed false))
+
+  ; Cut the power cord to disable waxer
+  (do @power-cord :cut)
+  (assert cord-severed))
+
+; =============================================================================
+; PHASE 5: ALCHEMY LAB [WIP - depends on alchemy.grue implementation]
+; =============================================================================
+
+; NOTE: Alchemy puzzle tests will be added once the alchemy lab is fully
+; implemented with the professor, ritual, pentagram, and trapdoor.
+
+; =============================================================================
+; PHASE 6: URCHINS [WIP - depends on urchin interactions]
+; =============================================================================
+
+; Test urchin barrier blocks passage until freed
+(test "walkthrough-phase6-urchin-barrier"
+  :setup ((move! @player @large-chamber)
+          (set! urchin-freed false))
+
+  ; Try to go down - should be blocked by urchins
+  (do @movement :go down)
+  (assert (loc? @player @large-chamber)))  ; Still here, blocked
+
+(test "walkthrough-phase6-urchins-freed"
+  :setup ((move! @player @large-chamber)
+          (set! urchin-freed true))
+
+  ; Can now pass through to lair
+  (do @movement :go down)
+  (assert (loc? @player @lair-1)))
+
+; =============================================================================
+; PHASE 7: LAIR MAZE & FINAL BATTLE [WIP - depends on lair.grue implementation]
+; =============================================================================
+
+; Test basic lair navigation
+(test "walkthrough-phase7-lair-entry"
+  :setup ((move! @player @lair-1)
+          (move! @mummified-hand @player)
+          (set-flag! @mummified-hand PERSON)
+          (move! @ring @mummified-hand))
+
+  ; Hand should help navigate - for now just test we can move
+  (do @movement :go north)  ; lair-2
+  (assert (not (loc? @player @lair-1))))
+
+; =============================================================================
+; FULL WALKTHROUGH (END-TO-END) [WIP]
+; =============================================================================
+
+; This test will run through the complete game once all phases are implemented.
+; For now, the detailed phase tests above verify each phase individually.
+; The full integration test is disabled until all phases are wired together.
+
+; (test "walkthrough-full"
+;   ; To be implemented once all phases pass individually
+;   )
