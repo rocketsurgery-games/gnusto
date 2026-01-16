@@ -1,0 +1,75 @@
+; Walkthrough test using new seq/assert/until constructs
+; This tests the walkthrough infrastructure itself
+
+; Simple test of seq - execute multiple actions
+(test-sequence "seq-basic"
+  (seq
+    (do @chair :sit)
+    (do @pc :turn-on))
+  (assert (has-flag? @pc POWER)))
+
+; Test assert failure detection
+(test-sequence "assert-passes"
+  :setup ((move! @player @terminal-room))
+  (assert (loc? @player @terminal-room)))
+
+; Test until loop - the waxer scenario
+(test-sequence "until-waxer-movement"
+  :setup ((move! @player @inf-1))
+  ; Keep trying to go east until we reach inf-5
+  ; The waxer may block us, but wait/process-events should let it pass
+  (until (loc? @player @inf-5)
+    (do @movement :go east)
+    (wait)))
+
+; Combined walkthrough: Part 1 - Turn on PC
+(test-sequence "walkthrough-part1-pc"
+  (seq
+    (do @chair :sit)
+    (do @pc :turn-on))
+  (assert (has-flag? @pc POWER)))
+
+; Walkthrough Part 2: Get the master key
+(test-sequence "walkthrough-part2-master-key"
+  ; Navigate to kitchen
+  (seq
+    (do @movement :go south)   ; cs-2nd
+    (do @movement :go west)    ; kitchen-hallway (via door)
+    (do @movement :go north))  ; kitchen
+
+  ; Get food from refrigerator
+  (seq
+    (do @refrigerator :open)
+    (do @carton :take))
+  (assert (held? @carton))
+
+  ; Heat food in microwave (timer in seconds, 300 = 5 minutes)
+  (seq
+    (do @microwave :open)
+    (do @carton :put @microwave)
+    (do @microwave :close)
+    (do @microwave :set-timer 300)
+    (do @microwave :start))
+
+  ; Wait for food to heat (chinese-food needs heat >= 12)
+  (until (>= (prop @chinese-food heat) 12)
+    (wait))
+
+  ; Get heated food
+  (seq
+    (do @microwave :open)
+    (do @carton :take))
+  (assert (held? @carton))
+
+  ; Return to terminal room
+  (seq
+    (do @movement :go south)   ; kitchen-hallway
+    (do @movement :go east)    ; cs-2nd
+    (do @movement :go north))  ; terminal-room
+
+  ; Propose trade first, then give food
+  (seq
+    (do @hacker :trade @carton @master-key)
+    (do @hacker :give @carton))
+
+  (assert (held? @master-key)))

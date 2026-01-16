@@ -193,10 +193,18 @@ class TestRunner:
             (test-sequence NAME
               :setup EFFECTS
               (step :action ACTION :expect PREDICATES)
-              (step :action ACTION :expect PREDICATES)
+              (seq ACTION ACTION ...)
+              (assert PREDICATE)
+              (until PREDICATE ACTION ACTION ...)
               ...)
 
         State persists across steps within the sequence.
+
+        Forms:
+            (step :action A :expect P) - Execute action, check expectations (expect optional)
+            (seq A1 A2 ...) - Execute actions in sequence, no assertions
+            (assert PRED) - Check predicate, fail if false
+            (until PRED A1 A2 ...) - Loop actions until predicate is true (max 100 iterations)
         """
         if len(seq_form) < 2:
             return TestResult(
@@ -213,9 +221,9 @@ class TestRunner:
         else:
             test_name = to_string(name)
 
-        # Parse initial :setup and collect steps
+        # Parse initial :setup and collect forms
         setup_effects: list[SExpr] = []
-        steps: list[SList] = []
+        forms: list[SList] = []
 
         i = 2
         while i < len(seq_form):
@@ -237,17 +245,17 @@ class TestRunner:
 
             elif isinstance(item, SList) and len(item) > 0:
                 head = item[0]
-                if isinstance(head, Symbol) and head.name == "step":
-                    steps.append(item)
+                if isinstance(head, Symbol) and head.name in ("step", "seq", "assert", "until"):
+                    forms.append(item)
                 i += 1
             else:
                 i += 1
 
-        if not steps:
+        if not forms:
             return TestResult(
                 name=test_name,
                 passed=False,
-                error="Test-sequence has no steps"
+                error="Test-sequence has no forms"
             )
 
         # Create ONE runtime for the whole sequence - state persists!
@@ -261,50 +269,26 @@ class TestRunner:
             for effect in setup_effects:
                 executor.execute(effect)
 
-            # Run each step in sequence
-            for step_idx, step in enumerate(steps, 1):
-                step_action = None
-                step_expects: list[SExpr] = []
-                step_setup: list[SExpr] = []
+            # Run each form in sequence
+            for form_idx, form in enumerate(forms, 1):
+                head = form[0]
+                form_type = head.name if isinstance(head, Symbol) else ""
 
-                # Parse step form: (step :setup S :action A :expect P)
-                j = 1
-                while j < len(step):
-                    item = step[j]
-                    if isinstance(item, Keyword):
-                        if j + 1 >= len(step):
-                            all_failures.append(f"Step {step_idx}: Missing value for :{item.name}")
-                            break
-                        value = step[j + 1]
+                if form_type == "step":
+                    failures = self._run_step(runtime, executor, form, form_idx)
+                    all_failures.extend(failures)
 
-                        if item.name == "action":
-                            step_action = value
-                        elif item.name == "expect":
-                            if isinstance(value, SList):
-                                step_expects = list(value.items)
-                        elif item.name == "setup":
-                            if isinstance(value, SList):
-                                step_setup = list(value.items)
-                        j += 2
-                    else:
-                        j += 1
+                elif form_type == "seq":
+                    failures = self._run_seq(runtime, form, form_idx)
+                    all_failures.extend(failures)
 
-                if step_action is None:
-                    all_failures.append(f"Step {step_idx}: Missing :action")
-                    continue
+                elif form_type == "assert":
+                    failures = self._run_assert(runtime, form, form_idx)
+                    all_failures.extend(failures)
 
-                # Run per-step setup effects
-                for effect in step_setup:
-                    executor.execute(effect)
-
-                # Execute this step's action
-                result = self._execute_action(runtime, step_action)
-
-                # Check this step's expectations
-                step_failures = self._check_expectations(runtime, result, step_expects)
-
-                for failure in step_failures:
-                    all_failures.append(f"Step {step_idx}: {failure}")
+                elif form_type == "until":
+                    failures = self._run_until(runtime, form, form_idx)
+                    all_failures.extend(failures)
 
             return TestResult(
                 name=test_name,
@@ -318,6 +302,152 @@ class TestRunner:
                 passed=False,
                 error=str(e)
             )
+
+    def _run_step(
+        self,
+        runtime: GrueRuntime,
+        executor: EffectExecutor,
+        step: SList,
+        step_idx: int
+    ) -> list[str]:
+        """Run a (step :action A :expect P) form."""
+        failures: list[str] = []
+        step_action = None
+        step_expects: list[SExpr] = []
+        step_setup: list[SExpr] = []
+
+        # Parse step form: (step :setup S :action A :expect P)
+        j = 1
+        while j < len(step):
+            item = step[j]
+            if isinstance(item, Keyword):
+                if j + 1 >= len(step):
+                    failures.append(f"Step {step_idx}: Missing value for :{item.name}")
+                    break
+                value = step[j + 1]
+
+                if item.name == "action":
+                    step_action = value
+                elif item.name == "expect":
+                    if isinstance(value, SList):
+                        step_expects = list(value.items)
+                elif item.name == "setup":
+                    if isinstance(value, SList):
+                        step_setup = list(value.items)
+                j += 2
+            else:
+                j += 1
+
+        if step_action is None:
+            failures.append(f"Step {step_idx}: Missing :action")
+            return failures
+
+        # Run per-step setup effects
+        for effect in step_setup:
+            executor.execute(effect)
+
+        # Execute this step's action
+        result = self._execute_action(runtime, step_action)
+
+        # Check this step's expectations (optional - empty list is fine)
+        step_failures = self._check_expectations(runtime, result, step_expects)
+
+        for failure in step_failures:
+            failures.append(f"Step {step_idx}: {failure}")
+
+        return failures
+
+    def _run_seq(
+        self,
+        runtime: GrueRuntime,
+        seq: SList,
+        seq_idx: int
+    ) -> list[str]:
+        """Run a (seq ACTION ACTION ...) form - execute actions in sequence."""
+        failures: list[str] = []
+
+        # All items after 'seq' are actions to execute
+        for i, action in enumerate(list(seq.items)[1:], 1):
+            if not isinstance(action, SList):
+                failures.append(f"Seq {seq_idx}.{i}: Invalid action (not a list)")
+                continue
+            try:
+                self._execute_action(runtime, action)
+            except Exception as e:
+                failures.append(f"Seq {seq_idx}.{i}: {e}")
+
+        return failures
+
+    def _run_assert(
+        self,
+        runtime: GrueRuntime,
+        assert_form: SList,
+        assert_idx: int
+    ) -> list[str]:
+        """Run an (assert PREDICATE) form - check predicate, fail if false."""
+        failures: list[str] = []
+
+        if len(assert_form) < 2:
+            failures.append(f"Assert {assert_idx}: Missing predicate")
+            return failures
+
+        predicate = assert_form[1]
+
+        try:
+            evaluator = ExprEvaluator(runtime, self._functions)
+            result = evaluator.eval(predicate)
+            if not result:
+                failures.append(f"Assert {assert_idx}: {to_string(predicate)} is false")
+        except Exception as e:
+            failures.append(f"Assert {assert_idx}: Error evaluating {to_string(predicate)}: {e}")
+
+        return failures
+
+    def _run_until(
+        self,
+        runtime: GrueRuntime,
+        until_form: SList,
+        until_idx: int,
+        max_iterations: int = 100
+    ) -> list[str]:
+        """Run an (until PREDICATE ACTION...) form - loop until predicate is true."""
+        failures: list[str] = []
+
+        if len(until_form) < 3:
+            failures.append(f"Until {until_idx}: Requires predicate and at least one action")
+            return failures
+
+        predicate = until_form[1]
+        actions = list(until_form.items)[2:]
+
+        evaluator = ExprEvaluator(runtime, self._functions)
+
+        for iteration in range(max_iterations):
+            # Check if condition is met
+            try:
+                if evaluator.eval(predicate):
+                    return failures  # Success - condition met
+            except Exception as e:
+                failures.append(f"Until {until_idx}: Error evaluating predicate: {e}")
+                return failures
+
+            # Execute all actions in the loop body
+            for i, action in enumerate(actions, 1):
+                if not isinstance(action, SList):
+                    failures.append(f"Until {until_idx}.{i}: Invalid action")
+                    continue
+                try:
+                    self._execute_action(runtime, action)
+                except Exception as e:
+                    failures.append(f"Until {until_idx}.{i}: {e}")
+                    return failures  # Stop on error
+
+        # Max iterations reached
+        failures.append(
+            f"Until {until_idx}: Max iterations ({max_iterations}) reached, "
+            f"condition {to_string(predicate)} never became true"
+        )
+        return failures
 
     def _execute_action(self, runtime: GrueRuntime, action: SExpr) -> ActionResult:
         """Execute an action form and return the result."""

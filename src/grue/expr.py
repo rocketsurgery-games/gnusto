@@ -354,6 +354,7 @@ class ExprEvaluator:
             "visible?": self._eval_visible,
             "held?": self._eval_held,
             "here?": self._eval_here,
+            "loc?": self._eval_loc_check,
             "in?": self._eval_in,
             "contained-in?": self._eval_in,  # alias for in?
             "inside?": self._eval_inside,  # recursive containment check
@@ -784,6 +785,15 @@ class ExprEvaluator:
         obj_loc = self.state.get_object_location(obj)
         player_loc = self.state.get_player_location()
         return obj_loc == player_loc
+
+    def _eval_loc_check(self, form: SList, env: Optional[Environment] = None) -> bool:
+        """(loc? OBJ EXPECTED-LOC) - check if OBJ is at expected location."""
+        if len(form) != 3:
+            raise EvalError(f"'loc?' expects 2 arguments, got {len(form) - 1}")
+        obj = self.eval(form[1], env)
+        expected = self.eval(form[2], env)
+        actual = self.state.get_object_location(obj)
+        return actual == expected
 
     def _eval_in(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(in? OBJ CONTAINER)"""
