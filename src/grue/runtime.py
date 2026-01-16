@@ -323,6 +323,23 @@ class GrueRuntime:
         # Otherwise walk up to find the room
         return self.get_meta_location(player_loc)
 
+    def get_player_vehicle(self) -> tuple[str, str] | None:
+        """Get the vehicle the player is in, if any.
+
+        Returns (vehicle_name, preposition) where preposition is "in" or "on"
+        based on SURFACEBIT flag. Returns None if player is directly in a room.
+        """
+        player_loc = self.get_player_location()
+        if not player_loc or player_loc in self.state.rooms:
+            return None
+        # Check if player's location has VEHBIT
+        obj_state = self.state.objects.get(player_loc)
+        if obj_state and "VEHBIT" in obj_state.flags:
+            # SURFACEBIT means "on", otherwise "in"
+            prep = "on" if "SURFACEBIT" in obj_state.flags else "in"
+            return (player_loc, prep)
+        return None
+
     def get_player_name(self) -> str:
         """Get the player entity name."""
         return self.player_name
@@ -556,7 +573,7 @@ class GrueRuntime:
         then falls back to ldesc, then description.
         """
         if room_name is None:
-            room_name = self.get_player_location()
+            room_name = self.get_player_room()  # Use room, not immediate location
         room = self.world.rooms.get(room_name)
         if not room:
             return ""
@@ -614,7 +631,7 @@ class GrueRuntime:
 
     def get_exits(self) -> dict[str, str]:
         """Get available exits from the current room."""
-        room = self.world.rooms.get(self.get_player_location())
+        room = self.world.rooms.get(self.get_player_room())  # Use room, not immediate location
         if not room:
             return {}
         return {exit.direction: exit.to for exit in room.exits}

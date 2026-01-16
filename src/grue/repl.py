@@ -83,6 +83,7 @@ class LocationResult:
     description: str
     visible: list[str]
     exits: dict[str, str]
+    vehicle: tuple[str, str] | None = None  # (vehicle_name, preposition) if in vehicle
 
 
 @dataclass
@@ -248,12 +249,13 @@ class ReplEvaluator:
 
     def _make_location_result(self) -> LocationResult:
         """Create a LocationResult from current state."""
-        room = self.runtime.get_player_location()
+        room = self.runtime.get_player_room()  # Use room, not immediate location
         desc = self.runtime.get_room_description()
         inv_set = set(self.runtime.get_inventory())
         visible = [obj for obj in self.runtime.get_visible_objects() if obj not in inv_set]
         exits = self.runtime.get_exits()
-        return LocationResult(room=room, description=desc, visible=visible, exits=exits)
+        vehicle = self.runtime.get_player_vehicle()
+        return LocationResult(room=room, description=desc, visible=visible, exits=exits, vehicle=vehicle)
 
     # === REPL Commands ===
 
@@ -412,7 +414,12 @@ def print_result(result: Any) -> bool:
         return True
 
     if isinstance(result, LocationResult):
-        print(f"\n=== {result.room} ===")
+        # Show room name, with vehicle info if applicable
+        if result.vehicle:
+            vehicle_name, prep = result.vehicle
+            print(f"\n=== {result.room}, {prep} {vehicle_name} ===")
+        else:
+            print(f"\n=== {result.room} ===")
         print(result.description)
         if result.visible:
             print(f"\nVisible: {', '.join(result.visible)}")
