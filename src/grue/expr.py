@@ -256,6 +256,336 @@ class MutableWorldState(WorldState, Protocol):
         ...
 
 
+# === Effect Interpretation (Applicative Effect System) ===
+#
+# In the pure effect model, behaviors return quoted lists of effect descriptors:
+#
+#     :examine (fn ()
+#       '((move @key @player)
+#         (success :message "Found a key!")))
+#
+# EffectInterpreter processes these lists:
+# 1. Validates structure (exactly one terminator)
+# 2. Applies mutation effects (move, set-flag, etc.)
+# 3. Returns an EffectOutcome with the terminator info
+#
+# This enables static analysis: behaviors are pure functions State → EffectList,
+# and effects can be inspected before execution.
+
+
+@dataclass
+class EffectOutcome:
+    """Result of interpreting an effect list.
+
+    This is the output of EffectInterpreter, containing:
+    - outcome: "success", "blocked", "redirect", or "default"
+    - reason: For blocked outcomes
+    - context: Key-value pairs (message, description, etc.)
+    - redirect_action: For redirect outcomes, the (do ...) form
+    - effects_applied: List of effect descriptions for debugging
+    """
+    outcome: str  # "success", "blocked", "redirect", "default"
+    reason: str | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+    redirect_action: list | None = None  # The (do ...) for redirects
+    effects_applied: list[str] = field(default_factory=list)
+
+
+class EffectInterpreter:
+    """Interpret effect lists from pure behaviors.
+
+    Effect lists are Python lists (from quoted expressions) like:
+        [["move", "@key", "@player"], ["success", Keyword("message"), "Found it!"]]
+
+    Effect vocabulary:
+        Mutations:
+            (move obj dest)           - Move object
+            (set-flag obj flag)       - Set flag
+            (clear-flag obj flag)     - Clear flag
+            (set-prop obj prop val)   - Set property
+            (set global val)          - Set global variable
+            (inc global [amt])        - Increment global
+            (dec global [amt])        - Decrement global
+            (queue event [countdown]) - Queue event
+            (dequeue event)           - Remove event from queue
+
+        Terminators (exactly one required):
+            (success [:message ...] [:context ...])
+            (blocked :reason ... [:message ...])
+            (redirect (do @target :verb ...))
+            (default)
+    """
+
+    # Effect names that mutate state
+    MUTATIONS = frozenset({
+        "move", "set-flag", "clear-flag", "set-prop",
+        "set", "inc", "dec", "queue", "dequeue"
+    })
+
+    # Effect names that terminate the effect list
+    TERMINATORS = frozenset({"success", "blocked", "redirect", "default"})
+
+    def __init__(self, state: MutableWorldState):
+        self.state = state
+        self._effects_applied: list[str] = []
+
+    def interpret(self, effects: list) -> EffectOutcome:
+        """Process an effect list and return the outcome.
+
+        Args:
+            effects: List of effect descriptors (from quoted expression)
+
+        Returns:
+            EffectOutcome with outcome type, context, and applied effects
+
+        Raises:
+            EvalError: If validation fails (no terminator, multiple terminators, etc.)
+        """
+        self._effects_applied = []
+
+        # Validate and find terminator
+        terminator = self._validate_and_find_terminator(effects)
+
+        # Apply all mutation effects
+        for effect in effects:
+            if not isinstance(effect, list) or len(effect) == 0:
+                continue
+            effect_name = effect[0]
+            if effect_name in self.MUTATIONS:
+                self._apply_mutation(effect)
+
+        # Convert terminator to outcome
+        return self._terminator_to_outcome(terminator)
+
+    def interpret_setup(self, effects: list) -> list[str]:
+        """Process an effect list for test :setup (no terminator required).
+
+        Args:
+            effects: List of effect descriptors
+
+        Returns:
+            List of applied effect descriptions
+
+        Raises:
+            EvalError: If an effect is invalid
+        """
+        self._effects_applied = []
+
+        for effect in effects:
+            if not isinstance(effect, list) or len(effect) == 0:
+                continue
+            effect_name = effect[0]
+            if effect_name in self.TERMINATORS:
+                raise EvalError(f"Terminator '{effect_name}' not allowed in :setup")
+            if effect_name in self.MUTATIONS:
+                self._apply_mutation(effect)
+            else:
+                raise EvalError(f"Unknown effect in :setup: {effect_name}")
+
+        return self._effects_applied
+
+    def _validate_and_find_terminator(self, effects: list) -> list:
+        """Find and validate the terminator in an effect list.
+
+        Args:
+            effects: The effect list
+
+        Returns:
+            The terminator effect (e.g., ["success", ...])
+
+        Raises:
+            EvalError: If no terminator, multiple terminators, or unknown effects
+        """
+        terminator = None
+        for effect in effects:
+            if not isinstance(effect, list) or len(effect) == 0:
+                raise EvalError(f"Invalid effect (must be non-empty list): {effect}")
+            effect_name = effect[0]
+            if effect_name in self.TERMINATORS:
+                if terminator is not None:
+                    raise EvalError(
+                        f"Multiple terminators in effect list: "
+                        f"{terminator[0]} and {effect_name}"
+                    )
+                terminator = effect
+            elif effect_name not in self.MUTATIONS:
+                raise EvalError(f"Unknown effect: {effect_name}")
+
+        if terminator is None:
+            raise EvalError(
+                "Effect list must contain exactly one terminator "
+                "(success, blocked, redirect, or default)"
+            )
+
+        return terminator
+
+    def _apply_mutation(self, effect: list) -> None:
+        """Apply a mutation effect to the state."""
+        name = effect[0]
+        args = effect[1:]
+
+        if name == "move":
+            if len(args) != 2:
+                raise EvalError(f"'move' expects 2 arguments, got {len(args)}")
+            obj, dest = args[0], args[1]
+            self.state.move_object(obj, dest)
+            self._effects_applied.append(f"move {obj} to {dest}")
+
+        elif name == "set-flag":
+            if len(args) != 2:
+                raise EvalError(f"'set-flag' expects 2 arguments, got {len(args)}")
+            obj, flag = args[0], args[1]
+            self.state.set_object_flag(obj, flag)
+            self._effects_applied.append(f"set-flag {obj} {flag}")
+
+        elif name == "clear-flag":
+            if len(args) != 2:
+                raise EvalError(f"'clear-flag' expects 2 arguments, got {len(args)}")
+            obj, flag = args[0], args[1]
+            self.state.clear_object_flag(obj, flag)
+            self._effects_applied.append(f"clear-flag {obj} {flag}")
+
+        elif name == "set-prop":
+            if len(args) != 3:
+                raise EvalError(f"'set-prop' expects 3 arguments, got {len(args)}")
+            obj, prop, val = args[0], args[1], args[2]
+            # Handle Keyword for property name
+            if hasattr(prop, 'name'):
+                prop = prop.name
+            self.state.set_object_property(obj, prop, val)
+            self._effects_applied.append(f"set-prop {obj} {prop} = {val}")
+
+        elif name == "set":
+            if len(args) != 2:
+                raise EvalError(f"'set' expects 2 arguments, got {len(args)}")
+            global_name, val = args[0], args[1]
+            self.state.set_global(global_name, val)
+            self._effects_applied.append(f"set {global_name} = {val}")
+
+        elif name == "inc":
+            if len(args) < 1 or len(args) > 2:
+                raise EvalError(f"'inc' expects 1-2 arguments, got {len(args)}")
+            global_name = args[0]
+            amount = args[1] if len(args) > 1 else 1
+            current = self.state.get_global(global_name)
+            self.state.set_global(global_name, current + amount)
+            self._effects_applied.append(f"inc {global_name} by {amount}")
+
+        elif name == "dec":
+            if len(args) < 1 or len(args) > 2:
+                raise EvalError(f"'dec' expects 1-2 arguments, got {len(args)}")
+            global_name = args[0]
+            amount = args[1] if len(args) > 1 else 1
+            current = self.state.get_global(global_name)
+            self.state.set_global(global_name, current - amount)
+            self._effects_applied.append(f"dec {global_name} by {amount}")
+
+        elif name == "queue":
+            if len(args) < 1 or len(args) > 2:
+                raise EvalError(f"'queue' expects 1-2 arguments, got {len(args)}")
+            event = args[0]
+            countdown = args[1] if len(args) > 1 else None
+            self.state.queue_event(event, countdown)
+            self._effects_applied.append(
+                f"queue {event}" + (f" (countdown={countdown})" if countdown else "")
+            )
+
+        elif name == "dequeue":
+            if len(args) != 1:
+                raise EvalError(f"'dequeue' expects 1 argument, got {len(args)}")
+            event = args[0]
+            self.state.dequeue_event(event)
+            self._effects_applied.append(f"dequeue {event}")
+
+        else:
+            raise EvalError(f"Unknown mutation effect: {name}")
+
+    def _terminator_to_outcome(self, terminator: list) -> EffectOutcome:
+        """Convert a terminator effect to an EffectOutcome."""
+        name = terminator[0]
+        args = terminator[1:]
+
+        if name == "success":
+            context = self._parse_terminator_kwargs(args)
+            return EffectOutcome(
+                outcome="success",
+                context=context,
+                effects_applied=self._effects_applied
+            )
+
+        elif name == "blocked":
+            context = self._parse_terminator_kwargs(args)
+            reason = context.pop("reason", "unknown")
+            return EffectOutcome(
+                outcome="blocked",
+                reason=reason,
+                context=context,
+                effects_applied=self._effects_applied
+            )
+
+        elif name == "redirect":
+            if len(args) < 1:
+                raise EvalError("'redirect' requires an action argument")
+            # First non-keyword arg is the action
+            action = None
+            context = {}
+            i = 0
+            while i < len(args):
+                arg = args[i]
+                if hasattr(arg, 'name') and isinstance(arg, Keyword):
+                    # Keyword argument
+                    if i + 1 < len(args):
+                        context[arg.name] = args[i + 1]
+                        i += 2
+                    else:
+                        i += 1
+                else:
+                    # The action
+                    action = arg
+                    i += 1
+            if action is None:
+                raise EvalError("'redirect' requires an action")
+            return EffectOutcome(
+                outcome="redirect",
+                redirect_action=action,
+                context=context,
+                effects_applied=self._effects_applied
+            )
+
+        elif name == "default":
+            context = self._parse_terminator_kwargs(args)
+            return EffectOutcome(
+                outcome="default",
+                context=context,
+                effects_applied=self._effects_applied
+            )
+
+        else:
+            raise EvalError(f"Unknown terminator: {name}")
+
+    def _parse_terminator_kwargs(self, args: list) -> dict[str, Any]:
+        """Parse keyword arguments from terminator args.
+
+        Args like [Keyword("message"), "Hello", Keyword("reason"), "locked"]
+        become {"message": "Hello", "reason": "locked"}
+        """
+        result: dict[str, Any] = {}
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            # Check if it's a Keyword
+            if hasattr(arg, 'name') and type(arg).__name__ == 'Keyword':
+                key = arg.name
+                if i + 1 < len(args):
+                    result[key] = args[i + 1]
+                    i += 2
+                else:
+                    i += 1
+            else:
+                i += 1
+        return result
+
+
 class EvalError(Exception):
     """Error during expression evaluation."""
     pass

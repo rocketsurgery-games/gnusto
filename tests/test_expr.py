@@ -838,3 +838,320 @@ class TestRange:
         with pytest.raises(EvalError) as excinfo:
             evaluator.eval(parse("(range \"5\")"))
         assert "must be int" in str(excinfo.value)
+
+
+# === EffectInterpreter Tests ===
+
+from grue.expr import EffectInterpreter, EffectOutcome
+from grue.sexpr import Keyword
+
+
+class MockStateWithQueues(MockWorldState):
+    """Extended mock state with queue support for EffectInterpreter tests."""
+
+    def __init__(self):
+        super().__init__()
+        self.queues: dict[str, int | None] = {}
+
+    def queue_event(self, event: str, countdown: int | None = None) -> None:
+        self.queues[event] = countdown
+
+    def dequeue_event(self, event: str) -> None:
+        self.queues.pop(event, None)
+
+    def is_queued(self, event: str) -> bool:
+        return event in self.queues
+
+
+class TestEffectInterpreterBasic:
+    """Test basic EffectInterpreter functionality."""
+
+    def test_success_simple(self):
+        """Simple success terminator."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([["success"]])
+        assert result.outcome == "success"
+        assert result.effects_applied == []
+
+    def test_success_with_message(self):
+        """Success with message context."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["success", Keyword("message"), "You got it!"]
+        ])
+        assert result.outcome == "success"
+        assert result.context["message"] == "You got it!"
+
+    def test_blocked_with_reason(self):
+        """Blocked with reason."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["blocked", Keyword("reason"), "locked"]
+        ])
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+
+    def test_blocked_with_message(self):
+        """Blocked with reason and message."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["blocked", Keyword("reason"), "no-key", Keyword("message"), "You need a key."]
+        ])
+        assert result.outcome == "blocked"
+        assert result.reason == "no-key"
+        assert result.context["message"] == "You need a key."
+
+    def test_default_terminator(self):
+        """Default terminator."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([["default"]])
+        assert result.outcome == "default"
+
+    def test_redirect_with_action(self):
+        """Redirect with action."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["redirect", ["do", "@door", ":open"]]
+        ])
+        assert result.outcome == "redirect"
+        assert result.redirect_action == ["do", "@door", ":open"]
+
+
+class TestEffectInterpreterMutations:
+    """Test EffectInterpreter mutation effects."""
+
+    def test_move_effect(self):
+        """Move effect changes object location."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["move", "KEY", "HALLWAY"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.locations["KEY"] == "HALLWAY"
+        assert "move KEY to HALLWAY" in result.effects_applied
+
+    def test_set_flag_effect(self):
+        """Set-flag effect adds flag to object."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["set-flag", "DOOR", "OPENBIT"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert "OPENBIT" in state.flags["DOOR"]
+        assert "set-flag DOOR OPENBIT" in result.effects_applied
+
+    def test_clear_flag_effect(self):
+        """Clear-flag effect removes flag from object."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["clear-flag", "DOOR", "LOCKED"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert "LOCKED" not in state.flags["DOOR"]
+        assert "clear-flag DOOR LOCKED" in result.effects_applied
+
+    def test_set_global_effect(self):
+        """Set effect changes global variable."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["set", "SCORE", 100],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.globals["SCORE"] == 100
+        assert "set SCORE = 100" in result.effects_applied
+
+    def test_inc_effect(self):
+        """Inc effect increments global variable."""
+        state = MockStateWithQueues()
+        state.globals["SCORE"] = 10
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["inc", "SCORE"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.globals["SCORE"] == 11
+
+    def test_inc_effect_with_amount(self):
+        """Inc effect with custom amount."""
+        state = MockStateWithQueues()
+        state.globals["SCORE"] = 10
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["inc", "SCORE", 5],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.globals["SCORE"] == 15
+
+    def test_dec_effect(self):
+        """Dec effect decrements global variable."""
+        state = MockStateWithQueues()
+        state.globals["SCORE"] = 10
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["dec", "SCORE"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.globals["SCORE"] == 9
+
+    def test_queue_effect(self):
+        """Queue effect adds event to queue."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["queue", "@alarm"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert "@alarm" in state.queues
+        assert state.queues["@alarm"] is None  # Indefinite
+
+    def test_queue_effect_with_countdown(self):
+        """Queue effect with countdown."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["queue", "@alarm", 5],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.queues["@alarm"] == 5
+
+    def test_dequeue_effect(self):
+        """Dequeue effect removes event from queue."""
+        state = MockStateWithQueues()
+        state.queues["@alarm"] = 3
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["dequeue", "@alarm"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert "@alarm" not in state.queues
+
+    def test_set_prop_effect(self):
+        """Set-prop effect changes object property."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["set-prop", "FLASHLIGHT", "battery_level", 50],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.properties["FLASHLIGHT"]["battery_level"] == 50
+
+    def test_multiple_effects(self):
+        """Multiple effects applied in order."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["move", "KEY", "PLAYER"],
+            ["set-flag", "KEY", "TAKEN"],
+            ["inc", "SCORE", 10],
+            ["success", Keyword("message"), "You take the key."]
+        ])
+        assert result.outcome == "success"
+        assert state.locations["KEY"] == "PLAYER"
+        assert "TAKEN" in state.flags["KEY"]
+        assert state.globals["SCORE"] == 10
+        assert len(result.effects_applied) == 3
+
+
+class TestEffectInterpreterValidation:
+    """Test EffectInterpreter validation."""
+
+    def test_no_terminator_error(self):
+        """Effect list without terminator raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret([["move", "KEY", "HALLWAY"]])
+        assert "terminator" in str(excinfo.value).lower()
+
+    def test_multiple_terminators_error(self):
+        """Effect list with multiple terminators raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret([
+                ["success"],
+                ["blocked", Keyword("reason"), "test"]
+            ])
+        assert "Multiple terminators" in str(excinfo.value)
+
+    def test_empty_effect_error(self):
+        """Empty effect raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret([[], ["success"]])
+        assert "non-empty list" in str(excinfo.value)
+
+    def test_invalid_effect_type_error(self):
+        """Non-list effect raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret(["not-a-list", ["success"]])
+        assert "non-empty list" in str(excinfo.value)
+
+    def test_unknown_effect_error(self):
+        """Unknown effect raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret([
+                ["unknown-effect", "arg"],
+                ["success"]
+            ])
+        assert "Unknown effect" in str(excinfo.value)
+
+
+class TestEffectInterpreterSetup:
+    """Test EffectInterpreter.interpret_setup for test :setup."""
+
+    def test_setup_mutations_only(self):
+        """Setup processes mutations without terminator."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        effects_applied = interp.interpret_setup([
+            ["move", "KEY", "PLAYER"],
+            ["set-flag", "DOOR", "OPENBIT"]
+        ])
+        assert state.locations["KEY"] == "PLAYER"
+        assert "OPENBIT" in state.flags["DOOR"]
+        assert len(effects_applied) == 2
+
+    def test_setup_rejects_terminators(self):
+        """Setup rejects terminator effects."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret_setup([
+                ["move", "KEY", "PLAYER"],
+                ["success"]
+            ])
+        assert "not allowed in :setup" in str(excinfo.value)
+
+    def test_setup_empty_list(self):
+        """Setup with empty list works."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        effects_applied = interp.interpret_setup([])
+        assert effects_applied == []

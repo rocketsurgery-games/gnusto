@@ -24,6 +24,8 @@ from .sexpr import (
 from .expr import (
     ExprEvaluator,
     EffectExecutor,
+    EffectInterpreter,
+    EffectOutcome,
     EvalError,
     WorldState,
     MutableWorldState,
@@ -89,6 +91,8 @@ __all__ = [
     # Expression evaluator
     "ExprEvaluator",
     "EffectExecutor",
+    "EffectInterpreter",
+    "EffectOutcome",
     "EvalError",
     "WorldState",
     "MutableWorldState",
