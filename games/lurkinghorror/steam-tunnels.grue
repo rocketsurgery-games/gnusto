@@ -50,7 +50,8 @@
     :on-enter (fn (?from)
       (cond
         ((has-flag @iron-plate OPENBIT)
-          (success :effects ((queue! panel-noises -1))))
+          '((queue panel-noises -1)
+            (success)))
         (true (success))))))
 
 ; === Altar Objects ===
@@ -152,16 +153,18 @@
         ((has-flag ?self OPENBIT)
           (blocked :reason already-open :message "It's already open."))
         (true
-          (success :effects ((set-flag! ?self OPENBIT) (queue! panel-noises -1))
-                   :message "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below."))))
+          '((set-flag ?self OPENBIT)
+            (queue panel-noises -1)
+            (success :message "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below.")))))
 
     :close (fn ()
       (cond
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success :effects ((clear-flag! ?self OPENBIT) (dequeue! panel-noises))
-                   :message "You close the panel. You no longer hear the noises, much to your relief."))))
+          '((clear-flag ?self OPENBIT)
+            (dequeue panel-noises)
+            (success :message "You close the panel. You no longer hear the noises, much to your relief.")))))
 
     :move (fn ()
       (redirect :action (do ?self :open)))
@@ -183,10 +186,10 @@
         (seen-pit
           (blocked :reason traumatized :message "You would sooner die than open that panel again."))
         ((has-flag ?self OPENBIT)
-          (success :effects ((clear-flag! ?self OPENBIT)
-                            (dequeue! panel-noises)
-                            (set! seen-pit true))
-                   :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students."))
+          '((clear-flag ?self OPENBIT)
+            (dequeue panel-noises)
+            (set seen-pit true)
+            (success :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students.")))
         (true
           (blocked :reason closed :message "The panel isn't open."))))))
 
@@ -195,7 +198,8 @@
   :location @cave-altar
   :on-turn (cond
     ((not (or (here? @cave-altar) (here? @cave-room)))
-      (success :effects ((dequeue! panel-noises))))
+      '((dequeue panel-noises)
+        (success)))
     ((here? @cave-altar)
       (success :context ((ambient "A low, guttural, groaning and snarling issues from the opening."))))
     (true
@@ -256,7 +260,9 @@
     :on-enter (fn (?from)
       (cond
         ((> valve-turns 0)
-          (success :effects ((dequeue! rats-go-away) (queue! rats-event -1))))
+          '((dequeue rats-go-away)
+            (queue rats-event -1)
+            (success)))
         (true (success))))))
 
 (room @tunnel-west
@@ -358,11 +364,11 @@
     :climb (fn ()
       (cond
         (on-cable
-          (success :effects ((set! on-cable false))
-                   :message "You drop from the cable to the floor."))
+          '((set on-cable false)
+            (success :message "You drop from the cable to the floor.")))
         (true
-          (success :effects ((set! on-cable true))
-                   :message "You grab the cable bundle and pull yourself up, dangling above the floor."))))
+          '((set on-cable true)
+            (success :message "You grab the cable bundle and pull yourself up, dangling above the floor.")))))
 
     :swing (fn ()
       (cond
@@ -426,16 +432,16 @@
         ((has-flag ?self OPENBIT)
           (blocked :reason already-open :message "It's already open."))
         (true
-          (success :effects ((set-flag! ?self OPENBIT))
-                   :message "With some effort, you push open the heavy hatch."))))
+          '((set-flag ?self OPENBIT)
+            (success :message "With some effort, you push open the heavy hatch.")))))
 
     :close (fn ()
       (cond
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success :effects ((clear-flag! ?self OPENBIT))
-                   :message "You pull the hatch closed."))))))
+          '((clear-flag ?self OPENBIT)
+            (success :message "You pull the hatch closed.")))))))
 
 ; === Pressure Valve ===
 
@@ -457,17 +463,17 @@
       (cond
         ((has-flag ?self OPENBIT)
           ; Closing the valve
-          (success :effects ((clear-flag! ?self OPENBIT)
-                            (clear-flag! @steam-pipes HOT)
-                            (set! valve-turns 0))
-                   :message "You turn the valve closed. The steam dissipates, and the passage east clears."))
+          '((clear-flag ?self OPENBIT)
+            (clear-flag @steam-pipes HOT)
+            (set valve-turns 0)
+            (success :message "You turn the valve closed. The steam dissipates, and the passage east clears.")))
         (true
           ; Opening the valve
-          (success :effects ((set-flag! ?self OPENBIT)
-                            (set-flag! @steam-pipes HOT)
-                            (set! valve-turns (+ valve-turns 1))
-                            (queue! rats-go-away 3))
-                   :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east."))))
+          '((set-flag ?self OPENBIT)
+            (set-flag @steam-pipes HOT)
+            (set valve-turns (+ valve-turns 1))
+            (queue rats-go-away 3)
+            (success :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east.")))))
 
     :open (fn ()
       (cond
@@ -521,8 +527,8 @@
     :give (fn (?item)
       (cond
         ((has-flag ?item FOODBIT)
-          (success :effects ((move! ?item nil))
-                   :message (str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however.")))
+          '((move ?item nil)
+            (success :message (str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))))
         (true
           (blocked :reason not-interested :message "The rats aren't interested in that."))))))
 
@@ -564,9 +570,9 @@
       (cond
         ((not (has-flag ?self TOUCHBIT))
           ; First time taking - lice and fleas
-          (success
-            :effects ((set-flag! ?self TOUCHBIT) (take! ?self))
-            :message "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out."))
+          '((set-flag ?self TOUCHBIT)
+            (take ?self)
+            (success :message "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out.")))
         (true (default))))
 
     :step-on (fn ()
@@ -601,16 +607,18 @@
   :on-turn
     (cond
       ((not (has-flag @pressure-valve OPENBIT))
-        (success :effects ((dequeue! rats-go-away))))
+        '((dequeue rats-go-away)
+          (success)))
       ((in? @rats (loc @player))
         ; Rats killed by steam in player's location - spawn dead rat
-        (success :effects ((move! @rats nil)
-                          (move! @dead-rat (loc @player))
-                          (dequeue! rats-go-away))
-                 :context ((description "The rats are caught in the full force of the steam blast. Horrible squeals can be heard from the midst of the steam cloud, and scalded rats charge past you, all interest in anything but flight forgotten. One of their number remains, dead."))))
+        '((move @rats nil)
+          (move @dead-rat (loc @player))
+          (dequeue rats-go-away)
+          (success :context ((description "The rats are caught in the full force of the steam blast. Horrible squeals can be heard from the midst of the steam cloud, and scalded rats charge past you, all interest in anything but flight forgotten. One of their number remains, dead.")))))
       (true
-        (success :effects ((move! @rats nil) (dequeue! rats-go-away))
-                 :context ((description "You hear squealing in the distance. The rats seem to have fled."))))))
+        '((move @rats nil)
+          (dequeue rats-go-away)
+          (success :context ((description "You hear squealing in the distance. The rats seem to have fled.")))))))
 
 ; Recurring rats event
 (event rats-event
@@ -634,24 +642,26 @@
         (brick-wall-broken
           (success :message "The south wall has been broken through, revealing a passage beyond."))
         (true
-          (success :effects ((set-flag! ?self TOUCHBIT))
-                   :message "The south wall is made of crumbling old bricks. Some look loose."))))
+          '((set-flag ?self TOUCHBIT)
+            (success :message "The south wall is made of crumbling old bricks. Some look loose.")))))
 
     :attack (fn ()
       (cond
         (brick-wall-broken
           (blocked :reason already-broken :message "There's already a hole in the wall."))
         (true
-          (success :effects ((set! brick-wall-broken true) (move! @broken-brick ?self))
-                   :message "You smash through the decrepit brickwork, revealing a dark opening beyond."))))
+          '((set brick-wall-broken true)
+            (move @broken-brick ?self)
+            (success :message "You smash through the decrepit brickwork, revealing a dark opening beyond.")))))
 
     :push (fn ()
       (cond
         (brick-wall-broken
           (blocked :reason already-broken :message "There's already a hole in the wall."))
         (true
-          (success :effects ((set! brick-wall-broken true) (move! @broken-brick ?self))
-                   :message "The wall crumbles easily under your push, revealing a dark passage beyond."))))
+          '((set brick-wall-broken true)
+            (move @broken-brick ?self)
+            (success :message "The wall crumbles easily under your push, revealing a dark passage beyond.")))))
 
     :kick (fn ()
       (redirect :action (do ?self :attack)))))
