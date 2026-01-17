@@ -1,7 +1,7 @@
 # UI
 The existing UI is just a terminal repl that requires you to interact via Grue syntax. I propose that we should have multiple UI modes:
 - REPL:  Useful as a debugging tool.
-- TUI:   A "real" terminal UI, that uses the LLM for interaction.
+- TUI:   A "real" terminal UI, that uses the LM for interaction.
 - GUI:   Conceptually the same as the terminal UI, but with images, and other bells and whistles.
 - Voice: A voice input/output UI suitable for phones and visually-impaired players.
 

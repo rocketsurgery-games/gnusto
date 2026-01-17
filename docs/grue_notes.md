@@ -19,8 +19,12 @@ See epic frotzlm-krs for implementation tasks.
 
 
 ## Flag/bit cleanup
-- Are these really different from boolean props? Or was it just an optimization in grue?
-- They're used for lots of "built-in" behaviors; is there a cleaner way to accomplish this?
+Are these really different from boolean props? Or was it just an optimization in grue? They're used for lots of "built-in" behaviors; is there a cleaner way to accomplish this?
+
+We could just replace them with bools. The runtime/built-ins would need to be able to speculatively check for an object's bool prop with a default value, which we chose not to allow in the prop syntax -- maybe worth revisiting this and allowing `(:prop @obj default)` for dynamic property checks; but still have `(:prop @obj)` raise an error if the property's absent.
+
+### Naming
+For properties used by the runtime, do we want to give them special names as a convention to avoid accidental conflicts?
 
 ### Runtime flags
 These flags have effects built into the runtime. We should consider whether there's a more general mechanism that doesn't rely upon these very specific flags being baked into the runtime.
@@ -43,7 +47,7 @@ AN CONTBIT DOORBIT LOCKED NOABIT NOTHEBIT OUTSIDE POWERBIT READBIT RLANDBIT RMUN
 ## Result context
 What do we _really_ want from effects like `(success :context (description "..."))`? Consider pulling all the context (e.g., `:context ((timer-display ...`) into explicit ui-effects that give instructions on how context should be displayed to the user.
 
-This is best addressed when we start bolting on the LLM adapter for real. This will give us a much clearer idea of what we need to solve real needs.
+This is best addressed when we start bolting on the LM adapter for real. This will give us a much clearer idea of what we need to solve real needs.
 
 ## Multiline strings
 It could make strings a lot more readable if we made multi-line string literals that require explicit

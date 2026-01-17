@@ -510,11 +510,22 @@ class EffectInterpreter:
             self._effects_applied.append(f"set-prop {obj} {prop} = {val}")
 
         elif name == "set":
-            if len(args) != 2:
-                raise EvalError(f"'set' expects 2 arguments, got {len(args)}")
-            global_name, val = args[0], args[1]
-            self.state.set_global(global_name, val)
-            self._effects_applied.append(f"set {global_name} = {val}")
+            # Two forms:
+            # (set @obj :prop value) - set object property (3 args)
+            # (set global-name value) - set global (2 args, legacy)
+            if len(args) == 3:
+                obj, prop, val = args[0], args[1], args[2]
+                # Handle Keyword for property name
+                if hasattr(prop, 'name'):
+                    prop = prop.name
+                self.state.set_object_property(obj, prop, val)
+                self._effects_applied.append(f"set {obj} {prop} = {val}")
+            elif len(args) == 2:
+                global_name, val = args[0], args[1]
+                self.state.set_global(global_name, val)
+                self._effects_applied.append(f"set {global_name} = {val}")
+            else:
+                raise EvalError(f"'set' expects 2-3 arguments, got {len(args)}")
 
         elif name == "inc":
             if len(args) < 1 or len(args) > 2:

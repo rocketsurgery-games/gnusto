@@ -93,12 +93,12 @@
   (test "set to 2 minutes"
     (do @microwave :set-timer 120)
     (assert (outcome? success))
-    (assert (global? microwave-timer 120)))
+    (assert (prop? @microwave timer 120)))
 
   (test "set to 30 seconds"
     (do @microwave :set-timer 30)
     (assert (outcome? success))
-    (assert (global? microwave-timer 30)))
+    (assert (prop? @microwave timer 30)))
 
   (test "can't set over 1 hour"
     (do @microwave :set-timer 3601)
@@ -112,22 +112,22 @@
   (test "set to high"
     (do @microwave :set-temp high)
     (assert (outcome? success))
-    (assert (global? microwave-temp 4)))
+    (assert (prop? @microwave temp 4)))
 
   (test "set to medium"
     (do @microwave :set-temp medium)
     (assert (outcome? success))
-    (assert (global? microwave-temp 3)))
+    (assert (prop? @microwave temp 3)))
 
   (test "set to low"
     (do @microwave :set-temp low)
     (assert (outcome? success))
-    (assert (global? microwave-temp 2)))
+    (assert (prop? @microwave temp 2)))
 
   (test "set to warm"
     (do @microwave :set-temp warm)
     (assert (outcome? success))
-    (assert (global? microwave-temp 1)))
+    (assert (prop? @microwave temp 1)))
 
   (test "can't change while running"
     :setup ((queue! microwave-running))
@@ -140,16 +140,16 @@
   :setup ((move! @player @kitchen))
 
   (test "can start with timer set"
-    :setup ((set! microwave-timer 120))
+    :setup ((set-prop! @microwave timer 120))
     (do @microwave :start)
     (assert (outcome? success))
     (assert (queued? microwave-running)))
 
   (test "start defaults temp to high"
-    :setup ((set! microwave-timer 120) (set! microwave-temp 0))
+    :setup ((set-prop! @microwave timer 120) (set-prop! @microwave temp 0))
     (do @microwave :start)
     (assert (outcome? success))
-    (assert (global? microwave-temp 4)))
+    (assert (prop? @microwave temp 4)))
 
   (test "can't start without timer"
     (do @microwave :start)
@@ -157,7 +157,7 @@
     (assert (reason? no-time)))
 
   (test "can't start with door open"
-    :setup ((set! microwave-timer 120) (set-flag! @microwave OPENBIT))
+    :setup ((set-prop! @microwave timer 120) (set-flag! @microwave OPENBIT))
     (do @microwave :start)
     (assert (outcome? blocked))
     (assert (reason? door-open)))
@@ -180,10 +180,10 @@
     (assert (reason? already-off)))
 
   (test "clear resets timer"
-    :setup ((set! microwave-timer 120))
+    :setup ((set-prop! @microwave timer 120))
     (do @microwave :clear)
     (assert (outcome? success))
-    (assert (global? microwave-timer 0)))
+    (assert (prop? @microwave timer 0)))
 
   (test "can't clear while running"
     :setup ((queue! microwave-running))
@@ -207,33 +207,33 @@
   :setup ((move! @player @kitchen) (queue! microwave-running))
 
   (test "decrements timer by 60"
-    :setup ((set! microwave-timer 180))
+    :setup ((set-prop! @microwave timer 180))
     (wait)
     (assert (outcome? success))
-    (assert (global? microwave-timer 120))
+    (assert (prop? @microwave timer 120))
     (assert (queued? microwave-running)))
 
   (test "stops when timer reaches 0"
-    :setup ((set! microwave-timer 60))
+    :setup ((set-prop! @microwave timer 60))
     (wait)
     (assert (outcome? success))
-    (assert (global? microwave-timer 0))
+    (assert (prop? @microwave timer 0))
     (assert (not-queued? microwave-running)))
 
   (test "heats chinese food"
-    :setup ((set! microwave-timer 120) (set! microwave-temp 4) (move! @chinese-food @microwave) (set-prop! @chinese-food heat 0))
+    :setup ((set-prop! @microwave timer 120) (set-prop! @microwave temp 4) (move! @chinese-food @microwave) (set-prop! @chinese-food heat 0))
     (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 4)))
 
   (test "doesn't fire outside kitchen"
-    :setup ((move! @player @cs-2nd) (set! microwave-timer 120))
+    :setup ((move! @player @cs-2nd) (set-prop! @microwave timer 120))
     (wait)
-    (assert (global? microwave-timer 120)))
+    (assert (prop? @microwave timer 120)))
 )
 
 (test-group "overcooking"
-  :setup ((move! @player @kitchen) (move! @chinese-food @microwave) (set! microwave-temp 4) (set! microwave-timer 60) (queue! microwave-running))
+  :setup ((move! @player @kitchen) (move! @chinese-food @microwave) (set-prop! @microwave temp 4) (set-prop! @microwave timer 60) (queue! microwave-running))
 
   (test "chinese food gets RMUNGBIT when heat > 20"
     :setup ((set-prop! @chinese-food heat 18))
@@ -260,7 +260,7 @@
     (assert (prop? @chinese-food heat 11)))
 
   (test "doesn't cool food in running microwave"
-    :setup ((move! @chinese-food @microwave) (set-prop! @chinese-food heat 12) (set! microwave-timer 120) (set! microwave-temp 4) (queue! microwave-running))
+    :setup ((move! @chinese-food @microwave) (set-prop! @chinese-food heat 12) (set-prop! @microwave timer 120) (set-prop! @microwave temp 4) (queue! microwave-running))
     (wait)
     (assert (prop? @chinese-food heat 16)))
 
@@ -276,21 +276,21 @@
 )
 
 (test "heat chinese food to trading temperature"
-  :setup ((move! @player @kitchen) (move! @chinese-food @microwave) (set-prop! @chinese-food heat 0) (set! microwave-timer 0) (set! microwave-temp 0))
+  :setup ((move! @player @kitchen) (move! @chinese-food @microwave) (set-prop! @chinese-food heat 0) (set-prop! @microwave timer 0) (set-prop! @microwave temp 0))
   (do @microwave :set-timer 180)
-  (assert (global? microwave-timer 180))
+  (assert (prop? @microwave timer 180))
   (do @microwave :set-temp high)
-  (assert (global? microwave-temp 4))
+  (assert (prop? @microwave temp 4))
   (do @microwave :start)
   (assert (queued? microwave-running))
   (wait)
-  (assert (global? microwave-timer 120))
+  (assert (prop? @microwave timer 120))
   (assert (prop? @chinese-food heat 4))
   (wait)
-  (assert (global? microwave-timer 60))
+  (assert (prop? @microwave timer 60))
   (assert (prop? @chinese-food heat 8))
   (wait)
-  (assert (global? microwave-timer 0))
+  (assert (prop? @microwave timer 0))
   (assert (prop? @chinese-food heat 12))
   (assert (not-queued? microwave-running)))
 
@@ -321,7 +321,7 @@
 )
 
 (test-group "heating food in carton in microwave"
-  :setup ((move! @player @kitchen) (move! @carton @microwave) (move! @chinese-food @carton) (set-prop! @chinese-food heat 0) (set! microwave-timer 120) (set! microwave-temp 4) (queue! microwave-running))
+  :setup ((move! @player @kitchen) (move! @carton @microwave) (move! @chinese-food @carton) (set-prop! @chinese-food heat 0) (set-prop! @microwave timer 120) (set-prop! @microwave temp 4) (queue! microwave-running))
 
   (test "heats chinese food inside carton"
     (wait)
