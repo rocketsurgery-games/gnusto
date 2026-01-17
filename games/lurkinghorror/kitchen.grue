@@ -18,14 +18,23 @@
 ; Items that can be heated in the microwave
 (def heatable-items '(@chinese-food @carton))
 
-(defn heat-microwave-contents ()
-  "Heat all heatable items inside the microwave and check for overcooking"
-  (doseq (?item heatable-items)
-    (when (inside? ?item @microwave)
-      (set-prop! ?item heat (+ (prop ?item heat) microwave-temp))))
-  ; Special case: overcook chinese food if heat > 20
-  (when (and (inside? @chinese-food @microwave) (> (prop @chinese-food heat) 20))
-    (set-flag! @chinese-food RMUNGBIT)))
+(defn heat-microwave-contents-effects ()
+  "Return effects to heat items in microwave and check for overcooking.
+   Returns a list of effects to be spliced into an effect list."
+  ; Compute predicted new heat for overcook check (check happens AFTER heating)
+  (let ((new-food-heat (+ (prop @chinese-food heat) microwave-temp)))
+    `(; Heat chinese food if in microwave
+      ,@(if (inside? @chinese-food @microwave)
+            `((set-prop @chinese-food heat ,new-food-heat))
+            '())
+      ; Heat carton if in microwave
+      ,@(if (inside? @carton @microwave)
+            `((set-prop @carton heat ,(+ (prop @carton heat) microwave-temp)))
+            '())
+      ; Overcook chinese food if heat > 20 (after this heating)
+      ,@(if (and (inside? @chinese-food @microwave) (> new-food-heat 20))
+            '((set-flag @chinese-food RMUNGBIT))
+            '()))))
 
 (room @kitchen
   :description "Kitchen"
@@ -257,21 +266,17 @@ counter are a refrigerator and a microwave."
   :location @kitchen
   :on-turn
     (let ((new-timer (- microwave-timer 60)))
-      (cond
-        ((<= new-timer 0)
-          (success
-            :effects ((set! microwave-timer 0)
-                      (dequeue! microwave-running)
-                      (heat-microwave-contents))
-            :context ((description "The microwave stops.")
-                      (timer-display "0:00"))))
-        (true
-          (success
-            :effects ((set! microwave-timer new-timer)
-                      (heat-microwave-contents))
-            :context ((timer-display (str (/ new-timer 60) ":"
-                                         (if (< (mod new-timer 60) 10) "0" "")
-                                         (mod new-timer 60)))))))))
+      (if (<= new-timer 0)
+          `((set microwave-timer 0)
+            (dequeue microwave-running)
+            ,@(heat-microwave-contents-effects)
+            (success :context ((description "The microwave stops.")
+                              (timer-display "0:00"))))
+          `((set microwave-timer ,new-timer)
+            ,@(heat-microwave-contents-effects)
+            (success :context ((timer-display ,(str (/ new-timer 60) ":"
+                                                    (if (< (mod new-timer 60) 10) "0" "")
+                                                    (mod new-timer 60)))))))))
 
 ; === Cooling Event ===
 ; Items with a :heat property cool down over time when not being heated.
@@ -281,12 +286,14 @@ counter are a refrigerator and a microwave."
 
 (event item-cooling
   :on-turn
-    (success
-      :effects (
-        ; Cool chinese food if not in running microwave
+    (let ((should-cool (and (> (prop @chinese-food heat) 0)
+                            (not (and (inside? @chinese-food @microwave) (queued? microwave-running)))))
+          (new-heat (- (prop @chinese-food heat) 1)))
+      `(; Cool chinese food if not in running microwave
         ; Use inside? for recursive check - food in carton in microwave also counts
-        (when (and (> (prop @chinese-food heat) 0)
-                   (not (and (inside? @chinese-food @microwave) (queued? microwave-running))))
-          (set-prop! @chinese-food heat (- (prop @chinese-food heat) 1)))
+        ,@(if should-cool
+              `((set-prop @chinese-food heat ,new-heat))
+              '())
         ; Re-queue ourselves for 2 turns from now
-        (queue! item-cooling 2))))
+        (queue item-cooling 2)
+        (success))))
