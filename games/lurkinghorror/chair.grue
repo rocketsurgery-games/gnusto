@@ -25,12 +25,14 @@
         ((in? ?actor @chair)
           (blocked :reason already-there :message "You are."))
         (true
-          (success :effects ((move! ?actor @chair)) :message "You are now sitting in the chair."))))
+          '((move ?actor @chair)
+            (success :message "You are now sitting in the chair.")))))
 
     :stand (fn ()
       (cond
         ((in? ?actor @chair)
-          (success :effects ((move! ?actor (loc @chair))) :message "You get out of the chair."))
+          '((move ?actor (loc @chair))
+            (success :message "You get out of the chair.")))
         (true
           (blocked :reason not-in-vehicle :message "You're not in the chair."))))))
 

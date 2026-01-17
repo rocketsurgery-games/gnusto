@@ -63,14 +63,14 @@
          (blocked :reason spill
            :message "If you take it out, it will spill all over you. Why not take the carton instead?"))
         (true
-         (success :effects ((take! ?self))
-           :message "Taken."))))
+         '((take ?self)
+           (success :message "Taken.")))))
 
     :eat (fn ()
-      (success
-        :effects ((move! ?self nil))
-        :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
-          ". You immediately want to drink something to wash it down.")))
+      '((move ?self nil)
+        (success
+          :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
+            ". You immediately want to drink something to wash it down."))))
 
     :taste (fn ()
       (success :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self) ".")))))
@@ -100,8 +100,8 @@
         ((has-flag ?self OPENBIT)
          (blocked :reason already-open :message "It's already open."))
         (true
-         (success :effects ((set-flag! ?self OPENBIT))
-           :message "You open the package, revealing yummy junk food inside."))))
+         '((set-flag ?self OPENBIT)
+           (success :message "You open the package, revealing yummy junk food inside.")))))
 
     :eat (fn ()
       (cond
@@ -110,11 +110,12 @@
         ((> (prop ?self heat) 12)
          (blocked :reason too-hot :message "You discover that they are too hot to eat."))
         ((has-flag ?self OPENBIT)
-         (success :effects ((set-flag! ?self RMUNGBIT))
-           :message "You devour the delicious food-like substance."))
+         '((set-flag ?self RMUNGBIT)
+           (success :message "You devour the delicious food-like substance.")))
         (true
-         (success :effects ((set-flag! ?self OPENBIT) (set-flag! ?self RMUNGBIT))
-           :message "You tear open the package and devour the delicious food-like substance."))))))
+         '((set-flag ?self OPENBIT)
+           (set-flag ?self RMUNGBIT)
+           (success :message "You tear open the package and devour the delicious food-like substance.")))))))
 
 (object @coke
   :description "two liter bottle of Classic Coke"

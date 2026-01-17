@@ -83,21 +83,22 @@
     :give (fn (?item) (cond
       ; Give overcooked chinese food
       ((and (= ?item @carton) (in? @chinese-food @carton) (has-flag @chinese-food RMUNGBIT))
-        (success
-          :effects ((move! @carton nil))
-          :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away."))))
+        '((move @carton nil)
+          (success :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away.")))))
 
       ; Give hot chinese food (heat >= 12) - if trade was proposed, loan the key
       ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) hacker-trade)
-        (success
-          :effects ((move! @carton @hacker) (move! @chinese-food nil) (set! hacker-trade false) (move! @master-key ?actor))
-          :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+        '((move @carton @hacker)
+          (move @chinese-food nil)
+          (set hacker-trade false)
+          (move @master-key ?actor)
+          (success :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key.")))))
 
       ; Give hot chinese food (heat >= 12) - no trade proposed
       ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12))
-        (success
-          :effects ((move! @carton @hacker) (move! @chinese-food nil))
-          :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Now, what was it you were wanting?\" he asks."))))
+        '((move @carton @hacker)
+          (move @chinese-food nil)
+          (success :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Now, what was it you were wanting?\" he asks.")))))
 
       ; Give cold chinese food
       ((and (= ?item @carton) (in? @chinese-food @carton) (= (prop @chinese-food heat) 0))
@@ -109,9 +110,8 @@
 
       ; Give snack (not eaten)
       ((and (= ?item @snack) (not (has-flag @snack RMUNGBIT)))
-        (success
-          :effects ((move! @snack @hacker))
-          :context ((response "\"Hey, thanks!\" He stuffs it down in no time. \"I could really do with some Chinese food, though.\""))))
+        '((move @snack @hacker)
+          (success :context ((response "\"Hey, thanks!\" He stuffs it down in no time. \"I could really do with some Chinese food, though.\"")))))
 
       ; Give coke
       ((= ?item @coke) (blocked :reason wrong-drink :context ((response "\"I only drink Diet Coke,\" he complains. \"I could really do with some Chinese food, though.\""))))
@@ -128,9 +128,8 @@
            (and (= ?offer @carton) (= ?want @master-key))
            (and (= ?offer @master-key) (= ?want @chinese-food))
            (and (= ?offer @master-key) (= ?want @carton)))
-        (success
-          :effects ((set! hacker-trade true))
-          :context ((response "\"You give me the food first.\""))))
+        '((set hacker-trade true)
+          (success :context ((response "\"You give me the food first.\"")))))
 
       ; Invalid trade
       (true (blocked :reason bad-trade :context ((response "\"That's not a good trade.\""))))))
@@ -153,9 +152,9 @@
 
       ; Ask for master key - player already fed hacker (loan it)
       ((and (= ?item @master-key) (in? @carton @hacker))
-        (success
-          :effects ((set! hacker-trade false) (move! @master-key ?actor))
-          :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key."))))
+        '((set hacker-trade false)
+          (move @master-key ?actor)
+          (success :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key.")))))
 
       ; Ask for master key - no food given yet
       ((= ?item @master-key)
@@ -183,9 +182,9 @@
 
       ; About keys/keyring - reveals master key!
       ((or (= ?topic @keyring) (= ?topic @keys))
-        (success
-          :effects ((set-flag! @master-key TOUCHBIT) (move! @master-key @keyring))
-          :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says."))))
+        '((set-flag @master-key TOUCHBIT)
+          (move @master-key @keyring)
+          (success :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says.")))))
 
       ; About food
       ((or (= ?topic @chinese-food) (= ?topic @snack) (= ?topic @food))
@@ -247,9 +246,9 @@
 
       ; In terminal room - start helping
       ((= (loc ?actor) @terminal-room)
-        (success
-          :effects ((queue! hacker-helps) (set! hacker-help 0))
-          :context ((response "\"Be patient!\""))))
+        '((queue hacker-helps)
+          (set hacker-help 0)
+          (success :context ((response "\"Be patient!\"")))))
 
       ; Not in terminal room
       (true (blocked :reason busy :context ((response "\"Help? I'm not a T.A. I've got work to do.\""))))))

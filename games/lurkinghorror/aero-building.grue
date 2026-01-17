@@ -125,7 +125,8 @@
         ((held? ?self)
           (blocked :reason already-have :message "You already have it."))
         (true
-          (success :effects ((move! ?self @player))))))
+          '((move ?self @player)
+            (success)))))
 
     ; Bolt cutters are needed to unlock
     :unlock (fn ()
@@ -142,11 +143,10 @@
         ((not (has-flag ?self LOCKED))
           (success :message "The padlock is already cut open."))
         (true
-          (success
-            :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls to the floor."
-            :effects ((clear-flag! ?self LOCKED)
-                      (set! padlock-on nil)
-                      (move! ?self (loc @player)))))))))
+          '((clear-flag ?self LOCKED)
+            (set padlock-on nil)
+            (move ?self (loc @player))
+            (success :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls to the floor.")))))))
 
 ; Note: @bolt-cutters is now defined in urchins.grue (obtained from individual urchin)
 

@@ -1285,7 +1285,8 @@ class GrueRuntime:
             ActionResult with outcome and applied effects
         """
         try:
-            interpreter = EffectInterpreter(self)
+            # Pass current bindings so ?actor, ?self, etc. get resolved
+            interpreter = EffectInterpreter(self, self.bindings)
             outcome = interpreter.interpret(list(effects))
         except Exception as e:
             return ActionResult(

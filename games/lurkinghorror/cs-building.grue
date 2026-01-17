@@ -88,7 +88,8 @@
       (cond
         ; Coming from inside - start freezing
         ((not (has-flag ?from-room OUTSIDE))
-          (success :effects ((queue! freezing))))
+          '((queue freezing)
+            (success)))
         (true (success))))))
 
 (room @smith-st-2
@@ -105,7 +106,8 @@
     :on-enter (fn (?from-room)
       (cond
         ((not (has-flag ?from-room OUTSIDE))
-          (success :effects ((queue! freezing))))
+          '((queue freezing)
+            (success)))
         (true (success))))))
 
 ; === Snow Drift Barriers ===
@@ -146,7 +148,9 @@
     (cond
       ; Only freeze if player is outside
       ((not (has-flag (loc @player) OUTSIDE))
-        (success :effects ((dequeue! freezing) (set! freeze-count 0))))
+        '((dequeue freezing)
+          (set freeze-count 0)
+          (success)))
       ; Death after 5 stages
       ((>= freeze-count 5)
         (blocked :reason death
@@ -154,9 +158,9 @@
                            (description "You are suffused with a warm, blissful numbness. It is marred only by the knowledge that before you wake again, you will die."))))
       ; Advance freezing
       (true
-        (success
-          :effects ((inc! freeze-count) (queue! freezing 4))
-          :context ((description (nth messages freeze-count)))))))
+        '((inc freeze-count)
+          (queue freezing 4)
+          (success :context ((description (nth messages freeze-count))))))))
 
 ; === Office Door ===
 ; Offices are always inaccessible - this is just flavor.

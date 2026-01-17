@@ -319,15 +319,61 @@ class EffectInterpreter:
     # Effect names that mutate state
     MUTATIONS = frozenset({
         "move", "set-flag", "clear-flag", "set-prop",
-        "set", "inc", "dec", "queue", "dequeue"
+        "set", "inc", "dec", "queue", "dequeue", "take"
     })
 
     # Effect names that terminate the effect list
     TERMINATORS = frozenset({"success", "blocked", "redirect", "default"})
 
-    def __init__(self, state: MutableWorldState):
+    def __init__(self, state: MutableWorldState, bindings: dict[str, Any] | None = None):
         self.state = state
+        self.bindings = bindings or {}
         self._effects_applied: list[str] = []
+
+    def _resolve_arg(self, arg: Any) -> Any:
+        """Resolve an argument, substituting ?variables and evaluating expressions.
+
+        Args:
+            arg: The argument value (string, number, list expression, etc.)
+
+        Returns:
+            The resolved value, with ?xxx variables substituted and expressions evaluated
+        """
+        if isinstance(arg, str):
+            if arg.startswith("?"):
+                binding_name = arg[1:]  # Remove ?
+                if binding_name in self.bindings:
+                    return self.bindings[binding_name]
+            elif arg == "nil":
+                return None
+        elif isinstance(arg, list):
+            # Nested expression like (loc @chair) - evaluate it
+            # Convert list back to SList and evaluate
+            from .sexpr import SList, Symbol, Keyword
+            slist = self._list_to_slist(arg)
+            # Create evaluator with bindings available
+            evaluator = ExprEvaluator(self.state, {}, allow_mutations=False)
+            evaluator._env = Environment(bindings=dict(self.bindings))
+            return evaluator.eval(slist)
+        return arg
+
+    def _list_to_slist(self, lst: list) -> SList:
+        """Convert a Python list (from quoted expression) back to SList for evaluation."""
+        from .sexpr import SList, Symbol, Keyword
+        items = []
+        for item in lst:
+            if isinstance(item, str):
+                if item.startswith("@") or item.startswith("?"):
+                    items.append(Symbol(item))
+                else:
+                    items.append(Symbol(item))
+            elif isinstance(item, list):
+                items.append(self._list_to_slist(item))
+            elif isinstance(item, Keyword):
+                items.append(item)
+            else:
+                items.append(item)
+        return SList(items)
 
     def interpret(self, effects: list) -> EffectOutcome:
         """Process an effect list and return the outcome.
@@ -422,7 +468,8 @@ class EffectInterpreter:
     def _apply_mutation(self, effect: list) -> None:
         """Apply a mutation effect to the state."""
         name = effect[0]
-        args = effect[1:]
+        # Resolve all arguments, substituting ?variables from bindings
+        args = [self._resolve_arg(arg) for arg in effect[1:]]
 
         if name == "move":
             if len(args) != 2:
@@ -496,6 +543,13 @@ class EffectInterpreter:
             event = args[0]
             self.state.dequeue_event(event)
             self._effects_applied.append(f"dequeue {event}")
+
+        elif name == "take":
+            if len(args) != 1:
+                raise EvalError(f"'take' expects 1 argument, got {len(args)}")
+            obj = args[0]
+            self.state.move_object(obj, self.state.player_name)
+            self._effects_applied.append(f"take {obj}")
 
         else:
             raise EvalError(f"Unknown mutation effect: {name}")

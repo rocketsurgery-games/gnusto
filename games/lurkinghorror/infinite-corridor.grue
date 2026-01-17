@@ -60,8 +60,9 @@
       (cond
         (waxer-patrol-started (success))
         (true
-          (success :effects ((set! waxer-patrol-started true)
-                             (queue! waxer-moves 3))))))))
+          '((set waxer-patrol-started true)
+            (queue waxer-moves 3)
+            (success)))))))
 
 ; === INF-2: Middle ===
 
@@ -177,7 +178,8 @@
       (cond
         ; Coming from inside - start freezing
         ((not (has-flag ?from-room OUTSIDE))
-          (success :effects ((queue! freezing))))
+          '((queue freezing)
+            (success)))
         (true (success))))))
 
 ; === Great Court Exit Barrier ===
@@ -195,6 +197,6 @@
       (cond
         (door-warning (success))
         (true
-          (blocked :reason warning
-            :effects ((set! door-warning true))
-            :message "Remember, this is one of the doors that's always locked at night. You won't be able to get back in if you go out."))))))
+          '((set door-warning true)
+            (blocked :reason warning
+              :message "Remember, this is one of the doors that's always locked at night. You won't be able to get back in if you go out.")))))))

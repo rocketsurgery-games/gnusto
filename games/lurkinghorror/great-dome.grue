@@ -64,8 +64,10 @@
     :on-enter (fn (?from)
       (cond
         ((and (= ?from @great-dome) (not (has-flag @tentacle INVISIBLE)))
-          (success :effects ((set-flag! @tentacle INVISIBLE) (set-flag! @dome-ladder TOUCHBIT) (move! @dome-ladder ?self))
-                   :message "You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone."))
+          '((set-flag @tentacle INVISIBLE)
+            (set-flag @dome-ladder TOUCHBIT)
+            (move @dome-ladder ?self)
+            (success :message "You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone.")))
         (true (success))))))
 
 (room @dome-roof
@@ -82,8 +84,8 @@
     :on-enter (fn (?from)
       (cond
         ((= ?from @top-of-dome)
-          (success :effects ((queue! freezing))
-                   :message "You enter the freezing, biting cold of the blizzard."))
+          '((queue freezing)
+            (success :message "You enter the freezing, biting cold of the blizzard.")))
         (true (success))))))
 
 (room @on-dome
@@ -203,16 +205,16 @@
         ((has-flag ?self OPENBIT)
           (blocked :reason already-open :message "It's already open."))
         (true
-          (success :effects ((set-flag! ?self OPENBIT))
-                   :message "You open the door, and freezing air, blowing snow, and howling wind enter and whip around you."))))
+          '((set-flag ?self OPENBIT)
+            (success :message "You open the door, and freezing air, blowing snow, and howling wind enter and whip around you.")))))
 
     :close (fn ()
       (cond
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success :effects ((clear-flag! ?self OPENBIT))
-                   :message "You close the door, blocking out the howling wind."))))
+          '((clear-flag ?self OPENBIT)
+            (success :message "You close the door, blocking out the howling wind.")))))
 
     :through (fn ()
       (cond
@@ -249,20 +251,25 @@
         ((has-flag ?self RMUNGBIT)
           (blocked :reason already-removed :message "You've already removed it."))
         (true
-          (success :effects ((set-flag! ?self RMUNGBIT) (set-flag! ?self TOUCHBIT) (move! @secret-hole @on-dome) (take! ?self))
-                   :message
-                     (str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
-                          (if (not (has-flag @suicide-note TOUCHBIT))
-                            "There is a piece of paper in the hole."
-                            (if (in? @suicide-note @secret-hole)
-                              "There is a piece of paper in the hole."
-                              "The hole is empty.")))))))
+          '((set-flag ?self RMUNGBIT)
+            (set-flag ?self TOUCHBIT)
+            (move @secret-hole @on-dome)
+            (take ?self)
+            (success :message
+              (str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
+                   (if (not (has-flag @suicide-note TOUCHBIT))
+                     "There is a piece of paper in the hole."
+                     (if (in? @suicide-note @secret-hole)
+                       "There is a piece of paper in the hole."
+                       "The hole is empty."))))))))
 
     :put (fn (?container)
       (cond
         ((= ?container @secret-hole)
-          (success :effects ((clear-flag! ?self RMUNGBIT) (move! @secret-hole nil) (move! ?self @on-dome))
-                   :message "You insert the plug in the hole."))
+          '((clear-flag ?self RMUNGBIT)
+            (move @secret-hole nil)
+            (move ?self @on-dome)
+            (success :message "You insert the plug in the hole.")))
         (true
           (default))))))
 
@@ -282,10 +289,11 @@
       (redirect :action (do ?self :read)))
 
     :read (fn ()
-      (success :effects ((set-flag! ?self RMUNGBIT) (if (not (held? ?self)) (take! ?self)))
-               :message "You unroll the piece of paper and read the shaky handwriting:
+      '((set-flag ?self RMUNGBIT)
+        (if (not (held? ?self)) (take ?self))
+        (success :message "You unroll the piece of paper and read the shaky handwriting:
 
 \"I can no longer face what I've been doing. I can't sleep, I start at the slightest noise, and even dulling my senses with alcohol or drugs is no longer enough. I refuse to participate in what he is doing any more. Either he is insane, or I am insane, or (and this is what I fear most) the universe itself is insane. I have only one final warning: I am the only suicide, but I will not be the final death.\"
 
-The name signed to it is oddly familiar."))))
+The name signed to it is oddly familiar.")))))
 
