@@ -15,10 +15,10 @@
       (cond
         ; Waking from nightmare - player fell asleep on platform, wakes at terminal
         ((= ?from-room @platform-room)
-          (success
-            :effects ((queue! hacker-helps) (set! hacker-help 0))
-            :context ((nightmare-wake true))
-            :message "You are awakened by the thump of your head hitting the keyboard."))
+          '((queue hacker-helps)
+            (set hacker-help 0)
+            (success :context ((nightmare-wake true))
+                     :message "You are awakened by the thump of your head hitting the keyboard.")))
         (true (success))))
 
     ; Room-level action interception

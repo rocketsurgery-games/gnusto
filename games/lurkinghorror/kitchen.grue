@@ -72,9 +72,8 @@ counter are a refrigerator and a microwave."
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed))
         (true
-          (success
-            :effects ((clear-flag! ?self OPENBIT))
-            :context ((description "The microwave oven is now closed."))))))
+          '((clear-flag ?self OPENBIT)
+            (success :context ((description "The microwave oven is now closed.")))))))
 
     ; === LLM Interface Behaviors ===
     ; These are the primary way to interact with the microwave.
@@ -87,9 +86,8 @@ counter are a refrigerator and a microwave."
           (blocked :reason too-long
                    :context ((description "You can't set it for that long a time."))))
         (true
-          (success
-            :effects ((set! microwave-timer ?value))
-            :context ((description (str "The timer display now reads " (format-timer) ".")))))))
+          '((set microwave-timer ?value)
+            (success :context ((description (str "The timer display now reads " (format-timer) "."))))))))
 
     ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
     ; ?value binding receives the temperature symbol
@@ -134,9 +132,8 @@ counter are a refrigerator and a microwave."
     :stop (fn ()
       (cond
         ((queued? microwave-running)
-          (success
-            :effects ((dequeue! microwave-running))
-            :context ((description (str "The microwave stops. The timer display now reads " (format-timer) ".")))))
+          '((dequeue microwave-running)
+            (success :context ((description (str "The microwave stops. The timer display now reads " (format-timer) "."))))))
         (true
           (blocked :reason already-off
                    :context ((description "It's already off."))))))
@@ -148,9 +145,8 @@ counter are a refrigerator and a microwave."
           (blocked :reason running
                    :context ((description "Nothing happens."))))
         (true
-          (success
-            :effects ((set! microwave-timer 0))
-            :context ((description "The timer clears to zero."))))))
+          '((set microwave-timer 0)
+            (success :context ((description "The timer clears to zero.")))))))
 
     ; Aliases for turn-on/turn-off
     :turn-on (fn () (redirect :action (do @microwave :start)))

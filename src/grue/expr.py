@@ -325,9 +325,11 @@ class EffectInterpreter:
     # Effect names that terminate the effect list
     TERMINATORS = frozenset({"success", "blocked", "redirect", "default"})
 
-    def __init__(self, state: MutableWorldState, bindings: dict[str, Any] | None = None):
+    def __init__(self, state: MutableWorldState, bindings: dict[str, Any] | None = None,
+                 functions: dict[str, Any] | None = None):
         self.state = state
         self.bindings = bindings or {}
+        self.functions = functions or {}
         self._effects_applied: list[str] = []
 
     def _resolve_arg(self, arg: Any) -> Any:
@@ -347,12 +349,12 @@ class EffectInterpreter:
             elif arg == "nil":
                 return None
         elif isinstance(arg, list):
-            # Nested expression like (loc @chair) - evaluate it
+            # Nested expression like (loc @chair) or (door-at-elevator) - evaluate it
             # Convert list back to SList and evaluate
             from .sexpr import SList, Symbol, Keyword
             slist = self._list_to_slist(arg)
-            # Create evaluator with bindings available
-            evaluator = ExprEvaluator(self.state, {}, allow_mutations=False)
+            # Create evaluator with bindings and functions available
+            evaluator = ExprEvaluator(self.state, self.functions, allow_mutations=False)
             evaluator._env = Environment(bindings=dict(self.bindings))
             return evaluator.eval(slist)
         return arg

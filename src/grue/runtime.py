@@ -1286,7 +1286,8 @@ class GrueRuntime:
         """
         try:
             # Pass current bindings so ?actor, ?self, etc. get resolved
-            interpreter = EffectInterpreter(self, self.bindings)
+            # Pass functions so nested expressions like (door-at-elevator) can be evaluated
+            interpreter = EffectInterpreter(self, self.bindings, self._functions)
             outcome = interpreter.interpret(list(effects))
         except Exception as e:
             return ActionResult(

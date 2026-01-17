@@ -58,8 +58,8 @@
     :on-enter (fn (?from)
       (cond
         ((not (has-flag ?from OUTSIDE))
-          (success :effects ((queue! freezing))
-                   :message "As you leave, the door closes and locks behind you."))
+          '((queue freezing)
+            (success :message "As you leave, the door closes and locks behind you.")))
         (true (success))))))
 
 (room @great-court
@@ -73,8 +73,8 @@
     :on-enter (fn (?from)
       (cond
         ((not (has-flag ?from OUTSIDE))
-          (success :effects ((queue! freezing))
-                   :message "As you leave, the door closes and locks behind you."))
+          '((queue freezing)
+            (success :message "As you leave, the door closes and locks behind you.")))
         (true (success))))))
 
 (room @brown-basement
@@ -107,10 +107,12 @@
 
   :behaviors (
     :on-enter (fn (?from)
-      (success :effects ((queue! freezing))))
+      '((queue freezing)
+        (success)))
 
     :on-exit (fn (?to)
-      (success :effects ((dequeue! freezing))))))
+      '((dequeue freezing)
+        (success)))))
 
 (room @inside-dome
   :description "Inside Dome"
@@ -126,15 +128,16 @@
     :on-enter (fn (?from)
       (cond
         ((and (= flier-count 0) (held? @smooth-stone))
-          (success :effects ((queue! flier-approach))
-                   :message "As you enter the dome, you feel a chill that has nothing to do with the temperature."))
+          '((queue flier-approach)
+            (success :message "As you enter the dome, you feel a chill that has nothing to do with the temperature.")))
         (true (success))))
 
     ; Also trigger when entering with the hand
     :on-exit (fn (?to)
       (cond
         ((and (= flier-count 0) (held? @mummified-hand))
-          (success :effects ((queue! flier-approach))))
+          '((queue flier-approach)
+            (success)))
         (true (success))))))
 
 ; === Door Objects ===
@@ -173,16 +176,16 @@
         ((has-flag ?self LOCKED)
           (blocked :reason locked :message "The door is securely locked."))
         (true
-          (success :effects ((set-flag! ?self OPENBIT))
-                   :message "You push the door open, revealing a windswept, snow-covered roof. Frigid wind whips snow into your face."))))
+          '((set-flag ?self OPENBIT)
+            (success :message "You push the door open, revealing a windswept, snow-covered roof. Frigid wind whips snow into your face.")))))
 
     :close (fn ()
       (cond
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success :effects ((clear-flag! ?self OPENBIT))
-                   :message "You close the door, muffling the howling wind."))))
+          '((clear-flag ?self OPENBIT)
+            (success :message "You close the door, muffling the howling wind.")))))
 
     :unlock (fn (?key)
       (cond
@@ -191,8 +194,8 @@
         ((not (has-flag ?self LOCKED))
           (blocked :reason already-unlocked :message "It's already unlocked."))
         (true
-          (success :effects ((clear-flag! ?self LOCKED))
-                   :message "The door is now unlocked."))))
+          '((clear-flag ?self LOCKED)
+            (success :message "The door is now unlocked.")))))
 
     :through (fn ()
       (cond
@@ -309,8 +312,9 @@
     :search (fn ()
       (cond
         ((not (has-flag @mummified-hand TOUCHBIT))
-          (success :effects ((set-flag! @mummified-hand TOUCHBIT) (move! @mummified-hand ?self))
-                   :message "You root around in the dirt for a while, when you encounter something hard. Further exploration reveals it to be a dried, chewed looking human hand."))
+          '((set-flag @mummified-hand TOUCHBIT)
+            (move @mummified-hand ?self)
+            (success :message "You root around in the dirt for a while, when you encounter something hard. Further exploration reveals it to be a dried, chewed looking human hand.")))
         (true
           (success :message "You find nothing further, which is something of a relief."))))
 
@@ -450,8 +454,10 @@
       (cond
         ((= ?weapon @smooth-stone)
           ; Smooth stone can drive it away
-          (success :effects ((move! @flier nil) (set! flier-count 0) (dequeue! flier-approach))
-                   :message "You hurl the stone at the creature. It strikes true! The flier shrieks in pain and fury, then flees into the storm, disappearing from view."))
+          '((move @flier nil)
+            (set flier-count 0)
+            (dequeue flier-approach)
+            (success :message "You hurl the stone at the creature. It strikes true! The flier shrieks in pain and fury, then flees into the storm, disappearing from view.")))
         (true
           (blocked :reason ineffective
                    :message "Hissing and screeching, the creature fends off your attack. Its head jerks from side to side, watching you."))))
@@ -460,8 +466,11 @@
       (cond
         ((= ?item @mummified-hand)
           ; Feeding the hand to the flier is the solution
-          (success :effects ((move! @mummified-hand nil) (move! @flier nil) (set! flier-count 0) (dequeue! flier-approach))
-                   :message "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale."))
+          '((move @mummified-hand nil)
+            (move @flier nil)
+            (set flier-count 0)
+            (dequeue flier-approach)
+            (success :message "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale.")))
         ((= ?item @smooth-stone)
           ; Smooth stone scares it but doesn't drive it away
           (success :message "The creature edges away from the stone."))
@@ -475,8 +484,8 @@
           (redirect :action (do ?self :attack @smooth-stone)))
         (true
           ; Flier dodges other thrown items
-          (success :effects ((move! ?item (loc @player)))
-                   :message (str "The creature darts to the side, dodging the " (desc ?item) ".")))))))
+          '((move ?item (loc @player))
+            (success :message (str "The creature darts to the side, dodging the " (desc ?item) "."))))))))
 
 ; === Flier Approach Event ===
 ; Multi-stage creature approach. Each turn advances the counter.

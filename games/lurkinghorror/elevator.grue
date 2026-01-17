@@ -180,13 +180,13 @@
         ((not elevator-stopped)
           (success :message "The elevator is still moving. Nothing happens."))
         ((has-flag @elevator-door OPENBIT)
-          (success :effects ((queue! elevator-door-closes 2))
-                   :message "The doors stay open."))
+          '((queue elevator-door-closes 2)
+            (success :message "The doors stay open.")))
         (true
-          (success :effects ((set-flag! (door-at-elevator) OPENBIT)
-                            (set-flag! @elevator-door OPENBIT)
-                            (queue! elevator-door-closes 2))
-                   :message "The doors spring open."))))))
+          '((set-flag (door-at-elevator) OPENBIT)
+            (set-flag @elevator-door OPENBIT)
+            (queue elevator-door-closes 2)
+            (success :message "The doors spring open.")))))))
 
 ; Close button - closes doors
 (object @close-button
@@ -202,8 +202,8 @@
       ((not (has-flag @elevator-door OPENBIT))
         (success :message "The door is already closed."))
       (true
-        (success :effects ((queue! elevator-door-closes 2))
-                 :message "You push the button."))))))
+        '((queue elevator-door-closes 2)
+          (success :message "You push the button.")))))))
 
 ; Floor buttons (B, 1, 2, 3)
 ; Shared behavior functions for individual floor buttons
@@ -329,8 +329,8 @@
             (success :message "That button is already glowing."))
           ((and elevator-stopped (= ?floor elevator-loc))
             ; Elevator is here - just open the doors
-            (success :effects ((queue! elevator-door-opens 1))
-                     :message "You push the up-arrow."))
+            '((queue elevator-door-opens 1)
+              (success :message "You push the up-arrow.")))
           (true
             ; Call the elevator
             (success :effects ((set-up-button! ?floor true)
@@ -358,8 +358,8 @@
             (success :message "That button is already glowing."))
           ((and elevator-stopped (= ?floor elevator-loc))
             ; Elevator is here - just open the doors
-            (success :effects ((queue! elevator-door-opens 1))
-                     :message "You push the down-arrow."))
+            '((queue elevator-door-opens 1)
+              (success :message "You push the down-arrow.")))
           (true
             ; Call the elevator
             (success :effects ((set-down-button! ?floor true)
