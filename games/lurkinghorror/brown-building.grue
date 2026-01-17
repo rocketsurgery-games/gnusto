@@ -507,46 +507,48 @@
 
 (event flier-approach
   :on-turn
-    (let ((?stage (+ flier-count 1)))
-      (set! flier-count ?stage)
+    (let ((?stage (+ flier-count 1))
+          (?in-dome (= (loc @player) @inside-dome)))
       (cond
         ; Stage 1-5: Advance and show message
         ((<= ?stage 5)
-          (let ((?msg (if (= (loc @player) @inside-dome)
+          (let ((?msg (if ?in-dome
                         (nth flier-messages-inside-dome (- ?stage 1))
                         (nth flier-messages-on-roof (- ?stage 1)))))
             (cond
               ; Stage 1: Shape appears
               ((= ?stage 1)
-                (success :effects ((if (= (loc @player) @inside-dome)
-                                     (move! @flier-shape @inside-dome)
-                                     (move! @flier-shape @inside-dome))
-                                   (move! @flier @brown-roof)
-                                   (queue! flier-approach))
-                         :context ((description ?msg))))
+                `((set flier-count ,?stage)
+                  (move @flier-shape @inside-dome)
+                  (move @flier @brown-roof)
+                  (queue flier-approach)
+                  (success :context ((description ,?msg)))))
               ; Stage 3: Shape drops, flier visible
               ((= ?stage 3)
-                (success :effects ((move! @flier-shape nil) (queue! flier-approach))
-                         :context ((description ?msg))))
+                `((set flier-count ,?stage)
+                  (move @flier-shape nil)
+                  (queue flier-approach)
+                  (success :context ((description ,?msg)))))
               ; Stage 5: Flier enters if in dome
               ((= ?stage 5)
-                (cond
-                  ((= (loc @player) @inside-dome)
-                    (success :effects ((move! @flier @inside-dome) (queue! flier-approach))
-                             :context ((description ?msg))))
-                  (true
-                    (success :effects ((queue! flier-approach))
-                             :context ((description ?msg))))))
-              ; Other stages
+                `((set flier-count ,?stage)
+                  ,@(if ?in-dome '((move @flier @inside-dome)) '())
+                  (queue flier-approach)
+                  (success :context ((description ,?msg)))))
+              ; Other stages (2, 4)
               (true
-                (success :effects ((queue! flier-approach))
-                         :context ((description ?msg)))))))
+                `((set flier-count ,?stage)
+                  (queue flier-approach)
+                  (success :context ((description ,?msg))))))))
 
         ; Stage 6+: Flier attacks, may eat hand
         ((held? @mummified-hand)
           ; Hand is consumed, flier leaves
-          (success :effects ((move! @mummified-hand nil) (move! @flier nil) (dequeue! flier-approach) (set! flier-count 0))
-                   :context ((description "In a snake-like strike, the creature attacks! Its toothy jaws close on your hand! Not your hand, but the mummified hand you dug out of the tub! With a disgusting gobbling noise, the flier swallows the hand, and then sails away into the gale."))))
+          '((move @mummified-hand nil)
+            (move @flier nil)
+            (dequeue flier-approach)
+            (set flier-count 0)
+            (success :context ((description "In a snake-like strike, the creature attacks! Its toothy jaws close on your hand! Not your hand, but the mummified hand you dug out of the tub! With a disgusting gobbling noise, the flier swallows the hand, and then sails away into the gale.")))))
 
         ; No hand - player is in danger
         (true

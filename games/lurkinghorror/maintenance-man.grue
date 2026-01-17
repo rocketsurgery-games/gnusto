@@ -209,17 +209,17 @@
         (true
           (let ((?here (loc @player))
                 (?mm-here (= (loc @maintenance-man) ?here)))
-            (success :message
-              (str "You pour the floor wax all over the floor. It spreads like ants at a picnic."
-                   (if (not (has-flag ?here OUTSIDE))
-                     " The floor is now covered from wall to wall with slippery floor wax."
-                     "")
-                   (if ?mm-here
-                     (str " The maintenance man, attempting to get closer to you, enters the "
-                          "waxed part of the floor. He begins to slip and slide, barely able "
-                          "to maintain his balance, much less advance.")
-                     ""))
-              :effects ((move! ?self ?here)))))))))
+            `((move @floor-wax ,?here)
+              (success :message
+                ,(str "You pour the floor wax all over the floor. It spreads like ants at a picnic."
+                      (if (not (has-flag ?here OUTSIDE))
+                        " The floor is now covered from wall to wall with slippery floor wax."
+                        "")
+                      (if ?mm-here
+                        (str " The maintenance man, attempting to get closer to you, enters the "
+                             "waxed part of the floor. He begins to slip and slide, barely able "
+                             "to maintain his balance, much less advance.")
+                        ""))))))))))
 
 ; ============================================================
 ; EMERGENCY CABINET & AXE
@@ -273,8 +273,9 @@
         ((has-flag ?self RMUNGBIT)
           (success :message "The cabinet is already smashed."))
         ((held? @gloves)
-          (success :message "Wearing the heavy gloves, you confidently smash the glass with a blow of your hands!"
-            :effects ((set-flag! ?self OPENBIT) (set-flag! ?self RMUNGBIT))))
+          '((set-flag @emergency-cabinet OPENBIT)
+            (set-flag @emergency-cabinet RMUNGBIT)
+            (success :message "Wearing the heavy gloves, you confidently smash the glass with a blow of your hands!")))
         (true
           (blocked :reason bare-hands
             :message "You hit at the glass with your hands, but you can't hit hard enough to break it: you might cut yourself on the glass."))))
@@ -299,7 +300,8 @@
           (blocked :reason already-have
             :message "You already have it."))
         (true
-          (success :effects ((move! ?self @player))))))))
+          '((move @axe @player)
+            (success)))))))
 
 ; ============================================================
 ; WAXER EXIT BARRIER
@@ -326,8 +328,8 @@
                   (success))
                 ; No wax - he blocks
                 (true
-                  (success :effects ((queue! maint-descend))
-                    :message "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer and blocks your way."))))
+                  '((queue maint-descend)
+                    (success :message "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer and blocks your way.")))))
             ; Cord not severed - waxer blocks
             (true
               (blocked :reason waxer-blocking
@@ -370,30 +372,29 @@
 (event waxer-moves
   :on-turn
     (let ((?loc (loc @floor-waxer)))
-      ; Update direction at ends FIRST
-      (cond
-        ((and wax-west (= ?loc @inf-1))
-          (set! wax-west false))
-        ((and (not wax-west) (= ?loc @inf-5))
-          (set! wax-west true)))
-
-      ; Now compute next location using current wax-west value
-      (let ((?next-loc (waxer-next-loc ?loc wax-west)))
-        ; Generate message
-        (let ((?msg
-                (cond
-                  ((= (loc @player) ?next-loc)
-                    (str "The floor waxer, approaching from the "
-                         (if wax-west "east" "west")
-                         ", is now here."))
-                  ((= (loc @player) ?loc)
-                    (str "The floor waxer waxes away to the "
-                         (if wax-west "west" "east")
-                         "."))
-                  (true nil))))
-
-          (success :effects ((move! @floor-waxer ?next-loc) (queue! waxer-moves 5))
-                   :context (if ?msg ((description ?msg)) nil))))))
+      ; Compute new direction - changes at corridor ends
+      (let ((?new-west (cond
+                         ((and wax-west (= ?loc @inf-1)) false)
+                         ((and (not wax-west) (= ?loc @inf-5)) true)
+                         (true wax-west))))
+        ; Compute next location using new direction
+        (let ((?next-loc (waxer-next-loc ?loc ?new-west)))
+          ; Generate message
+          (let ((?msg
+                  (cond
+                    ((= (loc @player) ?next-loc)
+                      (str "The floor waxer, approaching from the "
+                           (if ?new-west "east" "west")
+                           ", is now here."))
+                    ((= (loc @player) ?loc)
+                      (str "The floor waxer waxes away to the "
+                           (if ?new-west "west" "east")
+                           "."))
+                    (true nil))))
+            `((set wax-west ,?new-west)
+              (move @floor-waxer ,?next-loc)
+              (queue waxer-moves 5)
+              (success :context ,(if ?msg `((description ,?msg)) nil))))))))
 
 ; Maintenance man attack - chases player after cord is cut
 (event maint-attack
@@ -404,38 +405,41 @@
         ; If in waxer, descend first
         ((= ?mm-loc @floor-waxer)
           (let ((?waxer-loc (loc @floor-waxer)))
-            (success :effects ((move! @maintenance-man ?waxer-loc) (queue! maint-attack))
-                     :context ((description
-                       (str "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer"
-                            (if (= (loc @floor-wax) ?waxer-loc)
-                              ". But almost immediately, he slips on the floor wax."
-                              " and heads towards you.")))))))
+            `((move @maintenance-man ,?waxer-loc)
+              (queue maint-attack)
+              (success :context ((description
+                ,(str "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer"
+                      (if (= (loc @floor-wax) ?waxer-loc)
+                        ". But almost immediately, he slips on the floor wax."
+                        " and heads towards you."))))))))
 
         ; If standing in floor wax, start dissolving
         ((= (loc @floor-wax) ?mm-loc)
-          (success :effects ((queue! maint-dissolves 4) (dequeue! maint-attack))
-                   :context ((description
-                     (if seen-mm-slip
-                       "The maintenance man continues slipping, falling, standing, and so on. He reminds you of a badly made windup toy."
-                       "The maintenance man slips on the floor wax!")))))
+          `((queue maint-dissolves 4)
+            (dequeue maint-attack)
+            (success :context ((description
+              ,(if seen-mm-slip
+                 "The maintenance man continues slipping, falling, standing, and so on. He reminds you of a badly made windup toy."
+                 "The maintenance man slips on the floor wax!"))))))
 
         ; If in same room as player with wax, slip
         ((and (= ?mm-loc ?player-loc) (= (loc @floor-wax) ?player-loc))
-          (set! seen-mm-slip true)
-          (success :effects ((queue! maint-dissolves 4) (dequeue! maint-attack))
-                   :context ((description "But he slips on the floor wax! He begins to flail about, barely able to stand."))))
+          '((set seen-mm-slip true)
+            (queue maint-dissolves 4)
+            (dequeue maint-attack)
+            (success :context ((description "But he slips on the floor wax! He begins to flail about, barely able to stand.")))))
 
         ; If in same room, attack
         ((= ?mm-loc ?player-loc)
-          (set! maint-attack-count (+ maint-attack-count 1))
-          (cond
-            ((>= maint-attack-count 3)
-              (blocked :reason death
-                :context ((death true)
-                          (description "The maintenance man grabs you by the throat and lifts you off the ground with one hand. The hand feels very cold. Just as you expire, you realize you have never seen him blink."))))
-            (true
-              (success :effects ((queue! maint-attack))
-                       :context ((description "The maintenance man stares with maniacal intensity at your throat."))))))
+          (let ((?new-count (+ maint-attack-count 1)))
+            (if (>= ?new-count 3)
+              `((set maint-attack-count ,?new-count)
+                (blocked :reason death
+                  :context ((death true)
+                            (description "The maintenance man grabs you by the throat and lifts you off the ground with one hand. The hand feels very cold. Just as you expire, you realize you have never seen him blink."))))
+              `((set maint-attack-count ,?new-count)
+                (queue maint-attack)
+                (success :context ((description "The maintenance man stares with maniacal intensity at your throat.")))))))
 
         ; Chase player - move closer
         (true
@@ -447,20 +451,19 @@
                     ((= ?mm-loc @inf-3) @inf-2)
                     ((= ?mm-loc @inf-2) @inf-1)
                     (true ?mm-loc))))
-            (success :effects ((move! @maintenance-man ?next-loc) (queue! maint-attack))
-                     :context ((description "The maintenance man lurches toward you with surprising speed."))))))))
+            `((move @maintenance-man ,?next-loc)
+              (queue maint-attack)
+              (success :context ((description "The maintenance man lurches toward you with surprising speed.")))))))))
 
 ; Maintenance man dissolves after slipping on wax
 (event maint-dissolves
   :on-turn
-    (let ((?mm-loc (loc @maintenance-man))
-          (?player-loc (loc @player)))
-      (cond
-        ; If player is in corridor, show dissolve message
-        ((or (= ?player-loc @inf-1) (= ?player-loc @inf-2) (= ?player-loc @inf-3)
-             (= ?player-loc @inf-4) (= ?player-loc @inf-5))
-          (success :effects ((move! @maintenance-man nil) (dequeue! maint-attack))
-                   :context ((description "The maintenance man appears to shorten and almost dissolve. There is a great commotion, as though he is undergoing a convulsion of some sort, and then he appears to explode into a crowd of small squealing creatures. These, seeing you, scuttle off in the opposite direction and disappear."))))
-        ; Player not in corridor
-        (true
-          (success :effects ((move! @maintenance-man nil) (dequeue! maint-attack)))))))
+    (let ((?player-loc (loc @player))
+          (?in-corridor (or (= ?player-loc @inf-1) (= ?player-loc @inf-2) (= ?player-loc @inf-3)
+                            (= ?player-loc @inf-4) (= ?player-loc @inf-5))))
+      `((move @maintenance-man nil)
+        (dequeue maint-attack)
+        (success :context
+          ,(if ?in-corridor
+             '((description "The maintenance man appears to shorten and almost dissolve. There is a great commotion, as though he is undergoing a convulsion of some sort, and then he appears to explode into a crowd of small squealing creatures. These, seeing you, scuttle off in the opposite direction and disappear."))
+             nil)))))
