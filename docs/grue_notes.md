@@ -45,9 +45,6 @@ What do we _really_ want from effects like `(success :context (description "..."
 
 This is best addressed when we start bolting on the LLM adapter for real. This will give us a much clearer idea of what we need to solve real needs.
 
-## Drop/Take implementation
-Are constructs like `(do @something :take)` properly generalized across actors? I.e., could we re-use them for NPCs without modification or special-casing?
-
 ## Multiline strings
 It could make strings a lot more readable if we made multi-line string literals that require explicit
 carriage-returns.

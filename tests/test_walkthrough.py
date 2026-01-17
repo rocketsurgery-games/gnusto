@@ -404,7 +404,7 @@ class TestPart5Hand:
         # inf-5 -> nutrition-bldg (also via waxer barrier)
         self._wait_for_waxer(game, "north")  # nutrition-bldg
         game.do("_movement", "go", "down")   # brown-tunnel
-        game.do("_movement", "go", "south")  # brown-basement
+        game.do("_movement", "go", "se")     # brown-basement
         game.do("_movement", "go", "up")     # brown-building
         game.do("_movement", "go", "up")     # brown-top-floor
 

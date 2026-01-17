@@ -2923,6 +2923,7 @@ class EffectExecutor:
             "set-flag!": self._exec_set_flag,
             "clear-flag!": self._exec_clear_flag,
             "set-prop!": self._exec_set_prop,
+            "set": self._exec_set,  # New: (set @obj :prop value)
             "set!": self._exec_set_global,
             "inc!": self._exec_inc,
             "seq": self._exec_seq,
@@ -3029,6 +3030,25 @@ class EffectExecutor:
             prop = prop_arg.name
         else:
             prop = self._eval(prop_arg)
+        value = self._eval(form[3])
+        self.state.set_object_property(obj, prop, value)
+
+    def _exec_set(self, form: SList) -> None:
+        """(set @obj :prop value) - Set an object property.
+
+        Clojure-style property setter. Property must be a keyword.
+
+        Examples:
+            (set @microwave :timer 120)
+            (set @food :heat 5)
+        """
+        if len(form) != 4:
+            raise EvalError(f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}")
+        obj = self._eval(form[1])
+        prop_arg = form[2]
+        if not isinstance(prop_arg, Keyword):
+            raise EvalError(f"'set' property must be a keyword, got: {prop_arg}")
+        prop = prop_arg.name
         value = self._eval(form[3])
         self.state.set_object_property(obj, prop, value)
 
