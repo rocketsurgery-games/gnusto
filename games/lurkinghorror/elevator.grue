@@ -384,19 +384,21 @@
       ((not (elevator-at-floor? ?floor))
         (blocked :reason elevator-not-here :message "The elevator isn't here."))
       (true
-        (success :effects ((set-flag! ?door OPENBIT)
-                          (set-flag! @elevator-door OPENBIT)
-                          (queue! elevator-door-closes 2))
-                 :message "The doors slide open.")))))
+        ; Note: ?door = ?self when called from behaviors
+        '((set-flag ?self OPENBIT)
+          (set-flag @elevator-door OPENBIT)
+          (queue elevator-door-closes 2)
+          (success :message "The doors slide open."))))))
 
 (defn elevator-door-close (?door)
   (cond
     ((not (has-flag ?door OPENBIT))
       (blocked :reason already-closed :message "The doors are already closed."))
     (true
-      (success :effects ((clear-flag! ?door OPENBIT)
-                        (clear-flag! @elevator-door OPENBIT))
-               :message "The doors slide closed."))))
+      ; Note: ?door = ?self when called from behaviors
+      '((clear-flag ?self OPENBIT)
+        (clear-flag @elevator-door OPENBIT)
+        (success :message "The doors slide closed.")))))
 
 (defn elevator-door-through (?door)
   (let ((?floor (prop ?door floor)))
@@ -451,7 +453,7 @@
     (cond
       ((has-flag @elevator-door OPENBIT)
         ; Doors already open, just keep them open longer
-        (success :effects ((queue! elevator-door-closes 2))))
+        '((queue elevator-door-closes 2) (success)))
       (true
         ; Open the doors
         (let ((?door (door-at-elevator)))
@@ -482,7 +484,7 @@
     (cond
       ; Don't move if any door is open
       ((some (fn (?d) (has-flag ?d OPENBIT)) all-elevator-doors)
-        (success :effects ((queue! elevator-moves 1))))
+        '((queue elevator-moves 1) (success)))
 
       ; Starting to move from stopped
       (elevator-stopped
