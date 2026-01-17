@@ -1274,3 +1274,190 @@ class TestGeneralizedFn:
         result = runtime.do("NEW_STYLE", "examine")
         assert result.outcome == "success"
         assert ("style", "if") in result.context
+
+
+class TestEffectListSyntax:
+    """Test the new pure effect list syntax for behaviors.
+
+    In the new syntax, behaviors return quoted lists of effect descriptors:
+        '((move @key @player) (success :message "Found!"))
+
+    This enables static analysis because effects are data, not executed code.
+    """
+
+    def test_success_with_move_effect(self):
+        """Behavior returns effect list with move and success."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @key :location LOBBY :flags (TAKEABLE)
+          :behaviors (
+            :take (fn ()
+              '((move @key @player)
+                (success :message "You take the key.")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # Key starts in LOBBY
+        assert runtime.state.objects["@key"].location == "LOBBY"
+
+        result = runtime.do("@key", "take")
+        assert result.outcome == "success"
+        assert ("message", "You take the key.") in result.context
+
+        # Key should now be on player
+        assert runtime.state.objects["@key"].location == "@player"
+
+    def test_blocked_with_reason(self):
+        """Behavior returns blocked with reason."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @door :location LOBBY
+          :behaviors (
+            :open (fn ()
+              '((blocked :reason locked :message "The door is locked.")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("@door", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "locked"
+        assert ("message", "The door is locked.") in result.context
+
+    def test_set_flag_effect(self):
+        """Effect list can set flags."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @lamp :location LOBBY
+          :behaviors (
+            :turn-on (fn ()
+              '((set-flag @lamp LIT)
+                (success :message "The lamp is now on.")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        assert not runtime.state.objects["@lamp"].flags
+
+        result = runtime.do("@lamp", "turn-on")
+        assert result.outcome == "success"
+        assert "LIT" in runtime.state.objects["@lamp"].flags
+
+    def test_conditional_effects(self):
+        """Behaviors can use conditionals to decide which effects to return."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @box :location LOBBY :flags (OPENABLE)
+          :behaviors (
+            :open (fn ()
+              (if (has-flag @box OPENBIT)
+                  '((blocked :reason already-open :message "It's already open."))
+                  '((set-flag @box OPENBIT)
+                    (success :message "You open the box."))))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # First open succeeds
+        result = runtime.do("@box", "open")
+        assert result.outcome == "success"
+        assert "OPENBIT" in runtime.state.objects["@box"].flags
+
+        # Second open is blocked
+        result = runtime.do("@box", "open")
+        assert result.outcome == "blocked"
+        assert result.reason == "already-open"
+
+    def test_redirect_effect(self):
+        """Effect list can redirect to another action.
+
+        Note: The runtime handles redirect by returning outcome="redirect"
+        and the caller (do method) follows the redirect.
+        """
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @button :location LOBBY
+          :behaviors (
+            :push (fn ()
+              '((redirect (do @mechanism :activate))))))
+        (object @mechanism :location LOBBY
+          :behaviors (
+            :activate (fn ()
+              '((set-flag @mechanism ACTIVE)
+                (success :message "Click!")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # The do method follows redirects automatically
+        result = runtime.do("@button", "push")
+        # After redirect, the mechanism should be activated
+        assert result.outcome == "success"
+        assert "ACTIVE" in runtime.state.objects["@mechanism"].flags
+
+    def test_default_terminator(self):
+        """Effect list can fall through to default behavior."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @generic-item :location LOBBY :flags (TAKEABLE)
+          :behaviors (
+            :examine (fn ()
+              '((default)))))
+        ; Note: default behaviors don't need (fn) wrapper - the body is evaluated directly
+        (default examine (success :message "Nothing special."))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("@generic-item", "examine")
+        assert result.outcome == "success"
+        assert ("message", "Nothing special.") in result.context
+
+    def test_effects_applied_tracking(self):
+        """Effect list tracks which effects were applied."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (object @widget :location LOBBY
+          :behaviors (
+            :activate (fn ()
+              '((set-flag @widget ACTIVE)
+                (set-flag @widget POWERED)
+                (success :message "Activated!")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("@widget", "activate")
+        assert result.outcome == "success"
+        assert len(result.effects_applied) == 2  # Two set-flag effects
+
+    def test_multiple_mutations_in_effect_list(self):
+        """Effect list can have multiple mutations before terminator."""
+        source = """
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY :flags (PERSON))
+        (globals (score 0))
+        (object @treasure :location LOBBY :flags (TAKEABLE)
+          :behaviors (
+            :take (fn ()
+              '((move @treasure @player)
+                (set-flag @treasure TAKEN)
+                (inc score 10)
+                (success :message "You take the treasure! +10 points")))))
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("@treasure", "take")
+        assert result.outcome == "success"
+        assert runtime.state.objects["@treasure"].location == "@player"
+        assert "TAKEN" in runtime.state.objects["@treasure"].flags
+        assert runtime.state.globals["score"] == 10

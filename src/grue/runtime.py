@@ -23,7 +23,7 @@ from copy import deepcopy
 
 from .parser import GrueWorld, GrueBehavior
 from .expr import (
-    ExprEvaluator, EffectExecutor, GrueFn, Environment, quote_to_data,
+    ExprEvaluator, EffectExecutor, EffectInterpreter, GrueFn, Environment, quote_to_data,
     BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
 )
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
@@ -649,7 +649,7 @@ class GrueRuntime:
                 return self.bindings[binding_name]
         return name
 
-    def _parse_action_sexpr(self, action: SExpr) -> tuple[str, str, list[Any]]:
+    def _parse_action_sexpr(self, action: SExpr | list) -> tuple[str, str, list[Any]]:
         """Parse an action S-expression into (target, verb, args).
 
         Format: (do TARGET :verb arg1 arg2 ...)
@@ -659,19 +659,37 @@ class GrueRuntime:
             (do @lamp :examine)       -> ("@lamp", "examine", [])
             (do (loc @player) :go up) -> evaluates (loc @player) first
             (do ?self :login ?value)  -> resolves ?self and ?value from bindings
+
+        Accepts both SList (from parsed code) and Python lists (from quoted expressions).
         """
-        if not isinstance(action, SList) or len(action) < 3:
+        # Handle both SList and Python lists
+        if isinstance(action, SList):
+            items = list(action.items)
+        elif isinstance(action, list):
+            items = action
+        else:
             raise ValueError(f"Invalid action format: {action}")
 
-        items = list(action.items)
+        if len(items) < 3:
+            raise ValueError(f"Invalid action format: {action}")
 
-        # First item should be 'do'
-        if not isinstance(items[0], Symbol) or items[0].name != "do":
-            raise ValueError(f"Action must start with 'do': {items[0]}")
+        # First item should be 'do' (Symbol or string)
+        first = items[0]
+        if isinstance(first, Symbol):
+            if first.name != "do":
+                raise ValueError(f"Action must start with 'do': {first}")
+        elif isinstance(first, str):
+            if first != "do":
+                raise ValueError(f"Action must start with 'do': {first}")
+        else:
+            raise ValueError(f"Action must start with 'do': {first}")
 
         # Second item is target - evaluate if it's an expression or resolve symbol
         if isinstance(items[1], Symbol):
             target = self._resolve_symbol(items[1])
+        elif isinstance(items[1], str):
+            # String target (from quoted expressions)
+            target = items[1]
         elif isinstance(items[1], SList):
             # Evaluate the expression to get the target
             evaluator = ExprEvaluator(self, self._functions)
@@ -1179,7 +1197,16 @@ class GrueRuntime:
         result: Any,
         evaluator: ExprEvaluator
     ) -> ActionResult:
-        """Convert a BehaviorSuccess/Blocked/etc. to ActionResult."""
+        """Convert a BehaviorSuccess/Blocked/etc. or effect list to ActionResult.
+
+        Supports two formats:
+        1. Old syntax: BehaviorSuccess/Blocked/Redirect/Default objects with :effects
+        2. New syntax: Quoted list of effect descriptors '((move @x @y) (success))
+        """
+        # New syntax: behavior returned an effect list
+        if isinstance(result, (list, SList)):
+            return self._process_effect_list(result)
+
         if isinstance(result, BehaviorSuccess):
             # Execute effects
             effects_applied = []
@@ -1243,6 +1270,45 @@ class GrueRuntime:
         return ActionResult(
             outcome="error",
             error=f"Behavior returned unexpected type: {type(result).__name__}"
+        )
+
+    def _process_effect_list(self, effects: list | SList) -> ActionResult:
+        """Process a list of effect descriptors using EffectInterpreter.
+
+        This is the new pure effects model where behaviors return quoted
+        effect lists like: '((move @key @player) (success :message "Found!"))
+
+        Args:
+            effects: List of effect descriptors
+
+        Returns:
+            ActionResult with outcome and applied effects
+        """
+        try:
+            interpreter = EffectInterpreter(self)
+            outcome = interpreter.interpret(list(effects))
+        except Exception as e:
+            return ActionResult(
+                outcome="error",
+                error=f"Error processing effect list: {e}"
+            )
+
+        # Increment moves for successful actions
+        if outcome.outcome == "success":
+            self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+
+        # Convert EffectOutcome to ActionResult
+        # EffectOutcome stores message in context dict
+        context = [(key, value) for key, value in outcome.context.items()]
+        if outcome.reason:
+            context.append(("reason", outcome.reason))
+
+        return ActionResult(
+            outcome=outcome.outcome,
+            reason=outcome.reason,
+            default_action=outcome.redirect_action,
+            context=context,
+            effects_applied=outcome.effects_applied
         )
 
     def check_victory(self) -> bool:

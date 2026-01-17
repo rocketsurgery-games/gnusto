@@ -384,5 +384,9 @@ def to_string(expr: SExpr) -> str:
         return "true" if expr else "false"
     elif isinstance(expr, int):
         return str(expr)
+    elif isinstance(expr, list):
+        # Handle Python lists (from quoted expressions)
+        items = " ".join(to_string(item) for item in expr)
+        return f"({items})"
     else:
         raise ValueError(f"Unknown expression type: {type(expr)}")
