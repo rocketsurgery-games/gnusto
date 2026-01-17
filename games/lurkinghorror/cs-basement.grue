@@ -407,29 +407,26 @@
       (cond
         ((has-flag ?self OPENBIT)
           (blocked :reason already-open :message "It's already open."))
+        ((in? @nitrogen ?self)
+          ; Has nitrogen - release mist when opened
+          '((set-flag ?self OPENBIT)
+            (move @mist (loc @player))
+            (queue nitrogen-evaporates 3)
+            (success :message "You open the flask, and a cold, white mist boils out.")))
         (true
-          (success
-            :effects ((set-flag! ?self OPENBIT)
-                      (when (in? @nitrogen ?self)
-                        (seq (move! @mist (loc @player))
-                             (queue! nitrogen-evaporates 3))))
-            :message
-              (str "You open the flask"
-                   (if (in? @nitrogen ?self)
-                     ", and a cold, white mist boils out"
-                     "")
-                   ".")))))
+          ; Empty flask
+          '((set-flag ?self OPENBIT)
+            (success :message "You open the flask.")))))
 
     :close (fn ()
       (cond
         ((not (has-flag ?self OPENBIT))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success
-            :effects ((clear-flag! ?self OPENBIT)
-                      (dequeue! nitrogen-evaporates)
-                      (queue! mist-dissipates 2))
-            :message "You screw the flask closed."))))
+          '((clear-flag ?self OPENBIT)
+            (dequeue nitrogen-evaporates)
+            (queue mist-dissipates 2)
+            (success :message "You screw the flask closed.")))))
 
     :pour (fn ()
       (cond
@@ -492,17 +489,23 @@
       ((not (in? @nitrogen @flask))
         '((dequeue nitrogen-evaporates)
           (success)))
+      ((<= nitrogen-cnt 1)
+        ; Last charge - nitrogen exhausted
+        '((set nitrogen-cnt 0)
+          (move @nitrogen nil)
+          (dequeue nitrogen-evaporates)
+          (queue mist-dissipates 2)
+          (success)))
+      ((= (loc @flask) (loc @player))
+        ; Still has nitrogen and player can see
+        '((dec nitrogen-cnt)
+          (queue nitrogen-evaporates 3)
+          (success :message "Cold white mist continues to boil out of the flask.")))
       (true
-        (success
-          :effects ((set! nitrogen-cnt (- nitrogen-cnt 1))
-                    (if (<= nitrogen-cnt 0)
-                      (do (move! @nitrogen nil)
-                          (dequeue! nitrogen-evaporates)
-                          (queue! mist-dissipates 2))
-                      (queue! nitrogen-evaporates 3)))
-          :message (if (and (> nitrogen-cnt 0) (= (loc @flask) (loc @player)))
-                     "Cold white mist continues to boil out of the flask."
-                     nil)))))
+        ; Still has nitrogen but player can't see
+        '((dec nitrogen-cnt)
+          (queue nitrogen-evaporates 3)
+          (success)))))
 
 ; Mist dissipates after source is removed
 (event mist-dissipates
@@ -511,11 +514,14 @@
       ((queued? nitrogen-evaporates)
         '((dequeue mist-dissipates)
           (success)))  ; Still has source
+      ((= (loc @mist) (loc @player))
+        ; Player can see the mist dissipate
+        '((move @mist nil)
+          (dequeue mist-dissipates)
+          (success :message "The mist dissipates.")))
       (true
-        ; NOTE: Can't migrate - uses local let binding for here? which
-        ; wouldn't be available when effect list is interpreted
-        (let ((here? (= (loc @mist) (loc @player))))
-          (success
-            :effects ((move! @mist nil) (dequeue! mist-dissipates))
-            :message (if here? "The mist dissipates." nil))))))
+        ; Player can't see
+        '((move @mist nil)
+          (dequeue mist-dissipates)
+          (success)))))
 
