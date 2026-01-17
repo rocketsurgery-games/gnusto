@@ -58,14 +58,14 @@ counter are a refrigerator and a microwave."
       (cond
         ((has-flag ?self OPENBIT)
           (blocked :reason already-open))
+        ((queued? microwave-running)
+          ; Microwave is running - turn it off when opening
+          '((set-flag ?self OPENBIT)
+            (dequeue microwave-running)
+            (success :context ((description "The microwave oven shuts off, and is now open.")))))
         (true
-          (success
-            :effects ((set-flag! ?self OPENBIT)
-                      (when (queued? microwave-running) (dequeue! microwave-running)))
-            :context ((description
-              (if (queued? microwave-running)
-                "The microwave oven shuts off, and is now open."
-                "The microwave oven is now open.")))))))
+          '((set-flag ?self OPENBIT)
+            (success :context ((description "The microwave oven is now open.")))))))
 
     :close (fn ()
       (cond
@@ -122,11 +122,14 @@ counter are a refrigerator and a microwave."
         ((= microwave-timer 0)
           (blocked :reason no-time
                    :context ((description "Nothing happens, as there's no time set on it yet."))))
+        ((= microwave-temp 0)
+          ; No temp set - default to high (4)
+          '((set microwave-temp 4)
+            (queue microwave-running)
+            (success :context ((description "The microwave starts up. The timer begins counting down.")))))
         (true
-          (success
-            :effects ((when (= microwave-temp 0) (set! microwave-temp 4))
-                      (queue! microwave-running))
-            :context ((description "The microwave starts up. The timer begins counting down."))))))
+          '((queue microwave-running)
+            (success :context ((description "The microwave starts up. The timer begins counting down.")))))))
 
     ; Stop the microwave: (do @microwave :stop)
     :stop (fn ()

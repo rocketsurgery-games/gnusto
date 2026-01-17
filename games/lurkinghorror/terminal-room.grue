@@ -83,39 +83,23 @@
   (def stage3-desc "The hacker types furiously. After a while he says, \"Chomping file system. Your directory has gone seriously west. I fixed it.\" He checks the screen. \"It was mixed up on the file server with some files from the Department of Alchemy.\" He grunts. \"People's names for their nodes are getting weird. This one is called 'Lovecraft.'\" He pauses. \"Your paper is gone, though. Sorry. Maybe they could help you down there.\"")
   (def stage4-desc "The hacker wanders back to his terminal and returns to his hacking.")
 
-  (defn stage (n desc)
-    (success
-      :effects ((inc! hacker-help))
-      :stage n
-      :description desc))
-
   :location @terminal-room
   :on-turn (condp = hacker-help
-    0 (stage 1 stage1-desc)
-    1 (stage 2 stage2-desc)
-    2 (stage 3 stage3-desc)
-    (success
-      :effects ((dequeue! hacker-helps) (move! @hacker @terminal-room))
-      :stage 4
-      :description stage4-desc)))
+    0 '((inc hacker-help) (success :stage 1 :description stage1-desc))
+    1 '((inc hacker-help) (success :stage 2 :description stage2-desc))
+    2 '((inc hacker-help) (success :stage 3 :description stage3-desc))
+    '((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description stage4-desc))))
 
 ; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
 (event food-hint
-  (defn hint (msg)
-    (success
-      :effects ((inc! food-hint) (queue! food-hint 2))
-      :context ((hint msg))))
-
   :location @terminal-room
   :on-turn (condp = food-hint
-    1 (hint "I could stand a little snack, though.")
-    2 (hint "I don't know where I can get something to eat, what with all the snow.")
-    3 (hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving.")
-    4 (success
-        :effects ((set! food-hint 0) (dequeue! food-hint))
-        :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you.")))
-    (success :effects ((dequeue! food-hint)))))
+    1 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I could stand a little snack, though."))))
+    2 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I don't know where I can get something to eat, what with all the snow."))))
+    3 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving."))))
+    4 '((set food-hint 0) (dequeue food-hint) (success :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you."))))
+    '((dequeue food-hint) (success))))
 
 ; I-COMPULSION: Possession event - player is compelled to read the odd paper
 ; Triggered by reading @odd-paper. Advances through 4 pages of disturbing content,
@@ -126,23 +110,14 @@
   (def page3-desc "The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing.\n\nThere is a translation, or notes for one, typed between the lines of the poem:\n\n\"He returns, he is called back (?)\nThe loyal ones (acolytes?) make a sacrifice\nThose who survive will meet him (be absorbed? eaten?)\nThey will live, yet die\nForever will be (is?) nothing to them (to him?)\n\n\"His place (lair? burrow?) must be prepared\nHis food (offerings?) must be prepared\nCall him forth (invite him?) with great power\nOnly an acceptable (tasteful?) sacrifice will call him forth\nHe will be grateful (satiated?)\"\n\nThe rest is even more fragmentary.")
   (def page4-desc "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?")
 
-  (defn read-page (p desc)
-    (success
-      :effects ((inc! comp-cnt) (set-prop! @odd-paper read-page true))
-      :page p
-      :description desc))
-
   :location @terminal-room
   :on-turn (condp = comp-cnt
-    0 (read-page 1 page1-desc)
-    1 (read-page 2 page2-desc)
-    2 (read-page 3 page3-desc)
-    3 (success
-        :effects ((inc! comp-cnt) (dequeue! compulsion)
-                  (move! @more-box nil) (move! @menu-box @pc)
-                  (move! @player @yuggoth))
-        :page 4
-        :description page4-desc
-        :transition "You faint, and when you awaken...")
-    (success :effects ((dequeue! compulsion)))))
+    0 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 1 :description page1-desc))
+    1 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 2 :description page2-desc))
+    2 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 3 :description page3-desc))
+    3 '((inc comp-cnt) (dequeue compulsion)
+        (move @more-box nil) (move @menu-box @pc)
+        (move @player @yuggoth)
+        (success :page 4 :description page4-desc :transition "You faint, and when you awaken..."))
+    '((dequeue compulsion) (success))))
 
