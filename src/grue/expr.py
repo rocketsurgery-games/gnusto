@@ -795,6 +795,7 @@ class ExprEvaluator:
 
             # Data constructors
             "quote": self._eval_quote,
+            "quasiquote": self._eval_quasiquote,
             "list": self._eval_list,
             "range": self._eval_range,
 
@@ -2134,6 +2135,62 @@ class ExprEvaluator:
         if len(form) != 2:
             raise EvalError("'quote' requires exactly one argument")
         return quote_to_data(form[1])
+
+    def _eval_quasiquote(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(quasiquote EXPR) or `EXPR - like quote but allows unquote escapes.
+
+        Within a quasiquoted expression:
+        - ,EXPR (unquote) evaluates EXPR and inserts the result
+        - ,@EXPR (unquote-splicing) evaluates EXPR (must return list) and splices elements
+
+        Examples:
+            `(a b c) => ["a", "b", "c"]  (same as quote when no unquotes)
+            `(a ,(+ 1 2) c) => ["a", 3, "c"]  (unquote evaluates)
+            `(a ,@(list 1 2 3) b) => ["a", 1, 2, 3, "b"]  (unquote-splicing splices)
+            `((set x ,(compute-val)) (success)) => [["set", "x", <computed>], ["success"]]
+        """
+        if len(form) != 2:
+            raise EvalError("'quasiquote' requires exactly one argument")
+        return self._expand_quasiquote(form[1], env)
+
+    def _expand_quasiquote(self, expr: SExpr, env: Optional[Environment] = None) -> Any:
+        """Recursively expand a quasiquoted expression."""
+        if isinstance(expr, SList):
+            items = expr.items
+            # Check for (unquote expr) form
+            if (len(items) == 2 and
+                isinstance(items[0], Symbol) and
+                items[0].name == "unquote"):
+                # Evaluate the unquoted expression
+                return self.eval(items[1], env)
+
+            # Check for (unquote-splicing expr) - error, must be inside a list
+            if (len(items) >= 1 and
+                isinstance(items[0], Symbol) and
+                items[0].name == "unquote-splicing"):
+                raise EvalError("unquote-splicing (,@) not valid outside of a list")
+
+            # Process list elements, handling unquote-splicing
+            result = []
+            for item in items:
+                if (isinstance(item, SList) and
+                    len(item.items) == 2 and
+                    isinstance(item.items[0], Symbol) and
+                    item.items[0].name == "unquote-splicing"):
+                    # Evaluate and splice the list
+                    spliced = self.eval(item.items[1], env)
+                    if not isinstance(spliced, (list, tuple)):
+                        raise EvalError(
+                            f"unquote-splicing (,@) requires a list, got {type(spliced).__name__}"
+                        )
+                    result.extend(spliced)
+                else:
+                    # Recursively expand
+                    result.append(self._expand_quasiquote(item, env))
+            return result
+
+        # Non-list: convert to data (like quote)
+        return quote_to_data(expr)
 
     def _eval_list(self, form: SList, env: Optional[Environment] = None) -> list[Any]:
         """(list EXPR ...) - construct a list from evaluated arguments.

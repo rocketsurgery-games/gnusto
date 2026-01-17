@@ -273,3 +273,68 @@ class TestErrors:
             parse("(foo\nbar\n(baz")
         # Should include line info
         assert "line" in str(excinfo.value)
+
+
+class TestQuasiquoteParsing:
+    """Test quasiquote/unquote/unquote-splicing parsing."""
+
+    def test_tokenize_quasiquote(self):
+        tokens = Tokenizer("`foo").tokenize()
+        assert tokens[0].type == TokenType.QUASIQUOTE
+        assert tokens[1].type == TokenType.SYMBOL
+
+    def test_tokenize_unquote(self):
+        tokens = Tokenizer(",foo").tokenize()
+        assert tokens[0].type == TokenType.UNQUOTE
+        assert tokens[1].type == TokenType.SYMBOL
+
+    def test_tokenize_unquote_splicing(self):
+        tokens = Tokenizer(",@foo").tokenize()
+        assert tokens[0].type == TokenType.UNQUOTE_SPLICING
+        assert tokens[1].type == TokenType.SYMBOL
+
+    def test_parse_quasiquote(self):
+        expr = parse("`(a b c)")
+        assert isinstance(expr, SList)
+        assert len(expr) == 2
+        assert isinstance(expr[0], Symbol)
+        assert expr[0].name == "quasiquote"
+
+    def test_parse_unquote(self):
+        expr = parse("`(a ,b c)")
+        # quasiquote form
+        assert expr[0].name == "quasiquote"
+        inner = expr[1]  # (a ,b c)
+        # Second element should be (unquote b)
+        unquoted = inner[1]
+        assert isinstance(unquoted, SList)
+        assert unquoted[0].name == "unquote"
+        assert unquoted[1].name == "b"
+
+    def test_parse_unquote_splicing(self):
+        expr = parse("`(a ,@b c)")
+        inner = expr[1]  # (a ,@b c)
+        spliced = inner[1]
+        assert isinstance(spliced, SList)
+        assert spliced[0].name == "unquote-splicing"
+        assert spliced[1].name == "b"
+
+    def test_roundtrip_quasiquote(self):
+        original = "`(a b c)"
+        expr = parse(original)
+        assert to_string(expr) == original
+
+    def test_roundtrip_unquote(self):
+        original = "`(a ,b c)"
+        expr = parse(original)
+        assert to_string(expr) == original
+
+    def test_roundtrip_unquote_splicing(self):
+        original = "`(a ,@b c)"
+        expr = parse(original)
+        assert to_string(expr) == original
+
+    def test_roundtrip_complex_quasiquote(self):
+        original = "`((set foo ,(+ 1 2)) ,@effects (success))"
+        expr = parse(original)
+        assert to_string(expr) == original

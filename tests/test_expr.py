@@ -1154,3 +1154,78 @@ class TestEffectInterpreterSetup:
         interp = EffectInterpreter(state)
         effects_applied = interp.interpret_setup([])
         assert effects_applied == []
+
+
+class TestQuasiquote:
+    """Tests for quasiquote, unquote, and unquote-splicing."""
+
+    @pytest.fixture
+    def evaluator(self):
+        state = MockWorldState()
+        state.globals["x"] = 42
+        state.globals["nums"] = [1, 2, 3]
+        state.globals["condition"] = True
+        return ExprEvaluator(state)
+
+    def test_quasiquote_without_unquotes(self, evaluator):
+        """Quasiquote without unquotes behaves like quote."""
+        result = evaluator.eval(parse("`(a b c)"))
+        assert result == ["a", "b", "c"]
+
+    def test_quasiquote_unquote_variable(self, evaluator):
+        """Unquote evaluates and inserts a variable."""
+        result = evaluator.eval(parse("`(a ,x c)"))
+        assert result == ["a", 42, "c"]
+
+    def test_quasiquote_unquote_expression(self, evaluator):
+        """Unquote evaluates and inserts an expression."""
+        result = evaluator.eval(parse("`(a ,(+ 1 2) c)"))
+        assert result == ["a", 3, "c"]
+
+    def test_quasiquote_unquote_splicing(self, evaluator):
+        """Unquote-splicing splices list elements."""
+        result = evaluator.eval(parse("`(a ,@nums c)"))
+        assert result == ["a", 1, 2, 3, "c"]
+
+    def test_quasiquote_unquote_splicing_empty(self, evaluator):
+        """Unquote-splicing with empty list contributes nothing."""
+        evaluator.state.globals["empty"] = []
+        result = evaluator.eval(parse("`(a ,@empty c)"))
+        assert result == ["a", "c"]
+
+    def test_quasiquote_nested_lists(self, evaluator):
+        """Quasiquote works with nested lists."""
+        result = evaluator.eval(parse("`((set foo ,(+ 10 20)) (success))"))
+        assert result == [["set", "foo", 30], ["success"]]
+
+    def test_quasiquote_conditional_effects(self, evaluator):
+        """Quasiquote with conditional effect inclusion."""
+        evaluator.state.globals["condition"] = True
+        result = evaluator.eval(parse(
+            "`((effect1) ,@(if condition '((effect2)) '()) (success))"
+        ))
+        assert result == [["effect1"], ["effect2"], ["success"]]
+
+        evaluator.state.globals["condition"] = False
+        result = evaluator.eval(parse(
+            "`((effect1) ,@(if condition '((effect2)) '()) (success))"
+        ))
+        assert result == [["effect1"], ["success"]]
+
+    def test_quasiquote_multiple_unquotes(self, evaluator):
+        """Multiple unquotes in same list."""
+        evaluator.state.globals["a"] = 1
+        evaluator.state.globals["b"] = 2
+        result = evaluator.eval(parse("`(,a ,b ,(+ a b))"))
+        assert result == [1, 2, 3]
+
+    def test_unquote_splicing_requires_list(self, evaluator):
+        """Unquote-splicing raises error if value is not a list."""
+        with pytest.raises(EvalError) as excinfo:
+            evaluator.eval(parse("`(a ,@x c)"))  # x=42, not a list
+        assert "requires a list" in str(excinfo.value)
+
+    def test_quasiquote_deeply_nested(self, evaluator):
+        """Quasiquote with deeply nested structure."""
+        result = evaluator.eval(parse("`((outer (inner ,x)))"))
+        assert result == [["outer", ["inner", 42]]]
