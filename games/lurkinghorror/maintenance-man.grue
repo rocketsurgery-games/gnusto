@@ -104,14 +104,14 @@
           (cond
             ((= (loc @floor-wax) (loc @maintenance-man))
               ; He's slipping - hard to hit
-              (success :message "The axe misses by a mile as the maintenance man slips again!"
-                :effects ((move! @axe (loc @maintenance-man)))))
+              '((move @axe (loc @maintenance-man))
+                (success :message "The axe misses by a mile as the maintenance man slips again!")))
             (true
               ; Direct hit - kills him
-              (success :message "The axe strikes the maintenance man in the side of the neck and his head comes cleanly off. The head bounces once and rolls. As it rolls, it begins to shrink and to change in color. Small hairless bodies flee from the remains of the corpse and scatter into the darkness. You stand there, covered with unspeakable ichor, still clutching the axe. There's nothing much left of the maintenance man but some puddled clothes."
-                :effects ((move! @maintenance-man nil)
-                          (move! @axe (loc @player))
-                          (dequeue! maint-attack))))))))))
+              '((move @maintenance-man nil)
+                (move @axe (loc @player))
+                (dequeue maint-attack)
+                (success :message "The axe strikes the maintenance man in the side of the neck and his head comes cleanly off. The head bounces once and rolls. As it rolls, it begins to shrink and to change in color. Small hairless bodies flee from the remains of the corpse and scatter into the darkness. You stand there, covered with unspeakable ichor, still clutching the axe. There's nothing much left of the maintenance man but some puddled clothes.")))))))))
 
 ; ============================================================
 ; POWER CORD
@@ -149,10 +149,10 @@
           (blocked :reason no-tool
             :message "You'd need something sharp and heavy to cut that."))
         (true
-          (success :message "The axe crashes against the floor, and the power cord severs! The whine of the floor waxer slows, and the maintenance man jerks to alertness."
-            :effects ((set! cord-severed true)
-                      (dequeue! waxer-moves)
-                      (queue! maint-attack 2))))))))
+          '((set cord-severed true)
+            (dequeue waxer-moves)
+            (queue maint-attack 2)
+            (success :message "The axe crashes against the floor, and the power cord severs! The whine of the floor waxer slows, and the maintenance man jerks to alertness.")))))))
 
 ; ============================================================
 ; PLASTIC CONTAINER & FLOOR WAX
