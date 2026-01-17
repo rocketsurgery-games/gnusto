@@ -349,14 +349,19 @@ class EffectInterpreter:
             elif arg == "nil":
                 return None
         elif isinstance(arg, list):
-            # Nested expression like (loc @chair) or (door-at-elevator) - evaluate it
-            # Convert list back to SList and evaluate
-            from .sexpr import SList, Symbol, Keyword
-            slist = self._list_to_slist(arg)
-            # Create evaluator with bindings and functions available
-            evaluator = ExprEvaluator(self.state, self.functions, allow_mutations=False)
-            evaluator._env = Environment(bindings=dict(self.bindings))
-            return evaluator.eval(slist)
+            # Check if this is an expression (function call) vs a data list
+            # Expression lists have a string (function name) as first element
+            # Data lists have other types (booleans, numbers, etc.)
+            if len(arg) > 0 and isinstance(arg[0], str):
+                # This looks like an expression - evaluate it
+                # Nested expression like (loc @chair) or (door-at-elevator)
+                from .sexpr import SList, Symbol, Keyword
+                slist = self._list_to_slist(arg)
+                # Create evaluator with bindings and functions available
+                evaluator = ExprEvaluator(self.state, self.functions, allow_mutations=False)
+                evaluator._env = Environment(bindings=dict(self.bindings))
+                return evaluator.eval(slist)
+            # Otherwise it's a data list, return as-is
         return arg
 
     def _list_to_slist(self, lst: list) -> SList:
