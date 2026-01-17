@@ -147,7 +147,7 @@ class TestBehaviorExecution:
             :unlock (fn ()
               (cond
                 ((has-flag ?self LOCKED)
-                  (success :effects ((clear-flag! ?self LOCKED))))))))
+                  '((clear-flag ?self LOCKED) (success)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -416,11 +416,9 @@ class TestEventQueue:
             :push (fn ()
               (cond
                 ((queued? ALARM)
-                  (success :effects ((dequeue! ALARM))
-                           :context ((result alarm-off))))
+                  '((dequeue ALARM) (success :context ((result alarm-off)))))
                 (true
-                  (success :effects ((queue! ALARM))
-                           :context ((result alarm-on))))))))
+                  '((queue ALARM) (success :context ((result alarm-on)))))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -500,8 +498,8 @@ class TestRedirectFollowing:
           :behaviors (
             :sit (fn ()
               (cond
-                (true (success :effects ((move! PLAYER CHAIR))
-                              :message "You sit in the chair."))))))
+                (true '((move PLAYER CHAIR)
+                        (success :message "You sit in the chair.")))))))
         (object DESK :location LOBBY
           :behaviors (
             :sit-at (fn ()
@@ -686,9 +684,8 @@ class TestGlobalsRuntime:
           :behaviors (
             :push (fn ()
               (cond
-                (true (success
-                        :effects ((inc! counter))
-                        :message "Counter incremented"))))))
+                (true '((inc counter)
+                        (success :message "Counter incremented")))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -712,9 +709,8 @@ class TestEventSystem:
 
         (event test-event
           :on-turn (cond
-            (true (success
-                    :effects ((inc! stage))
-                    :context ((message "Event fired"))))))
+            (true '((inc stage)
+                    (success :context ((message "Event fired")))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -742,7 +738,7 @@ class TestEventSystem:
         (event lobby-only
           :location LOBBY
           :on-turn (cond
-            (true (success :effects ((inc! stage))))))
+            (true '((inc stage) (success)))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -775,7 +771,7 @@ class TestEventSystem:
 
         (event delayed-event
           :on-turn (cond
-            (true (success :effects ((inc! stage))))))
+            (true '((inc stage) (success)))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -811,21 +807,17 @@ class TestEventSystem:
           :location LOBBY
           :on-turn (cond
             ((= help-stage 0)
-              (success
-                :effects ((inc! help-stage))
-                :context ((message "Hacker walks over"))))
+              '((inc help-stage)
+                (success :context ((message "Hacker walks over")))))
             ((= help-stage 1)
-              (success
-                :effects ((inc! help-stage))
-                :context ((message "Hacker types furiously"))))
+              '((inc help-stage)
+                (success :context ((message "Hacker types furiously")))))
             ((= help-stage 2)
-              (success
-                :effects ((inc! help-stage))
-                :context ((message "Hacker explains problem"))))
+              '((inc help-stage)
+                (success :context ((message "Hacker explains problem")))))
             (true
-              (success
-                :effects ((dequeue! hacker-helps))
-                :context ((message "Hacker returns to seat"))))))
+              '((dequeue hacker-helps)
+                (success :context ((message "Hacker returns to seat")))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -865,7 +857,7 @@ class TestEventSystem:
 
         (event one-shot
           :on-turn (cond
-            (true (success :effects ((dequeue! one-shot))))))
+            (true '((dequeue one-shot) (success)))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -1039,10 +1031,8 @@ class TestRoomBehaviors:
           :exits ((south :to LOBBY))
           :behaviors (
             :on-enter (fn (?from-room)
-              (success
-                :effects ((set! entered-from ?from-room))
-                :welcome true
-                :from ?from-room))))
+              `((set entered-from ,?from-room)
+                (success :welcome true :from ,?from-room)))))
 
         (object PLAYER :location LOBBY)
         """

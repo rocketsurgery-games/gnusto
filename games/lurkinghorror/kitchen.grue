@@ -95,8 +95,8 @@ counter are a refrigerator and a microwave."
           (blocked :reason too-long
                    :context ((description "You can't set it for that long a time."))))
         (true
-          '((set microwave-timer ?value)
-            (success :context ((description (str "The timer display now reads " (format-timer) "."))))))))
+          `((set microwave-timer ,?value)
+            (success :context ((description ,(str "The timer display now reads " (format-timer) "."))))))))
 
     ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
     ; ?value binding receives the temperature symbol
@@ -146,8 +146,8 @@ counter are a refrigerator and a microwave."
     :stop (fn ()
       (cond
         ((queued? microwave-running)
-          '((dequeue microwave-running)
-            (success :context ((description (str "The microwave stops. The timer display now reads " (format-timer) "."))))))
+          `((dequeue microwave-running)
+            (success :context ((description ,(str "The microwave stops. The timer display now reads " (format-timer) "."))))))
         (true
           (blocked :reason already-off
                    :context ((description "It's already off."))))))

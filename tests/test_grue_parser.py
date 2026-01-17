@@ -165,7 +165,7 @@ class TestBehaviorParsing:
           :behaviors (
             :unlock (fn (?key)
               (cond
-                ((= ?key KEY) (success :effects ((clear-flag! ?self LOCKED))))))))
+                ((= ?key KEY) '((clear-flag ?self LOCKED) (success)))))))
         """
         world = parse_grue(source)
 

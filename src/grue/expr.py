@@ -629,6 +629,8 @@ class EffectInterpreter:
 
         Args like [Keyword("message"), "Hello", Keyword("reason"), "locked"]
         become {"message": "Hello", "reason": "locked"}
+
+        Special handling for :context - flattens ((key value) ...) pairs into result.
         """
         result: dict[str, Any] = {}
         i = 0
@@ -638,7 +640,16 @@ class EffectInterpreter:
             if hasattr(arg, 'name') and type(arg).__name__ == 'Keyword':
                 key = arg.name
                 if i + 1 < len(args):
-                    result[key] = args[i + 1]
+                    val = args[i + 1]
+                    if key == "context" and isinstance(val, list):
+                        # Flatten ((key value) ...) into result dict
+                        for pair in val:
+                            if isinstance(pair, list) and len(pair) >= 2:
+                                pair_key = pair[0]
+                                pair_val = self._resolve_arg(pair[1])
+                                result[pair_key] = pair_val
+                    else:
+                        result[key] = val
                     i += 2
                 else:
                     i += 1
