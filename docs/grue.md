@@ -671,16 +671,21 @@ Turn-based event handler. Events fire each turn while queued.
 
 See [Turn-Based Events](#turn-based-events) for detailed documentation.
 
-#### `(globals :name value ...)`
-Global variable definitions. Globals are accessible throughout the world and
-can be modified with `set!` and `inc!` effects.
+#### `(globals :name value ...)` *(Deprecated)*
+> **Note:** Globals are deprecated. Use object properties instead for better
+> encapsulation. State should live on the object it describes.
 
 ```scheme
-(globals
-  :score 0
-  :moves 0
-  :hacker-help 0        ; stage counter for hacker-helps event
-  :game-phase beginning)
+; DEPRECATED - don't use globals for new code:
+(globals :microwave-timer 0)
+
+; PREFERRED - use object properties:
+(object @microwave
+  :properties (:timer 0 :temp 0))
+
+; Access with keyword-as-function:
+(:timer @microwave)              ; read property
+(set @microwave :timer 120)      ; write property (as effect)
 ```
 
 ### Special Forms (Custom Evaluation)
@@ -916,13 +921,19 @@ Generate integer sequence (Clojure-style).
 (for (?floor (range 4)) ...)
 ```
 
-#### `(:keyword OBJ [DEFAULT])`
-Keyword as function (Clojure-style). Looks up the keyword on the object.
+#### `(:keyword OBJ [DEFAULT])` — Property Access
+Keyword as function (Clojure-style). **This is the preferred way to read properties.**
 Works for runtime properties and quoted keyword-value lists.
 ```scheme
-(:size @pc)                         ; => 30 (property lookup)
-(:missing @pc "default")            ; => "default" (with fallback)
+(:timer @microwave)                 ; => 0 (read property)
+(:heat @food)                       ; => 12 (read property)
+(:missing @obj "default")           ; => "default" (with fallback)
 (:foo '(:foo "bar" :baz "qux"))     ; => "bar" (quoted list lookup)
+```
+
+For writing properties, use the `(set @obj :prop value)` effect:
+```scheme
+(success :effects ((set @microwave :timer 120)))
 ```
 
 ### Functions (Uniform Evaluation)
@@ -1037,9 +1048,10 @@ Effects describe state changes. By convention, their names end with `!`.
 | `take!` | OBJ | Move object to player's inventory (shorthand for `(move! OBJ @player)`) |
 | `set-flag!` | OBJ FLAG | Add flag to object |
 | `clear-flag!` | OBJ FLAG | Remove flag from object |
-| `set-prop!` | OBJ PROP VAL | Set property on object |
-| `set!` | NAME VAL | Set global variable |
-| `inc!` | NAME [AMOUNT] | Increment global (default +1) |
+| `set` | OBJ :PROP VAL | Set property on object (preferred) |
+| `set-prop!` | OBJ PROP VAL | Set property on object (legacy) |
+| `set!` | NAME VAL | Set global variable *(deprecated)* |
+| `inc!` | NAME [AMOUNT] | Increment global *(deprecated)* |
 | `queue!` | EVENT [COUNT] | Queue event (indefinite or countdown) |
 | `dequeue!` | EVENT | Remove event from queue |
 
@@ -1069,12 +1081,13 @@ LLM actions like `(do @microwave :set-timer 120)` or `(do @microwave :set-temp h
 
 ```scheme
 (object @microwave
+  :properties (:timer 0 :temp 0)
   :behaviors (
     :set-timer (fn ()
-      (success :effects ((set! microwave-timer ?value))))
+      (success :effects ((set @microwave :timer ?value))))
     :set-temp (fn ()
       (let ((temp-val (condp = ?value warm 1 low 2 medium 3 high 4 nil)))
-        (success :effects ((set! microwave-temp temp-val)))))))
+        (success :effects ((set @microwave :temp temp-val)))))))
 ```
 
 Bindings are accessed with the `?` prefix:
@@ -1167,7 +1180,8 @@ Tests use a sequential style with explicit actions and assertions:
 | `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
 | `(wait)` | Pass time and process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
-| `(set! VAR VALUE)` | Set global variable (inline setup) |
+| `(set-prop! @obj PROP VAL)` | Set property on object (inline setup) |
+| `(set! VAR VALUE)` | Set global variable *(deprecated)* |
 | `(move! @obj @loc)` | Move object to location (inline setup) |
 | `(set-flag! @obj FLAG)` | Set flag on object (inline setup) |
 | `(clear-flag! @obj FLAG)` | Clear flag from object (inline setup) |
@@ -1181,8 +1195,8 @@ This is useful for full walkthrough tests that need to skip unimplemented mechan
 (test "walkthrough-full"
   ; ... earlier actions ...
 
-  ; SKIP: Forklift puzzle - pre-clear the junk
-  (set! junk-moved 4)
+  ; SKIP: Forklift puzzle - pre-set junk state
+  (set-prop! @junk-pile moved 4)
 
   ; Continue with navigation
   (go :direction east)

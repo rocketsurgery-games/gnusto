@@ -2,8 +2,8 @@
 The existing UI is just a terminal repl that requires you to interact via Grue syntax. I propose that we should have multiple UI modes:
 - REPL:  Useful as a debugging tool.
 - TUI:   A "real" terminal UI, that uses the LM for interaction.
-- GUI:   Conceptually the same as the terminal UI, but with images, and other bells and whistles.
 - Voice: A voice input/output UI suitable for phones and visually-impaired players.
+- GUI:   Conceptually the same as the terminal UI, but with images, and other bells and whistles.
 
 ## Style
 For the GUI mode, we want to add graphics judiciously, while respecting the feel (feelies?) of the original game. 
@@ -11,14 +11,14 @@ For the GUI mode, we want to add graphics judiciously, while respecting the feel
 ### Zork
 Hand-drawn "Teenagers playing D&D" aesthetic.
 
-### Enchanter: 
+### Enchanter 
 Florid calligraphy on parchment, much like the game's original feelies.
 
-### Infidel: 
+### Infidel 
 
-### Lurking Horror: 
+### Lurking Horror 
 
-### AMFV: 
+### AMFV 
 
 ## Terminal
 In the terminal UI, how can we segregate different text streams?
