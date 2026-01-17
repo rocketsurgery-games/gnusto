@@ -41,8 +41,9 @@
       (cond
         ; Coming from outside - stop freezing
         ((has-flag ?from OUTSIDE)
-          (success :effects ((dequeue! freezing) (set! freeze-count 0))
-                   :message "You push your way into the comparative warmth of a laboratory."))
+          '((dequeue freezing)
+            (set freeze-count 0)
+            (success :message "You push your way into the comparative warmth of a laboratory.")))
         (true (success))))))
 
 ; @brick-tunnel is now defined in steam-tunnels.grue
@@ -87,7 +88,8 @@
   :behaviors (
     :on-enter (fn (?from)
       ; Reveal the manhole when entering
-      (success :effects ((clear-flag! @manhole INVISIBLE))))))
+      '((clear-flag @manhole INVISIBLE)
+        (success)))))
 
 ; === Junk Barrier (blocks east exit until cleared) ===
 
@@ -147,12 +149,12 @@
              "old forklift. It looks like you could control it fairly easily, though.")))
 
     :enter (fn ()
-      (success :effects ((move! @player ?self))
-               :message "You climb onto the forklift."))
+      '((move @player ?self)
+        (success :message "You climb onto the forklift.")))
 
     :exit (fn ()
-      (success :effects ((move! @player (loc ?self)))
-               :message "You climb off the forklift."))
+      '((move @player (loc ?self))
+        (success :message "You climb off the forklift.")))
 
     :turn-on (fn ()
       (cond
@@ -161,8 +163,8 @@
         ((has-flag ?self POWER)
           (blocked :reason already-on :message "It's wheezing away already."))
         (true
-          (success :effects ((set-flag! ?self POWER))
-                   :message "The forklift sputters to life."))))
+          '((set-flag ?self POWER)
+            (success :message "The forklift sputters to life.")))))
 
     :turn-off (fn ()
       (cond
@@ -171,8 +173,8 @@
         ((not (has-flag ?self POWER))
           (blocked :reason already-off :message "It's already off."))
         (true
-          (success :effects ((clear-flag! ?self POWER))
-                   :message "The forklift coughs once, and dies."))))
+          '((clear-flag ?self POWER)
+            (success :message "The forklift coughs once, and dies.")))))
 
     ; Move junk with the forklift
     :use (fn (?target)
@@ -186,16 +188,16 @@
         ((not (= (loc ?self) @dead-storage))
           (blocked :reason wrong-place :message "There's nothing on pallets here, hence the forklift is useless."))
         ((= junk-moved 0)
-          (success :effects ((set! junk-moved 1))
-                   :message "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage."))
+          '((set junk-moved 1)
+            (success :message "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage.")))
         ((> junk-moved junk-moves-needed)
           (success :message "I suppose you're planning to clear the entire room? You've made a nice path to the next room already."))
         ((= (+ junk-moved 1) (+ junk-moves-needed 1))
-          (success :effects ((set! junk-moved (+ junk-moved 1)))
-                   :message "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one."))
+          '((set junk-moved (+ junk-moved 1))
+            (success :message "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one.")))
         (true
-          (success :effects ((set! junk-moved (+ junk-moved 1)))
-                   :message "You continue moving junk, becoming more proficient with the forklift."))))))
+          '((set junk-moved (+ junk-moved 1))
+            (success :message "You continue moving junk, becoming more proficient with the forklift.")))))))
 
 ; === Manhole System ===
 ; The manhole in storage-room leads down to brick-tunnel.
@@ -257,8 +259,8 @@
         ((in? @manhole-cover ?self)
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          (success :effects ((move! @manhole-cover ?self))
-                   :message "You manage to shove the manhole cover back over the hole."))))))
+          '((move @manhole-cover ?self)
+            (success :message "You manage to shove the manhole cover back over the hole.")))))))
 
 (object @manhole-cover
   :location @manhole
@@ -307,8 +309,8 @@
         ((not (= ?tool @crowbar))
           (blocked :reason wrong-tool :message "You'll need something to pry it with."))
         (true
-          (success :effects ((move! ?self @storage-room))
-                   :message "You lever the manhole cover aside, and crusted dirt falls into a dark hole below."))))
+          '((move ?self @storage-room)
+            (success :message "You lever the manhole cover aside, and crusted dirt falls into a dark hole below.")))))
 
     :open (fn ()
       (cond
@@ -349,11 +351,11 @@
       (cond
         ((has-flag ?self WEARBIT)
           ; Already wearing check would be handled by runtime
-          (success :effects ((set-flag! ?self WEARBIT))
-                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))
+          '((set-flag ?self WEARBIT)
+            (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))
         (true
-          (success :effects ((set-flag! ?self WEARBIT))
-                   :message "You put on the gloves. They're a little big, but not really such a bad fit."))))))
+          '((set-flag ?self WEARBIT)
+            (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))))))
 
 ; === Pool (global object for puddles/water) ===
 
@@ -455,14 +457,13 @@
       (success :message "The liquid has no smell."))
 
     :pour (fn (?target)
-      (success
-        :effects ((move! @nitrogen nil)
-                  (dequeue! nitrogen-evaporates)
-                  (queue! mist-dissipates 2))
-        :message
+      '((move @nitrogen nil)
+        (dequeue nitrogen-evaporates)
+        (queue mist-dissipates 2)
+        (success :message
           (str "The freezing liquid pours out"
                (if ?target (str " onto the " (desc ?target)) "")
-               ", boiling into cold mist almost immediately.")))))
+               ", boiling into cold mist almost immediately."))))))
 
 (object @mist
   :location nil  ; Created when flask is opened
@@ -489,7 +490,8 @@
   :on-turn
     (cond
       ((not (in? @nitrogen @flask))
-        (success :effects ((dequeue! nitrogen-evaporates))))
+        '((dequeue nitrogen-evaporates)
+          (success)))
       (true
         (success
           :effects ((set! nitrogen-cnt (- nitrogen-cnt 1))
@@ -507,8 +509,11 @@
   :on-turn
     (cond
       ((queued? nitrogen-evaporates)
-        (success :effects ((dequeue! mist-dissipates))))  ; Still has source
+        '((dequeue mist-dissipates)
+          (success)))  ; Still has source
       (true
+        ; NOTE: Can't migrate - uses local let binding for here? which
+        ; wouldn't be available when effect list is interpreted
         (let ((here? (= (loc @mist) (loc @player))))
           (success
             :effects ((move! @mist nil) (dequeue! mist-dissipates))
