@@ -365,20 +365,21 @@
       (redirect :action (do @slime-curtain :through)))
 
     ; Pour nitrogen on curtain to freeze it
+    ; Requires 3 pours to fully destroy the curtain
     :pour (fn (?liquid)
       (cond
         ((= ?liquid @nitrogen)
           (let ((?new-cnt (+ nitrogen-cnt 1)))
             (cond
               ((< ?new-cnt 3)
+                ; Partial freeze - nitrogen is NOT consumed, can pour again
                 `((set nitrogen-cnt ,?new-cnt)
-                  (move @nitrogen nil)
-                  (dequeue nitrogen-goes)
                   (success :message "The liquid splashes onto the curtain, and a cold mist fills the room. The slime begins to freeze. Patches of it shatter and fall, but the rest of the slime oozes into the ruined spots, and the curtain appears unharmed.")))
               (true
+                ; Final pour - nitrogen IS consumed, curtain destroyed
                 `((set nitrogen-cnt ,?new-cnt)
                   (move @nitrogen nil)
-                  (dequeue nitrogen-goes)
+                  (dequeue nitrogen-evaporates)
                   (move @slime-curtain nil)
                   (clear-flag @curtain-door INVISIBLE)
                   (success :message "The liquid splashes onto the curtain, and a cold mist fills the room. Nearly the entire curtain solidifies, shatters, and drops to the ground, revealing an ancient wooden door."))))))

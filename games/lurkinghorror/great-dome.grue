@@ -257,9 +257,9 @@
             (take ?self)
             (success :message
               (str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
-                   (if (not (has-flag @suicide-note TOUCHBIT))
+                   (if (not (has-flag @note TOUCHBIT))
                      "There is a piece of paper in the hole."
-                     (if (in? @suicide-note @secret-hole)
+                     (if (in? @note @secret-hole)
                        "There is a piece of paper in the hole."
                        "The hole is empty."))))))))
 
@@ -279,7 +279,7 @@
   :flags (CONTBIT OPENBIT SEARCHBIT)
   :properties (:capacity 5))
 
-(object @suicide-note
+(object @note
   :location @secret-hole
   :description "piece of paper"
   :flags (TAKEBIT READBIT)

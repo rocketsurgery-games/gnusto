@@ -30,11 +30,19 @@
     (go :direction south)
     (assert (outcome? success)))
 
-  (test "nitrogen freezes curtain"
-    :setup ((move! @nitrogen @player) (set! nitrogen-cnt 2))
+  (test "nitrogen partial freeze keeps nitrogen"
+    :setup ((move! @nitrogen @flask) (set! nitrogen-cnt 0))
     (do @slime-curtain :pour @nitrogen)
     (assert (outcome? success))
-    (assert (loc? @slime-curtain nil)))
+    (assert (in? @slime-curtain @outer-lair))  ; Curtain still there
+    (assert (in? @nitrogen @flask)))            ; Nitrogen NOT consumed
+
+  (test "nitrogen destroys curtain on third pour"
+    :setup ((move! @nitrogen @flask) (set! nitrogen-cnt 2))
+    (do @slime-curtain :pour @nitrogen)
+    (assert (outcome? success))
+    (assert (loc? @slime-curtain nil))    ; Curtain destroyed
+    (assert (loc? @nitrogen nil)))        ; Nitrogen consumed
 )
 
 (test-group "curtain door"

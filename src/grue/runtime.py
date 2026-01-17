@@ -428,7 +428,11 @@ class GrueRuntime:
     def get_exit(self, actor: str, direction: str) -> tuple[str, str | None] | None:
         """Get exit info for direction from actor's room. Returns (destination, via) or None."""
         actor_loc = self.get_object_location(actor)
-        room = self.world.rooms.get(actor_loc) if actor_loc else None
+        return self._get_exit_from_room(actor_loc, direction)
+
+    def _get_exit_from_room(self, room_name: str | None, direction: str) -> tuple[str, str | None] | None:
+        """Get exit info for direction from a specific room. Returns (destination, via) or None."""
+        room = self.world.rooms.get(room_name) if room_name else None
         if not room:
             return None
         for exit_def in room.exits:
@@ -1054,14 +1058,34 @@ class GrueRuntime:
         return self._evaluate_behavior(default_behavior, bindings)
 
     def _do_go(self, direction: str, actor: str | None = None) -> ActionResult:
-        """Handle movement."""
+        """Handle movement.
+
+        If the actor is in a vehicle (VEHBIT), the vehicle moves instead of the actor.
+        The actor stays in/on the vehicle during the move.
+        """
         if actor is None:
             actor = self.player_name
 
-        # Capture current location before move (for :on-enter)
-        from_room = self.state.objects[actor].location
+        # Check if actor is in a vehicle
+        vehicle_info = self.get_player_vehicle() if actor == self.player_name else None
+        in_vehicle = vehicle_info is not None
 
-        exit_info = self.get_exit(actor, direction)
+        if in_vehicle:
+            vehicle_name = vehicle_info[0]
+            vehicle_obj = self.state.objects.get(vehicle_name)
+            # Vehicle's location is where exits are checked from
+            from_room = vehicle_obj.location if vehicle_obj else None
+            if not from_room:
+                return ActionResult(
+                    outcome="error",
+                    error=f"Vehicle {vehicle_name} has no location"
+                )
+        else:
+            # Capture current location before move (for :on-enter)
+            from_room = self.state.objects[actor].location
+
+        # Get exit - use vehicle's room if in vehicle
+        exit_info = self._get_exit_from_room(from_room, direction)
         if exit_info is None:
             return ActionResult(
                 outcome="blocked",
@@ -1104,11 +1128,18 @@ class GrueRuntime:
         else:
             context = []
 
-        # Move actor
-        self.state.objects[actor].location = dest
-        self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+        # Move the appropriate entity
+        if in_vehicle:
+            # Move the vehicle; actor stays in the vehicle
+            vehicle_name = vehicle_info[0]
+            self.state.objects[vehicle_name].location = dest
+            effects = [f"{vehicle_name} moved to {dest}" + (f" (via {via})" if via else "")]
+        else:
+            # Move actor directly
+            self.state.objects[actor].location = dest
+            effects = [f"{actor} moved to {dest}" + (f" (via {via})" if via else "")]
 
-        effects = [f"{actor} moved to {dest}" + (f" (via {via})" if via else "")]
+        self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
 
         # Check for :on-enter behavior in destination room
         on_enter_result = self._check_room_on_enter(dest, from_room, actor)

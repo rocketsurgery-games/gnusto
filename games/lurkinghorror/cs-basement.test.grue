@@ -119,3 +119,32 @@
   (do @forklift :turn-on)
   (assert (outcome? blocked))
   (assert (reason? not-aboard)))
+
+(test "can drive forklift east"
+  :setup ((move! @forklift @aero-basement) (move! @player @forklift))
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (loc? @forklift @cs-basement))  ; aero-basement -> cs-basement
+  (assert (in? @player @forklift)))
+
+(test "forklift full puzzle from start"
+  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (clear-flag! @forklift POWER) (set! junk-moved 0))
+  ; Enter forklift
+  (do @forklift :enter)
+  (assert (in? @player @forklift))
+  ; Turn on forklift
+  (do @forklift :turn-on)
+  (assert (has-flag? @forklift POWER))
+  ; Drive east through basement corridor: aero-basement -> cs-basement -> temporary-basement -> dead-storage
+  (go :direction east)
+  (assert (loc? @forklift @cs-basement))
+  (go :direction east)
+  (assert (loc? @forklift @temporary-basement))
+  (go :direction east)
+  (assert (loc? @forklift @dead-storage))
+  ; Use forklift to clear junk 4 times
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (assert (> junk-moved junk-moves-needed)))

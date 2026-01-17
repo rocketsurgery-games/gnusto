@@ -664,14 +664,34 @@
   (do @flask :take)
   (assert (held? @flask))
 
-  ; SKIP: Forklift/junk puzzle - pre-clear the junk
-  ; Real path: drive forklift from aero-basement to dead-storage, clear junk 4 times
-  (set! junk-moved 4)
+  ; === Forklift/junk puzzle ===
+  ; Navigate to aero-basement to get forklift
+  (go :direction down)        ; temporary-lab -> temporary-basement
+  (go :direction west)        ; temporary-basement -> cs-basement
+  (go :direction west)        ; cs-basement -> aero-basement
+  (assert (loc? @player @aero-basement))
 
-  ; Navigate to storage room: temporary-lab -> temporary-basement -> dead-storage -> storage-room
-  (go :direction down)
-  (assert (loc? @player @temporary-basement))
-  (go :direction east)
+  ; Enter and operate forklift
+  (do @forklift :enter)
+  (assert (in? @player @forklift))
+  (do @forklift :turn-on)
+  (assert (has-flag? @forklift POWER))
+
+  ; Drive forklift east to dead-storage
+  (go :direction east)        ; aero-basement -> cs-basement
+  (go :direction east)        ; cs-basement -> temporary-basement
+  (go :direction east)        ; temporary-basement -> dead-storage
+  (assert (loc? @forklift @dead-storage))
+
+  ; Clear junk with forklift (need 4 uses)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (do @forklift :use @junk)
+  (assert (> junk-moved junk-moves-needed))
+
+  ; Exit forklift and proceed to storage-room
+  (do @forklift :exit)
   (assert (loc? @player @dead-storage))
   (go :direction east)
   (assert (loc? @player @storage-room))
@@ -699,31 +719,62 @@
   (go :direction south)
   (assert (loc? @player @brick-tunnel))
 
-  ; SKIP: Tunnel navigation and rats puzzle
-  ; Real path: brick-tunnel doesn't connect to main steam tunnels directly
-  ; The path would go through different areas (tomb, aero, etc.)
-  (move! @rats nil)
+  ; Navigate back through basement tunnels to infinite corridor
+  ; Path: brick-tunnel -> storage-room -> dead-storage -> temp-basement -> cs-basement
+  ;       -> aero-basement -> aero-stairs -> aero-lobby -> inf-1
+  ; The manhole cover was already removed when we came down
+  (go :direction up)       ; brick-tunnel -> storage-room
+  (go :direction west)     ; storage-room -> dead-storage
+  (go :direction west)     ; dead-storage -> temporary-basement
+  (go :direction west)     ; temporary-basement -> cs-basement
+  (go :direction west)     ; cs-basement -> aero-basement
+  (go :direction west)     ; aero-basement -> aero-stairs
+  (go :direction up)       ; aero-stairs -> aero-lobby
 
   ; --- Phase 4: Infinite Corridor & Axe ---
-  (move! @player @inf-1)
-  (set! waxer-patrol-started true)
-  (move! @maintenance-man @floor-waxer)
-  (move! @floor-waxer @inf-2)
+  ; Going south to inf-1 auto-starts the waxer patrol via on-enter
+  (go :direction south)    ; aero-lobby -> inf-1
+  (assert (loc? @player @inf-1))
 
   ; Get plastic container (floor wax) from inf-1
   (do @plastic-container :take)
   (do @plastic-container :open)
   (assert (held? @plastic-container))
 
-  ; Navigate through corridor (waxer may block, use until loop)
-  (until (loc? @player @inf-5)
+  ; Navigate through corridor to inf-4 (emergency cabinet with axe)
+  (until (loc? @player @inf-4)
     (do @movement :go east)
     (wait))
-  (assert (loc? @player @inf-5))
+  (assert (loc? @player @inf-4))
 
-  ; Remove waxer so we can exit the corridor
-  (move! @floor-waxer nil)
-  (move! @maintenance-man nil)
+  ; === Get axe from emergency cabinet ===
+  ; Break the glass (requires gloves which player should already have)
+  (assert (held? @gloves))
+  (do @emergency-cabinet :break)
+  (assert (has-flag? @emergency-cabinet RMUNGBIT))
+
+  ; Take the axe
+  (do @axe :take)
+  (assert (held? @axe))
+
+  ; === Disable floor waxer ===
+  ; Cut the power cord - this causes maintenance man to descend and chase
+  (do @power-cord :cut)
+  (assert cord-severed)
+
+  ; Pour floor wax to make maintenance man slip and dissolve
+  (assert (held? @plastic-container))
+  (do @floor-wax :pour)
+  (assert (loc? @floor-wax @inf-4))
+
+  ; Wait for maintenance man to dissolve (maint-dissolves event)
+  (until (loc? @maintenance-man nil)
+    (wait))
+  (assert (loc? @maintenance-man nil))
+
+  ; Go east to inf-5, then south to chemistry-bldg
+  (go :direction east)       ; inf-4 -> inf-5
+  (assert (loc? @player @inf-5))
 
   ; --- Phase 5: Alchemy Lab ---
   ; Go to chemistry building and knock on alchemy door
@@ -753,10 +804,21 @@
   (set! tied-up 0)
   (go :direction south)
   (assert (loc? @player @alchemy-lab))
+  (assert (queued? professor-ritual))
 
-  ; SKIP: Ritual state machine - position player in pentagram ready to escape
-  (move! @player @pentagram)
-  (set! tied-up 3)
+  ; Wait for ritual to progress - professor binds player in pentagram
+  ; Stage 1: Player moved to pentagram
+  (wait)
+  (assert (loc? @player @pentagram))
+  (assert (= tied-up 1))
+
+  ; Wait until tied-up >= 3 (we can cut the pentagram at this point)
+  (until (>= tied-up 3)
+    (wait))
+  (assert (>= tied-up 3))
+
+  ; At this point the ritual is in progress and we can escape
+  ; Initialize state needed for escape
   (set! lab-bench-moved false)
   (clear-flag! @pentagram RMUNGBIT)
   (clear-flag! @alchemy-trap-door OPENBIT)
@@ -775,23 +837,36 @@
   (go :direction down)
   (assert (loc? @player @under-alchemy-lab))
 
-  ; Simulate professor death and ring placement
-  (set! prof-dead true)
-  (move! @ring @alchemy-lab)
+  ; Wait for ritual to complete (stage 8) - professor dies, ring appears
+  ; The professor-ritual event handles this automatically when player escapes
+  (until prof-dead
+    (wait))
+  (assert prof-dead)
+  (assert (= tied-up 0))
+  (assert (loc? @ring @alchemy-lab))
+  (assert (not (queued? professor-ritual)))
+
+  ; The ritual closes the trapdoor, so re-open it to go back up
+  (do @alchemy-trap-door :open)
+  (assert (has-flag? @alchemy-trap-door OPENBIT))
 
   ; Go back up to get ring
   (go :direction up)
+  (assert (loc? @player @alchemy-lab))
   (do @ring :take)
   (assert (held? @ring))
 
   ; SKIP: Getting mummified hand from steam tunnels
   (move! @mummified-hand @player)
   (clear-flag! @mummified-hand PERSON)
-  (move! @elixir @vat)
+  (set! animation-count 0)  ; Reset animation counter
+  ; Order must match isolated test: vat first, then elixir
   (move! @vat @lab-bench)
+  (move! @elixir @vat)
 
   ; Animate hand by putting in elixir vat
   (do @vat :put @mummified-hand)
+  (assert (outcome? success))
   (until (has-flag? @mummified-hand PERSON)
     (wait))
   (assert (has-flag? @mummified-hand PERSON))
@@ -802,8 +877,19 @@
   (assert (in? @ring @mummified-hand))
 
   ; --- Phase 6: Urchins ---
-  ; Position for urchin encounter
-  (move! @player @aero-lobby)
+  ; Navigate from alchemy-lab to aero-lobby
+  ; Path: alchemy-lab -> alchemy-dept -> chemistry-bldg -> inf-5 -> inf-1 -> aero-lobby
+  (go :direction north)     ; alchemy-lab -> alchemy-dept
+  (go :direction north)     ; alchemy-dept -> chemistry-bldg (door openable from inside)
+  (go :direction north)     ; chemistry-bldg -> inf-5
+  (go :direction west)      ; inf-5 -> inf-4
+  (go :direction west)      ; inf-4 -> inf-3
+  (go :direction west)      ; inf-3 -> inf-2
+  (go :direction west)      ; inf-2 -> inf-1
+  (go :direction north)     ; inf-1 -> aero-lobby
+  (assert (loc? @player @aero-lobby))
+
+  ; Position urchin for encounter
   (move! @urchin @aero-lobby)
   (move! @bolt-cutters @urchin)
   (set-flag! @bolt-cutters INVISIBLE)
@@ -817,9 +903,52 @@
   (do @bolt-cutters :take)
   (assert (held? @bolt-cutters))
 
-  ; Navigate to large-chamber and free urchins
-  (move! @player @large-chamber)
-  (move! @urchin-wire @large-chamber)
+  ; === Navigate through steam tunnels to large-chamber ===
+  ; Path: aero-lobby -> aero-stairs -> sub-basement -> tomb
+  (go :direction down)      ; aero-lobby -> aero-stairs
+  (go :direction down)      ; aero-stairs -> sub-basement
+  (go :direction nw)        ; sub-basement -> tomb
+  (assert (loc? @player @tomb))
+
+  ; Cut padlock and open hatch to access steam tunnels
+  (do @padlock :cut)
+  (assert (not (has-flag? @padlock LOCKED)))
+  (do @access-hatch :open)
+  (assert (has-flag? @access-hatch OPENBIT))
+
+  ; Go down to steam tunnel
+  (go :direction down)      ; tomb -> tunnel
+  (assert (loc? @player @tunnel))
+
+  ; === Rats puzzle ===
+  ; Go east to valve, turn on steam to kill rats, wait, then close valve
+  (go :direction east)      ; tunnel -> tunnel-east (valve is here)
+  (assert (loc? @player @tunnel-east))
+
+  ; Turn on valve to release steam - this starts rats-go-away event
+  (do @pressure-valve :turn)
+  (assert (has-flag? @pressure-valve OPENBIT))
+  (assert (queued? rats-go-away))
+
+  ; Wait for rats to be killed by steam (event fires after ~3 turns)
+  (until (loc? @rats nil)
+    (wait))
+  (assert (loc? @rats nil))
+
+  ; Close valve to clear steam so we can pass west
+  (do @pressure-valve :turn)
+  (assert (not (has-flag? @pressure-valve OPENBIT)))
+
+  ; Navigate west through now-clear tunnels to large-chamber
+  ; Path: tunnel-east -> tunnel -> tunnel-west -> tunnel-entrance -> muddy-tunnel -> large-chamber
+  (go :direction west)      ; tunnel-east -> tunnel
+  (go :direction west)      ; tunnel -> tunnel-west
+  (go :direction west)      ; tunnel-west -> tunnel-entrance
+  (go :direction west)      ; tunnel-entrance -> muddy-tunnel
+  (go :direction down)      ; muddy-tunnel -> large-chamber
+  (assert (loc? @player @large-chamber))
+
+  ; Free the urchins
   (set! urchin-freed false)
 
   ; Cut wire to free urchins
@@ -827,8 +956,8 @@
   (assert urchin-freed)
 
   ; --- Phase 7: Lair Maze & Final Battle ---
-  ; Set up remaining required items
-  (move! @axe @player)            ; From maintenance-man (Phase 4)
+  ; Set up remaining required items (axe already obtained from emergency-cabinet in Phase 4)
+  (assert (held? @axe))           ; From emergency-cabinet (Phase 4)
   (move! @boots @player)          ; From brown-basement (Phase 3)
   (set-flag! @boots WEARBIT)      ; Wearing boots
   (set-flag! @gloves WEARBIT)     ; Wearing gloves
@@ -850,9 +979,7 @@
 
   ; Freeze slime curtain with nitrogen (3 pours)
   (do @slime-curtain :pour @nitrogen)
-  (move! @nitrogen @flask)  ; Refill for second pour
   (do @slime-curtain :pour @nitrogen)
-  (move! @nitrogen @flask)  ; Refill for third pour
   (do @slime-curtain :pour @nitrogen)
   (assert (not (in? @slime-curtain @outer-lair)))
 

@@ -100,6 +100,17 @@
                  (str " There is " (if (has-flag @alchemy-trap-door OPENBIT) "an open " "a closed ") "metal plate in the floor.")
                  ""))))))
 
+    ; Start the ritual when entering with the professor
+    :on-enter (fn (?from)
+      (cond
+        ; Professor is here, ritual hasn't started, professor not dead
+        ((and (in? @professor @alchemy-lab)
+              (= tied-up 0)
+              (not prof-dead))
+          '((queue professor-ritual)
+            (success)))
+        (true (success))))
+
     ; Block certain actions during ritual
     :before-action (fn (?verb ?target)
       (cond
@@ -978,12 +989,15 @@
   (def stage8-death "A thing like a tentacle with a demonic face wraps slowly around you. The room recedes into a great distance as you are pulled away. Before you die, you see what the tentacle is a part of.")
   (def stage8-survive "From above, you hear a thunderous noise, a maniacal scream, and then the sound of equipment smashing. Around the trapdoor pours a blinding flash of light. Finally you hear an almost inaudible whimper, then nothing. The light fades.")
 
-  :location @alchemy-lab
+  ; No :location filter - event handles location checks internally
+  ; to allow running in alchemy-lab, under-alchemy-lab, or brick-tunnel
   :on-turn
     (let ((?next-tied-up (+ tied-up 1)))
       (cond
         ; Not in the lab or tunnels - dequeue
+        ; Note: player may be in @pentagram which is inside @alchemy-lab
         ((not (or (= (loc @player) @alchemy-lab)
+                  (= (loc @player) @pentagram)  ; Player in pentagram during ritual
                   (= (loc @player) @under-alchemy-lab)
                   (= (loc @player) @brick-tunnel)))
           '((dequeue professor-ritual)
@@ -1050,6 +1064,7 @@
             (true
               `((set tied-up 0)
                 (set prof-dead true)
+                (move @ring @alchemy-lab)  ; Professor's ring drops to floor
                 (move @professor nil)
                 (clear-flag @alchemy-lab TOUCHBIT)
                 (clear-flag @alchemy-lab ONBIT)

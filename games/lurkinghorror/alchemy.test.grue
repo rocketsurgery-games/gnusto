@@ -419,3 +419,29 @@
     (assert (outcome? blocked))
     (assert (reason? inanimate)))
 )
+
+(test-group "professor ritual event"
+  :setup ((set! prof-dead false)
+          (move! @professor @alchemy-lab)
+          (move! @ring @professor)
+          (set! tied-up 7)
+          (queue! professor-ritual))
+
+  (test "escape survival moves ring to alchemy-lab"
+    :setup ((move! @player @under-alchemy-lab))  ; Escaped through trapdoor
+    (wait)
+    (assert prof-dead)
+    (assert (loc? @professor nil))
+    (assert (loc? @ring @alchemy-lab)))  ; Ring drops to floor
+
+  (test "player in lab dies"
+    :setup ((move! @player @alchemy-lab))
+    (wait)
+    (assert (death? true)))
+
+  (test "player in pentagram dies"
+    :setup ((move! @player @pentagram))
+    (wait)
+    (assert (outcome? blocked))
+    (assert (reason? death)))
+)

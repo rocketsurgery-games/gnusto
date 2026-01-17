@@ -103,10 +103,10 @@
   (assert (has-flag? @bronze-plug RMUNGBIT))
   (assert (loc? @secret-hole @on-dome)))
 
-(test "suicide note is in secret hole"
+(test "note is in secret hole"
   :setup ()
-  (do @suicide-note :examine)
-  (assert (loc? @suicide-note @secret-hole)))
+  (do @note :examine)
+  (assert (loc? @note @secret-hole)))
 
 (test "can rub peach tree"
   :setup ((move! @player @inside-dome))
