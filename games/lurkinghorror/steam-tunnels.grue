@@ -544,9 +544,9 @@
       (cond
         ; Block if rats are at destination OR current location (unless on cable)
         ((and (or (in? @rats ?dest) (in? @rats ?from)) (not on-cable))
-          (blocked :reason rats-blocking
-                   :effects ((set! rats-anger (+ rats-anger 1)))
-                   :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past."))
+          '((set rats-anger (+ rats-anger 1))
+            (blocked :reason rats-blocking
+                     :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past.")))
         (true (success))))))
 
 ; === Dead Rat ===

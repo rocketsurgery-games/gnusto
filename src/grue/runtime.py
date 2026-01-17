@@ -1284,6 +1284,9 @@ class GrueRuntime:
         Returns:
             ActionResult with outcome and applied effects
         """
+        # Capture player location before effects (for on-enter handling)
+        player_loc_before = self.state.objects[self.player_name].location
+
         try:
             # Pass current bindings so ?actor, ?self, etc. get resolved
             # Pass functions so nested expressions like (door-at-elevator) can be evaluated
@@ -1294,6 +1297,20 @@ class GrueRuntime:
                 outcome="error",
                 error=f"Error processing effect list: {e}"
             )
+
+        # Check if player was moved - need to trigger on-enter
+        player_loc_after = self.state.objects[self.player_name].location
+        if player_loc_after != player_loc_before:
+            on_enter_result = self._check_room_on_enter(
+                player_loc_after, player_loc_before, self.player_name
+            )
+            if on_enter_result is not None:
+                # Merge on-enter effects and context
+                if on_enter_result.effects_applied:
+                    outcome.effects_applied.extend(on_enter_result.effects_applied)
+                if on_enter_result.context:
+                    for key, value in on_enter_result.context:
+                        outcome.context[key] = value
 
         # Increment moves for successful actions
         if outcome.outcome == "success":

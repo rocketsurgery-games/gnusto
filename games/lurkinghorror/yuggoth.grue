@@ -196,25 +196,24 @@
 
 (event lurker-appears
   :on-turn
-    (let ((?stage (+ yuggoth-count 1)))
-      (set! yuggoth-count ?stage)
-      (condp = ?stage
-        1 (success
-            :effects ((move! @lurker @platform-room) (queue! lurker-appears))
-            :context ((description "Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens.")))
+    (condp = (+ yuggoth-count 1)
+      1 '((set yuggoth-count 1)
+          (move @lurker @platform-room)
+          (queue lurker-appears)
+          (success :context ((description "Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens."))))
 
-        2 (success
-            :effects ((queue! lurker-appears))
-            :context ((description "The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand.")))
+      2 '((set yuggoth-count 2)
+          (queue lurker-appears)
+          (success :context ((description "The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand."))))
 
-        3 (success
-            :effects ((dequeue! lurker-appears)
-                      (move! @lurker nil)
-                      (set! yuggoth-count 0)
-                      (move! @player @terminal-room))
-            :context ((description "The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.")
-                      (transition "You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand.")))
+      3 '((dequeue lurker-appears)
+          (move @lurker nil)
+          (set yuggoth-count 0)
+          (move @player @terminal-room)
+          (success :context ((description "The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.")
+                            (transition "You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand."))))
 
-        ; Fallback
-        (success :effects ((dequeue! lurker-appears))))))
+      ; Fallback
+      '((dequeue lurker-appears)
+        (success))))
 

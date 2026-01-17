@@ -140,13 +140,12 @@
       (success :message "Tastes like the real thing."))
 
     :drink (fn ()
-      (let ((?siz (prop ?self size)))
-        (cond
-          ((> ?siz 1)
-           (success :effects ((set-prop! ?self size (- ?siz 1)))
-             :message "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now."))
-          (true
-           (blocked :reason empty :message "The bottle is empty.")))))
+      (cond
+        ((> (prop ?self size) 1)
+         '((set-prop ?self size (- (prop ?self size) 1))
+           (success :message "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now.")))
+        (true
+         (blocked :reason empty :message "The bottle is empty."))))
 
     :open (fn ()
       (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))
