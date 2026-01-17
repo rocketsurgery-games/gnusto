@@ -1,65 +1,69 @@
 ; Chair Tests
 
+
 (test-group "chair behaviors"
+
   (test "examine"
-    :action (do @chair :examine)
-    :expect ((outcome? success)))
+    (do @chair :examine)
+    (assert (outcome? success)))
 
   (test "take - blocked when hacker in it"
     :setup ((move! @hacker @chair))
-    :action (do @chair :take)
-    :expect ((outcome? blocked)
-             (reason? in-use)))
+    (do @chair :take)
+    (assert (outcome? blocked))
+    (assert (reason? in-use)))
 
   (test "take - success when hacker not in it"
-    :action (do @chair :take)
-    :expect ((outcome? success)
-             (held? @chair))))
+    (do @chair :take)
+    (assert (outcome? success))
+    (assert (held? @chair)))
+)
 
 (test-group "sit/stand"
+
   (test "sit - success"
-    :action (do @chair :sit)
-    :expect ((outcome? success)
-             (loc? @player @chair)))
+    (do @chair :sit)
+    (assert (outcome? success))
+    (assert (loc? @player @chair)))
 
   (test "sit - blocked when hacker using it"
     :setup ((move! @hacker @chair))
-    :action (do @chair :sit)
-    :expect ((outcome? blocked)
-             (reason? occupied)))
+    (do @chair :sit)
+    (assert (outcome? blocked))
+    (assert (reason? occupied)))
 
   (test "sit - blocked when already sitting"
     :setup ((move! @player @chair))
-    :action (do @chair :sit)
-    :expect ((outcome? blocked)
-             (reason? already-there)))
+    (do @chair :sit)
+    (assert (outcome? blocked))
+    (assert (reason? already-there)))
 
   (test "stand from chair"
     :setup ((move! @player @chair))
-    :action (do @chair :stand)
-    :expect ((outcome? success)
-             (loc? @player @terminal-room))))
+    (do @chair :stand)
+    (assert (outcome? success))
+    (assert (loc? @player @terminal-room)))
+)
 
-; Visibility from inside vehicle (META-LOC pattern)
-; When sitting in chair, player should still see room objects
 (test-group "visibility from inside vehicle"
+
   (test "can see PC while sitting in chair"
     :setup ((move! @player @chair))
-    :action (do @pc :examine)
-    :expect ((outcome? success)))
+    (do @pc :examine)
+    (assert (outcome? success)))
 
   (test "can see hacker while sitting in chair"
-    :setup ((move! @player @chair)
-            (move! @hacker @terminal-room))
-    :action (do @hacker :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @chair) (move! @hacker @terminal-room))
+    (do @hacker :examine)
+    (assert (outcome? success)))
 
   (test "can see chair while sitting in it"
     :setup ((move! @player @chair))
-    :action (do @chair :examine)
-    :expect ((outcome? success)))
+    (do @chair :examine)
+    (assert (outcome? success)))
 
   (test "can interact with room objects while sitting"
     :setup ((move! @player @chair))
-    :action (do @pc :turn-on)
-    :expect ((outcome? success))))
+    (do @pc :turn-on)
+    (assert (outcome? success)))
+)

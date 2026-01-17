@@ -2,246 +2,223 @@
 
 ; === Cave Altar Tests ===
 
+
 (test-group "cave altar objects"
   :setup ((move! @player @cave-altar))
 
   (test "knife can be examined"
-    :action (do @knife :examine)
-    :expect ((outcome? success)
-             (context? message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")))
+    (do @knife :examine)
+    (assert (outcome? success))
+    (assert (context? message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")))
 
   (test "knife can be taken"
-    :action (do @knife :take)
-    :expect ((outcome? success)))
+    (do @knife :take)
+    (assert (outcome? success)))
 
   (test "slab revulsion prevents touching"
-    :action (do @slab :touch)
-    :expect ((outcome? blocked)
-             (reason? revulsion)))
+    (do @slab :touch)
+    (assert (outcome? blocked))
+    (assert (reason? revulsion)))
 
   (test "iron plate can be opened"
-    :action (do @iron-plate :open)
-    :expect ((outcome? success)))
+    (do @iron-plate :open)
+    (assert (outcome? success)))
 
   (test "looking in open pit reveals truth"
     :setup ((set-flag! @iron-plate OPENBIT))
-    :action (do @iron-plate :look-inside)
-    :expect ((outcome? success)
-             (global? seen-pit true))))
+    (do @iron-plate :look-inside)
+    (assert (outcome? success))
+    (assert (global? seen-pit true)))
+)
 
 (test-group "cave altar after seeing pit"
-  :setup ((move! @player @cave-altar)
-          (set! seen-pit true))
+  :setup ((move! @player @cave-altar) (set! seen-pit true))
 
   (test "cannot look in pit after seeing it"
-    :action (do @iron-plate :look-inside)
-    :expect ((outcome? blocked)
-             (reason? traumatized)))
+    (do @iron-plate :look-inside)
+    (assert (outcome? blocked))
+    (assert (reason? traumatized)))
 
   (test "cannot open pit after seeing it"
-    :action (do @iron-plate :open)
-    :expect ((outcome? blocked)
-             (reason? traumatized))))
-
-; === Steam Valve Tests ===
+    (do @iron-plate :open)
+    (assert (outcome? blocked))
+    (assert (reason? traumatized)))
+)
 
 (test-group "pressure valve"
-  :setup ((move! @player @tunnel-east)
-          (clear-flag! @pressure-valve OPENBIT)
-          (clear-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel-east) (clear-flag! @pressure-valve OPENBIT) (clear-flag! @steam-pipes HOT))
 
   (test "valve can be turned on"
-    :action (do @pressure-valve :turn)
-    :expect ((outcome? success)
-             (has-flag? @pressure-valve OPENBIT)
-             (has-flag? @steam-pipes HOT)))
+    (do @pressure-valve :turn)
+    (assert (outcome? success))
+    (assert (has-flag? @pressure-valve OPENBIT))
+    (assert (has-flag? @steam-pipes HOT)))
 
   (test "valve can be turned off"
-    :setup ((set-flag! @pressure-valve OPENBIT)
-            (set-flag! @steam-pipes HOT))
-    :action (do @pressure-valve :turn)
-    :expect ((outcome? success)
-             (not (has-flag? @pressure-valve OPENBIT))
-             (not (has-flag? @steam-pipes HOT)))))
+    :setup ((set-flag! @pressure-valve OPENBIT) (set-flag! @steam-pipes HOT))
+    (do @pressure-valve :turn)
+    (assert (outcome? success))
+    (assert (not (has-flag? @pressure-valve OPENBIT)))
+    (assert (not (has-flag? @steam-pipes HOT))))
+)
 
 (test-group "steam blocking"
-  :setup ((move! @player @tunnel)
-          (set-flag! @pressure-valve OPENBIT)
-          (set-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel) (set-flag! @pressure-valve OPENBIT) (set-flag! @steam-pipes HOT))
 
   (test "steam blocks east passage"
-    :action (do @player :go east)
-    :expect ((outcome? blocked)
-             (reason? scalding))))
+    (do @player :go east)
+    (assert (outcome? blocked))
+    (assert (reason? scalding)))
+)
 
 (test-group "passage when valve closed"
-  :setup ((move! @player @tunnel)
-          (clear-flag! @pressure-valve OPENBIT)
-          (clear-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel) (clear-flag! @pressure-valve OPENBIT) (clear-flag! @steam-pipes HOT))
 
   (test "can pass when valve closed"
-    :action (do @player :go east)
-    :expect ((outcome? success)
-             (loc? @player @tunnel-east))))
-
-; === Brick Wall Tests ===
+    (do @player :go east)
+    (assert (outcome? success))
+    (assert (loc? @player @tunnel-east)))
+)
 
 (test-group "brick wall"
-  :setup ((move! @player @steam-tunnel-east)
-          (set! brick-wall-broken false))
+  :setup ((move! @player @steam-tunnel-east) (set! brick-wall-broken false))
 
   (test "wall can be pushed through"
-    :action (do @brick-wall :push)
-    :expect ((outcome? success)
-             (global? brick-wall-broken true)))
+    (do @brick-wall :push)
+    (assert (outcome? success))
+    (assert (global? brick-wall-broken true)))
 
   (test "wall can be examined"
-    :action (do @brick-wall :examine)
-    :expect ((outcome? success))))
-
-; === Cable Tests ===
+    (do @brick-wall :examine)
+    (assert (outcome? success)))
+)
 
 (test-group "cable climbing"
-  :setup ((move! @player @tunnel)
-          (set! on-cable false))
+  :setup ((move! @player @tunnel) (set! on-cable false))
 
   (test "can climb onto cable"
-    :action (do @cable :climb)
-    :expect ((outcome? success)
-             (global? on-cable true)))
+    (do @cable :climb)
+    (assert (outcome? success))
+    (assert (global? on-cable true)))
 
   (test "can drop from cable"
     :setup ((set! on-cable true))
-    :action (do @cable :climb)
-    :expect ((outcome? success)
-             (global? on-cable false))))
-
-; === Access Hatch Tests ===
+    (do @cable :climb)
+    (assert (outcome? success))
+    (assert (global? on-cable false)))
+)
 
 (test-group "access hatch"
-  :setup ((move! @player @tunnel)
-          (clear-flag! @access-hatch OPENBIT))
+  :setup ((move! @player @tunnel) (clear-flag! @access-hatch OPENBIT))
 
   (test "hatch can be opened"
-    :action (do @access-hatch :open)
-    :expect ((outcome? success)
-             (has-flag? @access-hatch OPENBIT)))
+    (do @access-hatch :open)
+    (assert (outcome? success))
+    (assert (has-flag? @access-hatch OPENBIT)))
 
   (test "hatch can be closed"
     :setup ((set-flag! @access-hatch OPENBIT))
-    :action (do @access-hatch :close)
-    :expect ((outcome? success)
-             (not (has-flag? @access-hatch OPENBIT)))))
-
-; === Navigation Tests ===
+    (do @access-hatch :close)
+    (assert (outcome? success))
+    (assert (not (has-flag? @access-hatch OPENBIT))))
+)
 
 (test-group "tunnel navigation"
   :setup ()
 
   (test "brick tunnel connects north to cave"
     :setup ((move! @player @brick-tunnel))
-    :action (do @player :go north)
-    :expect ((outcome? success)
-             (loc? @player @cave-room)))
+    (do @player :go north)
+    (assert (outcome? success))
+    (assert (loc? @player @cave-room)))
 
   (test "cave room connects down to altar"
     :setup ((move! @player @cave-room))
-    :action (do @player :go down)
-    :expect ((outcome? success)
-             (loc? @player @cave-altar)))
+    (do @player :go down)
+    (assert (outcome? success))
+    (assert (loc? @player @cave-altar)))
 
   (test "cave altar connects up to cave room"
     :setup ((move! @player @cave-altar))
-    :action (do @player :go up)
-    :expect ((outcome? success)
-             (loc? @player @cave-room))))
-
-; === Rats Tests ===
+    (do @player :go up)
+    (assert (outcome? success))
+    (assert (loc? @player @cave-room)))
+)
 
 (test-group "rats blocking"
-  :setup ((move! @player @tunnel-west)
-          (move! @rats @tunnel-west)
-          (set! on-cable false))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set! on-cable false))
 
   (test "rats block passage when present"
-    :action (go :direction east)
-    :expect ((outcome? blocked)
-             (reason? rats-blocking)))
+    (go :direction east)
+    (assert (outcome? blocked))
+    (assert (reason? rats-blocking)))
 
   (test "can examine rats"
-    :action (do @rats :examine)
-    :expect ((outcome? success))))
+    (do @rats :examine)
+    (assert (outcome? success)))
+)
 
 (test-group "throw food at rats"
-  :setup ((move! @player @tunnel-west)
-          (move! @rats @tunnel-west)
-          (move! @chinese-food @player))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (move! @chinese-food @player))
 
   (test "can throw food at rats"
-    :action (do @rats :give @chinese-food)
-    :expect ((outcome? success)
-             (loc? @chinese-food nil))))
+    (do @rats :give @chinese-food)
+    (assert (outcome? success))
+    (assert (loc? @chinese-food nil)))
+)
 
 (test-group "steam kills rats"
-  :setup ((move! @player @tunnel-west)
-          (move! @rats @tunnel-west)
-          (clear-flag! @pressure-valve OPENBIT)
-          (queue! rats-go-away))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (clear-flag! @pressure-valve OPENBIT) (queue! rats-go-away))
 
   (test "valve kills rats and spawns dead rat"
     :setup ((set-flag! @pressure-valve OPENBIT))
-    :action (process-events)
-    :expect ((outcome? success)
-             (loc? @rats nil)
-             (loc? @dead-rat @tunnel-west))))
-
-; === Dead Rat Tests ===
+    (process-events)
+    (assert (outcome? success))
+    (assert (loc? @rats nil))
+    (assert (loc? @dead-rat @tunnel-west)))
+)
 
 (test-group "dead rat behaviors"
-  :setup ((move! @player @tunnel-west)
-          (move! @dead-rat @tunnel-west)
-          (clear-flag! @dead-rat TOUCHBIT))
+  :setup ((move! @player @tunnel-west) (move! @dead-rat @tunnel-west) (clear-flag! @dead-rat TOUCHBIT))
 
   (test "can examine dead rat"
-    :action (do @dead-rat :examine)
-    :expect ((outcome? success)))
+    (do @dead-rat :examine)
+    (assert (outcome? success)))
 
   (test "first take shows lice"
-    :action (do @dead-rat :take)
-    :expect ((outcome? success)
-             (has-flag? @dead-rat TOUCHBIT)
-             (held? @dead-rat)))
+    (do @dead-rat :take)
+    (assert (outcome? success))
+    (assert (has-flag? @dead-rat TOUCHBIT))
+    (assert (held? @dead-rat)))
 
   (test "can step on dead rat"
     :setup ((move! @dead-rat @tunnel-west))
-    :action (do @dead-rat :step-on)
-    :expect ((outcome? success)))
+    (do @dead-rat :step-on)
+    (assert (outcome? success)))
 
   (test "can try to eat dead rat"
     :setup ((move! @dead-rat @player))
-    :action (do @dead-rat :eat)
-    :expect ((outcome? success))))
+    (do @dead-rat :eat)
+    (assert (outcome? success)))
+)
 
 (test-group "rat symbol"
-  :setup ((move! @player @tunnel-west)
-          (move! @dead-rat @player))
+  :setup ((move! @player @tunnel-west) (move! @dead-rat @player))
 
   (test "can examine rat symbol"
-    :action (do @rat-symbol :examine)
-    :expect ((outcome? success)))
+    (do @rat-symbol :examine)
+    (assert (outcome? success)))
 
   (test "can read rat symbol"
-    :action (do @rat-symbol :read)
-    :expect ((outcome? success))))
+    (do @rat-symbol :read)
+    (assert (outcome? success)))
+)
 
 (test-group "dead rat in elixir"
-  :setup ((move! @player @alchemy-lab)
-          (set-flag! @alchemy-lab ONBIT)
-          (move! @dead-rat @player)
-          (move! @elixir @vat))
+  :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (move! @dead-rat @player) (move! @elixir @vat))
 
   (test "dead rat in elixir comes to life"
-    :action (do @vat :put @dead-rat)
-    :expect ((outcome? success)
-             (loc? @dead-rat nil))))
-
+    (do @vat :put @dead-rat)
+    (assert (outcome? success))
+    (assert (loc? @dead-rat nil)))
+)

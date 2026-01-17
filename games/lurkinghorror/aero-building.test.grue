@@ -2,129 +2,119 @@
 
 ; === Room Connections ===
 
+
 (test "aero-lobby connects to inf-1 south"
   :setup ((move! @player @aero-lobby))
-  :action (go :direction south)
-  :expect ((outcome? success)
-           (player-at? @inf-1)))
+  (go :direction south)
+  (assert (outcome? success))
+  (assert (player-at? @inf-1)))
 
 (test "aero-lobby connects to aero-stairs down"
   :setup ((move! @player @aero-lobby))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @aero-stairs)))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @aero-stairs)))
 
 (test "aero-stairs connects to aero-lobby up"
   :setup ((move! @player @aero-stairs))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @aero-lobby)))
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @aero-lobby)))
 
 (test "aero-stairs connects to aero-basement east"
   :setup ((move! @player @aero-stairs))
-  :action (go :direction east)
-  :expect ((outcome? success)
-           (player-at? @aero-basement)))
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (player-at? @aero-basement)))
 
 (test "aero-stairs connects to sub-basement down"
   :setup ((move! @player @aero-stairs))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @sub-basement)))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @sub-basement)))
 
 (test "aero-basement connects to aero-stairs west"
   :setup ((move! @player @aero-basement))
-  :action (go :direction west)
-  :expect ((outcome? success)
-           (player-at? @aero-stairs)))
+  (go :direction west)
+  (assert (outcome? success))
+  (assert (player-at? @aero-stairs)))
 
 (test "aero-basement connects to cs-basement east"
   :setup ((move! @player @aero-basement))
-  :action (go :direction east)
-  :expect ((outcome? success)
-           (player-at? @cs-basement)))
-
-; === Tomb Squeeze Barrier ===
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (player-at? @cs-basement)))
 
 (test-group "tomb squeeze barrier"
   :setup ((move! @player @sub-basement))
 
   (test "can enter tomb through narrow crack"
-    :action (go :direction nw)
-    :expect ((outcome? success)
-             (player-at? @tomb)))
+    (go :direction nw)
+    (assert (outcome? success))
+    (assert (player-at? @tomb)))
 
   (test "can exit tomb through narrow crack"
     :setup ((move! @player @tomb))
-    :action (go :direction se)
-    :expect ((outcome? success)
-             (player-at? @sub-basement))))
-
-; === Graffiti ===
+    (go :direction se)
+    (assert (outcome? success))
+    (assert (player-at? @sub-basement)))
+)
 
 (test "graffiti in tomb reads correctly"
   :setup ((move! @player @tomb))
-  :action (do @graffiti :examine)
-  :expect ((outcome? success)
-           (context? message "It reads \"The Tomb of the Unknown Tool.\"")))
-
-; === Padlock Puzzle ===
+  (do @graffiti :examine)
+  (assert (outcome? success))
+  (assert (context? message "It reads \"The Tomb of the Unknown Tool.\"")))
 
 (test-group "padlock puzzle"
-  :setup ((move! @player @tomb)
-          (set! padlock-on @access-hatch)
-          (set-flag! @padlock LOCKED))
+  :setup ((move! @player @tomb) (set! padlock-on @access-hatch) (set-flag! @padlock LOCKED))
 
   (test "padlock starts locked to access hatch"
-    :action (do @padlock :examine)
-    :expect ((outcome? success)))
+    (do @padlock :examine)
+    (assert (outcome? success)))
 
   (test "cannot take padlock while attached"
-    :action (do @padlock :take)
-    :expect ((outcome? blocked)
-             (reason? locked)))
+    (do @padlock :take)
+    (assert (outcome? blocked))
+    (assert (reason? locked)))
 
   (test "cannot go down through locked hatch"
-    :action (go :direction down)
-    :expect ((outcome? blocked)
-             (reason? locked)))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (reason? locked)))
 
   (test "cutting padlock without bolt cutters fails"
-    :action (do @padlock :cut)
-    :expect ((outcome? blocked)
-             (reason? need-tool)))
+    (do @padlock :cut)
+    (assert (outcome? blocked))
+    (assert (reason? need-tool)))
 
   (test "cutting padlock with bolt cutters succeeds"
     :setup ((move! @bolt-cutters @player))
-    :action (do @padlock :cut)
-    :expect ((outcome? success)
-             (no-flag? @padlock LOCKED))))
+    (do @padlock :cut)
+    (assert (outcome? success))
+    (assert (no-flag? @padlock LOCKED)))
+)
 
 (test-group "hatch after padlock removed"
-  :setup ((move! @player @tomb)
-          (set! padlock-on nil)
-          (clear-flag! @padlock LOCKED))
+  :setup ((move! @player @tomb) (set! padlock-on nil) (clear-flag! @padlock LOCKED))
 
   (test "can open access hatch after padlock removed"
-    :action (do @access-hatch :open)
-    :expect ((outcome? success)
-             (has-flag? @access-hatch OPENBIT)))
+    (do @access-hatch :open)
+    (assert (outcome? success))
+    (assert (has-flag? @access-hatch OPENBIT)))
 
   (test "can go down through open hatch"
     :setup ((set-flag! @access-hatch OPENBIT))
-    :action (go :direction down)
-    :expect ((outcome? success)
-             (player-at? @tunnel))))
-
-; === Tunnel to Tomb ===
+    (go :direction down)
+    (assert (outcome? success))
+    (assert (player-at? @tunnel)))
+)
 
 (test-group "tunnel to tomb via ladder"
-  :setup ((move! @player @tunnel)
-          (set! padlock-on nil)
-          (clear-flag! @padlock LOCKED)
-          (set-flag! @access-hatch OPENBIT))
+  :setup ((move! @player @tunnel) (set! padlock-on nil) (clear-flag! @padlock LOCKED) (set-flag! @access-hatch OPENBIT))
 
   (test "can go up from tunnel to tomb"
-    :action (go :direction up)
-    :expect ((outcome? success)
-             (player-at? @tomb))))
+    (go :direction up)
+    (assert (outcome? success))
+    (assert (player-at? @tomb)))
+)

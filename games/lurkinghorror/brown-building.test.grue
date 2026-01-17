@@ -3,171 +3,130 @@
 
 ; === Room Connectivity Tests ===
 
+
 (test "brown-building connects to courtyard"
   :setup ((move! @player @brown-building))
-  :action (go :direction south)
-  :expect ((outcome? success)
-           (player-at? @courtyard)))
+  (go :direction south)
+  (assert (outcome? success))
+  (assert (player-at? @courtyard)))
 
 (test "brown-building connects to top-floor via stairs"
   :setup ((move! @player @brown-building))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @brown-top-floor)))
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @brown-top-floor)))
 
 (test "roof-door blocks access when locked"
-  :setup ((move! @player @brown-top-floor)
-          (set-flag! @roof-door LOCKED)
-          (clear-flag! @roof-door OPENBIT))
-  :action (go :direction west)
-  :expect ((outcome? blocked)
-           (reason? locked)))
+  :setup ((move! @player @brown-top-floor) (set-flag! @roof-door LOCKED) (clear-flag! @roof-door OPENBIT))
+  (go :direction west)
+  (assert (outcome? blocked))
+  (assert (reason? locked)))
 
 (test "can unlock roof-door with master key"
-  :setup ((move! @player @brown-top-floor)
-          (set-flag! @roof-door LOCKED)
-          (move! @master-key @player))
-  :action (do @roof-door :unlock @master-key)
-  :expect ((outcome? success)
-           (no-flag? @roof-door LOCKED)))
+  :setup ((move! @player @brown-top-floor) (set-flag! @roof-door LOCKED) (move! @master-key @player))
+  (do @roof-door :unlock @master-key)
+  (assert (outcome? success))
+  (assert (no-flag? @roof-door LOCKED)))
 
 (test "can access roof after unlocking door"
-  :setup ((move! @player @brown-top-floor)
-          (clear-flag! @roof-door LOCKED)
-          (set-flag! @roof-door OPENBIT))
-  :action (go :direction west)
-  :expect ((outcome? success)
-           (player-at? @brown-roof)))
-
-; === Hand Puzzle Tests ===
+  :setup ((move! @player @brown-top-floor) (clear-flag! @roof-door LOCKED) (set-flag! @roof-door OPENBIT))
+  (go :direction west)
+  (assert (outcome? success))
+  (assert (player-at? @brown-roof)))
 
 (test "tub search reveals mummified hand"
-  :setup ((move! @player @inside-dome)
-          (clear-flag! @mummified-hand TOUCHBIT)
-          (move! @mummified-hand nil))
-  :action (do @tub :search)
-  :expect ((outcome? success)
-           (has-flag? @mummified-hand TOUCHBIT)
-           (loc? @mummified-hand @tub)))
+  :setup ((move! @player @inside-dome) (clear-flag! @mummified-hand TOUCHBIT) (move! @mummified-hand nil))
+  (do @tub :search)
+  (assert (outcome? success))
+  (assert (has-flag? @mummified-hand TOUCHBIT))
+  (assert (loc? @mummified-hand @tub)))
 
 (test "second search finds nothing"
-  :setup ((move! @player @inside-dome)
-          (set-flag! @mummified-hand TOUCHBIT))
-  :action (do @tub :search)
-  :expect ((outcome? success)))
+  :setup ((move! @player @inside-dome) (set-flag! @mummified-hand TOUCHBIT))
+  (do @tub :search)
+  (assert (outcome? success)))
 
 (test "hand has tattoo"
   :setup ((move! @mummified-hand @player))
-  :action (do @tattoo :examine)
-  :expect ((loc? @tattoo @mummified-hand)))
-
-; === Flier Creature Tests ===
+  (do @tattoo :examine)
+  (assert (loc? @tattoo @mummified-hand)))
 
 (test "flier can be driven away with smooth-stone"
-  :setup ((move! @player @brown-roof)
-          (move! @flier @brown-roof)
-          (move! @smooth-stone @player))
-  :action (do @flier :attack @smooth-stone)
-  :expect ((outcome? success)
-           (loc? @flier nil)))
+  :setup ((move! @player @brown-roof) (move! @flier @brown-roof) (move! @smooth-stone @player))
+  (do @flier :attack @smooth-stone)
+  (assert (outcome? success))
+  (assert (loc? @flier nil)))
 
 (test "flier eats hand when given"
-  :setup ((move! @player @inside-dome)
-          (move! @flier @inside-dome)
-          (move! @mummified-hand @player))
-  :action (do @flier :give @mummified-hand)
-  :expect ((outcome? success)
-           (loc? @mummified-hand nil)
-           (loc? @flier nil)))
+  :setup ((move! @player @inside-dome) (move! @flier @inside-dome) (move! @mummified-hand @player))
+  (do @flier :give @mummified-hand)
+  (assert (outcome? success))
+  (assert (loc? @mummified-hand nil))
+  (assert (loc? @flier nil)))
 
 (test "flier blocks exit from dome"
-  :setup ((move! @player @inside-dome)
-          (move! @flier @inside-dome))
-  :action (go :direction out)
-  :expect ((outcome? blocked)
-           (reason? flier-blocks)))
-
-; === Tentacle Climb Tests ===
+  :setup ((move! @player @inside-dome) (move! @flier @inside-dome))
+  (go :direction out)
+  (assert (outcome? blocked))
+  (assert (reason? flier-blocks)))
 
 (test "cannot climb tentacle without gloves - burns"
-  :setup ((move! @player @great-dome)
-          (clear-flag! @tentacle INVISIBLE)
-          (clear-flag! @gloves WEARBIT))
-  :action (go :direction up)
-  :expect ((outcome? blocked)
-           (reason? burns)))
+  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (clear-flag! @gloves WEARBIT))
+  (go :direction up)
+  (assert (outcome? blocked))
+  (assert (reason? burns)))
 
 (test "can climb tentacle with gloves"
-  :setup ((move! @player @great-dome)
-          (clear-flag! @tentacle INVISIBLE)
-          (set-flag! @gloves WEARBIT))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @top-of-dome)))
+  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (set-flag! @gloves WEARBIT))
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @top-of-dome)))
 
 (test "creature flees when reaching top-of-dome"
-  :setup ((move! @player @great-dome)
-          (clear-flag! @tentacle INVISIBLE)
-          (clear-flag! @dome-ladder TOUCHBIT)
-          (move! @dome-ladder nil)
-          (move! @gloves @player)
-          (set-flag! @gloves WORNBIT))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @top-of-dome)
-           (has-flag? @tentacle INVISIBLE)
-           (has-flag? @dome-ladder TOUCHBIT)
-           (loc? @dome-ladder @top-of-dome)))
-
-; === Bronze Plug Puzzle Tests ===
+  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (clear-flag! @dome-ladder TOUCHBIT) (move! @dome-ladder nil) (move! @gloves @player) (set-flag! @gloves WORNBIT))
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @top-of-dome))
+  (assert (has-flag? @tentacle INVISIBLE))
+  (assert (has-flag? @dome-ladder TOUCHBIT))
+  (assert (loc? @dome-ladder @top-of-dome)))
 
 (test "bronze plug starts in socket"
   :setup ((clear-flag! @bronze-plug RMUNGBIT))
-  :action (do @bronze-plug :examine)
-  :expect ((loc? @bronze-plug @on-dome)))
+  (do @bronze-plug :examine)
+  (assert (loc? @bronze-plug @on-dome)))
 
 (test "prying plug reveals secret hole"
-  :setup ((move! @player @on-dome)
-          (clear-flag! @bronze-plug RMUNGBIT)
-          (move! @secret-hole nil))
-  :action (do @bronze-plug :pry nil)
-  :expect ((outcome? success)
-           (has-flag? @bronze-plug RMUNGBIT)
-           (loc? @secret-hole @on-dome)))
+  :setup ((move! @player @on-dome) (clear-flag! @bronze-plug RMUNGBIT) (move! @secret-hole nil))
+  (do @bronze-plug :pry nil)
+  (assert (outcome? success))
+  (assert (has-flag? @bronze-plug RMUNGBIT))
+  (assert (loc? @secret-hole @on-dome)))
 
 (test "suicide note is in secret hole"
   :setup ()
-  :action (do @suicide-note :examine)
-  :expect ((loc? @suicide-note @secret-hole)))
-
-; === Peach Tree Additional Behaviors ===
+  (do @suicide-note :examine)
+  (assert (loc? @suicide-note @secret-hole)))
 
 (test "can rub peach tree"
   :setup ((move! @player @inside-dome))
-  :action (do @peach-tree :rub)
-  :expect ((outcome? success)))
+  (do @peach-tree :rub)
+  (assert (outcome? success)))
 
 (test "can't attack peach tree"
-  :setup ((move! @player @inside-dome)
-          (move! @axe @player))
-  :action (do @peach-tree :attack @axe)
-  :expect ((outcome? blocked)
-           (reason? vandalism)))
-
-; === Flier Additional Behaviors ===
+  :setup ((move! @player @inside-dome) (move! @axe @player))
+  (do @peach-tree :attack @axe)
+  (assert (outcome? blocked))
+  (assert (reason? vandalism)))
 
 (test "giving smooth-stone to flier makes it edge away"
-  :setup ((move! @player @brown-roof)
-          (move! @flier @brown-roof)
-          (move! @smooth-stone @player))
-  :action (do @flier :give @smooth-stone)
-  :expect ((outcome? success)
-           (loc? @flier @brown-roof)))  ; Still there, just edged away
+  :setup ((move! @player @brown-roof) (move! @flier @brown-roof) (move! @smooth-stone @player))
+  (do @flier :give @smooth-stone)
+  (assert (outcome? success))
+  (assert (loc? @flier @brown-roof)))
 
 (test "throwing non-stone item at flier dodges"
-  :setup ((move! @player @brown-roof)
-          (move! @flier @brown-roof)
-          (move! @carton @player))
-  :action (do @flier :throw @carton)
-  :expect ((outcome? success)
-           (loc? @carton @brown-roof)))
+  :setup ((move! @player @brown-roof) (move! @flier @brown-roof) (move! @carton @player))
+  (do @flier :throw @carton)
+  (assert (outcome? success))
+  (assert (loc? @carton @brown-roof)))

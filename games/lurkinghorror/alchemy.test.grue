@@ -5,519 +5,417 @@
 ; ROOM CONNECTIVITY
 ; =============================================================================
 
+
+
 (test-group "room connectivity"
+
   (test "inf-5 connects to chemistry-bldg"
     :setup ((move! @player @inf-5))
-    :action (go :direction south)
-    :expect ((outcome? success)
-             (player-at? @chemistry-bldg)))
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @chemistry-bldg)))
 
   (test "chemistry-bldg connects to inf-5"
     :setup ((move! @player @chemistry-bldg))
-    :action (go :direction north)
-    :expect ((outcome? success)
-             (player-at? @inf-5)))
+    (go :direction north)
+    (assert (outcome? success))
+    (assert (player-at? @inf-5)))
 
   (test "alchemy-dept connects to alchemy-lab when door open"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor nil)  ; Remove professor so we can enter freely
-            (set! prof-dead true))
-    :action (go :direction south)
-    :expect ((outcome? success)
-             (player-at? @alchemy-lab)))
+    :setup ((move! @player @alchemy-dept) (move! @professor nil) (set! prof-dead true))
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @alchemy-lab)))
 
   (test "under-alchemy-lab connects to brick-tunnel"
     :setup ((move! @player @under-alchemy-lab))
-    :action (go :direction north)
-    :expect ((outcome? success)
-             (player-at? @brick-tunnel)))
+    (go :direction north)
+    (assert (outcome? success))
+    (assert (player-at? @brick-tunnel)))
 
   (test "brick-tunnel connects back to under-alchemy-lab"
     :setup ((move! @player @brick-tunnel))
-    :action (go :direction south)
-    :expect ((outcome? success)
-             (player-at? @under-alchemy-lab))))
-
-; =============================================================================
-; DOOR MECHANICS
-; =============================================================================
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @under-alchemy-lab)))
+)
 
 (test-group "alchemy door mechanics"
+
   (test "door is locked by default"
     :setup ((move! @player @chemistry-bldg))
-    :action (go :direction south)
-    :expect ((outcome? blocked)
-             (reason? locked)))
+    (go :direction south)
+    (assert (outcome? blocked))
+    (assert (reason? locked)))
 
   (test "can read department of alchemy on door"
     :setup ((move! @player @chemistry-bldg))
-    :action (do @alchemy-door :read)
-    :expect ((outcome? success)))
+    (do @alchemy-door :read)
+    (assert (outcome? success)))
 
   (test "can examine door from chemistry bldg"
     :setup ((move! @player @chemistry-bldg))
-    :action (do @alchemy-door :examine)
-    :expect ((outcome? success)))
+    (do @alchemy-door :examine)
+    (assert (outcome? success)))
 
   (test "wrong key doesn't work"
-    :setup ((move! @player @chemistry-bldg)
-            (move! @key-1 @player))
-    :action (do @alchemy-door :unlock @key-1)
-    :expect ((outcome? blocked)
-             (reason? wrong-key))))
+    :setup ((move! @player @chemistry-bldg) (move! @key-1 @player))
+    (do @alchemy-door :unlock @key-1)
+    (assert (outcome? blocked))
+    (assert (reason? wrong-key)))
+)
 
-(test-sequence "knock on door"
-  (step :setup ((move! @player @chemistry-bldg)
-                (move! @professor @alchemy-dept)
-                (set! prof-dead false)
-                (set! left-alchemy false))
-        :action (do @alchemy-door :knock)
-        :expect ((outcome? success)
-                 (queued? answer-door)))
-  (step :action (process-events)
-        :expect ((outcome? success)))
-  (step :action (process-events)
-        :expect ((outcome? success)))
-  ; After 3 turns, door opens
-  (step :action (process-events)
-        :expect ((outcome? success)
-                 (player-at? @alchemy-dept))))
-
-; =============================================================================
-; PROFESSOR INTERACTIONS
-; =============================================================================
+(test "knock on door"
+  :setup ((move! @player @chemistry-bldg) (move! @professor @alchemy-dept) (set! prof-dead false) (set! left-alchemy false))
+  (do @alchemy-door :knock)
+  (assert (outcome? success))
+  (assert (queued? answer-door))
+  (process-events)
+  (assert (outcome? success))
+  (process-events)
+  (assert (outcome? success))
+  (process-events)
+  (assert (outcome? success))
+  (assert (player-at? @alchemy-dept)))
 
 (test-group "professor interactions"
+
   (test "can examine professor"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (set! prof-dead false))
-    :action (do @professor :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false))
+    (do @professor :examine)
+    (assert (outcome? success)))
 
   (test "professor blocks lab entry without note"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (set! prof-dead false)
-            (set! prof-seen-note false))
-    :action (go :direction south)
-    :expect ((outcome? blocked)
-             (reason? professor-blocks)))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-seen-note false))
+    (go :direction south)
+    (assert (outcome? blocked))
+    (assert (reason? professor-blocks)))
 
   (test "showing note to professor sets flag"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (move! @note @player)
-            (set! prof-dead false)
-            (set! prof-seen-note false))
-    :action (do @professor :show @note)
-    :expect ((outcome? success)
-             (global? prof-seen-note true)
-             (global? prof-mad true)))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (move! @note @player) (set! prof-dead false) (set! prof-seen-note false))
+    (do @professor :show @note)
+    (assert (outcome? success))
+    (assert (global? prof-seen-note true))
+    (assert (global? prof-mad true)))
 
   (test "professor allows lab entry after seeing note"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (set! prof-dead false)
-            (set! prof-seen-note true))
-    :action (go :direction south)
-    :expect ((outcome? success)
-             (player-at? @alchemy-lab)
-             (loc? @professor @alchemy-lab)))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-seen-note true))
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @alchemy-lab))
+    (assert (loc? @professor @alchemy-lab)))
 
   (test "can ask professor about lovecraft computer"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (set! prof-dead false))
-    :action (do @professor :ask @lovecraft)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false))
+    (do @professor :ask @lovecraft)
+    (assert (outcome? success)))
 
   (test "attacking professor makes him mad"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept)
-            (set! prof-dead false)
-            (set! prof-mad false))
-    :action (do @professor :attack nil)
-    :expect ((outcome? success)
-             (global? prof-mad true))))
-
-; =============================================================================
-; SIGN-UP SHEET
-; =============================================================================
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-mad false))
+    (do @professor :attack nil)
+    (assert (outcome? success))
+    (assert (global? prof-mad true)))
+)
 
 (test-group "sign-up sheet"
+
   (test "can examine sign-up sheet"
     :setup ((move! @player @alchemy-dept))
-    :action (do @signup :examine)
-    :expect ((outcome? success)))
+    (do @signup :examine)
+    (assert (outcome? success)))
 
   (test "can't take sign-up sheet when professor present"
-    :setup ((move! @player @alchemy-dept)
-            (move! @professor @alchemy-dept))
-    :action (do @signup :take)
-    :expect ((outcome? blocked)
-             (reason? professor-prevents))))
-
-; =============================================================================
-; LAB BENCH AND TRAPDOOR
-; =============================================================================
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept))
+    (do @signup :take)
+    (assert (outcome? blocked))
+    (assert (reason? professor-prevents)))
+)
 
 (test-group "lab bench and trapdoor"
+
   (test "can examine lab bench"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! prof-dead true))
-    :action (do @lab-bench :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! prof-dead true))
+    (do @lab-bench :examine)
+    (assert (outcome? success)))
 
   (test "can look under lab bench"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved false))
-    :action (do @lab-bench :look-under)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    (do @lab-bench :look-under)
+    (assert (outcome? success)))
 
   (test "moving bench reveals trapdoor"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved false))
-    :action (do @lab-bench :move)
-    :expect ((outcome? success)
-             (global? lab-bench-moved true)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    (do @lab-bench :move)
+    (assert (outcome? success))
+    (assert (global? lab-bench-moved true)))
 
   (test "can't go down without moving bench"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved false))
-    :action (go :direction down)
-    :expect ((outcome? blocked)
-             (reason? no-way-down)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (reason? no-way-down)))
 
   (test "can't go down with closed trapdoor"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved true)
-            (clear-flag! @alchemy-trap-door OPENBIT))
-    :action (go :direction down)
-    :expect ((outcome? blocked)
-             (reason? trapdoor-closed)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (clear-flag! @alchemy-trap-door OPENBIT))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (reason? trapdoor-closed)))
 
   (test "can open trapdoor after moving bench"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved true)
-            (clear-flag! @alchemy-trap-door OPENBIT))
-    :action (do @alchemy-trap-door :open)
-    :expect ((outcome? success)
-             (has-flag? @alchemy-trap-door OPENBIT)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (clear-flag! @alchemy-trap-door OPENBIT))
+    (do @alchemy-trap-door :open)
+    (assert (outcome? success))
+    (assert (has-flag? @alchemy-trap-door OPENBIT)))
 
   (test "can go down through open trapdoor"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! lab-bench-moved true)
-            (set-flag! @alchemy-trap-door OPENBIT))
-    :action (go :direction down)
-    :expect ((outcome? success)
-             (player-at? @under-alchemy-lab)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (set-flag! @alchemy-trap-door OPENBIT))
+    (go :direction down)
+    (assert (outcome? success))
+    (assert (player-at? @under-alchemy-lab)))
 
   (test "can go up through open trapdoor"
-    :setup ((move! @player @under-alchemy-lab)
-            (set! lab-bench-moved true)
-            (set-flag! @alchemy-trap-door OPENBIT))
-    :action (go :direction up)
-    :expect ((outcome? success)
-             (player-at? @alchemy-lab))))
-
-; =============================================================================
-; VAT AND ELIXIR
-; =============================================================================
+    :setup ((move! @player @under-alchemy-lab) (set! lab-bench-moved true) (set-flag! @alchemy-trap-door OPENBIT))
+    (go :direction up)
+    (assert (outcome? success))
+    (assert (player-at? @alchemy-lab)))
+)
 
 (test-group "vat and elixir"
+
   (test "can examine vat"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @vat :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @vat :examine)
+    (assert (outcome? success)))
 
   (test "can read vat label"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @vat :read)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @vat :read)
+    (assert (outcome? success)))
 
   (test "can examine elixir"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @elixir :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @elixir :examine)
+    (assert (outcome? success)))
 
   (test "can't take elixir"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @elixir :take)
-    :expect ((outcome? blocked)
-             (reason? liquid)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @elixir :take)
+    (assert (outcome? blocked))
+    (assert (reason? liquid)))
 
   (test "can't drink elixir"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @elixir :drink)
-    :expect ((outcome? blocked)
-             (reason? too-thick))))
-
-; =============================================================================
-; PENTAGRAM
-; =============================================================================
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @elixir :drink)
+    (assert (outcome? blocked))
+    (assert (reason? too-thick)))
+)
 
 (test-group "pentagram"
+
   (test "can examine pentagram"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @pentagram :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @pentagram :examine)
+    (assert (outcome? success)))
 
   (test "can enter pentagram"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (set! tied-up 0))
-    :action (do @pentagram :enter)
-    :expect ((outcome? success)
-             (loc? @player @pentagram)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! tied-up 0))
+    (do @pentagram :enter)
+    (assert (outcome? success))
+    (assert (loc? @player @pentagram)))
 
   (test "can exit pentagram when not tied up"
-    :setup ((move! @player @pentagram)
-            (set! tied-up 0))
-    :action (do @pentagram :exit)
-    :expect ((outcome? success)
-             (loc? @player @alchemy-lab)))
+    :setup ((move! @player @pentagram) (set! tied-up 0))
+    (do @pentagram :exit)
+    (assert (outcome? success))
+    (assert (loc? @player @alchemy-lab)))
 
   (test "can't exit pentagram when tied up without scuffing"
-    :setup ((move! @player @pentagram)
-            (set! tied-up 3)
-            (clear-flag! @pentagram RMUNGBIT))
-    :action (do @pentagram :exit)
-    :expect ((outcome? blocked)
-             (reason? magical-barrier)))
+    :setup ((move! @player @pentagram) (set! tied-up 3) (clear-flag! @pentagram RMUNGBIT))
+    (do @pentagram :exit)
+    (assert (outcome? blocked))
+    (assert (reason? magical-barrier)))
 
   (test "can scuff pentagram with knife"
-    :setup ((move! @player @pentagram)
-            (move! @knife @player)
-            (set! tied-up 3)
-            (clear-flag! @pentagram RMUNGBIT))
-    :action (do @pentagram :rub @knife)
-    :expect ((outcome? success)
-             (has-flag? @pentagram RMUNGBIT)))
+    :setup ((move! @player @pentagram) (move! @knife @player) (set! tied-up 3) (clear-flag! @pentagram RMUNGBIT))
+    (do @pentagram :rub @knife)
+    (assert (outcome? success))
+    (assert (has-flag? @pentagram RMUNGBIT)))
 
   (test "can exit pentagram after scuffing"
-    :setup ((move! @player @pentagram)
-            (set! tied-up 3)
-            (set-flag! @pentagram RMUNGBIT))
-    :action (do @pentagram :exit)
-    :expect ((outcome? success)
-             (loc? @player @alchemy-lab))))
-
-; =============================================================================
-; FLASK AND NITROGEN
-; =============================================================================
+    :setup ((move! @player @pentagram) (set! tied-up 3) (set-flag! @pentagram RMUNGBIT))
+    (do @pentagram :exit)
+    (assert (outcome? success))
+    (assert (loc? @player @alchemy-lab)))
+)
 
 (test-group "flask and nitrogen"
+
   (test "flask is in temporary-lab"
     :setup ((move! @player @temporary-lab))
-    :action (do @flask :examine)
-    :expect ((outcome? success)
-             (loc? @flask @temporary-lab)))
+    (do @flask :examine)
+    (assert (outcome? success))
+    (assert (loc? @flask @temporary-lab)))
 
   (test "nitrogen is in flask"
     :setup ((move! @player @temporary-lab))
-    :action (do @nitrogen :examine)
-    :expect ((outcome? success)
-             (loc? @nitrogen @flask)))
+    (do @nitrogen :examine)
+    (assert (outcome? success))
+    (assert (loc? @nitrogen @flask)))
 
   (test "can take flask"
     :setup ((move! @player @temporary-lab))
-    :action (do @flask :take)
-    :expect ((outcome? success)
-             (held? @flask)))
+    (do @flask :take)
+    (assert (outcome? success))
+    (assert (held? @flask)))
 
   (test "can't take nitrogen directly"
     :setup ((move! @player @temporary-lab))
-    :action (do @nitrogen :take)
-    :expect ((outcome? blocked)
-             (reason? dangerous)))
+    (do @nitrogen :take)
+    (assert (outcome? blocked))
+    (assert (reason? dangerous)))
 
   (test "opening flask creates mist"
-    :setup ((move! @player @temporary-lab)
-            (clear-flag! @flask OPENBIT)
-            (move! @nitrogen @flask))
-    :action (do @flask :open)
-    :expect ((outcome? success)
-             (has-flag? @flask OPENBIT)
-             (loc? @mist @temporary-lab)
-             (queued? nitrogen-evaporates)))
+    :setup ((move! @player @temporary-lab) (clear-flag! @flask OPENBIT) (move! @nitrogen @flask))
+    (do @flask :open)
+    (assert (outcome? success))
+    (assert (has-flag? @flask OPENBIT))
+    (assert (loc? @mist @temporary-lab))
+    (assert (queued? nitrogen-evaporates)))
 
   (test "closing flask schedules mist dissipation"
-    :setup ((move! @player @temporary-lab)
-            (set-flag! @flask OPENBIT)
-            (queue! nitrogen-evaporates))
-    :action (do @flask :close)
-    :expect ((outcome? success)
-             (not-queued? nitrogen-evaporates)
-             (queued? mist-dissipates))))
-
-; =============================================================================
-; LOVECRAFT COMPUTER
-; =============================================================================
+    :setup ((move! @player @temporary-lab) (set-flag! @flask OPENBIT) (queue! nitrogen-evaporates))
+    (do @flask :close)
+    (assert (outcome? success))
+    (assert (not-queued? nitrogen-evaporates))
+    (assert (queued? mist-dissipates)))
+)
 
 (test-group "lovecraft computer"
+
   (test "can examine lovecraft"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @lovecraft :examine)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @lovecraft :examine)
+    (assert (outcome? success)))
 
   (test "can read lovecraft"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT))
-    :action (do @lovecraft :read)
-    :expect ((outcome? success)))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT))
+    (do @lovecraft :read)
+    (assert (outcome? success)))
 
   (test "can turn on lovecraft"
-    :setup ((move! @player @alchemy-lab)
-            (set-flag! @alchemy-lab ONBIT)
-            (clear-flag! @lovecraft POWER))
-    :action (do @lovecraft :turn-on)
-    :expect ((outcome? success)
-             (has-flag? @lovecraft POWER))))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (clear-flag! @lovecraft POWER))
+    (do @lovecraft :turn-on)
+    (assert (outcome? success))
+    (assert (has-flag? @lovecraft POWER)))
+)
 
-; =============================================================================
-; HAND ANIMATION SEQUENCE
-; =============================================================================
-
-(test-sequence "dip hand in vat"
-  (step :setup ((move! @player @alchemy-lab)
-                (set-flag! @alchemy-lab ONBIT)
-                (set! prof-dead true)
-                (move! @mummified-hand @player)
-                (clear-flag! @mummified-hand PERSON)
-                (set! animation-count 0))
-        :action (do @vat :put @mummified-hand)
-        :expect ((outcome? success)
-                 (loc? @mummified-hand @vat)
-                 (queued? animate-hand)))
-  ; Stage 1
-  (step :action (process-events)
-        :expect ((outcome? success)
-                 (global? animation-count 1)
-                 (queued? animate-hand)))
-  ; Stage 2
-  (step :action (process-events)
-        :expect ((outcome? success)
-                 (global? animation-count 2)
-                 (queued? animate-hand)))
-  ; Stage 3 - hand becomes animated
-  (step :action (process-events)
-        :expect ((outcome? success)
-                 (has-flag? @mummified-hand PERSON))))
-
-; =============================================================================
-; RING PUZZLE
-; =============================================================================
+(test "dip hand in vat"
+  :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! prof-dead true) (move! @mummified-hand @player) (clear-flag! @mummified-hand PERSON) (set! animation-count 0))
+  (do @vat :put @mummified-hand)
+  (assert (outcome? success))
+  (assert (loc? @mummified-hand @vat))
+  (assert (queued? animate-hand))
+  (process-events)
+  (assert (outcome? success))
+  (assert (global? animation-count 1))
+  (assert (queued? animate-hand))
+  (process-events)
+  (assert (outcome? success))
+  (assert (global? animation-count 2))
+  (assert (queued? animate-hand))
+  (process-events)
+  (assert (outcome? success))
+  (assert (has-flag? @mummified-hand PERSON)))
 
 (test-group "ring basics"
-  :setup ((move! @player @alchemy-dept)
-          (move! @ring @player)
-          (clear-flag! @gloves WEARBIT))
+  :setup ((move! @player @alchemy-dept) (move! @ring @player) (clear-flag! @gloves WEARBIT))
 
   (test "can examine ring"
-    :action (do @ring :examine)
-    :expect ((outcome? success)))
+    (do @ring :examine)
+    (assert (outcome? success)))
 
   (test "can wear ring"
-    :action (do @ring :wear)
-    :expect ((outcome? success)
-             (has-flag? @ring WEARBIT)))
+    (do @ring :wear)
+    (assert (outcome? success))
+    (assert (has-flag? @ring WEARBIT)))
 
   (test "can't wear ring with gloves"
     :setup ((set-flag! @gloves WEARBIT))
-    :action (do @ring :wear)
-    :expect ((outcome? blocked)
-             (reason? gloves-in-way)))
+    (do @ring :wear)
+    (assert (outcome? blocked))
+    (assert (reason? gloves-in-way)))
 
   (test "can take off ring"
     :setup ((set-flag! @ring WEARBIT))
-    :action (do @ring :take-off)
-    :expect ((outcome? success)
-             (not (has-flag? @ring WEARBIT))))
+    (do @ring :take-off)
+    (assert (outcome? success))
+    (assert (not (has-flag? @ring WEARBIT))))
 
   (test "can't take off ring with gloves"
-    :setup ((set-flag! @ring WEARBIT)
-            (set-flag! @gloves WEARBIT))
-    :action (do @ring :take-off)
-    :expect ((outcome? blocked)
-             (reason? gloves-in-way))))
+    :setup ((set-flag! @ring WEARBIT) (set-flag! @gloves WEARBIT))
+    (do @ring :take-off)
+    (assert (outcome? blocked))
+    (assert (reason? gloves-in-way)))
+)
 
 (test-group "ring on hand puzzle"
-  :setup ((move! @player @alchemy-lab)
-          (move! @ring @player)
-          (move! @mummified-hand @player))
+  :setup ((move! @player @alchemy-lab) (move! @ring @player) (move! @mummified-hand @player))
 
   (test "can't put ring on mummified hand"
     :setup ((clear-flag! @mummified-hand PERSON))
-    :action (do @ring :put-on @mummified-hand)
-    :expect ((outcome? blocked)
-             (reason? too-dry)))
+    (do @ring :put-on @mummified-hand)
+    (assert (outcome? blocked))
+    (assert (reason? too-dry)))
 
   (test "can put ring on animated hand"
     :setup ((set-flag! @mummified-hand PERSON))
-    :action (do @ring :put-on @mummified-hand)
-    :expect ((outcome? success)
-             (loc? @ring @mummified-hand)))
+    (do @ring :put-on @mummified-hand)
+    (assert (outcome? success))
+    (assert (loc? @ring @mummified-hand)))
 
   (test "ring on animated hand clears WEARBIT"
-    :setup ((set-flag! @mummified-hand PERSON)
-            (set-flag! @ring WEARBIT))
-    :action (do @ring :put-on @mummified-hand)
-    :expect ((outcome? success)
-             (not (has-flag? @ring WEARBIT)))))
+    :setup ((set-flag! @mummified-hand PERSON) (set-flag! @ring WEARBIT))
+    (do @ring :put-on @mummified-hand)
+    (assert (outcome? success))
+    (assert (not (has-flag? @ring WEARBIT))))
+)
 
 (test-group "animated hand behaviors"
-  :setup ((move! @player @alchemy-lab)
-          (move! @mummified-hand @player)
-          (set-flag! @mummified-hand PERSON))
+  :setup ((move! @player @alchemy-lab) (move! @mummified-hand @player) (set-flag! @mummified-hand PERSON))
 
   (test "examine animated hand"
-    :action (do @mummified-hand :examine)
-    :expect ((outcome? success)))
+    (do @mummified-hand :examine)
+    (assert (outcome? success)))
 
   (test "examine animated hand shows ring"
     :setup ((move! @ring @mummified-hand))
-    :action (do @mummified-hand :examine)
-    :expect ((outcome? success)))
+    (do @mummified-hand :examine)
+    (assert (outcome? success)))
 
   (test "rub animated hand - warm"
-    :action (do @mummified-hand :rub)
-    :expect ((outcome? success)))
+    (do @mummified-hand :rub)
+    (assert (outcome? success)))
 
   (test "animated hand wiggles away from take"
-    :action (do @mummified-hand :take)
-    :expect ((outcome? success)))
+    (do @mummified-hand :take)
+    (assert (outcome? success)))
 
   (test "give item to animated hand"
     :setup ((move! @knife @player))
-    :action (do @mummified-hand :give @knife)
-    :expect ((outcome? success))))
+    (do @mummified-hand :give @knife)
+    (assert (outcome? success)))
+)
 
 (test-group "mummified hand behaviors"
-  :setup ((move! @player @alchemy-lab)
-          (move! @mummified-hand @player)
-          (clear-flag! @mummified-hand PERSON))
+  :setup ((move! @player @alchemy-lab) (move! @mummified-hand @player) (clear-flag! @mummified-hand PERSON))
 
   (test "rub mummified hand - cold"
-    :action (do @mummified-hand :rub)
-    :expect ((outcome? success)))
+    (do @mummified-hand :rub)
+    (assert (outcome? success)))
 
   (test "give to mummified hand blocked"
     :setup ((move! @knife @player))
-    :action (do @mummified-hand :give @knife)
-    :expect ((outcome? blocked)
-             (reason? inanimate))))
+    (do @mummified-hand :give @knife)
+    (assert (outcome? blocked))
+    (assert (reason? inanimate)))
+)

@@ -121,16 +121,22 @@ class TestRunner:
         self._functions: dict[str, tuple[list[str], SExpr]] = {}
         # Global definitions (def name value) for action lists etc.
         self._globals: dict[str, SExpr] = {}
+        # Last action result (for result predicates in assert)
+        self._last_result: ActionResult | None = None
 
     def run_test(self, test_form: SList) -> TestResult:
         """
         Run a (test ...) form.
 
-        Supports two styles:
-        1. Legacy single-action: (test NAME :setup S :action A :expect E)
-        2. Sequential: (test NAME :setup S (do ...) (assert ...) ...)
+        Format:
+            (test NAME
+              :setup ((effects))
+              (do @obj :verb args)
+              (assert (predicate))
+              ...)
 
-        Detects style by presence of :action keyword.
+        The test body is a sequence of forms: (do ...), (assert ...), (go ...),
+        (wait), (until ...), (run ...).
         """
         if len(test_form) < 2:
             return TestResult(
@@ -147,78 +153,9 @@ class TestRunner:
         else:
             test_name = to_string(name)
 
-        # Detect style: look for :action keyword
-        has_action_keyword = any(
-            isinstance(test_form[i], Keyword) and test_form[i].name == "action"
-            for i in range(2, len(test_form))
-        )
+        return self._run_test_impl(test_form, test_name)
 
-        if has_action_keyword:
-            return self._run_test_legacy(test_form, test_name)
-        else:
-            return self._run_test_sequential(test_form, test_name)
-
-    def _run_test_legacy(self, test_form: SList, test_name: str) -> TestResult:
-        """Run legacy single-action test: (test NAME :setup S :action A :expect E)"""
-        setup_effects: list[SExpr] = []
-        action: SExpr | None = None
-        expect_predicates: list[SExpr] = []
-
-        i = 2
-        while i < len(test_form):
-            item = test_form[i]
-            if isinstance(item, Keyword):
-                if i + 1 >= len(test_form):
-                    return TestResult(
-                        name=test_name,
-                        passed=False,
-                        error=f"Missing value for :{item.name}"
-                    )
-                value = test_form[i + 1]
-
-                if item.name == "setup":
-                    if isinstance(value, SList):
-                        setup_effects = list(value.items)
-                elif item.name == "action":
-                    action = value
-                elif item.name == "expect":
-                    if isinstance(value, SList):
-                        expect_predicates = list(value.items)
-                i += 2
-            else:
-                i += 1
-
-        if action is None:
-            return TestResult(
-                name=test_name,
-                passed=False,
-                error="Test missing :action"
-            )
-
-        runtime = GrueRuntime(self.world)
-        executor = EffectExecutor(runtime, self._functions)
-
-        try:
-            for effect in setup_effects:
-                executor.execute(effect)
-
-            result = self._execute_action(runtime, action)
-            failures = self._check_expectations(runtime, result, expect_predicates)
-
-            return TestResult(
-                name=test_name,
-                passed=len(failures) == 0,
-                failures=failures
-            )
-
-        except Exception as e:
-            return TestResult(
-                name=test_name,
-                passed=False,
-                error=str(e)
-            )
-
-    def _run_test_sequential(self, test_form: SList, test_name: str) -> TestResult:
+    def _run_test_impl(self, test_form: SList, test_name: str) -> TestResult:
         """Run sequential test: (test NAME :setup S (do ...) (assert ...) ...)"""
         setup_effects: list[SExpr] = []
         forms: list[SExpr] = []
@@ -258,6 +195,7 @@ class TestRunner:
         runtime = GrueRuntime(self.world)
         executor = EffectExecutor(runtime, self._functions)
         all_failures: list[str] = []
+        self._last_result = None  # Reset for this test
 
         try:
             for effect in setup_effects:
@@ -309,18 +247,16 @@ class TestRunner:
             return self._run_run(runtime, form, form_idx)
         elif form_type == "seq":
             return self._run_seq(runtime, form, form_idx)
-        elif form_type == "step":
-            return self._run_step(runtime, executor, form, form_idx)
         elif form_type == "go":
             # Allow (go :direction X) as shorthand
             try:
-                self._execute_action(runtime, form)
+                self._last_result = self._execute_action(runtime, form)
                 return []
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
         elif form_type == "process-events":
             try:
-                self._execute_action(runtime, form)
+                self._last_result = self._execute_action(runtime, form)
                 return []
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
@@ -333,17 +269,19 @@ class TestRunner:
         form: SList,
         form_idx: int
     ) -> list[str]:
-        """Run a bare (do ...) form."""
+        """Run a bare (do ...) form. Stores result for subsequent assertions."""
         try:
-            self._execute_action(runtime, form)
+            self._last_result = self._execute_action(runtime, form)
             return []
         except Exception as e:
             return [f"Form {form_idx}: {e}"]
 
     def _run_wait(self, runtime: GrueRuntime, form_idx: int) -> list[str]:
-        """Run a (wait) form - process events."""
+        """Run a (wait) form - process events. Stores first event result."""
         try:
-            runtime.process_events()
+            results = runtime.process_events()
+            if results:
+                self._last_result = results[0]
             return []
         except Exception as e:
             return [f"Form {form_idx}: {e}"]
@@ -402,178 +340,6 @@ class TestRunner:
 
         return failures
 
-    def run_test_sequence(self, seq_form: SList) -> TestResult:
-        """
-        Run a (test-sequence ...) form.
-
-        Format:
-            (test-sequence NAME
-              :setup EFFECTS
-              (step :action ACTION :expect PREDICATES)
-              (seq ACTION ACTION ...)
-              (assert PREDICATE)
-              (until PREDICATE ACTION ACTION ...)
-              ...)
-
-        State persists across steps within the sequence.
-
-        Forms:
-            (step :action A :expect P) - Execute action, check expectations (expect optional)
-            (seq A1 A2 ...) - Execute actions in sequence, no assertions
-            (assert PRED) - Check predicate, fail if false
-            (until PRED A1 A2 ...) - Loop actions until predicate is true (max 100 iterations)
-        """
-        if len(seq_form) < 2:
-            return TestResult(
-                name="<invalid>",
-                passed=False,
-                error="Test-sequence form too short"
-            )
-
-        name = seq_form[1]
-        if isinstance(name, str):
-            test_name = name
-        elif isinstance(name, Symbol):
-            test_name = name.name
-        else:
-            test_name = to_string(name)
-
-        # Parse initial :setup and collect forms
-        setup_effects: list[SExpr] = []
-        forms: list[SList] = []
-
-        i = 2
-        while i < len(seq_form):
-            item = seq_form[i]
-
-            if isinstance(item, Keyword):
-                if i + 1 >= len(seq_form):
-                    return TestResult(
-                        name=test_name,
-                        passed=False,
-                        error=f"Missing value for :{item.name}"
-                    )
-                value = seq_form[i + 1]
-
-                if item.name == "setup":
-                    if isinstance(value, SList):
-                        setup_effects = list(value.items)
-                i += 2
-
-            elif isinstance(item, SList) and len(item) > 0:
-                head = item[0]
-                if isinstance(head, Symbol) and head.name in ("step", "seq", "assert", "until"):
-                    forms.append(item)
-                i += 1
-            else:
-                i += 1
-
-        if not forms:
-            return TestResult(
-                name=test_name,
-                passed=False,
-                error="Test-sequence has no forms"
-            )
-
-        # Create ONE runtime for the whole sequence - state persists!
-        runtime = GrueRuntime(self.world)
-        executor = EffectExecutor(runtime, self._functions)
-
-        all_failures: list[str] = []
-
-        try:
-            # Run setup effects once
-            for effect in setup_effects:
-                executor.execute(effect)
-
-            # Run each form in sequence
-            for form_idx, form in enumerate(forms, 1):
-                head = form[0]
-                form_type = head.name if isinstance(head, Symbol) else ""
-
-                if form_type == "step":
-                    failures = self._run_step(runtime, executor, form, form_idx)
-                    all_failures.extend(failures)
-
-                elif form_type == "seq":
-                    failures = self._run_seq(runtime, form, form_idx)
-                    all_failures.extend(failures)
-
-                elif form_type == "assert":
-                    failures = self._run_assert(runtime, form, form_idx)
-                    all_failures.extend(failures)
-
-                elif form_type == "until":
-                    failures = self._run_until(runtime, form, form_idx)
-                    all_failures.extend(failures)
-
-            return TestResult(
-                name=test_name,
-                passed=len(all_failures) == 0,
-                failures=all_failures
-            )
-
-        except Exception as e:
-            return TestResult(
-                name=test_name,
-                passed=False,
-                error=str(e)
-            )
-
-    def _run_step(
-        self,
-        runtime: GrueRuntime,
-        executor: EffectExecutor,
-        step: SList,
-        step_idx: int
-    ) -> list[str]:
-        """Run a (step :action A :expect P) form."""
-        failures: list[str] = []
-        step_action = None
-        step_expects: list[SExpr] = []
-        step_setup: list[SExpr] = []
-
-        # Parse step form: (step :setup S :action A :expect P)
-        j = 1
-        while j < len(step):
-            item = step[j]
-            if isinstance(item, Keyword):
-                if j + 1 >= len(step):
-                    failures.append(f"Step {step_idx}: Missing value for :{item.name}")
-                    break
-                value = step[j + 1]
-
-                if item.name == "action":
-                    step_action = value
-                elif item.name == "expect":
-                    if isinstance(value, SList):
-                        step_expects = list(value.items)
-                elif item.name == "setup":
-                    if isinstance(value, SList):
-                        step_setup = list(value.items)
-                j += 2
-            else:
-                j += 1
-
-        if step_action is None:
-            failures.append(f"Step {step_idx}: Missing :action")
-            return failures
-
-        # Run per-step setup effects
-        for effect in step_setup:
-            executor.execute(effect)
-
-        # Execute this step's action
-        result = self._execute_action(runtime, step_action)
-
-        # Check this step's expectations (optional - empty list is fine)
-        step_failures = self._check_expectations(runtime, result, step_expects)
-
-        for failure in step_failures:
-            failures.append(f"Step {step_idx}: {failure}")
-
-        return failures
-
     def _run_seq(
         self,
         runtime: GrueRuntime,
@@ -595,13 +361,31 @@ class TestRunner:
 
         return failures
 
+    # Predicates handled by _check_expectations (both result and state predicates)
+    # These are test-specific predicates, not general evaluator functions
+    _EXPECTATION_PREDICATES = {
+        # Result predicates
+        "outcome?", "reason?", "context?", "death?", "victory?",
+        # State predicates
+        "player-at?", "has-flag?", "no-flag?", "not-flag?", "loc?",
+        "global?", "prop?", "queued?", "not-queued?", "held?",
+    }
+
+    # Result predicates require a last action result to check
+    _RESULT_PREDICATES = {"outcome?", "reason?", "context?", "death?", "victory?"}
+
     def _run_assert(
         self,
         runtime: GrueRuntime,
         assert_form: SList,
         assert_idx: int
     ) -> list[str]:
-        """Run an (assert PREDICATE) form - check predicate, fail if false."""
+        """Run an (assert PREDICATE) form - check predicate, fail if false.
+
+        For expectation predicates (outcome?, player-at?, has-flag?, etc.),
+        delegates to _check_expectations. For other predicates, evaluates
+        against world state using ExprEvaluator.
+        """
         failures: list[str] = []
 
         if len(assert_form) < 2:
@@ -610,13 +394,37 @@ class TestRunner:
 
         predicate = assert_form[1]
 
-        try:
-            evaluator = ExprEvaluator(runtime, self._functions)
-            result = evaluator.eval(predicate)
-            if not result:
-                failures.append(f"Assert {assert_idx}: {to_string(predicate)} is false")
-        except Exception as e:
-            failures.append(f"Assert {assert_idx}: Error evaluating {to_string(predicate)}: {e}")
+        # Check if this is an expectation predicate (handled by _check_expectations)
+        if (isinstance(predicate, SList) and len(predicate) > 0 and
+            isinstance(predicate[0], Symbol) and
+            predicate[0].name in self._EXPECTATION_PREDICATES):
+
+            pred_name = predicate[0].name
+
+            # Result predicates require a last action result
+            if pred_name in self._RESULT_PREDICATES and self._last_result is None:
+                failures.append(
+                    f"Assert {assert_idx}: {to_string(predicate)} - no action result to check"
+                )
+            else:
+                # Use a dummy result for state predicates if no action was taken
+                result_to_check = self._last_result or ActionResult(outcome="success")
+
+                # Reuse _check_expectations for all expectation predicates
+                check_failures = self._check_expectations(
+                    runtime, result_to_check, [predicate]
+                )
+                for f in check_failures:
+                    failures.append(f"Assert {assert_idx}: {f}")
+        else:
+            # Regular predicate - evaluate against world state
+            try:
+                evaluator = ExprEvaluator(runtime, self._functions)
+                result = evaluator.eval(predicate)
+                if not result:
+                    failures.append(f"Assert {assert_idx}: {to_string(predicate)} is false")
+            except Exception as e:
+                failures.append(f"Assert {assert_idx}: Error evaluating {to_string(predicate)}: {e}")
 
         return failures
 
@@ -1034,6 +842,8 @@ class TestRunner:
 
         Group :setup runs before each test. Test-level :setup is additive.
         Each test still gets a fresh world state.
+
+        Supports both legacy (:action/:expect) and sequential styles for nested tests.
         """
         if len(group_form) < 2:
             return [TestResult(
@@ -1083,12 +893,8 @@ class TestRunner:
         # Run each nested test with group setup prepended
         results = []
         for test_form in nested_tests:
-            # Extract test's own setup
-            test_setup: list[SExpr] = []
+            # Extract test name
             test_name = ""
-            test_action = None
-            test_expect: list[SExpr] = []
-
             if len(test_form) >= 2:
                 tn = test_form[1]
                 if isinstance(tn, str):
@@ -1098,65 +904,44 @@ class TestRunner:
                 else:
                     test_name = to_string(tn)
 
+            full_name = f"{group_name} / {test_name}"
+
+            # Build a new test form with combined setup
+            # Find test's existing setup and merge with group setup
+            new_items: list[SExpr] = [Symbol("test"), test_form[1]]
+
+            # Extract test's own setup
+            test_setup: list[SExpr] = []
+            other_items: list[SExpr] = []
+
             j = 2
             while j < len(test_form):
                 item = test_form[j]
-                if isinstance(item, Keyword):
-                    if j + 1 >= len(test_form):
-                        break
+                if isinstance(item, Keyword) and item.name == "setup" and j + 1 < len(test_form):
                     value = test_form[j + 1]
-
-                    if item.name == "setup":
-                        if isinstance(value, SList):
-                            test_setup = list(value.items)
-                    elif item.name == "action":
-                        test_action = value
-                    elif item.name == "expect":
-                        if isinstance(value, SList):
-                            test_expect = list(value.items)
+                    if isinstance(value, SList):
+                        test_setup = list(value.items)
                     j += 2
                 else:
+                    other_items.append(item)
                     j += 1
 
-            # Build combined test with group setup + test setup
-            full_name = f"{group_name} / {test_name}"
+            # Add combined setup
             combined_setup = group_setup + test_setup
+            if combined_setup:
+                new_items.append(Keyword("setup"))
+                new_items.append(SList(combined_setup))
 
-            if test_action is None:
-                results.append(TestResult(
-                    name=full_name,
-                    passed=False,
-                    error="Test missing :action"
-                ))
-                continue
+            # Add remaining items (action/expect or body forms)
+            new_items.extend(other_items)
 
-            # Create fresh runtime for this test
-            runtime = GrueRuntime(self.world)
-            executor = EffectExecutor(runtime, self._functions)
+            # Create new test form and run it
+            merged_test = SList(new_items)
+            result = self.run_test(merged_test)
 
-            try:
-                # Run combined setup effects
-                for effect in combined_setup:
-                    executor.execute(effect)
-
-                # Execute action
-                result = self._execute_action(runtime, test_action)
-
-                # Check expectations
-                failures = self._check_expectations(runtime, result, test_expect)
-
-                results.append(TestResult(
-                    name=full_name,
-                    passed=len(failures) == 0,
-                    failures=failures
-                ))
-
-            except Exception as e:
-                results.append(TestResult(
-                    name=full_name,
-                    passed=False,
-                    error=str(e)
-                ))
+            # Update the name to include group prefix
+            result.name = full_name
+            results.append(result)
 
         return results
 
@@ -1175,8 +960,6 @@ class TestRunner:
 
             if head.name == "test":
                 results.append(self.run_test(form))
-            elif head.name == "test-sequence":
-                results.append(self.run_test_sequence(form))
             elif head.name == "test-group":
                 results.extend(self.run_test_group(form))
             elif head.name == "defn":

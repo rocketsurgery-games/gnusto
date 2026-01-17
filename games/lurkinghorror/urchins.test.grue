@@ -2,182 +2,153 @@
 
 ; === Room Connections ===
 
+
 (test "tunnel-entrance connects west to muddy-tunnel"
   :setup ((move! @player @tunnel-entrance))
-  :action (go :direction west)
-  :expect ((outcome? success)
-           (player-at? @muddy-tunnel)))
+  (go :direction west)
+  (assert (outcome? success))
+  (assert (player-at? @muddy-tunnel)))
 
 (test "tunnel-entrance connects down to muddy-tunnel"
   :setup ((move! @player @tunnel-entrance))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @muddy-tunnel)))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @muddy-tunnel)))
 
 (test "muddy-tunnel connects up to tunnel-entrance"
   :setup ((move! @player @muddy-tunnel))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @tunnel-entrance)))
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @tunnel-entrance)))
 
 (test "muddy-tunnel connects down to large-chamber"
   :setup ((move! @player @muddy-tunnel))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @large-chamber)))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @large-chamber)))
 
 (test "large-chamber connects up to muddy-tunnel"
   :setup ((move! @player @large-chamber))
-  :action (go :direction up)
-  :expect ((outcome? success)
-           (player-at? @muddy-tunnel)))
-
-; === Slots Object ===
+  (go :direction up)
+  (assert (outcome? success))
+  (assert (player-at? @muddy-tunnel)))
 
 (test "slots can be examined"
-  :setup ((move! @player @large-chamber)
-          (move! @urchins @slots))
-  :action (do @slots :examine)
-  :expect ((outcome? success)))
+  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  (do @slots :examine)
+  (assert (outcome? success)))
 
 (test "entering slots is creepy"
-  :setup ((move! @player @large-chamber)
-          (move! @urchins @slots))
-  :action (do @slots :enter)
-  :expect ((outcome? success)))
+  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  (do @slots :enter)
+  (assert (outcome? success)))
 
 (test "listening to slots reveals chanting"
-  :setup ((move! @player @large-chamber)
-          (move! @urchins @slots))
-  :action (do @slots :listen)
-  :expect ((outcome? success)))
-
-; === Urchins Group ===
+  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  (do @slots :listen)
+  (assert (outcome? success)))
 
 (test "urchins start in slots"
   :setup ()
-  :action (do @slots :examine)
-  :expect ((in? @urchins @slots)))
+  (do @slots :examine)
+  (assert (in? @urchins @slots)))
 
 (test "urchins block passage down when not freed"
-  :setup ((move! @player @large-chamber)
-          (move! @urchins @large-chamber)
-          (set! urchin-freed false))
-  :action (go :direction down)
-  :expect ((outcome? blocked)))
+  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set! urchin-freed false))
+  (go :direction down)
+  (assert (outcome? blocked)))
 
 (test "urchins can be examined"
-  :setup ((move! @player @large-chamber)
-          (move! @urchins @large-chamber)
-          (clear-flag! @urchins INVISIBLE))
-  :action (do @urchins :examine)
-  :expect ((outcome? success)))
-
-; === Urchin Wire ===
+  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (clear-flag! @urchins INVISIBLE))
+  (do @urchins :examine)
+  (assert (outcome? success)))
 
 (test "wire can be examined"
   :setup ((move! @player @large-chamber))
-  :action (do @urchin-wire :examine)
-  :expect ((outcome? success)))
+  (do @urchin-wire :examine)
+  (assert (outcome? success)))
 
 (test "cutting wire with wrong tool doesn't cut"
-  :setup ((move! @player @large-chamber)
-          (move! @crowbar @player))
-  :action (do @urchin-wire :cut @crowbar)
-  :expect ((outcome? success)
-           (loc? @urchin-wire @large-chamber)))
+  :setup ((move! @player @large-chamber) (move! @crowbar @player))
+  (do @urchin-wire :cut @crowbar)
+  (assert (outcome? success))
+  (assert (loc? @urchin-wire @large-chamber)))
 
 (test "cutting wire with bolt cutters frees urchins"
-  :setup ((move! @player @large-chamber)
-          (move! @bolt-cutters @player)
-          (move! @urchins @slots)
-          (set! urchin-freed false))
-  :action (do @urchin-wire :cut @bolt-cutters)
-  :expect ((outcome? success)
-           (global? urchin-freed true)))
+  :setup ((move! @player @large-chamber) (move! @bolt-cutters @player) (move! @urchins @slots) (set! urchin-freed false))
+  (do @urchin-wire :cut @bolt-cutters)
+  (assert (outcome? success))
+  (assert (global? urchin-freed true)))
 
 (test "after cutting wire can pass through to lair"
-  :setup ((move! @player @large-chamber)
-          (set! urchin-freed true))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @lair-1)))
-
-; === Individual Urchin ===
+  :setup ((move! @player @large-chamber) (set! urchin-freed true))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @lair-1)))
 
 (test "urchin starts in aero-lobby"
   :setup ()
-  :action (do @urchin :examine)
-  :expect ((loc? @urchin @aero-lobby)))
+  (do @urchin :examine)
+  (assert (loc? @urchin @aero-lobby)))
 
 (test "urchin can be examined"
   :setup ((move! @player @aero-lobby))
-  :action (do @urchin :examine)
-  :expect ((outcome? success)))
+  (do @urchin :examine)
+  (assert (outcome? success)))
 
 (test "urchin can be talked to"
   :setup ((move! @player @aero-lobby))
-  :action (do @urchin :talk-to)
-  :expect ((outcome? success)))
+  (do @urchin :talk-to)
+  (assert (outcome? success)))
 
 (test "urchin smells damp"
   :setup ((move! @player @aero-lobby))
-  :action (do @urchin :smell)
-  :expect ((outcome? success)))
-
-; === Bolt Cutters Puzzle ===
+  (do @urchin :smell)
+  (assert (outcome? success)))
 
 (test "bolt cutters start invisible in urchin"
   :setup ()
-  :action (do @bolt-cutters :examine)
-  :expect ((has-flag? @bolt-cutters INVISIBLE)
-           (loc? @bolt-cutters @urchin)))
+  (do @bolt-cutters :examine)
+  (assert (has-flag? @bolt-cutters INVISIBLE))
+  (assert (loc? @bolt-cutters @urchin)))
 
 (test "showing twitching hand to urchin drops bolt cutters"
-  :setup ((move! @player @aero-lobby)
-          (move! @mummified-hand @player)
-          (set-flag! @mummified-hand PERSON))
-  :action (do @urchin :give @mummified-hand)
-  :expect ((outcome? success)
-           (no-flag? @bolt-cutters INVISIBLE)
-           (loc? @bolt-cutters @aero-lobby)))
+  :setup ((move! @player @aero-lobby) (move! @mummified-hand @player) (set-flag! @mummified-hand PERSON))
+  (do @urchin :give @mummified-hand)
+  (assert (outcome? success))
+  (assert (no-flag? @bolt-cutters INVISIBLE))
+  (assert (loc? @bolt-cutters @aero-lobby)))
 
 (test "giving non-hand item to urchin is refused"
-  :setup ((move! @player @aero-lobby)
-          (move! @flashlight @player))
-  :action (do @urchin :give @flashlight)
-  :expect ((outcome? success)
-           (loc? @urchin @aero-lobby)))
-
-; === Urchin Clothes ===
+  :setup ((move! @player @aero-lobby) (move! @flashlight @player))
+  (do @urchin :give @flashlight)
+  (assert (outcome? success))
+  (assert (loc? @urchin @aero-lobby)))
 
 (test "examining urchin clothes"
   :setup ((move! @player @aero-lobby))
-  :action (do @urchin-clothes :examine)
-  :expect ((outcome? success)))
+  (do @urchin-clothes :examine)
+  (assert (outcome? success)))
 
 (test "cannot take urchin clothes"
   :setup ((move! @player @aero-lobby))
-  :action (do @urchin-clothes :take)
-  :expect ((outcome? blocked)
-           (reason? refused)))
-
-; === Visibility Enforcement ===
-; Objects should not be accessible from rooms where they aren't visible
+  (do @urchin-clothes :take)
+  (assert (outcome? blocked))
+  (assert (reason? refused)))
 
 (test "cannot examine slots from terminal-room"
   :setup ((move! @player @terminal-room))
-  :action (do @slots :examine)
-  :expect ((outcome? blocked)
-           (reason? not-here)))
+  (do @slots :examine)
+  (assert (outcome? blocked))
+  (assert (reason? not-here)))
 
 (test "cannot examine urchin from large-chamber"
   :setup ((move! @player @large-chamber))
-  :action (do @urchin :examine)
-  :expect ((outcome? blocked)
-           (reason? not-here)))
+  (do @urchin :examine)
+  (assert (outcome? blocked))
+  (assert (reason? not-here)))
 
 (test "can examine slots from large-chamber"
   :setup ((move! @player @large-chamber))
-  :action (do @slots :examine)
-  :expect ((outcome? success)))
+  (do @slots :examine)
+  (assert (outcome? success)))

@@ -3,144 +3,119 @@
 
 ; === Room Connectivity Tests ===
 
+
 (test "cs-basement connects to temporary-basement east"
   :setup ((move! @player @cs-basement))
-  :action (go :direction east)
-  :expect ((outcome? success)
-           (player-at? @temporary-basement)))
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (player-at? @temporary-basement)))
 
 (test "cs-basement connects to aero-basement west"
   :setup ((move! @player @cs-basement))
-  :action (go :direction west)
-  :expect ((outcome? success)
-           (player-at? @aero-basement)))
+  (go :direction west)
+  (assert (outcome? success))
+  (assert (player-at? @aero-basement)))
 
 (test "temporary-basement connects to dead-storage east"
   :setup ((move! @player @temporary-basement))
-  :action (go :direction east)
-  :expect ((outcome? success)
-           (player-at? @dead-storage)))
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (player-at? @dead-storage)))
 
 (test "crowbar is in temporary-basement"
   :setup ()
-  :action (do @crowbar :examine)
-  :expect ((loc? @crowbar @temporary-basement)))
-
-; === Junk Clearing Puzzle Tests ===
+  (do @crowbar :examine)
+  (assert (loc? @crowbar @temporary-basement)))
 
 (test "cannot go east from dead-storage initially - junk blocks"
-  :setup ((move! @player @dead-storage)
-          (set! junk-moved 0))
-  :action (go :direction east)
-  :expect ((outcome? blocked)
-           (reason? junk-blocking)))
+  :setup ((move! @player @dead-storage) (set! junk-moved 0))
+  (go :direction east)
+  (assert (outcome? blocked))
+  (assert (reason? junk-blocking)))
 
 (test "junk cannot be moved by hand"
   :setup ((move! @player @dead-storage))
-  :action (do @junk :move)
-  :expect ((outcome? blocked)
-           (reason? too-heavy)))
+  (do @junk :move)
+  (assert (outcome? blocked))
+  (assert (reason? too-heavy)))
 
 (test "forklift starts in aero-basement"
   :setup ()
-  :action (do @forklift :examine)
-  :expect ((loc? @forklift @aero-basement)))
+  (do @forklift :examine)
+  (assert (loc? @forklift @aero-basement)))
 
 (test "forklift must be turned on to move junk"
-  :setup ((move! @forklift @dead-storage)
-          (move! @player @forklift)
-          (clear-flag! @forklift POWER)
-          (set! junk-moved 0))
-  :action (do @forklift :use @junk)
-  :expect ((outcome? blocked)
-           (reason? not-running)))
+  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (clear-flag! @forklift POWER) (set! junk-moved 0))
+  (do @forklift :use @junk)
+  (assert (outcome? blocked))
+  (assert (reason? not-running)))
 
 (test "forklift can move junk when running"
-  :setup ((move! @forklift @dead-storage)
-          (move! @player @forklift)
-          (set-flag! @forklift POWER)
-          (set! junk-moved 0))
-  :action (do @forklift :use @junk)
-  :expect ((outcome? success)
-           (global? junk-moved 1)))
+  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (set-flag! @forklift POWER) (set! junk-moved 0))
+  (do @forklift :use @junk)
+  (assert (outcome? success))
+  (assert (global? junk-moved 1)))
 
 (test "can reach storage-room after clearing junk"
-  :setup ((move! @player @dead-storage)
-          (set! junk-moved 4))
-  :action (go :direction east)
-  :expect ((outcome? success)
-           (player-at? @storage-room)))
-
-; === Manhole Puzzle Tests ===
+  :setup ((move! @player @dead-storage) (set! junk-moved 4))
+  (go :direction east)
+  (assert (outcome? success))
+  (assert (player-at? @storage-room)))
 
 (test "manhole cover starts in manhole"
   :setup ()
-  :action (do @manhole-cover :examine)
-  :expect ((loc? @manhole-cover @manhole)))
+  (do @manhole-cover :examine)
+  (assert (loc? @manhole-cover @manhole)))
 
 (test "cannot take manhole cover - too heavy"
-  :setup ((move! @player @storage-room)
-          (move! @manhole-cover @manhole))
-  :action (do @manhole-cover :take)
-  :expect ((outcome? blocked)
-           (reason? too-heavy)))
+  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole))
+  (do @manhole-cover :take)
+  (assert (outcome? blocked))
+  (assert (reason? too-heavy)))
 
 (test "cannot go down through covered manhole"
-  :setup ((move! @player @storage-room)
-          (move! @manhole-cover @manhole))
-  :action (go :direction down)
-  :expect ((outcome? blocked)
-           (reason? covered)))
+  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole))
+  (go :direction down)
+  (assert (outcome? blocked))
+  (assert (reason? covered)))
 
 (test "can pry manhole cover with crowbar"
-  :setup ((move! @player @storage-room)
-          (move! @manhole-cover @manhole)
-          (move! @crowbar @player))
-  :action (do @manhole-cover :pry @crowbar)
-  :expect ((outcome? success)
-           (loc? @manhole-cover @storage-room)))
+  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole) (move! @crowbar @player))
+  (do @manhole-cover :pry @crowbar)
+  (assert (outcome? success))
+  (assert (loc? @manhole-cover @storage-room)))
 
 (test "can go down after prying manhole open"
-  :setup ((move! @player @storage-room)
-          (move! @manhole-cover @storage-room))
-  :action (go :direction down)
-  :expect ((outcome? success)))
+  :setup ((move! @player @storage-room) (move! @manhole-cover @storage-room))
+  (go :direction down)
+  (assert (outcome? success)))
 
 (test "can close manhole by putting cover back"
-  :setup ((move! @player @storage-room)
-          (move! @manhole-cover @storage-room))
-  :action (do @manhole :close)
-  :expect ((outcome? success)
-           (loc? @manhole-cover @manhole)))
-
-; === Forklift Vehicle Tests ===
+  :setup ((move! @player @storage-room) (move! @manhole-cover @storage-room))
+  (do @manhole :close)
+  (assert (outcome? success))
+  (assert (loc? @manhole-cover @manhole)))
 
 (test "can enter forklift"
-  :setup ((move! @forklift @aero-basement)
-          (move! @player @aero-basement))
-  :action (do @forklift :enter)
-  :expect ((outcome? success)
-           (player-at? @forklift)))
+  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement))
+  (do @forklift :enter)
+  (assert (outcome? success))
+  (assert (player-at? @forklift)))
 
 (test "can exit forklift"
-  :setup ((move! @forklift @aero-basement)
-          (move! @player @forklift))
-  :action (do @forklift :exit)
-  :expect ((outcome? success)
-           (player-at? @aero-basement)))
+  :setup ((move! @forklift @aero-basement) (move! @player @forklift))
+  (do @forklift :exit)
+  (assert (outcome? success))
+  (assert (player-at? @aero-basement)))
 
 (test "can turn on forklift when aboard"
-  :setup ((move! @forklift @aero-basement)
-          (move! @player @forklift)
-          (clear-flag! @forklift POWER))
-  :action (do @forklift :turn-on)
-  :expect ((outcome? success)
-           (has-flag? @forklift POWER)))
+  :setup ((move! @forklift @aero-basement) (move! @player @forklift) (clear-flag! @forklift POWER))
+  (do @forklift :turn-on)
+  (assert (outcome? success))
+  (assert (has-flag? @forklift POWER)))
 
 (test "cannot turn on forklift when not aboard"
-  :setup ((move! @forklift @aero-basement)
-          (move! @player @aero-basement)
-          (clear-flag! @forklift POWER))
-  :action (do @forklift :turn-on)
-  :expect ((outcome? blocked)
-           (reason? not-aboard)))
+  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (clear-flag! @forklift POWER))
+  (do @forklift :turn-on)
+  (assert (outcome? blocked))
+  (assert (reason? not-aboard)))

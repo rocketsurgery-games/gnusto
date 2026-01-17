@@ -3,48 +3,42 @@
 
 ; === Room Connectivity Tests ===
 
+
 (test "yuggoth connects to bowl-room"
   :setup ((move! @player @yuggoth))
-  :action (go :direction down)
-  :expect ((outcome? success)
-           (player-at? @bowl-room)))
+  (go :direction down)
+  (assert (outcome? success))
+  (assert (player-at? @bowl-room)))
 
 (test "bowl-room connects to platform-room"
   :setup ((move! @player @bowl-room))
-  :action (go :direction in)
-  :expect ((outcome? success)
-           (player-at? @platform-room)))
-
-; === Smooth Stone Tests ===
+  (go :direction in)
+  (assert (outcome? success))
+  (assert (player-at? @platform-room)))
 
 (test "smooth-stone appears in platform-room"
-  :setup ((move! @player @platform-room)
-          (move! @smooth-stone @platform-room))
-  :action (do @smooth-stone :examine)
-  :expect ((outcome? success)))
+  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room))
+  (do @smooth-stone :examine)
+  (assert (outcome? success)))
 
 (test "taking smooth-stone works"
-  :setup ((move! @player @platform-room)
-          (move! @smooth-stone @platform-room)
-          (clear-flag! @smooth-stone TOUCHBIT))
-  :action (do @smooth-stone :take)
-  :expect ((outcome? success)
-           (loc? @smooth-stone @player)))
+  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (clear-flag! @smooth-stone TOUCHBIT))
+  (do @smooth-stone :take)
+  (assert (outcome? success))
+  (assert (loc? @smooth-stone @player)))
 
 (test "stone-symbol is inside smooth-stone"
   :setup ()
-  :action (do @stone-symbol :examine)
-  :expect ((loc? @stone-symbol @smooth-stone)))
-
-; === Platform Tests ===
+  (do @stone-symbol :examine)
+  (assert (loc? @stone-symbol @smooth-stone)))
 
 (test "platform can be examined from bowl-room"
   :setup ((move! @player @bowl-room))
-  :action (do @platform :examine)
-  :expect ((outcome? success)))
+  (do @platform :examine)
+  (assert (outcome? success)))
 
 (test "platform enter redirects to movement"
   :setup ((move! @player @bowl-room))
-  :action (do @platform :enter)
-  :expect ((outcome? success)
-           (player-at? @platform-room)))
+  (do @platform :enter)
+  (assert (outcome? success))
+  (assert (player-at? @platform-room)))
