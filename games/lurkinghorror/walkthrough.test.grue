@@ -880,9 +880,9 @@
   (go :direction south)
   (assert (loc? @player @chemistry-bldg))
 
-  ; Initialize alchemy state
-  (set! prof-dead false)
-  (set! left-alchemy false)
+  ; Verify alchemy state is correct (default values)
+  (assert (not prof-dead))
+  (assert (not left-alchemy))
 
   ; Knock and wait for professor to answer
   (do @alchemy-door :knock)
@@ -892,15 +892,15 @@
 
   ; Have note from Great Dome detour
   (assert (held? @note))
-  (set! prof-seen-note false)
-  (set! prof-mad false)
+  (assert (not prof-seen-note))
+  (assert (not prof-mad))
 
   ; Show note to professor
   (do @professor :give @note)
   (assert prof-seen-note)
 
   ; Enter lab - professor escorts and triggers ritual
-  (set! tied-up 0)
+  (assert (= tied-up 0))
   (go :direction south)
   (assert (loc? @player @alchemy-lab))
   (assert (queued? professor-ritual))
@@ -917,10 +917,10 @@
   (assert (>= tied-up 3))
 
   ; At this point the ritual is in progress and we can escape
-  ; Initialize state needed for escape
-  (set! lab-bench-moved false)
-  (clear-flag! @pentagram RMUNGBIT)
-  (clear-flag! @alchemy-trap-door OPENBIT)
+  ; Verify escape state is correct
+  (assert (not lab-bench-moved))
+  (assert (no-flag? @pentagram RMUNGBIT))
+  (assert (no-flag? @alchemy-trap-door OPENBIT))
 
   ; Cut pentagram with knife to escape
   (do @pentagram :cut @knife)
@@ -957,11 +957,11 @@
 
   ; Hand was obtained from inside-dome during brown building detour
   (assert (held? @mummified-hand))
-  (clear-flag! @mummified-hand PERSON)  ; Ensure not animated yet
-  (set! animation-count 0)  ; Reset animation counter
-  ; Order must match isolated test: vat first, then elixir
-  (move! @vat @lab-bench)
-  (move! @elixir @vat)
+  (assert (no-flag? @mummified-hand PERSON))  ; Not animated yet
+  (assert (= animation-count 0))
+  ; Verify vat and elixir are in their proper locations
+  (assert (in? @vat @lab-bench))
+  (assert (in? @elixir @vat))
 
   ; Animate hand by putting in elixir vat
   (do @vat :put @mummified-hand)
@@ -988,10 +988,10 @@
   (go :direction north)     ; inf-1 -> aero-lobby
   (assert (loc? @player @aero-lobby))
 
-  ; Position urchin for encounter
-  (move! @urchin @aero-lobby)
-  (move! @bolt-cutters @urchin)
-  (set-flag! @bolt-cutters INVISIBLE)
+  ; Verify urchin has bolt-cutters (hidden)
+  (assert (in? @urchin @aero-lobby))
+  (assert (in? @bolt-cutters @urchin))
+  (assert (has-flag? @bolt-cutters INVISIBLE))
 
   ; Show animated hand to urchin - he flees and drops bolt cutters
   (do @urchin :show @mummified-hand)
@@ -1048,7 +1048,7 @@
   (assert (loc? @player @large-chamber))
 
   ; Free the urchins
-  (set! urchin-freed false)
+  (assert (not urchin-freed))
 
   ; Cut wire to free urchins
   (do @urchin-wire :cut @bolt-cutters)
@@ -1061,8 +1061,8 @@
   (do @boots :wear)               ; Wear boots for electrical safety
   (assert (has-flag? @boots WEARBIT))
   (assert (has-flag? @gloves WEARBIT))  ; Already wearing gloves from great-dome climb
-  (move! @nitrogen @flask)        ; Ensure we have nitrogen
-  (set! nitrogen-cnt 0)           ; Reset nitrogen pour count
+  (assert (in? @nitrogen @flask))  ; Have nitrogen from chem lab
+  (assert (= nitrogen-cnt 0))
 
   ; Go down to lair-1
   (go :direction down)
@@ -1103,7 +1103,7 @@
   (assert (has-flag? @high-voltage POWERBIT))
 
   ; Cut power line with axe (3 hits)
-  (set! hv-cnt 0)
+  (assert (= hv-cnt 0))
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
@@ -1114,7 +1114,7 @@
   (do @input-cable :unplug)
 
   ; Verify endgame state is correct
-  (clear-flag! @output-cable RMUNGBIT)  ; Not already cut
+  (assert (no-flag? @output-cable RMUNGBIT))  ; Not already cut
   (assert (held? @boots))               ; Boots from brown-basement
   (assert (has-flag? @boots WEARBIT))   ; Wearing boots (electrical safety)
   (assert (held? @gloves))              ; Gloves from temporary-basement
