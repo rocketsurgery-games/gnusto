@@ -23,10 +23,11 @@
 ; === Stub Rooms (connected areas not in scope) ===
 
 (room @brown-tunnel
-  :description "Brown Tunnel"
-  :ldesc "This is a narrow tunnel leading from the Brown Building basement."
-  :flags ()  ; Dark
-  :exits ((south :to @brown-basement)))
+  :description "Cluttered Passage"
+  :ldesc "This cluttered passage leads southeast. It is full of apparently discarded electronic equipment, old rusty file cabinets, and other detritus. A stairway also leads up."
+  :flags (ONBIT)
+  :exits ((se :to @brown-basement)
+          (up :to @nutrition-bldg)))
 
 ; === Main Rooms ===
 
@@ -83,7 +84,7 @@
   :flags (ONBIT)
   :exits
     ((up :to @brown-building)
-     (northwest :to @brown-tunnel)))
+     (nw :to @brown-tunnel)))
 
 (room @brown-top-floor
   :description "Top Floor"

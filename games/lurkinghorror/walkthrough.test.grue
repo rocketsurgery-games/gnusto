@@ -772,8 +772,107 @@
     (wait))
   (assert (loc? @maintenance-man nil))
 
-  ; Go east to inf-5, then south to chemistry-bldg
+  ; Go east to inf-5
   (go :direction east)       ; inf-4 -> inf-5
+  (assert (loc? @player @inf-5))
+
+  ; === Detour: Get note from Great Dome ===
+  ; Need note to show professor. Path: inf-5 -> inf-3 -> great-dome -> roof
+  (go :direction west)       ; inf-5 -> inf-4
+  (go :direction west)       ; inf-4 -> inf-3
+  (go :direction up)         ; inf-3 -> great-dome
+
+  ; Wear gloves to safely climb tentacle
+  (do @gloves :wear)
+  (assert (has-flag? @gloves WEARBIT))
+
+  ; Climb tentacle to top of dome (creature flees, drops ladder)
+  (go :direction up)         ; great-dome -> top-of-dome via tentacle
+  (assert (loc? @player @top-of-dome))
+  (assert (has-flag? @tentacle INVISIBLE))  ; Creature fled
+  (assert (in? @dome-ladder @top-of-dome))  ; Ladder available
+
+  ; Go out to roof and up to on-dome
+  (do @dome-door :open)
+  (go :direction out)        ; top-of-dome -> dome-roof
+  (go :direction up)         ; dome-roof -> on-dome
+  (assert (loc? @player @on-dome))
+
+  ; Pry bronze plug to reveal secret hole with note
+  (do @bronze-plug :pry nil)
+  (assert (has-flag? @bronze-plug RMUNGBIT))
+  (assert (in? @secret-hole @on-dome))
+  (do @note :take)
+  (assert (held? @note))
+
+  ; Return: down to dome-roof, in to top-of-dome, down via ladder, down to inf-3
+  (go :direction down)       ; on-dome -> dome-roof
+  (go :direction in)         ; dome-roof -> top-of-dome
+  (go :direction down)       ; top-of-dome -> great-dome via ladder
+  (go :direction down)       ; great-dome -> inf-3
+  (assert (loc? @player @inf-3))
+
+  ; === Detour: Get boots and hand from Brown Building area ===
+  ; Path: inf-3 -> inf-5 -> nutrition-bldg -> brown-tunnel -> brown-basement
+  (go :direction east)       ; inf-3 -> inf-4
+  (go :direction east)       ; inf-4 -> inf-5
+  (go :direction north)      ; inf-5 -> nutrition-bldg
+  (go :direction down)       ; nutrition-bldg -> brown-tunnel
+  (go :direction se)         ; brown-tunnel -> brown-basement
+  (assert (loc? @player @brown-basement))
+
+  ; Get boots
+  (do @boots :take)
+  (assert (held? @boots))
+
+  ; Go up through Brown Building to roof
+  (go :direction up)         ; brown-basement -> brown-building
+  (go :direction up)         ; brown-building -> brown-top-floor
+
+  ; Unlock and open roof door with master key
+  (do @roof-door :unlock @master-key)
+  (assert (no-flag? @roof-door LOCKED))
+  (do @roof-door :open)
+  (assert (has-flag? @roof-door OPENBIT))
+
+  ; Go to roof and climb to dome
+  (go :direction west)       ; brown-top-floor -> brown-roof
+  (assert (held? @smooth-stone))  ; Need stone to trigger flier
+  (assert (= flier-count 0))      ; Flier encounter not started yet
+  (go :direction up)         ; brown-roof -> inside-dome (triggers flier if have smooth-stone)
+  (assert (loc? @player @inside-dome))
+  (assert (queued? flier-approach))  ; Flier event should be queued
+
+  ; Wait for flier to appear on roof (stage 1)
+  (wait)
+  (assert (= flier-count 1))
+  (assert (in? @flier @brown-roof))
+
+  ; Search tub to find mummified hand - flier advances to stage 2
+  (do @tub :search)
+  (assert (has-flag? @mummified-hand TOUCHBIT))
+  (assert (in? @mummified-hand @tub))
+
+  ; Take hand - flier advances to stage 3
+  (do @mummified-hand :take)
+  (assert (held? @mummified-hand))
+
+  ; Exit dome before flier enters (stage 5) - we're at stage 3
+  ; The flier is on brown-roof blocking our escape route
+  (go :direction down)       ; inside-dome -> brown-roof
+  (assert (in? @flier @brown-roof))  ; Flier blocking path
+
+  ; Drive off flier with smooth-stone
+  (do @flier :attack @smooth-stone)
+  (assert (loc? @flier nil))  ; Flier driven away
+
+  ; Return to inf-5 via brown building
+  (go :direction east)       ; brown-roof -> brown-top-floor
+  (go :direction down)       ; brown-top-floor -> brown-building
+  (go :direction down)       ; brown-building -> brown-basement
+  (go :direction nw)         ; brown-basement -> brown-tunnel
+  (go :direction up)         ; brown-tunnel -> nutrition-bldg
+  (go :direction south)      ; nutrition-bldg -> inf-5
   (assert (loc? @player @inf-5))
 
   ; --- Phase 5: Alchemy Lab ---
@@ -791,8 +890,8 @@
     (wait))
   (assert (loc? @player @alchemy-dept))
 
-  ; Give player the note to show professor
-  (move! @note @player)
+  ; Have note from Great Dome detour
+  (assert (held? @note))
   (set! prof-seen-note false)
   (set! prof-mad false)
 
@@ -856,9 +955,9 @@
   (do @ring :take)
   (assert (held? @ring))
 
-  ; SKIP: Getting mummified hand from steam tunnels
-  (move! @mummified-hand @player)
-  (clear-flag! @mummified-hand PERSON)
+  ; Hand was obtained from inside-dome during brown building detour
+  (assert (held? @mummified-hand))
+  (clear-flag! @mummified-hand PERSON)  ; Ensure not animated yet
   (set! animation-count 0)  ; Reset animation counter
   ; Order must match isolated test: vat first, then elixir
   (move! @vat @lab-bench)
@@ -956,11 +1055,12 @@
   (assert urchin-freed)
 
   ; --- Phase 7: Lair Maze & Final Battle ---
-  ; Set up remaining required items (axe already obtained from emergency-cabinet in Phase 4)
+  ; Verify required items (all obtained through gameplay)
   (assert (held? @axe))           ; From emergency-cabinet (Phase 4)
-  (move! @boots @player)          ; From brown-basement (Phase 3)
-  (set-flag! @boots WEARBIT)      ; Wearing boots
-  (set-flag! @gloves WEARBIT)     ; Wearing gloves
+  (assert (held? @boots))         ; From brown-basement (brown building detour)
+  (do @boots :wear)               ; Wear boots for electrical safety
+  (assert (has-flag? @boots WEARBIT))
+  (assert (has-flag? @gloves WEARBIT))  ; Already wearing gloves from great-dome climb
   (move! @nitrogen @flask)        ; Ensure we have nitrogen
   (set! nitrogen-cnt 0)           ; Reset nitrogen pour count
 
@@ -1013,14 +1113,12 @@
   (do @repeater :open)
   (do @input-cable :unplug)
 
-  ; Ensure endgame state is correct
-  ; NOTE: Still need setup for boots/gloves because we haven't implemented
-  ; getting them through gameplay yet (frotzlm-9xf.8)
+  ; Verify endgame state is correct
   (clear-flag! @output-cable RMUNGBIT)  ; Not already cut
-  (move! @boots @player)                ; Ensure boots are held
-  (set-flag! @boots WEARBIT)            ; Wearing boots (electrical safety)
-  (move! @gloves @player)               ; Ensure gloves are held
-  (set-flag! @gloves WEARBIT)           ; Wearing gloves (handle conductors)
+  (assert (held? @boots))               ; Boots from brown-basement
+  (assert (has-flag? @boots WEARBIT))   ; Wearing boots (electrical safety)
+  (assert (held? @gloves))              ; Gloves from temporary-basement
+  (assert (has-flag? @gloves WEARBIT))  ; Wearing gloves (handle conductors)
 
   ; Plug power line into socket - triggers endgame!
   (do @high-voltage :plug @input-socket)
