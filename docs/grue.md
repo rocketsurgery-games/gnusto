@@ -1167,6 +1167,33 @@ Tests use a sequential style with explicit actions and assertions:
 | `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
 | `(wait)` | Pass time and process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
+| `(set! VAR VALUE)` | Set global variable (inline setup) |
+| `(move! @obj @loc)` | Move object to location (inline setup) |
+| `(set-flag! @obj FLAG)` | Set flag on object (inline setup) |
+| `(clear-flag! @obj FLAG)` | Clear flag from object (inline setup) |
+| `(queue! EVENT [DELAY])` | Queue an event (inline setup) |
+| `(dequeue! EVENT)` | Remove event from queue (inline setup) |
+
+**Inline setup** allows manipulating game state mid-test without using `:setup` blocks.
+This is useful for full walkthrough tests that need to skip unimplemented mechanics:
+
+```scheme
+(test "walkthrough-full"
+  ; ... earlier actions ...
+
+  ; SKIP: Forklift puzzle - pre-clear the junk
+  (set! junk-moved 4)
+
+  ; Continue with navigation
+  (go :direction east)
+  (assert (loc? @player @storage-room))
+
+  ; SKIP: Complex ritual state - position for escape
+  (move! @player @pentagram)
+  (set-flag! @pentagram RMUNGBIT)
+
+  ; ... continue test ...)
+```
 
 ### `(def NAME VALUE)` and `(run NAME)`
 

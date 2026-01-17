@@ -256,6 +256,16 @@ class TestRunner:
                 return []
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
+        elif form_type in ("set!", "move!", "set-flag!", "clear-flag!", "queue!", "dequeue!",
+                           "set-prop!", "inc!", "dec!"):
+            # Setup operations - execute directly as effects
+            try:
+                from ..runtime import EffectExecutor
+                executor = EffectExecutor(runtime)
+                executor.execute(form)
+                return []
+            except Exception as e:
+                return [f"Form {form_idx}: Setup error - {e}"]
         else:
             return [f"Form {form_idx}: Unknown form type '{form_type}'"]
 
