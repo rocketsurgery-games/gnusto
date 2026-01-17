@@ -813,8 +813,7 @@
   (assert (not (in? @urchin @aero-lobby)))
   (assert (in? @bolt-cutters @aero-lobby))
 
-  ; Take bolt cutters
-  (clear-flag! @bolt-cutters INVISIBLE)
+  ; Take bolt cutters (INVISIBLE flag was cleared when urchin dropped them)
   (do @bolt-cutters :take)
   (assert (held? @bolt-cutters))
 
