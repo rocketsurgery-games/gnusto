@@ -82,7 +82,7 @@
   :setup ((move! @player @smith-st) (set! freeze-count 0) (queue! freezing))
 
   (test "freezing advances when outside"
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (> freeze-count 0)))
 
@@ -93,7 +93,7 @@
 
   (test "freezing event dequeues when player is inside"
     :setup ((move! @player @comp-center) (set! freeze-count 2) (queue! freezing 0))
-    (process-events)
+    (wait)
     (assert (= freeze-count 0))
     (assert (not (queued? freezing))))
 )

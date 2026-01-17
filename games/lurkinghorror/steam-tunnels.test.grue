@@ -172,7 +172,7 @@
 
   (test "valve kills rats and spawns dead rat"
     :setup ((set-flag! @pressure-valve OPENBIT))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (loc? @rats nil))
     (assert (loc? @dead-rat @tunnel-west)))

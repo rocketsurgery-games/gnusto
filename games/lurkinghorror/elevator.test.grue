@@ -112,7 +112,7 @@
   :setup ((move! @player @comp-center) (set! elevator-loc 1) (set! elevator-stopped true) (set-flag! @elevator-door OPENBIT) (set-flag! @elevator-door-1 OPENBIT) (queue! elevator-door-closes 0))
 
   (test "doors close when event fires"
-    (process-events)
+    (wait)
     (assert (no-flag? @elevator-door OPENBIT))
     (assert (no-flag? @elevator-door-1 OPENBIT)))
 )
@@ -121,11 +121,11 @@
   :setup ((move! @player @cs-elevator-room) (set! elevator-loc 1) (set! elevator-stopped true) (clear-flag! @elevator-door OPENBIT) (clear-flag! @elevator-door-1 OPENBIT) (set! elevator-go-buttons '(false false false true)) (queue! elevator-moves 0))
 
   (test "elevator starts moving on event"
-    (process-events)
+    (wait)
     (assert (global? elevator-stopped false)))
 
   (test "elevator moves to next floor"
     :setup ((set! elevator-stopped false) (set! elevator-loc 1) (set! elevator-direction 1) (set! elevator-go-buttons '(false false false true)) (queue! elevator-moves 0))
-    (process-events)
+    (wait)
     (assert (global? elevator-loc 2)))
 )

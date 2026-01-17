@@ -1165,8 +1165,7 @@ Tests use a sequential style with explicit actions and assertions:
 | `(go :direction DIR)` | Move in direction |
 | `(assert PRED)` | Check predicate, fail if false |
 | `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
-| `(wait)` | Process turn events (useful for timed puzzles) |
-| `(process-events)` | Process queued events |
+| `(wait)` | Pass time and process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
 
 ### `(def NAME VALUE)` and `(run NAME)`

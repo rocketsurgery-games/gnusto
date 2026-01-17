@@ -39,10 +39,9 @@ Test groups with shared setup:
     (do @obj :verb args...)   - Execute action
     (assert PRED)             - Check predicate, fail if false
     (until PRED BODY...)      - Loop until predicate true (max 100 iterations)
-    (wait)                    - Process events (shorthand for process-events)
+    (wait)                    - Pass time and process queued events
     (run ACTION-LIST)         - Execute a list of actions (symbol or quoted list)
     (go :direction DIR)       - Shorthand for movement
-    (process-events)          - Process queued events
 
 == Predicates ==
 
@@ -252,12 +251,6 @@ class TestRunner:
             return self._run_run(runtime, form, form_idx)
         elif form_type == "go":
             # Allow (go :direction X) as shorthand
-            try:
-                self._last_result = self._execute_action(runtime, form)
-                return []
-            except Exception as e:
-                return [f"Form {form_idx}: {e}"]
-        elif form_type == "process-events":
             try:
                 self._last_result = self._execute_action(runtime, form)
                 return []
@@ -507,17 +500,8 @@ class TestRunner:
                 raise EvalError("(go ...) requires :direction")
             return runtime.do("_movement", "go", direction)
 
-        elif name == "process-events":
-            # Process all queued events for this turn
-            # Returns the first event result (if any) for testing
-            results = runtime.process_events()
-            if results:
-                return results[0]
-            # Return a no-op success if no events fired
-            return ActionResult(outcome="success", context=[("events-processed", 0)])
-
         elif name == "wait":
-            # Shorthand for doing nothing + processing events
+            # Pass time and process queued events
             results = runtime.process_events()
             if results:
                 return results[0]

@@ -208,27 +208,27 @@
 
   (test "decrements timer by 60"
     :setup ((set! microwave-timer 180))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (global? microwave-timer 120))
     (assert (queued? microwave-running)))
 
   (test "stops when timer reaches 0"
     :setup ((set! microwave-timer 60))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (global? microwave-timer 0))
     (assert (not-queued? microwave-running)))
 
   (test "heats chinese food"
     :setup ((set! microwave-timer 120) (set! microwave-temp 4) (move! @chinese-food @microwave) (set-prop! @chinese-food heat 0))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 4)))
 
   (test "doesn't fire outside kitchen"
     :setup ((move! @player @cs-2nd) (set! microwave-timer 120))
-    (process-events)
+    (wait)
     (assert (global? microwave-timer 120)))
 )
 
@@ -237,14 +237,14 @@
 
   (test "chinese food gets RMUNGBIT when heat > 20"
     :setup ((set-prop! @chinese-food heat 18))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 22))
     (assert (has-flag? @chinese-food RMUNGBIT)))
 
   (test "not overcooked at heat 20"
     :setup ((set-prop! @chinese-food heat 16))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 20))
     (assert (not (has-flag? @chinese-food RMUNGBIT))))
@@ -255,23 +255,23 @@
 
   (test "decrements heat"
     :setup ((set-prop! @chinese-food heat 12) (move! @chinese-food @player))
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 11)))
 
   (test "doesn't cool food in running microwave"
     :setup ((move! @chinese-food @microwave) (set-prop! @chinese-food heat 12) (set! microwave-timer 120) (set! microwave-temp 4) (queue! microwave-running))
-    (process-events)
+    (wait)
     (assert (prop? @chinese-food heat 16)))
 
   (test "re-queues itself"
     :setup ((set-prop! @chinese-food heat 5) (move! @chinese-food @player))
-    (process-events)
+    (wait)
     (assert (queued? item-cooling)))
 
   (test "doesn't cool below 0"
     :setup ((set-prop! @chinese-food heat 0) (move! @chinese-food @player))
-    (process-events)
+    (wait)
     (assert (prop? @chinese-food heat 0)))
 )
 
@@ -283,13 +283,13 @@
   (assert (global? microwave-temp 4))
   (do @microwave :start)
   (assert (queued? microwave-running))
-  (process-events)
+  (wait)
   (assert (global? microwave-timer 120))
   (assert (prop? @chinese-food heat 4))
-  (process-events)
+  (wait)
   (assert (global? microwave-timer 60))
   (assert (prop? @chinese-food heat 8))
-  (process-events)
+  (wait)
   (assert (global? microwave-timer 0))
   (assert (prop? @chinese-food heat 12))
   (assert (not-queued? microwave-running)))
@@ -324,13 +324,13 @@
   :setup ((move! @player @kitchen) (move! @carton @microwave) (move! @chinese-food @carton) (set-prop! @chinese-food heat 0) (set! microwave-timer 120) (set! microwave-temp 4) (queue! microwave-running))
 
   (test "heats chinese food inside carton"
-    (process-events)
+    (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 4)))
 
   (test "overcooks food inside carton"
     :setup ((set-prop! @chinese-food heat 18))
-    (process-events)
+    (wait)
     (assert (prop? @chinese-food heat 22))
     (assert (has-flag? @chinese-food RMUNGBIT)))
 )
