@@ -96,19 +96,21 @@ counter are a refrigerator and a microwave."
         ((queued? microwave-running)
           (blocked :reason running
                    :context ((description "Nothing happens."))))
+        ((= ?value 'warm)
+          '((set microwave-temp 1)
+            (success :context ((description "The bottom of the display now reads \"WARM\".")))))
+        ((= ?value 'low)
+          '((set microwave-temp 2)
+            (success :context ((description "The bottom of the display now reads \"LOW\".")))))
+        ((= ?value 'medium)
+          '((set microwave-temp 3)
+            (success :context ((description "The bottom of the display now reads \"MEDIUM\".")))))
+        ((= ?value 'high)
+          '((set microwave-temp 4)
+            (success :context ((description "The bottom of the display now reads \"HIGH\".")))))
         (true
-          (let ((temp-val (condp = ?value
-                            warm 1
-                            low 2
-                            medium 3
-                            high 4
-                            nil)))  ; unknown
-            (if temp-val
-              (success
-                :effects ((set! microwave-temp temp-val))
-                :context ((description (str "The bottom of the display now reads \"" (nth temp-names temp-val) "\"."))))
-              (blocked :reason unknown-temp
-                       :context ((description "Unknown temperature setting. Use warm, low, medium, or high."))))))))
+          (blocked :reason unknown-temp
+                   :context ((description "Unknown temperature setting. Use warm, low, medium, or high."))))))
 
     ; Start the microwave: (do @microwave :start)
     :start (fn ()
