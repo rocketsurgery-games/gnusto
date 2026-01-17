@@ -862,9 +862,8 @@
   (do @curtain-door :open)
   (assert (has-flag? @curtain-door OPENBIT))
 
-  ; Enter inner lair
-  ; Note: Door mechanics may need work - teleport for now
-  (move! @player @inner-lair)
+  ; Enter inner lair through the open door
+  (go :direction south)
   (assert (loc? @player @inner-lair))
 
   ; Search pool to find power line

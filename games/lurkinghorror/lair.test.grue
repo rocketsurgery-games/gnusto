@@ -56,6 +56,12 @@
     (do @curtain-door :open)
     (assert (outcome? success))
     (assert (has-flag? @curtain-door OPENBIT)))
+
+  (test "can go through open door to inner-lair"
+    :setup ((clear-flag! @curtain-door LOCKED) (set-flag! @curtain-door OPENBIT))
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @inner-lair)))
 )
 
 (test-group "inner lair mass"

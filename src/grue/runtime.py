@@ -826,8 +826,10 @@ class GrueRuntime:
                 )
             direction = args[0]
             # Check room's :before-action for movement (verb="go", target=direction)
+            # Only short-circuit if result is blocking (blocked, error, redirect)
+            # A 'success' from before-action means "proceed with the movement"
             room_result = self._check_room_before_action("go", direction, actor, ())
-            if room_result is not None and room_result.outcome != "default":
+            if room_result is not None and room_result.outcome in ("blocked", "error", "redirect"):
                 return room_result
             return self._do_go(direction, actor=actor)
 
