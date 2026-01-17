@@ -346,7 +346,7 @@
 ; Test urchin barrier blocks passage until freed
 (test "walkthrough-phase6-urchin-barrier"
   :setup ((move! @player @large-chamber)
-          (set! urchin-freed false))
+          (set-prop! @urchins freed false))
 
   ; Try to go down - should be blocked by urchins
   (do @movement :go down)
@@ -354,7 +354,7 @@
 
 (test "walkthrough-phase6-urchins-freed"
   :setup ((move! @player @large-chamber)
-          (set! urchin-freed true))
+          (set-prop! @urchins freed true))
 
   ; Can now pass through to lair
   (do @movement :go down)
@@ -391,11 +391,11 @@
   :setup ((move! @player @large-chamber)
           (move! @bolt-cutters @player)
           (move! @urchin-wire @large-chamber)
-          (set! urchin-freed false))
+          (set-prop! @urchins freed false))
 
   ; Cut the wire with bolt cutters
   (do @urchin-wire :cut @bolt-cutters)
-  (assert urchin-freed))
+  (assert (prop? @urchins freed true)))
 
 ; =============================================================================
 ; PHASE 7: LAIR MAZE & FINAL BATTLE
@@ -545,7 +545,7 @@
   (do @pc :login "xyzzy")
   (do @pc :password "plugh")
   (assert (has-flag? @pc POWER))
-  (assert logged-in)
+  (assert (prop? @pc logged-in true))
 
   ; Navigate to odd-paper and trigger compulsion
   (do @menu-box :click)
@@ -1048,11 +1048,11 @@
   (assert (loc? @player @large-chamber))
 
   ; Free the urchins
-  (assert (not urchin-freed))
+  (assert (prop? @urchins freed false))
 
   ; Cut wire to free urchins
   (do @urchin-wire :cut @bolt-cutters)
-  (assert urchin-freed)
+  (assert (prop? @urchins freed true))
 
   ; --- Phase 7: Lair Maze & Final Battle ---
   ; Verify required items (all obtained through gameplay)

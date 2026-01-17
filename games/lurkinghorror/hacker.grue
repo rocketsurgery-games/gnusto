@@ -1,16 +1,15 @@
-; State variables for hacker interactions
-(globals
-  :hacker-trade false   ; Set when player proposes food-for-key trade
-  :lair-cnt 0           ; Possession counter (0-7+) - affects hacker responses
-  :hacker-help 0        ; Help stage counter (0-4) for I-HACKER-HELPS
-  :food-hint 0          ; Food hint counter for I-FOOD-HINT
-  :comp-cnt 0)          ; Compulsion page counter (0-4) for I-COMPULSION
+; Hacker state is stored as properties on @hacker:
+;   :trade - Set when player proposes food-for-key trade
+;   :lair-cnt - Possession counter (0-7+) - affects hacker responses
+;   :help-stage - Help stage counter (0-4) for I-HACKER-HELPS
+;   :food-hint - Food hint counter for I-FOOD-HINT
+;   :comp-cnt - Compulsion page counter (0-4) for I-COMPULSION
 
 (object @hacker
   :description "hacker"
   :location @terminal-room
   :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
-  :properties ()
+  :properties (:trade false :lair-cnt 0 :help-stage 0 :food-hint 0 :comp-cnt 0)
 
   (def hacker-desc "The hacker sits comfortably on an office chair facing a terminal table,
     or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly,
@@ -87,10 +86,10 @@
           (success :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away.")))))
 
       ; Give hot chinese food (heat >= 12) - if trade was proposed, loan the key
-      ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) hacker-trade)
+      ((and (= ?item @carton) (in? @chinese-food @carton) (>= (prop @chinese-food heat) 12) (:trade @hacker))
         '((move @carton @hacker)
           (move @chinese-food nil)
-          (set hacker-trade false)
+          (set @hacker :trade false)
           (move @master-key ?actor)
           (success :context ((response "\"Ah! Serious food!\" He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face. \"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key.")))))
 
@@ -128,7 +127,7 @@
            (and (= ?offer @carton) (= ?want @master-key))
            (and (= ?offer @master-key) (= ?want @chinese-food))
            (and (= ?offer @master-key) (= ?want @carton)))
-        '((set hacker-trade true)
+        '((set @hacker :trade true)
           (success :context ((response "\"You give me the food first.\"")))))
 
       ; Invalid trade
@@ -152,7 +151,7 @@
 
       ; Ask for master key - player already fed hacker (loan it)
       ((and (= ?item @master-key) (in? @carton @hacker))
-        '((set hacker-trade false)
+        '((set @hacker :trade false)
           (move @master-key ?actor)
           (success :context ((response "\"Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back.\" He hands you the key.")))))
 
@@ -177,7 +176,7 @@
     ; ?topic is the thing being asked about
     :ask-about (fn (?topic) (cond
       ; Possessed state (lair-cnt > 6) - he's not himself
-      ((> lair-cnt 6)     (success :context ((response "The hacker replies, \"Meld!\""))))
+      ((> (:lair-cnt @hacker) 6)     (success :context ((response "The hacker replies, \"Meld!\""))))
       ((= ?topic @hacker) (success :context ((response "He's reluctant to boast.")))) ; About himself
 
       ; About keys/keyring - reveals master key!
@@ -240,14 +239,14 @@
       ((queued? hacker-helps)
         (success :context ((response "\"I'm looking at it. Be patient. This isn't some little micro. We're on a hairy OS on a hairy net.\""))))
 
-      ; Already helped (hacker-help >= 3 means stage 3 was reached)
-      ((>= hacker-help 3)
+      ; Already helped (help-stage >= 3 means stage 3 was reached)
+      ((>= (:help-stage @hacker) 3)
         (success :context ((response "\"I already looked at it. The bug is fixed in the sources. Your paper is gone, unless those Alchemy chompers have a copy.\""))))
 
       ; In terminal room - start helping
       ((= (loc ?actor) @terminal-room)
         '((queue hacker-helps)
-          (set hacker-help 0)
+          (set @hacker :help-stage 0)
           (success :context ((response "\"Be patient!\"")))))
 
       ; Not in terminal room

@@ -11,11 +11,6 @@
 ;   - Cut urchin-wire with bolt cutters -> frees urchins, they collapse and stop blocking
 ;   - Urchins block passage down to lair until freed
 
-; === State Globals ===
-
-(globals
-  :urchin-freed false)  ; True after cutting the wire
-
 ; === Rooms ===
 
 (room @muddy-tunnel
@@ -42,13 +37,13 @@
         ((description
           (str "This is a wide spot in the tunnel, just as wet and muddy as elsewhere. The walls are slimy as well. Numerous slots or indentations about two feet wide and a foot high open here and there. "
                (cond
-                 (urchin-freed
+                 ((:freed @urchins)
                    "Stubs of the wire still enter each of the slots.")
                  ((in? @urchins @slots)
                    "Thin, wire or ropelike growths emerge from a hole further down and enter each of the slots. There is background noise here, almost loud enough to hear clearly.")
                  ((= (loc @urchins) @large-chamber)
                    (str "Thin, wire or ropelike growths emerge from a hole further down and envelop the head of each urchin. The urchins are "
-                        (if urchin-freed
+                        (if (:freed @urchins)
                           "catatonic."
                           "saying or chanting something repetitive and monotonal, almost machinelike.")))
                  (true
@@ -64,7 +59,7 @@
   :behaviors (
     :through (fn ()
       (cond
-        (urchin-freed
+        ((:freed @urchins)
           (success :message "A few of the urchins grab feebly at you as you pass, but none is a serious barrier."))
         ((in? @urchins @slots)
           (blocked :reason blocked
@@ -119,6 +114,7 @@
   :location @slots  ; Start in slots, emerge later
   :description "urchins"
   :flags (INVISIBLE PERSON)  ; Start invisible in slots
+  :properties (:freed false)  ; True after wire is cut
 
   :behaviors (
     :describe (fn ()
@@ -131,12 +127,12 @@
     :examine (fn ()
       (success :message
         (str "These are not normal looking urchins. Their clothes are muddy and tattered. They are barefoot in midwinter, and covered with mud. Around their heads are draped the "
-             (if urchin-freed "stubs of the " "")
+             (if (:freed @urchins) "stubs of the " "")
              "ropy growths that you've been noticing in this area. Although their eyes are open, they stare catatonically.")))
 
     :talk-to (fn ()
       (cond
-        (urchin-freed
+        ((:freed @urchins)
           (success :message "There is no response. It's as though they don't hear you."))
         (true
           (success :message "The urchins turn to you in unison. They smile, revealing red, broken teeth. They never stop their deep-voiced, incomprehensible chant."))))
@@ -178,7 +174,7 @@
         ((or (not ?tool) (= ?tool nil))
           (blocked :reason need-tool :message "You'll need something to cut with."))
         ((= ?tool @bolt-cutters)
-          '((set urchin-freed true)
+          '((set @urchins :freed true)
             (clear-flag @urchins INVISIBLE)
             (move @urchins @large-chamber)
             (move @urchin-wire nil)

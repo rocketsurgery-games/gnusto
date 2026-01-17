@@ -28,11 +28,11 @@
     :setup ((set-flag! @iron-plate OPENBIT))
     (do @iron-plate :look-inside)
     (assert (outcome? success))
-    (assert (global? seen-pit true)))
+    (assert (prop? @iron-plate pit-seen true)))
 )
 
 (test-group "cave altar after seeing pit"
-  :setup ((move! @player @cave-altar) (set! seen-pit true))
+  :setup ((move! @player @cave-altar) (set-prop! @iron-plate pit-seen true))
 
   (test "cannot look in pit after seeing it"
     (do @iron-plate :look-inside)
@@ -81,12 +81,12 @@
 )
 
 (test-group "brick wall"
-  :setup ((move! @player @steam-tunnel-east) (set! brick-wall-broken false))
+  :setup ((move! @player @steam-tunnel-east) (set-prop! @brick-wall broken false))
 
   (test "wall can be pushed through"
     (do @brick-wall :push)
     (assert (outcome? success))
-    (assert (global? brick-wall-broken true)))
+    (assert (prop? @brick-wall broken true)))
 
   (test "wall can be examined"
     (do @brick-wall :examine)
@@ -94,18 +94,18 @@
 )
 
 (test-group "cable climbing"
-  :setup ((move! @player @tunnel) (set! on-cable false))
+  :setup ((move! @player @tunnel) (set-prop! @cable on false))
 
   (test "can climb onto cable"
     (do @cable :climb)
     (assert (outcome? success))
-    (assert (global? on-cable true)))
+    (assert (prop? @cable on true)))
 
   (test "can drop from cable"
-    :setup ((set! on-cable true))
+    :setup ((set-prop! @cable on true))
     (do @cable :climb)
     (assert (outcome? success))
-    (assert (global? on-cable false)))
+    (assert (prop? @cable on false)))
 )
 
 (test-group "access hatch"
@@ -146,7 +146,7 @@
 )
 
 (test-group "rats blocking"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set! on-cable false))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set-prop! @cable on false))
 
   (test "rats block passage when present"
     (go :direction east)

@@ -54,7 +54,7 @@
   (assert (in? @urchins @slots)))
 
 (test "urchins block passage down when not freed"
-  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set! urchin-freed false))
+  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set-prop! @urchins freed false))
   (go :direction down)
   (assert (outcome? blocked)))
 
@@ -75,13 +75,13 @@
   (assert (loc? @urchin-wire @large-chamber)))
 
 (test "cutting wire with bolt cutters frees urchins"
-  :setup ((move! @player @large-chamber) (move! @bolt-cutters @player) (move! @urchins @slots) (set! urchin-freed false))
+  :setup ((move! @player @large-chamber) (move! @bolt-cutters @player) (move! @urchins @slots) (set-prop! @urchins freed false))
   (do @urchin-wire :cut @bolt-cutters)
   (assert (outcome? success))
-  (assert (global? urchin-freed true)))
+  (assert (prop? @urchins freed true)))
 
 (test "after cutting wire can pass through to lair"
-  :setup ((move! @player @large-chamber) (set! urchin-freed true))
+  :setup ((move! @player @large-chamber) (set-prop! @urchins freed true))
   (go :direction down)
   (assert (outcome? success))
   (assert (player-at? @lair-1)))

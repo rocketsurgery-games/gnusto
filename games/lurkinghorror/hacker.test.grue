@@ -48,7 +48,7 @@
   (test "propose food for key"
     (do @hacker :trade @carton @master-key)
     (assert (outcome? success))
-    (assert (global? hacker-trade true)))
+    (assert (prop? @hacker trade true)))
 
   (test "propose bad trade - rejected"
     (do @hacker :trade @coke @master-key)

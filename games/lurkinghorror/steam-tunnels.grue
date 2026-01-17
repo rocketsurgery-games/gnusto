@@ -11,15 +11,6 @@
 ;   - Brick wall can be broken to reach elevator pit
 ;   - Iron plate/pit reveals fate of missing students
 
-; === State Globals ===
-
-(globals
-  :seen-pit false           ; Set after looking in the pit under iron-plate
-  :brick-wall-broken false  ; Set when brick wall is destroyed
-  :rats-anger 0             ; Increments when trying to pass rats
-  :on-cable false           ; True when player is on the cable
-  :valve-turns 0)           ; Counter for turning pressure valve
-
 ; === Cave System (north of brick tunnel) ===
 
 (room @cave-room
@@ -137,6 +128,7 @@
   :location @cave-altar
   :description "iron plate"
   :flags (AN NDESCBIT CONTBIT TRANSBIT OPENABLE)
+  :properties (:pit-seen false)  ; Set after looking in the pit
 
   :behaviors (
     :examine (fn ()
@@ -147,7 +139,7 @@
 
     :open (fn ()
       (cond
-        (seen-pit
+        ((:pit-seen @iron-plate)
           (blocked :reason traumatized
                    :message "You would sooner die than open that panel again."))
         ((has-flag ?self OPENBIT)
@@ -174,7 +166,7 @@
 
     :listen (fn ()
       (cond
-        (seen-pit
+        ((:pit-seen @iron-plate)
           (blocked :reason traumatized :message "You find yourself unable to do that again."))
         ((has-flag ?self OPENBIT)
           (success :message "Disturbing noises issue from the open panel."))
@@ -183,12 +175,12 @@
 
     :look-inside (fn ()
       (cond
-        (seen-pit
+        ((:pit-seen @iron-plate)
           (blocked :reason traumatized :message "You would sooner die than open that panel again."))
         ((has-flag ?self OPENBIT)
           '((clear-flag ?self OPENBIT)
             (dequeue panel-noises)
-            (set seen-pit true)
+            (set @iron-plate :pit-seen true)
             (success :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students.")))
         (true
           (blocked :reason closed :message "The panel isn't open."))))))
@@ -259,7 +251,7 @@
 
     :on-enter (fn (?from)
       (cond
-        ((> valve-turns 0)
+        ((> (:turns @pressure-valve) 0)
           '((dequeue rats-go-away)
             (queue rats-event -1)
             (success)))
@@ -330,7 +322,7 @@
       (success :context
         ((description
           (str "The steam pipe and coaxial cable turn upwards and disappear into the ceiling here. The tunnel itself comes to an end in a grimy, damp, and dripping triad of crumbling brick walls."
-               (if (and (not brick-wall-broken) (not (has-flag @brick-wall TOUCHBIT)))
+               (if (and (not (:broken @brick-wall)) (not (has-flag @brick-wall TOUCHBIT)))
                  " The south wall looks particularly decrepit."
                  ""))))))
 
@@ -356,6 +348,7 @@
   :location nil  ; Global object
   :description "coaxial cable"
   :flags (NDESCBIT)
+  :properties (:on false)  ; True when player is on the cable
 
   :behaviors (
     :examine (fn ()
@@ -363,16 +356,16 @@
 
     :climb (fn ()
       (cond
-        (on-cable
-          '((set on-cable false)
+        ((:on @cable)
+          '((set @cable :on false)
             (success :message "You drop from the cable to the floor.")))
         (true
-          '((set on-cable true)
+          '((set @cable :on true)
             (success :message "You grab the cable bundle and pull yourself up, dangling above the floor.")))))
 
     :swing (fn ()
       (cond
-        ((not on-cable)
+        ((not (:on @cable))
           (blocked :reason not-on :message "You're not on the cable."))
         (true
           (success :message "You swing along the cable. Not particularly useful at the moment."))))))
@@ -465,13 +458,13 @@
           ; Closing the valve
           '((clear-flag ?self OPENBIT)
             (clear-flag @steam-pipes HOT)
-            (set valve-turns 0)
+            (set @pressure-valve :turns 0)
             (success :message "You turn the valve closed. The steam dissipates, and the passage east clears.")))
         (true
           ; Opening the valve
           '((set-flag ?self OPENBIT)
             (set-flag @steam-pipes HOT)
-            (set valve-turns (+ valve-turns 1))
+            (set @pressure-valve :turns (+ (:turns @pressure-valve) 1))
             (queue rats-go-away 3)
             (success :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east.")))))
 
@@ -509,6 +502,7 @@
   :location @tunnel-west  ; Start location
   :description "rats"
   :flags (NDESCBIT ATTACKBIT)
+  :properties (:anger 0)  ; Increments when trying to pass rats
 
   :behaviors (
     :describe (fn ()
@@ -543,8 +537,8 @@
     :through (fn (?dest ?from)
       (cond
         ; Block if rats are at destination OR current location (unless on cable)
-        ((and (or (in? @rats ?dest) (in? @rats ?from)) (not on-cable))
-          '((set rats-anger (+ rats-anger 1))
+        ((and (or (in? @rats ?dest) (in? @rats ?from)) (not (:on @cable)))
+          '((set @rats :anger (+ (:anger @rats) 1))
             (blocked :reason rats-blocking
                      :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past.")))
         (true (success))))))
@@ -635,11 +629,12 @@
   :location @steam-tunnel-east
   :description "brick wall"
   :flags (NDESCBIT)
+  :properties (:broken false)  ; Set when wall is destroyed
 
   :behaviors (
     :examine (fn ()
       (cond
-        (brick-wall-broken
+        ((:broken @brick-wall)
           (success :message "The south wall has been broken through, revealing a passage beyond."))
         (true
           '((set-flag ?self TOUCHBIT)
@@ -647,19 +642,19 @@
 
     :attack (fn ()
       (cond
-        (brick-wall-broken
+        ((:broken @brick-wall)
           (blocked :reason already-broken :message "There's already a hole in the wall."))
         (true
-          '((set brick-wall-broken true)
+          '((set @brick-wall :broken true)
             (move @broken-brick ?self)
             (success :message "You smash through the decrepit brickwork, revealing a dark opening beyond.")))))
 
     :push (fn ()
       (cond
-        (brick-wall-broken
+        ((:broken @brick-wall)
           (blocked :reason already-broken :message "There's already a hole in the wall."))
         (true
-          '((set brick-wall-broken true)
+          '((set @brick-wall :broken true)
             (move @broken-brick ?self)
             (success :message "The wall crumbles easily under your push, revealing a dark passage beyond.")))))
 
@@ -674,7 +669,7 @@
   :behaviors (
     :through (fn ()
       (cond
-        ((not brick-wall-broken)
+        ((not (:broken @brick-wall))
           (blocked :reason solid :message "You are trying to walk through a brick wall."))
         (true (success))))))
 

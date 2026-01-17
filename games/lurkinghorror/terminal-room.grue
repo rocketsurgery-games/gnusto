@@ -16,7 +16,7 @@
         ; Waking from nightmare - player fell asleep on platform, wakes at terminal
         ((= ?from-room @platform-room)
           '((queue hacker-helps)
-            (set hacker-help 0)
+            (set @hacker :help-stage 0)
             (success :context ((nightmare-wake true))
                      :message "You are awakened by the thump of your head hitting the keyboard.")))
         (true (success))))
@@ -84,21 +84,21 @@
   (def stage4-desc "The hacker wanders back to his terminal and returns to his hacking.")
 
   :location @terminal-room
-  :on-turn (condp = hacker-help
-    0 '((inc hacker-help) (success :stage 1 :description stage1-desc))
-    1 '((inc hacker-help) (success :stage 2 :description stage2-desc))
-    2 '((inc hacker-help) (success :stage 3 :description stage3-desc))
+  :on-turn (condp = (:help-stage @hacker)
+    0 '((set @hacker :help-stage 1) (success :stage 1 :description stage1-desc))
+    1 '((set @hacker :help-stage 2) (success :stage 2 :description stage2-desc))
+    2 '((set @hacker :help-stage 3) (success :stage 3 :description stage3-desc))
     '((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description stage4-desc))))
 
 ; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
 (event food-hint
   :location @terminal-room
-  :on-turn (condp = food-hint
-    1 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I could stand a little snack, though."))))
-    2 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I don't know where I can get something to eat, what with all the snow."))))
-    3 '((inc food-hint) (queue food-hint 2) (success :context ((hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving."))))
-    4 '((set food-hint 0) (dequeue food-hint) (success :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you."))))
+  :on-turn (condp = (:food-hint @hacker)
+    1 '((set @hacker :food-hint 2) (queue food-hint 2) (success :context ((hint "I could stand a little snack, though."))))
+    2 '((set @hacker :food-hint 3) (queue food-hint 2) (success :context ((hint "I don't know where I can get something to eat, what with all the snow."))))
+    3 '((set @hacker :food-hint 4) (queue food-hint 2) (success :context ((hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving."))))
+    4 '((set @hacker :food-hint 0) (dequeue food-hint) (success :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you."))))
     '((dequeue food-hint) (success))))
 
 ; I-COMPULSION: Possession event - player is compelled to read the odd paper
@@ -111,11 +111,11 @@
   (def page4-desc "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?")
 
   :location @terminal-room
-  :on-turn (condp = comp-cnt
-    0 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 1 :description page1-desc))
-    1 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 2 :description page2-desc))
-    2 '((inc comp-cnt) (set-prop @odd-paper read-page true) (success :page 3 :description page3-desc))
-    3 '((inc comp-cnt) (dequeue compulsion)
+  :on-turn (condp = (:comp-cnt @hacker)
+    0 '((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (success :page 1 :description page1-desc))
+    1 '((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (success :page 2 :description page2-desc))
+    2 '((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (success :page 3 :description page3-desc))
+    3 '((set @hacker :comp-cnt 4) (dequeue compulsion)
         (move @more-box nil) (move @menu-box @pc)
         (move @player @yuggoth)
         (success :page 4 :description page4-desc :transition "You faint, and when you awaken..."))

@@ -1,9 +1,3 @@
-; === Login State Globals ===
-; These track the multi-step login flow from V-TYPE -> V-LOGIN -> V-PASSWORD
-(globals
-  :logged-in false  ; Set true after valid password
-  :username false)  ; Set to login ID after first step (true or 'xyzzy for easter egg)
-
 ; Screen objects that can appear on the PC (in priority order)
 (def screen-objects '(@odd-paper @menu-box @more-box @yak-window))
 
@@ -16,7 +10,8 @@
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
   :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties (:size 30 :unplugged false)
+  ; Login state: logged-in becomes true after valid password, username is set to login ID (or true for invalid)
+  :properties (:size 30 :unplugged false :logged-in false :username false)
 
   (def pc-desc "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key.")
   (def login-please "\"LOGIN PLEASE:\"")
@@ -111,8 +106,8 @@
           (blocked :reason already-off :message "It's already off."))
         (true
           '((clear-flag ?self POWER)
-            (set logged-in false)
-            (set username false)
+            (set @pc :logged-in false)
+            (set @pc :username false)
             (move @menu-box nil)
             (move @more-box nil)
             (move @yak-window nil)
@@ -140,8 +135,8 @@
           ; Unplug while on: turn off first, reset login state
           '((clear-flag ?self POWER)
             (set-prop ?self unplugged true)
-            (set logged-in false)
-            (set username false)
+            (set @pc :logged-in false)
+            (set @pc :username false)
             (move @menu-box nil)
             (move @more-box nil)
             (move @yak-window nil)
@@ -167,10 +162,10 @@
           (blocked :reason unplugged :message "Login on what?"))
         ((not (has-flag ?self POWER))
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
-        ((not username)
+        ((not (:username @pc))
           ; No username yet - redirect to login
           (redirect :action (do ?self :login ?value)))
-        ((not logged-in)
+        ((not (:logged-in @pc))
           ; Have username but not logged in - redirect to password
           (redirect :action (do ?self :password ?value)))
         (true
@@ -188,11 +183,11 @@
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
         ((or (= ?value "xyzzy") (= ?value "872325412"))
           ; Valid login ID (xyzzy or the actual ID 872325412)
-          '((set username "xyzzy")
+          '((set @pc :username "xyzzy")
             (success :message (str "The computer responds \"" password-please))))
         (true
           ; Wrong login - accept but will fail at password stage
-          '((set username true)
+          '((set @pc :username true)
             (success :message (str "The computer responds \"" password-please))))))
 
     ; PASSWORD - Second step of login flow
@@ -203,16 +198,16 @@
           (blocked :reason unplugged :message "Login on what?"))
         ((not (has-flag ?self POWER))
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
-        ((and (= username "xyzzy")
+        ((and (= (:username @pc) "xyzzy")
               (or (= ?value "plugh") (= ?value "uhlersoth")))
           ; Valid password with valid login - success!
-          '((set logged-in true)
+          '((set @pc :logged-in true)
             (move @menu-box ?self)
             (success :message "The computer responds \"Good evening. You're here awfully late.\" It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads \"Classics Paper,\" some particularly ominous words next to it say \"DUE TOMORROW!\" and more reassuringly, a menu box next to that reads \"Edit Classics Paper.\"")))
         (true
           ; Invalid password or wrong login - reset and fail
-          '((set username false)
-            (set logged-in false)
+          '((set @pc :username false)
+            (set @pc :logged-in false)
             (success :message (str "The computer responds \"INVALID LOGIN\" and then " login-please))))))))
 
 ; === PC Physical Components ===
@@ -246,9 +241,9 @@
       (cond
         ((not (has-flag @pc POWER))
           (success :message "Well, nothing happens. Perhaps you should turn on the computer?"))
-        ((not logged-in)
+        ((not (:logged-in @pc))
           (cond
-            ((not username)
+            ((not (:username @pc))
               (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should \"LOGIN your-user-id\" and then \"PASSWORD your-password\".\""))
             (true
               (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"PASSWORD your-password\".\""))))

@@ -4,7 +4,7 @@
 
 
 (test-group "lair maze structure"
-  :setup ((move! @floor-waxer @inf-5) (set! urchin-freed true))
+  :setup ((move! @floor-waxer @inf-5) (set-prop! @urchins freed true))
 
   (test "lair-1 up exits to large-chamber"
     :setup ((move! @player @lair-1))
