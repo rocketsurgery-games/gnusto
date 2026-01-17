@@ -840,7 +840,7 @@
           (cond
             ((not (has-flag ?self RMUNGBIT))
               (blocked :reason no-end :message "There's no end to the line that you could plug in."))
-            ((first-in @input-socket)
+            ((first (contents @input-socket))
               (blocked :reason occupied :message (str "There's already something in the socket.")))
             (true
               ; This is the key action - plugging in the power line!

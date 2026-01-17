@@ -887,18 +887,17 @@
   (do @input-cable :unplug)
 
   ; Ensure endgame state is correct
+  ; NOTE: Still need setup for boots/gloves because we haven't implemented
+  ; getting them through gameplay yet (frotzlm-9xf.8)
   (clear-flag! @output-cable RMUNGBIT)  ; Not already cut
-  (dequeue! frob-appears)               ; Not already queued
   (move! @boots @player)                ; Ensure boots are held
   (set-flag! @boots WEARBIT)            ; Wearing boots (electrical safety)
   (move! @gloves @player)               ; Ensure gloves are held
   (set-flag! @gloves WEARBIT)           ; Wearing gloves (handle conductors)
 
   ; Plug power line into socket - triggers endgame!
-  ; NOTE: Plug action mechanics may need debugging - use direct setup
-  (move! @high-voltage @input-socket)
-  (queue! frob-appears)
-  (set! end-cnt 0)
+  (do @high-voltage :plug @input-socket)
+  (assert (queued? frob-appears))
 
   ; Frob appears - two stages before we can throw stone
   (wait)  ; stage 1 - frob appears, stone vibrates
