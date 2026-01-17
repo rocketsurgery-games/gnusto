@@ -867,7 +867,7 @@
   (assert (loc? @player @inner-lair))
 
   ; Search pool to find power line
-  (queue! hand-dives)
+  ; (hand-dives was queued by on-enter when we came through the door)
   (do @pool :reach-in)
   (assert (in? @high-voltage @inner-lair))
 
