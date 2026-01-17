@@ -28,7 +28,8 @@
 
   :behaviors (
     :on-enter (fn (?from)
-      (success :effects ((queue! yuggoth-advance 2))))))
+      '((queue yuggoth-advance 2)
+        (success)))))
 
 (room @bowl-room
   :description "Basalt Bowl"
@@ -44,7 +45,8 @@
     :on-enter (fn (?from)
       (cond
         ((= ?from @yuggoth)
-          (success :effects ((queue! yuggoth-advance 2))))
+          '((queue yuggoth-advance 2)
+            (success)))
         (true (success))))))
 
 (room @platform-room
@@ -59,7 +61,8 @@
       (cond
         ((= ?from @bowl-room)
           ; Reveal the smooth-stone
-          (success :effects ((move! @smooth-stone ?self))))
+          '((move @smooth-stone ?self)
+            (success)))
         (true (success))))
 
     ; Block most movement - crowd holds you
@@ -81,13 +84,15 @@
   :on-turn
     (cond
       ((= (loc @player) @yuggoth)
-        (success :effects ((move! @player @bowl-room) (queue! yuggoth-advance 2))
-                 :context ((description "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise."))))
+        '((move @player @bowl-room)
+          (queue yuggoth-advance 2)
+          (success :context ((description "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise.")))))
       ((= (loc @player) @bowl-room)
-        (success :effects ((move! @player @platform-room))
-                 :context ((description "The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise."))))
+        '((move @player @platform-room)
+          (success :context ((description "The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise.")))))
       (true
-        (success :effects ((dequeue! yuggoth-advance))))))
+        '((dequeue yuggoth-advance)
+          (success)))))
 
 ; === Platform (scenery) ===
 
@@ -132,8 +137,10 @@
       (cond
         ; In nightmare realm - triggers lurker
         ((= (loc ?self) @platform-room)
-          (success :effects ((set-flag! ?self TOUCHBIT) (move! ?self @player) (queue! lurker-appears))
-                   :message "You pick up the stone. It feels warm in your hand."))
+          '((set-flag ?self TOUCHBIT)
+            (move ?self @player)
+            (queue lurker-appears)
+            (success :message "You pick up the stone. It feels warm in your hand.")))
         ; Normal take elsewhere
         (true
           (default))))
