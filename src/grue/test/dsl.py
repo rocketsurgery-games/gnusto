@@ -5,16 +5,10 @@ Tests are S-expressions that exercise the full Grue stack.
 
 == Test Forms ==
 
-Simple single-action test (legacy style):
-    (test "door opens"
-      :setup ((move! @player @room))
-      :action (do @door :open)
-      :expect ((outcome? success)))
-
-Sequential test (new style - use for multi-step tests and walkthroughs):
+Sequential test (standard style):
     (test "complete puzzle"
       :setup ((move! @player @room))    ; optional setup
-      (do @door :unlock @key)           ; bare actions
+      (do @door :unlock @key)           ; actions
       (do @door :open)
       (assert (has-flag? @door OPENBIT))
       (until (loc? @player @goal)       ; loop until condition
@@ -31,8 +25,14 @@ Action lists for walkthroughs:
 Test groups with shared setup:
     (test-group "door tests"
       :setup ((move! @player @room))
-      (test "opens" :action (do @door :open) :expect ((outcome? success)))
-      (test "closes" :action (do @door :close) :expect ((outcome? success))))
+
+      (test "opens"
+        (do @door :open)
+        (assert (outcome? success)))
+
+      (test "closes"
+        (do @door :close)
+        (assert (outcome? success))))
 
 == Test Body Forms ==
 
@@ -41,24 +41,29 @@ Test groups with shared setup:
     (until PRED BODY...)      - Loop until predicate true (max 100 iterations)
     (wait)                    - Process events (shorthand for process-events)
     (run ACTION-LIST)         - Execute a list of actions (symbol or quoted list)
-    (seq ACTIONS...)          - Execute actions in sequence (legacy, optional)
-    (step :action A :expect P) - Action with inline expectations (legacy)
+    (go :direction DIR)       - Shorthand for movement
+    (process-events)          - Process queued events
 
 == Predicates ==
 
+Result predicates (check last action result):
     (outcome? success|blocked|error|redirect)
     (reason? REASON)
     (context? KEY VALUE)
+    (victory? true|false)
+    (death? true|false)
+
+State predicates (check game state):
     (player-at? ROOM)
     (loc? OBJ LOCATION)
     (has-flag? OBJ FLAG)
     (no-flag? OBJ FLAG)
     (held? OBJ)              - Object in player inventory
+    (in? OBJ CONTAINER)      - Object inside container
     (prop? OBJ PROP VALUE)
     (global? NAME VALUE)
     (queued? EVENT)
-    (victory? true|false)
-    (death? true|false)
+    (not-queued? EVENT)
 
 Usage:
     from grue.test import run_tests
@@ -245,8 +250,6 @@ class TestRunner:
             return self._run_wait(runtime, form_idx)
         elif form_type == "run":
             return self._run_run(runtime, form, form_idx)
-        elif form_type == "seq":
-            return self._run_seq(runtime, form, form_idx)
         elif form_type == "go":
             # Allow (go :direction X) as shorthand
             try:
@@ -340,35 +343,14 @@ class TestRunner:
 
         return failures
 
-    def _run_seq(
-        self,
-        runtime: GrueRuntime,
-        seq: SList,
-        seq_idx: int
-    ) -> list[str]:
-        """Run a (seq ACTION ACTION ...) form - execute actions in sequence."""
-        failures: list[str] = []
-
-        # All items after 'seq' are actions to execute
-        for i, action in enumerate(list(seq.items)[1:], 1):
-            if not isinstance(action, SList):
-                failures.append(f"Seq {seq_idx}.{i}: Invalid action (not a list)")
-                continue
-            try:
-                self._execute_action(runtime, action)
-            except Exception as e:
-                failures.append(f"Seq {seq_idx}.{i}: {e}")
-
-        return failures
-
-    # Predicates handled by _check_expectations (both result and state predicates)
-    # These are test-specific predicates, not general evaluator functions
+    # Predicates with explicit handlers in _check_expectations.
+    # Other predicates (held?, in?, visible?, etc.) work via ExprEvaluator fallback.
     _EXPECTATION_PREDICATES = {
-        # Result predicates
+        # Result predicates (require _last_result)
         "outcome?", "reason?", "context?", "death?", "victory?",
-        # State predicates
+        # State predicates (with explicit handlers for better error messages)
         "player-at?", "has-flag?", "no-flag?", "not-flag?", "loc?",
-        "global?", "prop?", "queued?", "not-queued?", "held?",
+        "global?", "prop?", "queued?", "not-queued?",
     }
 
     # Result predicates require a last action result to check

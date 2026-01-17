@@ -743,12 +743,6 @@ def _skip_test(expr: SList, world: GrueWorld) -> None:
     pass
 
 
-@form("test-sequence")
-def _skip_test_sequence(expr: SList, world: GrueWorld) -> None:
-    """Skip test-sequence forms (handled by test_dsl module)."""
-    pass
-
-
 @form("defn")
 def _parse_defn(expr: SList, world: GrueWorld) -> None:
     """Parse (defn name (params) body...) or (defn name "docstring" (params) body...).

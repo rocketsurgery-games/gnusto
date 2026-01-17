@@ -1136,41 +1136,37 @@ Test files use the `.test.grue` extension and are colocated with game files.
 
 ### `(test NAME ...)`
 
-The unified test form supports both single-action tests and multi-step sequences.
-
-**Single-action style** (legacy, uses `:action`/`:expect` keywords):
+Tests use a sequential style with explicit actions and assertions:
 
 ```scheme
 (test "can exit south without carrying anything"
-  :action (go :direction south)
-  :expect ((outcome? success)
-           (player-at? @cs-2nd)))
+  (go :direction south)
+  (assert (outcome? success))
+  (assert (player-at? @cs-2nd)))
 
 (test "blocked when carrying PC"
   :setup ((move! @pc @player))
-  :action (go :direction south)
-  :expect ((outcome? blocked)
-           (reason? tech-property)))
-```
+  (go :direction south)
+  (assert (outcome? blocked))
+  (assert (reason? tech-property)))
 
-**Sequential style** (for multi-step tests and walkthroughs):
-
-```scheme
 (test "take PC then blocked at exit"
   (do @pc :take)
   (assert (held? @pc))
-  (do @movement :go south)
+  (go :direction south)
   (assert (outcome? blocked)))
 ```
 
-**Available forms in sequential tests:**
+**Available test body forms:**
 
 | Form | Description |
 |------|-------------|
-| `(do @obj :verb args...)` | Execute action |
+| `(do @obj :verb args...)` | Execute action on object |
+| `(go :direction DIR)` | Move in direction |
 | `(assert PRED)` | Check predicate, fail if false |
 | `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
 | `(wait)` | Process turn events (useful for timed puzzles) |
+| `(process-events)` | Process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
 
 ### `(def NAME VALUE)` and `(run NAME)`
@@ -1223,40 +1219,54 @@ the same initial state.
   :setup ((move! @player @kitchen))
 
   (test "set to 2 minutes"
-    :action (do @microwave :set-timer 120)
-    :expect ((global? microwave-timer 120)))
+    (do @microwave :set-timer 120)
+    (assert (global? microwave-timer 120)))
 
   (test "set to 30 seconds"
-    :action (do @microwave :set-timer 30)
-    :expect ((global? microwave-timer 30)))
+    (do @microwave :set-timer 30)
+    (assert (global? microwave-timer 30)))
 
   (test "can't set over 1 hour"
-    :action (do @microwave :set-timer 3601)
-    :expect ((outcome? blocked)
-             (reason? too-long))))
+    (do @microwave :set-timer 3601)
+    (assert (outcome? blocked))
+    (assert (reason? too-long))))
 ```
 
 **Semantics:**
 - Group `:setup` runs before each test in the group
 - Test-level `:setup` runs after group setup (additive)
-- Each test still starts from fresh game state (group setup is not cumulative)
+- Each test starts from fresh game state (group setup is not cumulative)
 - Tests inside a group can override group setup by specifying their own
 
 ### Test Predicates
+
+**Result predicates** (check last action result):
 
 | Predicate | Description |
 |-----------|-------------|
 | `(outcome? STATUS)` | Check action outcome (success, blocked, error) |
 | `(reason? SYMBOL)` | Check blocked reason |
 | `(context? KEY VALUE)` | Check context contains key-value pair |
+| `(death? BOOL)` | Check if death occurred |
+| `(victory? BOOL)` | Check if victory occurred |
+
+**State predicates** (check game state):
+
+| Predicate | Description |
+|-----------|-------------|
 | `(player-at? ROOM)` | Player is in room |
 | `(held? OBJ)` | Object is in player's inventory |
 | `(loc? OBJ LOCATION)` | Object is at location |
+| `(in? OBJ CONTAINER)` | Object is inside container |
+| `(has-flag? OBJ FLAG)` | Object has flag |
+| `(no-flag? OBJ FLAG)` | Object does not have flag |
+| `(prop? OBJ PROP VALUE)` | Object property has value |
+| `(global? NAME VALUE)` | Global variable has value |
 | `(queued? EVENT)` | Event is in queue |
 | `(not-queued? EVENT)` | Event is not in queue |
-| `(global? NAME VALUE)` | Global variable has value |
-| `(has-flag? OBJ FLAG)` | Object has flag |
-| `(prop? OBJ PROP VALUE)` | Object property has value |
+
+Any predicate from the expression language (e.g., `visible?`, `here?`, `inside?`) also
+works in `(assert ...)` via the evaluator fallback.
 
 ### Test Effects
 
