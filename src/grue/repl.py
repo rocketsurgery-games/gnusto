@@ -17,6 +17,7 @@ Actions:
     (do TARGET :verb)                     - Perform action on target
     (do TARGET :verb ARG1 ARG2 ...)       - Action with arguments
     (go DIRECTION)                        - Move in direction
+    (wait)                                - Pass time, process events
 
 Examples:
     (do @door :open)                      - Open the door
@@ -141,6 +142,12 @@ class QueryValue:
 
 
 @dataclass
+class WaitResult:
+    """Result of waiting (passing time)."""
+    pass
+
+
+@dataclass
 class EventResult:
     """Result of a fired event."""
     event_name: str
@@ -174,6 +181,7 @@ class ReplEvaluator:
             "reset": self._cmd_reset,
             "go": self._cmd_go,
             "do": self._cmd_do,
+            "wait": self._cmd_wait,
         }
 
         # Effect commands
@@ -280,6 +288,10 @@ class ReplEvaluator:
     def _cmd_reset(self, expr: SList) -> ResetResult:
         self.runtime.reset()
         return ResetResult()
+
+    def _cmd_wait(self, expr: SList) -> WaitResult:
+        """Execute (wait) - pass time and process events."""
+        return WaitResult()
 
     def _cmd_go(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
         """Execute (go DIRECTION)."""
@@ -411,6 +423,10 @@ def print_result(result: Any) -> bool:
 
     if isinstance(result, ResetResult):
         print("[Reset]")
+        return True
+
+    if isinstance(result, WaitResult):
+        print("[Time passes...]")
         return True
 
     if isinstance(result, LocationResult):
@@ -562,8 +578,8 @@ def main():
             continue
 
         # Process events (game loop - events fire after each player action)
-        # Only process after actions that advance time (do, go)
-        if isinstance(result, (ActionDone, ActionBlocked)):
+        # Only process after actions that advance time (do, go, wait)
+        if isinstance(result, (ActionDone, ActionBlocked, WaitResult)):
             event_results = runtime.process_events()
             for event_result in event_results:
                 # Find the event name from queues (best effort)
