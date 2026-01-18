@@ -42,7 +42,7 @@
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
 counter are a refrigerator and a microwave."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((east :to @cs-2nd)))
 
 ; === Microwave Oven ===

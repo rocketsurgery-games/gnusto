@@ -18,18 +18,18 @@
 (room @aero-basement
   :description "Aero Basement"
   :ldesc "This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((east :to @cs-basement)
           (west :to @aero-stairs)))
 
 (room @temporary-lab
   :description "Temporary Lab"
   :ldesc "This is a laboratory of some sort. It takes up most of the building on this level, all the interior walls having been knocked down. (One reason these temporary buildings are still here is their flexibility: no one cares if they get more or less destroyed.) A stairway leads down, and a door leads north."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((down :to @temporary-basement)
           (north :to @smith-st-2)
           (out :to @smith-st-2))
-  :globals (@outside-door)
+  :visible (@outside-door)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -48,7 +48,7 @@
 (room @temporary-basement
   :description "Temporary Basement"
   :ldesc "During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @cs-basement)
      (east :to @dead-storage)
@@ -56,11 +56,11 @@
 
 (room @dead-storage
   :description "Dead Storage"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @temporary-basement)
      (east :to @storage-room :via @junk-barrier))
-  :globals (@junk)
+  :visible (@junk)
 
   :behaviors (
     :describe (fn ()
@@ -74,11 +74,11 @@
 (room @storage-room
   :description "Ancient Storage"
   :ldesc "What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @dead-storage)
      (down :to @brick-tunnel :via @manhole-passage))
-  :globals (@junk @pool @manhole @manhole-cover)
+  :visible (@junk @pool @manhole @manhole-cover)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -107,7 +107,7 @@
 ; === Junk (global object in storage areas) ===
 
 (object @junk
-  :location nil  ; Global object, present via room :globals
+  :location nil  ; Global object, present via room :visible
   :description "junk"
   :properties (:nodesc true :moved 0)  ; Counter: need > junk-moves-needed to clear path
 
@@ -349,7 +349,7 @@
 ; === Pool (global object for puddles/water) ===
 
 (object @pool
-  :location nil  ; Global object, present via room :globals
+  :location nil  ; Global object, present via room :visible
   :description "pool of water"
   :properties (:nodesc true)
   :behaviors (

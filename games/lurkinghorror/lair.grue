@@ -27,7 +27,7 @@
      (south :to @lair-6)
      (north :to @lair-2)
      (east :to @lair-1))  ; Loop back
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "north")
 
   :behaviors (
@@ -42,7 +42,7 @@
      (west :to @lair-7)
      (up :to @lair-8)
      (down :to @lair-3))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "down")
 
   :behaviors (
@@ -57,7 +57,7 @@
      (south :to @lair-4)
      (north :to @lair-6)
      (east :to @lair-2))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "south")
 
   :behaviors (
@@ -73,7 +73,7 @@
      (down :to @lair-10)
      (south :to @lair-5)
      (west :to @lair-11))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "south")
 
   :behaviors (
@@ -89,7 +89,7 @@
      (north :to @lair-4)
      (west :to @lair-3)
      (east :to @lair-11))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "down")
 
   :behaviors (
@@ -104,7 +104,7 @@
      (west :to @lair-3)
      (down :to @lair-8)
      (north :to @lair-6))  ; Loop
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "west")
 
   :behaviors (
@@ -120,7 +120,7 @@
      (up :to @lair-10)
      (east :to @lair-3)
      (south :to @lair-2))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "east")
 
   :behaviors (
@@ -134,7 +134,7 @@
     ((east :to @lair-2)
      (up :to @lair-6)
      (down :to @lair-9))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "east")
 
   :behaviors (
@@ -149,7 +149,7 @@
      (east :to @lair-8)
      (north :to @lair-6)
      (down :to @lair-10))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "up")
 
   :behaviors (
@@ -163,7 +163,7 @@
     ((north :to @lair-10)  ; Loop
      (west :to @lair-7)
      (up :to @lair-9))
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "west")
 
   :behaviors (
@@ -177,7 +177,7 @@
     ((east :to @lair-9)
      (up :to @lair-11)     ; Loop
      (south :to @lair-11)) ; Loop
-  :globals (@pool)
+  :visible (@pool)
   :properties (:point "east")
 
   :behaviors (
@@ -194,12 +194,12 @@
 
 (room @outer-lair
   :description "Wet Tunnel"
-  :properties (:on true :point "south")  ; Lit by phosphorescence
+  :properties (:lit true :point "south")  ; Lit by phosphorescence
   :exits
     ((up :to @lair-5)
      (in :to @inner-lair :via @curtain-door)
      (south :to @inner-lair :via @curtain-door))
-  :globals (@curtain-door @pool)
+  :visible (@curtain-door @pool)
 
   :behaviors (
     :describe (fn ()
@@ -222,10 +222,10 @@
 
 (room @inner-lair
   :description "Inner Lair"
-  :properties (:on true :point "down")  ; Wan sourceless light
+  :properties (:lit true :point "down")  ; Wan sourceless light
   :exits
     ((up :to @outer-lair :via @curtain-door))
-  :globals (@curtain-door @pool)
+  :visible (@curtain-door @pool)
 
   :behaviors (
     :describe (fn ()

@@ -17,11 +17,11 @@
 
 (room @chemistry-bldg
   :description "Chemistry Building"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((north :to @inf-5)
      (south :to @alchemy-dept :via @alchemy-door))
-  :globals (@alchemy-door @alchemy-window @office-door)
+  :visible (@alchemy-door @alchemy-window @office-door)
 
   :behaviors (
     :describe (fn ()
@@ -44,11 +44,11 @@
 
 (room @alchemy-dept
   :description "Department of Alchemy"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((north :to @chemistry-bldg :via @alchemy-door)
      (south :to @alchemy-lab :via @alchemy-lab-barrier))
-  :globals (@alchemy-door @alchemy-window @archway @outlet @lab-global)
+  :visible (@alchemy-door @alchemy-window @archway @outlet @lab-global)
 
   :behaviors (
     :describe (fn ()
@@ -74,7 +74,7 @@
   :exits
     ((north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
      (down :to @under-alchemy-lab :via @alchemy-lab-down-barrier))
-  :globals (@archway @alchemy-trap-door @outlet @lab-global)
+  :visible (@archway @alchemy-trap-door @outlet @lab-global)
 
   :behaviors (
     :describe (fn ()
@@ -114,7 +114,7 @@
   :exits
     ((north :to @brick-tunnel)
      (up :to @alchemy-lab :via @alchemy-trapdoor-up-barrier))
-  :globals (@alchemy-trap-door @lab-global @ladder)
+  :visible (@alchemy-trap-door @lab-global @ladder)
 
   :behaviors (
     :describe (fn ()
@@ -141,7 +141,7 @@
         ; Professor escorts you in if he's seen the note
         ((in? @professor @alchemy-dept)
           '((move @professor @alchemy-lab)
-            (set @alchemy-lab :on true)
+            (set @alchemy-lab :lit true)
             (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather unctuous tone. \"Come right in!\" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.")))
         (true (success))))))
 
@@ -191,7 +191,7 @@
 ; === Alchemy Door ===
 
 (object @alchemy-door
-  :location nil  ; Global object, appears via room :globals
+  :location nil  ; Global object, appears via room :visible
   :description "Alchemy Department door"
   :properties (:nodesc true :door true :openable true :locked true :readable true)
   :behaviors (
@@ -204,7 +204,7 @@
                "something painted on the other side."
                "\"Department of Alchemy\" painted on it.")
              (if (and (= (loc @player) @chemistry-bldg)
-                      (:on @alchemy-dept)
+                      (:lit @alchemy-dept)
                       (not (:dead @professor)))
                " There is a light on inside."
                ""))))
@@ -213,7 +213,7 @@
       (cond
         ((= (loc @player) @alchemy-dept)
           (success :message "You are inside it already."))
-        ((not (:on @alchemy-dept))
+        ((not (:lit @alchemy-dept))
           (success :message "It's dark inside."))
         ((not (:dead @professor))
           (success :message "Every so often, you see a shadow move across the window."))
@@ -776,7 +776,7 @@
           (cond
             ((:seen-note @professor)
               '((move @professor @alchemy-lab)
-                (set @alchemy-lab :on true)
+                (set @alchemy-lab :lit true)
                 (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather unctuous tone. \"Come right in!\" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.")))
             (true
               (blocked :reason professor-blocks
@@ -1040,7 +1040,7 @@
                 (move @ring @alchemy-lab)  ; Professor's ring drops to floor
                 (move @professor nil)
                 (set @alchemy-lab :touched false)
-                (set @alchemy-lab :on false)
+                (set @alchemy-lab :lit false)
                 ,@(if (:open @alchemy-trap-door)
                       '((set @alchemy-trap-door :open false))
                       '())

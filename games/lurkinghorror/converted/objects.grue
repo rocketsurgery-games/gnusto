@@ -2744,7 +2744,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-FLOOR-WAXER
 (object @global-floor-waxer
   :description "floor waxer"
-  :properties (:nodesc true :vehicle true :surface true :on true :open true :container true :searchable true)
+  :properties (:nodesc true :vehicle true :surface true :lit true :open true :container true :searchable true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-FLOOR-WAXER-F ()
   ;   <COND
@@ -2813,7 +2813,7 @@
 )
 
 (object @global-objects
-  :properties (:container true :door true :invisible true :locked true :nodesc true :on true :outside true :open true :person true :powered true :readable true :rland true :rmung true :searchable true :slime true :surface true :takeable true :tool true :touched true :transparent true :trytake true :vehicle true :weapon true :wearable true)
+  :properties (:container true :door true :invisible true :locked true :nodesc true :lit true :outside true :open true :person true :powered true :readable true :rland true :rmung true :searchable true :slime true :surface true :takeable true :tool true :touched true :transparent true :trytake true :vehicle true :weapon true :wearable true)
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-ROOM

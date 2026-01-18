@@ -1,7 +1,7 @@
 (room @cs-2nd
   :description "Second Floor"
   :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room."
-  :properties (:on true :floor 2)
+  :properties (:lit true :floor 2)
   :exits
     ((north :to @terminal-room)
      (west :to @kitchen)
@@ -9,5 +9,5 @@
      (down :to @comp-center)
      (south :to @cs-elevator-room :via @elevator-door-2)
      (in :to @cs-elevator-room :via @elevator-door-2))
-  :globals (@up-button @down-button))
+  :visible (@up-button @down-button))
 

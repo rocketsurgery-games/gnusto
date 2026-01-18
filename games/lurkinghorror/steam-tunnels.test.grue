@@ -94,18 +94,18 @@
 )
 
 (test-group "cable climbing"
-  :setup ((move! @player @tunnel) (set-prop! @cable on false))
+  :setup ((move! @player @tunnel) (set-prop! @cable mounted false))
 
   (test "can climb onto cable"
     (do @cable :climb)
     (assert (outcome? success))
-    (assert (prop? @cable on true)))
+    (assert (prop? @cable mounted true)))
 
   (test "can drop from cable"
-    :setup ((set-prop! @cable on true))
+    :setup ((set-prop! @cable mounted true))
     (do @cable :climb)
     (assert (outcome? success))
-    (assert (prop? @cable on false)))
+    (assert (prop? @cable mounted false)))
 )
 
 (test-group "access hatch"
@@ -215,7 +215,7 @@
 )
 
 (test-group "dead rat in elixir"
-  :setup ((move! @player @alchemy-lab) (set @alchemy-lab :on true) (move! @dead-rat @player) (move! @elixir @vat))
+  :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (move! @dead-rat @player) (move! @elixir @vat))
 
   (test "dead rat in elixir comes to life"
     (do @vat :put @dead-rat)

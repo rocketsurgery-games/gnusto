@@ -195,7 +195,7 @@ by exits in exactly two rooms - one on each side. The door's `:location` is cosm
 Multiple rooms can reference the same door if the game's geometry requires it, but
 unusual configurations are the author's responsibility to keep consistent.
 
-**Global objects (`:globals`):** Rooms can declare objects that are visible/accessible
+**Visible objects (`:visible`):** Rooms can declare objects that are visible/accessible
 regardless of the object's `:location`. This is useful for:
 
 - **Doors visible from both sides** - A door's `:location` is one room, but both
@@ -206,11 +206,11 @@ regardless of the object's `:location`. This is useful for:
 
 ```scheme
 (room @chemistry-bldg
-  :globals (@alchemy-door @alchemy-window @office-door)
+  :visible (@alchemy-door @alchemy-window @office-door)
   :exits ((south :to @alchemy-dept :via @alchemy-door)))
 
 (room @alchemy-dept
-  :globals (@alchemy-door @alchemy-window)  ; same door, accessible from both sides
+  :visible (@alchemy-door @alchemy-window)  ; same door, accessible from both sides
   :exits ((north :to @chemistry-bldg :via @alchemy-door)))
 
 ; Abstract scenery object with no physical location
@@ -219,11 +219,11 @@ regardless of the object's `:location`. This is useful for:
   :description "junk"
   :properties (:nodesc true))
 
-(room @dead-storage :globals (@junk))   ; junk visible here
-(room @storage-room :globals (@junk))   ; and here too
+(room @dead-storage :visible (@junk))   ; junk visible here
+(room @storage-room :visible (@junk))   ; and here too
 ```
 
-Objects in `:globals` override the `:invisible` property - they represent "known" scenery
+Objects in `:visible` override the `:invisible` property - they represent "known" scenery
 that the player can always see and interact with when in that room.
 
 ### The Player

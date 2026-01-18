@@ -20,14 +20,14 @@
     ((up :to @tunnel-entrance)
      (east :to @tunnel-entrance)
      (down :to @large-chamber))
-  :globals (@pool))
+  :visible (@pool))
 
 (room @large-chamber
   :description "Large Chamber"
   :exits
     ((up :to @muddy-tunnel)
      (down :to @lair-1 :via @urchins-barrier))
-  :globals (@global-hole)
+  :visible (@global-hole)
 
   :behaviors (
     :describe (fn ()

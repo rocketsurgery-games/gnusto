@@ -17,18 +17,18 @@
 (room @inf-3
   :description "Infinite Corridor"
   :ldesc "This is part of the Infinite Corridor. The Great Dome rises above you to the north."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((up :to @great-dome)))
 
 ; === Main Rooms ===
 
 (room @great-dome
   :description "Great Dome"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((down :to @inf-3)
      (up :to @top-of-dome :via @tentacle-climb))
-  :globals (@tentacle)
+  :visible (@tentacle)
 
   :behaviors (
     :describe (fn ()
@@ -44,12 +44,12 @@
 
 (room @top-of-dome
   :description "Top of Dome"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((out :to @dome-roof :via @dome-door)
      (north :to @dome-roof :via @dome-door)
      (down :to @great-dome :via @tentacle-descend))
-  :globals (@tentacle @dome-door @catwalk)
+  :visible (@tentacle @dome-door @catwalk)
 
   :behaviors (
     :describe (fn ()
@@ -73,12 +73,12 @@
 (room @dome-roof
   :description "Roof of Great Dome"
   :ldesc "You are perched precariously on the roof of the Great Dome. A set of narrow indentations in the dome provides a dangerous route to the very tip-top of the dome."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((in :to @top-of-dome :via @dome-door)
      (south :to @top-of-dome :via @dome-door)
      (up :to @on-dome))
-  :globals (@dome-door)
+  :visible (@dome-door)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -91,7 +91,7 @@
 (room @on-dome
   :description "On the Great Dome"
   :ldesc "This is the very top of the Great Dome, a favorite place for Tech fraternities to install cows, Volkswagen Beetles, giant birthday candles, and other bizarre objects. The top is flat, round, and about five feet in diameter. It's very windy, which has kept the snow from accumulating here. The only way off is down."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits ((down :to @dome-roof))
 
   :behaviors (
@@ -138,7 +138,7 @@
 ; === Tentacle Object ===
 
 (object @tentacle
-  :location nil  ; Global, present via room :globals
+  :location nil  ; Global, present via room :visible
   :description "ropy strand"
   :properties (:nodesc true)  ; Not :invisible initially - visible when in @great-dome
 
@@ -188,7 +188,7 @@
 ; === Dome Door ===
 
 (object @dome-door
-  :location nil  ; Global, present via room :globals
+  :location nil  ; Global, present via room :visible
   :description "door"
   :properties (:nodesc true :door true :openable true)
   :behaviors (

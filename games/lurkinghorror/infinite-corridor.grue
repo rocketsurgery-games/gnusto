@@ -36,14 +36,14 @@
 
 (room @inf-1
   :description "Infinite Corridor"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @mass-ave)
      (north :to @aero-lobby)
      (east :to @inf-2 :via @waxer-exit-barrier)
      (south :to @engineering-bldg)
      (out :to @mass-ave))
-  :globals (@office-door @power-cord)
+  :visible (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -66,11 +66,11 @@
 
 (room @inf-2
   :description "Infinite Corridor"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @inf-1)
      (east :to @inf-3 :via @waxer-exit-barrier))
-  :globals (@office-door @power-cord)
+  :visible (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -84,14 +84,14 @@
 
 (room @inf-3
   :description "Infinite Corridor"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @inf-2)
      (east :to @inf-4 :via @waxer-exit-barrier)
      (south :to @great-court :via @great-court-exit-barrier)
      (out :to @great-court :via @great-court-exit-barrier)
      (up :to @great-dome))
-  :globals (@office-door @power-cord)
+  :visible (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -105,11 +105,11 @@
 
 (room @inf-4
   :description "Infinite Corridor"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @inf-3)
      (east :to @inf-5 :via @waxer-exit-barrier))
-  :globals (@office-door @power-cord)
+  :visible (@office-door @power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -123,12 +123,12 @@
 
 (room @inf-5
   :description "Infinite Corridor"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((west :to @inf-4)
      (north :to @nutrition-bldg :via @waxer-exit-barrier)
      (south :to @chemistry-bldg :via @waxer-exit-barrier))
-  :globals (@power-cord)
+  :visible (@power-cord)
 
   :behaviors (
     :describe (fn ()
@@ -144,15 +144,15 @@
 (room @engineering-bldg
   :description "Engineering Building"
   :ldesc "This building extends a long way south from the Infinite Corridor. It too is full of closed, locked offices."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((north :to @inf-1))
-  :globals (@office-door))
+  :visible (@office-door))
 
 (room @nutrition-bldg
   :description "Fruits and Nuts"
   :ldesc "This is the central corridor of the Nutrition Building. The main building is south, and a stairway leads down."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((south :to @inf-5)
      (down :to @brown-tunnel)))
@@ -161,7 +161,7 @@
 
 (room @mass-ave
   :description "Mass. Ave."
-  :properties (:outside true :on true)
+  :properties (:outside true :lit true)
   :exits
     ((east :to @inf-1)
      (in :to @inf-1))

@@ -1,32 +1,7 @@
 # Grue Language + Runtime
 
-## Flag/bit cleanup
-Are these really different from boolean props? Or was it just an optimization in grue? They're used for lots of "built-in" behaviors; is there a cleaner way to accomplish this?
-
-We could just replace them with bools. The runtime/built-ins would need to be able to speculatively check for an object's bool prop with a default value, which we chose not to allow in the prop syntax -- maybe worth revisiting this and allowing `(:prop @obj default)` for dynamic property checks; but still have `(:prop @obj)` raise an error if the property's absent.
-
-### Runtime flags
-These flags have effects built into the runtime. We should consider whether there's a more general mechanism that doesn't rely upon these very specific flags being baked into the runtime.
-
-- NDESCBIT   - Exclude objects from room descriptions
-- INVISIBLE  - Used in get_inventory() and is_visible()
-- ONBIT      - Lit room
-- PERSON     - Mainly in game code; used as a fallback in _find_player_name()
-- VEHBIT     - Marks an object as a "vehicle"
-- SURFACEBIT - Overrides visibility for objects on surfaces; on > in
-- OPENBIT    - Overrides visibility in open/transparent containers
-- TRANSBIT   - ...
-
-### Game flags
-These are only used in game code, but they could just as well be boolean properties. This may have just been an optimization for the old 8-bit implementations.
-
-AN CONTBIT DOORBIT LOCKED NOABIT NOTHEBIT OUTSIDE POWERBIT READBIT RLANDBIT RMUNGBIT SEARCHBIT SLIMEBIT TAKEBIT THE TOOLBIT TOUCHBIT TRYTAKEBIT WEAPONBIT WEARBIT
-
-## Python vs Grue built-ins
-We currently only have a handful of built-ins implemented in Grue. The rest are all python. I believe the language and runtime will benefit from moving all built-ins to Grue, except for those that require special access to runtime internals.
-
-## "Global" objects
-`(room :globals (@obj) ... )` feels like kind of a hack. It's used to make objects visible from multiple rooms, but the object still has to have a `:location nil`, which seems... weird?
+## Visible objects
+`(room :visible (@obj) ... )` declares objects visible from multiple rooms even when their `:location` is elsewhere or `nil`. Useful for doors (visible from both sides), spanning objects (cables, pipes), and abstract scenery.
 
 ## Multiline strings
 It could make strings a lot more readable if we made multi-line string literals that require explicit

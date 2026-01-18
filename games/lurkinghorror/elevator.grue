@@ -119,7 +119,7 @@
 
 (room @cs-elevator-room
   :description "Elevator"
-  :properties (:on true :in-elevator true
+  :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
                :direction 1                               ; Direction (1=up, -1=down)
                :stopped true                              ; Whether stopped

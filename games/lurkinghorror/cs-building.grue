@@ -7,7 +7,7 @@
 (room @comp-center
   :description "Computer Center"
   :ldesc "This is the lobby of the Computer Center. An elevator and call buttons are to the south. Stairs lead up and down. To the north is Smith Street."
-  :properties (:on true :floor 1)
+  :properties (:lit true :floor 1)
   :exits
     ((north :to @smith-st)
      (out :to @smith-st)
@@ -15,7 +15,7 @@
      (down :to @cs-basement)
      (south :to @cs-elevator-room :via @elevator-door-1)
      (in :to @cs-elevator-room :via @elevator-door-1))
-  :globals (@up-button @down-button))
+  :visible (@up-button @down-button))
 
 ; === Second Floor (already exists in cs-2nd.grue, update exits) ===
 ; cs-2nd.grue defines @cs-2nd with exits to @terminal-room and @kitchen
@@ -25,7 +25,7 @@
 (room @cs-3rd
   :description "Third Floor"
   :ldesc "This is the third floor of the Computer Center. An elevator and call button are on the south side of the hallway. To the north is a glass wall beyond which you can see a computer room crammed with computer equipment. A stairway leads up."
-  :properties (:on true :floor 3)
+  :properties (:lit true :floor 3)
   :exits
     ((north :to @cs-3rd :via @glass-wall-barrier)  ; blocked by glass wall
      (up :to @cs-roof)
@@ -33,7 +33,7 @@
      (down :to @cs-2nd)
      (south :to @cs-elevator-room :via @elevator-door-3)
      (in :to @cs-elevator-room :via @elevator-door-3))
-  :globals (@down-button))
+  :visible (@down-button))
 
 (object @glass-wall-barrier
   :location @cs-3rd
@@ -48,7 +48,7 @@
 (room @cs-roof
   :description "Roof"
   :ldesc "This is the roof of the Computer Center. A door leads to the stairway. The roof is covered with tarred pea gravel and drifted snow. The wind howls around your ears. To the south and southeast you can dimly see the looming shapes of the Great Dome and the Brown Building."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((down :to @cs-3rd)
      (in :to @cs-3rd)))
@@ -59,21 +59,21 @@
 (room @cs-basement
   :description "Basement"
   :ldesc "Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes."
-  :properties (:on true :floor 0)
+  :properties (:lit true :floor 0)
   :exits
     ((up :to @comp-center)
      (east :to @temporary-basement)
      (west :to @aero-basement)
      (south :to @cs-elevator-room :via @elevator-door-b)
      (in :to @cs-elevator-room :via @elevator-door-b))
-  :globals (@up-button))
+  :visible (@up-button))
 
 ; === Smith Street (outside) ===
 
 (room @smith-st
   :description "Smith Street"
   :ldesc "Smith Street runs east and west along the north side of the main campus area. At the moment, it is an arctic wasteland of howling wind and drifting snow. On the other side of the street, barely visible, are the lidless eyes of streetlights. The street hasn't been plowed, or if it has been, it did no good."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((south :to @comp-center)
      (in :to @comp-center)
@@ -92,7 +92,7 @@
 (room @smith-st-2
   :description "Smith Street"
   :ldesc "Smith Street runs west towards the computer center here. To the south is a dilapidated grey wooden building. The street is an impassable sea of blowing and drifting snow."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((west :to @smith-st)
      (east :to @smith-st-2 :via @snow-drifts-east)  ; blocked by snow

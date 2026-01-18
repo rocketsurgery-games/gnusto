@@ -20,7 +20,7 @@
 (room @brown-tunnel
   :description "Cluttered Passage"
   :ldesc "This cluttered passage leads southeast. It is full of apparently discarded electronic equipment, old rusty file cabinets, and other detritus. A stairway also leads up."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((se :to @brown-basement)
           (up :to @nutrition-bldg)))
 
@@ -28,13 +28,13 @@
 
 (room @brown-building
   :description "Brown Building"
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((up :to @brown-top-floor)
      (down :to @brown-basement)
      (south :to @courtyard)
      (out :to @courtyard))
-  :globals (@outside-door @brown-elevator)
+  :visible (@outside-door @brown-elevator)
 
   :behaviors (
     :describe (fn ()
@@ -44,11 +44,11 @@
 (room @courtyard
   :description "Small Courtyard"
   :ldesc "This courtyard is a triumph of modern architecture. It is spare, cold, angular, overwhelming in size, and bears a striking resemblance to a wind tunnel whenever the breeze picks up. Right now this is true of the whole campus, though. A huge mass lurks nearby, and an almost featureless skyscraper is to the north."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((in :to @brown-building)
      (north :to @brown-building))
-  :globals (@outside-door)
+  :visible (@outside-door)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -61,9 +61,9 @@
 (room @great-court
   :description "Great Court"
   :ldesc "In the spring and summer, this cheery green court is a haven from classwork. Right now, the majestic buildings of the main campus are almost invisible in the howling blizzard. A locked door bars your way to the north."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits ()  ; Locked door to north - no passage
-  :globals (@outside-door)
+  :visible (@outside-door)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -76,7 +76,7 @@
 (room @brown-basement
   :description "Brown Basement"
   :ldesc "This is a cluttered basement below the Brown Building. Discarded equipment nearly blocks an already narrow hallway that terminates in a stairway leading up. The passage itself continues northwest."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((up :to @brown-building)
      (nw :to @brown-tunnel)))
@@ -84,22 +84,22 @@
 (room @brown-top-floor
   :description "Top Floor"
   :ldesc "This is the top of the stairway. A door leads out to the roof here, and you can hear the wind blowing beyond. There is a sign on the door."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((down :to @brown-building)
      (west :to @brown-roof :via @roof-door)
      (out :to @brown-roof :via @roof-door))
-  :globals (@roof-door))
+  :visible (@roof-door))
 
 (room @brown-roof
   :description "Skyscraper Roof"
   :ldesc "A low parapet surrounds a small roof here. The air conditioning cooling tower and the small protrusion containing the stairs are dwarfed by a semitransparent dome which towers above you. The blowing snow obscures all detail of the city across the river to the south."
-  :properties (:on true :outside true)
+  :properties (:lit true :outside true)
   :exits
     ((in :to @brown-top-floor :via @roof-door-exit)
      (east :to @brown-top-floor :via @roof-door-exit)
      (up :to @inside-dome))
-  :globals (@roof-door @weather-dome @ladder)
+  :visible (@roof-door @weather-dome @ladder)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -113,11 +113,11 @@
 (room @inside-dome
   :description "Inside Dome"
   :ldesc "You are inside a large domed area. The dome contains equipment that makes it clear it is a weather observation station. For some reason, it also contains a small peach tree. Wind whistles outside, and snow blasts against the semitransparent material of the dome."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((down :to @brown-roof :via @dome-exit)
      (out :to @brown-roof :via @dome-exit))
-  :globals (@ladder)
+  :visible (@ladder)
 
   :behaviors (
     ; Trigger flier encounter when entering with smooth-stone
@@ -253,7 +253,7 @@
       (redirect :action (do (loc @player) :go up)))))
 
 (object @ladder
-  :location nil  ; Global, appears via room :globals
+  :location nil  ; Global, appears via room :visible
   :description "ladder"
   :properties (:nodesc true)
   :behaviors (

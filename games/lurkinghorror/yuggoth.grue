@@ -18,7 +18,7 @@
 (room @yuggoth
   :description "Place"
   :ldesc "This is a place. Things move about on a broken, rocky surface. Harsh sounds split the air. Something sticky grabs at your feet. There is no color, everything is drained of brightness, dull and lifeless. A path descends into a shallow bowl of black basalt."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((down :to @bowl-room))
 
   :behaviors (
@@ -29,12 +29,12 @@
 (room @bowl-room
   :description "Basalt Bowl"
   :ldesc "You are at the bottom of a deeply cut, smooth basalt bowl. Dimly seen shapes crowd you on all sides. Ahead, in the focus of the movement, is a rock platform."
-  :properties (:on true)
+  :properties (:lit true)
   :exits
     ((up :to @yuggoth)
      (in :to @platform-room)
      (down :to @platform-room))
-  :globals (@platform)
+  :visible (@platform)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -47,9 +47,9 @@
 (room @platform-room
   :description "At Platform"
   :ldesc "You stand before a low rock platform, more like an afterthought of piled rocks or a glacial moraine than a work of artifice. You are pushed against the pile by the crowd around you."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ()  ; No exits - trapped until lurker sequence completes
-  :globals (@platform)
+  :visible (@platform)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -92,7 +92,7 @@
 ; === Platform (scenery) ===
 
 (object @platform
-  :location nil  ; Global, present via room :globals
+  :location nil  ; Global, present via room :visible
   :description "platform"
   :properties (:nodesc true :vehicle true :surface true)
   :behaviors (

@@ -9,14 +9,14 @@
 (room @aero-lobby
   :description "Aero Lobby"
   :ldesc "This is the lobby of the Aeronautical Engineering Building. Stairs lead down and a corridor heads south towards the main building."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((south :to @inf-1)
           (down :to @aero-stairs)))
 
 (room @aero-stairs
   :description "Stairway"
   :ldesc "A dimly lit stairway leads up and down from here. A corridor continues east."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((up :to @aero-lobby)
           (east :to @aero-basement)
           (down :to @sub-basement)))
@@ -24,17 +24,17 @@
 (room @sub-basement
   :description "Subbasement"
   :ldesc "This is the subbasement of the Aeronautical Engineering Building. A stairway leads up. A narrow crack in the northwest corner of the room opens into a larger space."
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((up :to @aero-stairs)
           (nw :to @tomb :via @tomb-squeeze-barrier)))
 
 (room @tomb
   :description "Tomb"
-  :properties (:on true)
+  :properties (:lit true)
   :exits ((se :to @sub-basement :via @tomb-squeeze-barrier)
           (out :to @sub-basement :via @tomb-squeeze-barrier)
           (down :to @tunnel :via @tomb-hatch-barrier))
-  :globals (@graffiti @padlock @access-hatch)
+  :visible (@graffiti @padlock @access-hatch)
 
   :behaviors (
     :describe (fn ()

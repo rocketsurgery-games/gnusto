@@ -18,7 +18,7 @@
   :exits
     ((south :to @brick-tunnel)
      (down :to @cave-altar))
-  :globals (@slab @carvings)
+  :visible (@slab @carvings)
 
   :behaviors (
     :describe (fn ()
@@ -29,7 +29,7 @@
   :description "Before the Altar"
   :exits
     ((up :to @cave-room))
-  :globals (@carvings)
+  :visible (@carvings)
 
   :behaviors (
     :describe (fn ()
@@ -229,7 +229,7 @@
     ((up :to @tomb :via @access-hatch-barrier)
      (east :to @tunnel-east :via @steam-barrier)
      (west :to @tunnel-west :via @rats-barrier))
-  :globals (@cable @steam-pipes @ladder)
+  :visible (@cable @steam-pipes @ladder)
 
   :behaviors (
     :describe (fn ()
@@ -253,7 +253,7 @@
   :exits
     ((east :to @tunnel :via @rats-barrier)
      (west :to @tunnel-entrance :via @rats-barrier))
-  :globals (@cable @steam-pipes)
+  :visible (@cable @steam-pipes)
 
   :behaviors (
     :describe (fn ()
@@ -267,7 +267,7 @@
      (west :to @muddy-tunnel)
      (down :to @muddy-tunnel)
      (in :to @muddy-tunnel))
-  :globals (@cable)
+  :visible (@cable)
 
   :behaviors (
     :describe (fn ()
@@ -279,7 +279,7 @@
   :exits
     ((west :to @tunnel :via @rats-barrier)
      (east :to @steam-tunnel))
-  :globals (@cable @steam-pipes @pressure-valve)
+  :visible (@cable @steam-pipes @pressure-valve)
 
   :behaviors (
     :describe (fn ()
@@ -294,14 +294,14 @@
   :exits
     ((west :to @tunnel-east :via @rats-barrier)
      (east :to @steam-tunnel-east))
-  :globals (@cable @steam-pipes))
+  :visible (@cable @steam-pipes))
 
 (room @steam-tunnel-east
   :description "Steam Tunnel"
   :exits
     ((west :to @steam-tunnel :via @rats-barrier)
      (south :to @elevator-pit :via @brick-wall-barrier))
-  :globals (@cable @steam-pipes @brick-wall)
+  :visible (@cable @steam-pipes @brick-wall)
 
   :behaviors (
     :describe (fn ()
@@ -332,7 +332,7 @@
 (object @cable
   :location nil  ; Global object
   :description "coaxial cable"
-  :properties (:nodesc true :on false)  ; True when player is on the cable
+  :properties (:nodesc true :mounted false)  ; True when player is mounted on the cable
 
   :behaviors (
     :examine (fn ()
@@ -340,16 +340,16 @@
 
     :climb (fn ()
       (cond
-        ((:on @cable)
-          '((set @cable :on false)
+        ((:mounted @cable)
+          '((set @cable :mounted false)
             (success :message "You drop from the cable to the floor.")))
         (true
-          '((set @cable :on true)
+          '((set @cable :mounted true)
             (success :message "You grab the cable bundle and pull yourself up, dangling above the floor.")))))
 
     :swing (fn ()
       (cond
-        ((not (:on @cable))
+        ((not (:mounted @cable))
           (blocked :reason not-on :message "You're not on the cable."))
         (true
           (success :message "You swing along the cable. Not particularly useful at the moment."))))))
@@ -513,7 +513,7 @@
     :through (fn (?dest ?from)
       (cond
         ; Block if rats are at destination OR current location (unless on cable)
-        ((and (or (in? @rats ?dest) (in? @rats ?from)) (not (:on @cable)))
+        ((and (or (in? @rats ?dest) (in? @rats ?from)) (not (:mounted @cable)))
           '((inc @rats :anger)
             (blocked :reason rats-blocking
                      :message "You plunge into the mass of rats, but there are too many of them, and you can't force your way past.")))
