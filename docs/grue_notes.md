@@ -7,7 +7,7 @@ Clojure-style object properties:
 ```scheme
 (object @microwave :properties (:timer 0))
 (:timer @microwave)                        ; keyword-as-function read
-(success :effects ((set @microwave :timer 120)))  ; effect for mutation
+'((set @microwave :timer 120) (success))   ; effect for mutation
 ```
 
 Built-in runtime globals (`score`, `moves`, `lit`) are still supported.

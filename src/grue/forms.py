@@ -155,15 +155,17 @@ class GrueEvent:
     """Turn-based event handler (like ZIL interrupts).
 
     Events run once per turn when queued. The body is evaluated like
-    a behavior - typically a (cond ...) that returns success/blocked.
+    a behavior - typically a (cond ...) that returns success/blocked
+    or a quoted effect list.
 
     Example:
         (event hacker-helps
           :location @terminal-room   ; Only fires when player is here
           :on-turn (cond
-            ((= hacker-help 1) (success :effects (...) :context (...)))
-            ((= hacker-help 2) ...)
-            (true (success :effects ((dequeue! hacker-helps)) ...))))
+            ((= (:help-stage @hacker) 1)
+              '((set @hacker :help-stage 2) (success :context ((stage 2)))))
+            (true
+              '((dequeue hacker-helps) (success)))))
     """
     name: str
     location: str | None  # If set, event only fires when player is here
@@ -662,15 +664,16 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
         (event hacker-helps
           :location @terminal-room   ; Only fires when player is here
           :on-turn (cond
-            ((= hacker-help 1) (success :effects (...) :context (...)))
-            ((= hacker-help 2) ...)
-            (true (success :effects ((dequeue! hacker-helps)) ...))))
+            ((= (:help-stage @hacker) 1)
+              '((set @hacker :help-stage 2) (success :context ((stage 2)))))
+            (true
+              '((dequeue hacker-helps) (success)))))
 
     With scoped definitions:
         (event compulsion
           (def page1-desc "...")
           :location @terminal-room
-          :on-turn (condp = comp-cnt
+          :on-turn (condp = (:comp-cnt @hacker)
             0 (success :context ((description page1-desc)))
             ...))
     """
@@ -706,7 +709,7 @@ def _parse_default(expr: SList, world: GrueWorld) -> None:
     Example:
         (default take (cond
           ((not (has-flag ?self TAKEBIT)) (blocked :reason not-takeable))
-          (true (success :effects ((move! ?self ?actor))))))
+          (true '((move ?self ?actor) (success)))))
     """
     if not isinstance(expr, SList) or len(expr) < 3:
         raise FormParseError(f"Expected (default VERB BODY), got {expr}")

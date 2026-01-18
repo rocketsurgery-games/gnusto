@@ -114,21 +114,25 @@ true false      ; booleans
 ### Effects (State Deltas)
 
 Effects describe how state changes. They don't mutate - they declare the delta.
+Effects are returned from behaviors as quoted lists containing effect descriptors
+followed by a terminator (`success`, `blocked`, `redirect`, or `default`):
 
 ```scheme
-(move! @key @player)          ; object moves to destination
-(set-flag! @door LOCKED)      ; add flag to object
-(clear-flag! @door LOCKED)    ; remove flag from object
-(set-prop! @player score 10)  ; set property on object
+; Return effects from a behavior as a quoted list
+'((move @key @player)         ; object moves to destination
+  (set-flag @door LOCKED)     ; add flag to object
+  (success :message "Done.")) ; terminator
 
-; Compound effects
-(seq EFFECT ...)              ; apply effects in order
-(when COND EFFECT)            ; conditional effect
+; Available effect descriptors (in quoted lists):
+(move OBJ DEST)               ; move object to destination
+(set-flag OBJ FLAG)           ; add flag to object
+(clear-flag OBJ FLAG)         ; remove flag from object
+(set OBJ :prop VALUE)         ; set property on object
+(queue EVENT [COUNT])         ; activate event
+(dequeue EVENT)               ; deactivate event
 
-; Event queue
-(queue! HACKER-HELPS)         ; activate event (indefinite)
-(queue! LANTERN 200)          ; activate event with countdown
-(dequeue! HACKER-HELPS)       ; deactivate event
+; Conditional effects in quoted lists
+(when COND (EFFECT ...))      ; conditional effect
 ```
 
 ### Objects
@@ -262,7 +266,7 @@ an action targets the object (or references it via `:with`, etc.).
     :open (cond
       ((and (room-has-flag? OUTSIDE)
             (in-room? @player @mass-ave @smith-st @courtyard))
-        (success :effects ()))  ; door auto-closes, no state change
+        (success))  ; door auto-closes, no state change
 
       ((room-has-flag? OUTSIDE)
         (blocked :reason locked-from-outside))
@@ -279,7 +283,7 @@ an action targets the object (or references it via `:with`, etc.).
         (blocked :reason locked-from-outside))
 
       ((and (has-flag ?self LOCKED) (= ?with @master-key))
-        (success :effects ((clear-flag! ?self LOCKED))))
+        '((clear-flag ?self LOCKED) (success)))
 
       ((has-flag ?self LOCKED)
         (blocked :reason need-key))
@@ -297,7 +301,8 @@ an action targets the object (or references it via `:with`, etc.).
 
 **Clause structure:**
 Each `cond` clause is `(CONDITION OUTCOME-FORM)` where OUTCOME-FORM is one of:
-- `(success :effects (...) :context (...))` - action succeeds
+- `(success :context (...))` - action succeeds with no state change
+- `'((effect ...) (success))` - action succeeds with effects (quoted list)
 - `(blocked :reason SYMBOL :context (...))` - action fails with semantic reason
 - `(redirect :action EXPR)` - delegate to another action
 - `(default :action EXPR)` - fall through to default behavior
@@ -367,7 +372,7 @@ The world model:
 ```scheme
 ; Success
 (result :outcome success
-        :effects ((moved @key @player))
+        :effects-applied ("moved @key to @player")
         :context ((first-time true)))
 
 ; Blocked
@@ -416,7 +421,7 @@ Events are commonly used to alter behavior based on ongoing situations:
                  :context ((blocker @hacker)
                            (message "You'll mung the bits, chomper!"))))
       (true
-        (success :effects ((clear-flag! ?self POWER)))))))
+        '((clear-flag ?self POWER) (success))))))
 ```
 
 ### Turn-Based Events
@@ -428,18 +433,18 @@ to ZIL's interrupt routines (`I-HACKER-HELPS`, `I-FOOD-HINT`, etc.).
 (event hacker-helps
   :location @terminal-room    ; only fires when player is here
   :on-turn (cond
-    ((= hacker-help 0)
-      (success :effects ((inc! hacker-help))
-               :context ((stage 1) (description "The hacker glances at your screen..."))))
-    ((= hacker-help 1)
-      (success :effects ((inc! hacker-help))
-               :context ((stage 2) (description "The hacker leans closer..."))))
-    ((= hacker-help 2)
-      (success :effects ((inc! hacker-help))
-               :context ((stage 3) (description "The hacker starts typing..."))))
+    ((= (:help-stage @hacker) 0)
+      '((set @hacker :help-stage 1)
+        (success :context ((stage 1) (description "The hacker glances at your screen...")))))
+    ((= (:help-stage @hacker) 1)
+      '((set @hacker :help-stage 2)
+        (success :context ((stage 2) (description "The hacker leans closer...")))))
+    ((= (:help-stage @hacker) 2)
+      '((set @hacker :help-stage 3)
+        (success :context ((stage 3) (description "The hacker starts typing...")))))
     (true
-      (success :effects ((dequeue! hacker-helps) (move! @hacker @terminal-room))
-               :context ((stage 4) (description "The hacker finishes and steps back."))))))
+      '((dequeue hacker-helps) (move @hacker @terminal-room)
+        (success :context ((stage 4) (description "The hacker finishes and steps back.")))))))
 ```
 
 **Event structure:**
@@ -447,31 +452,32 @@ to ZIL's interrupt routines (`I-HACKER-HELPS`, `I-FOOD-HINT`, etc.).
 - `:on-turn` - A `cond` form evaluated each turn the event is active
 
 **Event lifecycle:**
-1. Queue an event with `(queue! event-name)` or `(queue! event-name countdown)`
+1. Queue an event with `(queue event-name)` or `(queue event-name countdown)`
 2. Each turn, queued events are processed:
    - If countdown > 0, decrement and skip
    - If location constraint exists and player isn't there, skip
    - Otherwise, evaluate the `:on-turn` cond
-3. Event stays queued until explicitly dequeued with `(dequeue! event-name)`
+3. Event stays queued until explicitly dequeued with `(dequeue event-name)`
 
 **Common patterns:**
 
 ```scheme
-; Multi-stage cutscene (use global counter)
+; Multi-stage cutscene (use object property for counter)
 (event cutscene
   :on-turn (cond
-    ((= stage 0) (success :effects ((inc! stage)) :context ((stage 1))))
-    ((= stage 1) (success :effects ((inc! stage)) :context ((stage 2))))
-    (true (success :effects ((dequeue! cutscene)) :context ((complete true))))))
+    ((= (:stage @game) 0) '((set @game :stage 1) (success :context ((stage 1)))))
+    ((= (:stage @game) 1) '((set @game :stage 2) (success :context ((stage 2)))))
+    (true '((dequeue cutscene) (success :context ((complete true)))))))
 
 ; Delayed event (re-queues itself with countdown)
 (event reminder
   :on-turn (cond
-    ((< hint-count 3)
-      (success :effects ((inc! hint-count) (queue! reminder 5))
-               :context ((hint "Don't forget the key..."))))
+    ((< (:hint-count @game) 3)
+      '((set @game :hint-count (+ (:hint-count @game) 1))
+        (queue reminder 5)
+        (success :context ((hint "Don't forget the key...")))))
     (true
-      (success :effects ((dequeue! reminder))))))
+      '((dequeue reminder) (success)))))
 
 ; Location-gated event
 (event room-atmosphere
@@ -630,8 +636,8 @@ Rooms can define special behaviors that intercept or respond to player actions:
     :on-enter (fn (?from-room)
       (cond
         ((= ?from-room @platform-room)
-          (success :context ((nightmare-wake true))
-                   :effects ((queue! hacker-helps))))
+          '((queue hacker-helps)
+            (success :context ((nightmare-wake true)))))
         (true (success))))
 
     ; Intercept actions - can block or allow them to proceed
@@ -697,7 +703,7 @@ Anonymous function (lambda). Creates a closure that can be called later.
 ```scheme
 (fn (?item)
   (cond
-    ((has-flag ?item TAKEBIT) (success :effects ((move! ?item ?actor))))
+    ((has-flag ?item TAKEBIT) '((move ?item ?actor) (success)))
     (true (blocked :reason not-takeable))))
 ```
 
@@ -789,7 +795,7 @@ evaluated in order until one is truthy; its outcome form is then returned.
 ```scheme
 (cond
   ((has-flag ?self LOCKED) (blocked :reason locked))
-  (true (success :effects ((set-flag! ?self OPENBIT)))))
+  (true '((set-flag ?self OPENBIT) (success))))
 ```
 
 #### `(match (EXPRS...) CLAUSE ...)`
@@ -800,7 +806,7 @@ multiple conditions.
 (match ((has-flag ?self LOCKED) (has-flag ?self OPEN))
   ((true _)      (blocked :reason locked))
   ((_ true)      (blocked :reason already-open))
-  ((false false) (success :effects ((set-flag! ?self OPEN)))))
+  ((false false) '((set-flag ?self OPEN) (success))))
 ```
 
 Pattern elements:
@@ -849,9 +855,10 @@ Conditional threading (last position). Like `cond->` but threads as LAST argumen
 ```
 
 #### Outcome Forms: `(success ...)`, `(blocked ...)`, `(redirect ...)`, `(default ...)`
-Outcome declarations within `cond` clauses. Not evaluated - they declare the
-result structure:
-- `(success :effects (...) :context (...))` - Action succeeds
+Outcome declarations within `cond` clauses. Can be returned directly or as part of
+a quoted effect list:
+- `(success :context (...))` - Action succeeds with no effects
+- `'((effect ...) (success))` - Action succeeds with effects (quoted list)
 - `(blocked :reason SYMBOL :context (...))` - Action fails with semantic reason
 - `(redirect :action EXPR)` - Delegate to another action
 - `(default :action EXPR)` - Fall through to default, optionally with explicit action
@@ -930,9 +937,9 @@ Works for runtime properties and quoted keyword-value lists.
 (:foo '(:foo "bar" :baz "qux"))     ; => "bar" (quoted list lookup)
 ```
 
-For writing properties, use the `(set @obj :prop value)` effect:
+For writing properties, use the `(set @obj :prop value)` effect in a quoted list:
 ```scheme
-(success :effects ((set @microwave :timer 120)))
+'((set @microwave :timer 120) (success))
 ```
 
 ### Functions (Uniform Evaluation)
@@ -1083,17 +1090,16 @@ LLM actions like `(do @microwave :set-timer 120)` or `(do @microwave :set-temp h
   :properties (:timer 0 :temp 0)
   :behaviors (
     :set-timer (fn ()
-      (success :effects ((set @microwave :timer ?value))))
+      '((set @microwave :timer ?value) (success)))
     :set-temp (fn ()
       (let ((temp-val (condp = ?value warm 1 low 2 medium 3 high 4 nil)))
-        (success :effects ((set @microwave :temp temp-val)))))))
+        '((set @microwave :temp temp-val) (success))))))
 ```
 
 Bindings are accessed with the `?` prefix:
 ```scheme
 (has-flag ?self LOCKED)      ; is target object locked?
 (= ?with @master-key)        ; was master-key used as instrument?
-(move! ?self ?actor)         ; move target to actor
 ```
 
 The `?` prefix retrieves the binding value. If a binding is not set, it returns `nil`.

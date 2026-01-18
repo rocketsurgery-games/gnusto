@@ -21,7 +21,7 @@
     (blocked :reason not-here :message "You don't see that here."))
 
   (true
-    (success :effects ((move! ?self ?actor)) :message "Taken."))))
+    '((move ?self ?actor) (success :message "Taken.")))))
 
 ; === drop ===
 ; Default drop behavior - must be holding the object
@@ -31,7 +31,7 @@
     (blocked :reason not-held :message "You're not carrying that."))
 
   (true
-    (success :effects ((move! ?self (loc ?actor))) :message "Dropped."))))
+    '((move ?self (loc ?actor)) (success :message "Dropped.")))))
 
 ; === open ===
 ; Default open behavior for OPENABLE objects
@@ -44,7 +44,7 @@
     (blocked :reason already-open :message "It's already open."))
 
   (true
-    (success :effects ((set-flag! ?self OPENBIT)) :message "Opened."))))
+    '((set-flag ?self OPENBIT) (success :message "Opened.")))))
 
 ; === close ===
 ; Default close behavior for OPENABLE objects
@@ -57,7 +57,7 @@
     (blocked :reason already-closed :message "It's already closed."))
 
   (true
-    (success :effects ((clear-flag! ?self OPENBIT)) :message "Closed."))))
+    '((clear-flag ?self OPENBIT) (success :message "Closed.")))))
 
 ; === put ===
 ; Default put behavior - put ?self into ?value (the container)
@@ -75,7 +75,7 @@
     (blocked :reason closed :message "It's closed."))
 
   (true
-    (success :effects ((move! ?self ?value)) :message "Done."))))
+    '((move ?self ?value) (success :message "Done.")))))
 
 ; === examine ===
 ; Default examine behavior - returns generic message when object has no :examine handler

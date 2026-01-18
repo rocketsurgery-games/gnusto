@@ -49,18 +49,15 @@ ZIL is a Lisp dialect used by Infocom. Key constructs:
 
 ## GRUE Behavior Format
 
-```grue
-:behaviors
-  ((verb
-     (case CONDITION
-       :outcome success|blocked|redirect
-       :effects (EFFECT1 EFFECT2 ...)
-       :reason REASON-SYMBOL           ; for blocked
-       :context ((key value) ...)      ; semantic hints
-       :action (verb :arg val))        ; for redirect
+Behaviors use `cond` with outcomes that can be simple or include effects via quoted lists:
 
-     (case true                        ; default case
-       :outcome ...)))
+```grue
+:behaviors (
+  :verb (cond
+    (CONDITION (blocked :reason REASON-SYMBOL :context ((key value) ...)))
+    (CONDITION '((effect1) (effect2) (success :context ((key value) ...))))
+    (CONDITION (redirect :action (verb :arg val)))
+    (true (success))))
 ```
 
 ### GRUE Predicates
@@ -74,24 +71,26 @@ ZIL is a Lisp dialect used by Infocom. Key constructs:
 - `(loc OBJ)` - Object's location
 - `?with`, `?on` - Action arguments (indirect object)
 
-### GRUE Effects
-- `(set-flag! OBJ FLAG)` - Set flag
-- `(clear-flag! OBJ FLAG)` - Clear flag
-- `(move! OBJ DEST)` - Move object
+### GRUE Effects (in quoted lists)
+- `(set-flag OBJ FLAG)` - Set flag
+- `(clear-flag OBJ FLAG)` - Clear flag
+- `(move OBJ DEST)` - Move object
+- `(set OBJ :prop VAL)` - Set property
 
 ### GRUE Outcomes
-- `success` - Action succeeds, apply effects
-- `blocked` - Action prevented, give reason
-- `redirect` - Redirect to different action
+- `(success :context (...))` - Action succeeds with no state change
+- `'((effect ...) (success))` - Action succeeds with effects (quoted list)
+- `(blocked :reason SYMBOL)` - Action prevented, give reason
+- `(redirect :action EXPR)` - Redirect to different action
 
 ## Translation Guidelines
 
-1. **Map VERB? checks to behavior verbs** - Each `<VERB? OPEN>` branch becomes an `(open ...)` behavior
-2. **Convert FSET?/HERE? to conditions** - `<FSET? ,DOOR ,LOCKED>` → `(has-flag DOOR LOCKED)`
+1. **Map VERB? checks to behavior verbs** - Each `<VERB? OPEN>` branch becomes an `:open` behavior
+2. **Convert FSET?/HERE? to conditions** - `<FSET? ,DOOR ,LOCKED>` → `(has-flag @door LOCKED)`
 3. **Extract semantic meaning from TELL** - Don't copy text, capture the *why*:
    - "The door is locked" → `:reason locked`
    - "You need a key" → `:reason need-key`
-4. **Preserve state changes** - `<FCLEAR ,OBJ ,LOCKED>` → `(clear-flag! OBJ LOCKED)`
+4. **Preserve state changes as quoted effect lists** - `<FCLEAR ,OBJ ,LOCKED>` → `'((clear-flag @obj LOCKED) (success))`
 5. **Use context for details** - Rich info goes in `:context`, not effects
 6. **Handle THROUGH for doors** - Usually redirects to movement
 
@@ -112,19 +111,16 @@ ZIL is a Lisp dialect used by Infocom. Key constructs:
 
 ### GRUE Output:
 ```grue
-:behaviors
-  ((open
-     (case (has-flag self LOCKED)
-       :outcome blocked
-       :reason locked)
-     (case true
-       :outcome success
-       :effects ((set-flag! self OPENBIT))))
+:behaviors (
+  :open (cond
+    ((has-flag ?self LOCKED)
+      (blocked :reason locked))
+    (true
+      '((set-flag ?self OPENBIT) (success))))
 
-   (close
-     (case true
-       :outcome success
-       :effects ((clear-flag! self OPENBIT)))))
+  :close (cond
+    (true
+      '((clear-flag ?self OPENBIT) (success)))))
 ```
 
 ## Your Task
@@ -134,7 +130,7 @@ When given a GRUE object with ZIL source comments:
 2. Identify all verb handlers
 3. Map conditions to GRUE predicates
 4. Extract semantic outcomes from TELL statements
-5. Preserve all state changes as effects
+5. Preserve all state changes as quoted effect lists
 6. Output the complete behaviors block
 
 Focus on correctness and completeness. Every ZIL branch should have a corresponding GRUE case.

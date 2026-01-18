@@ -37,7 +37,7 @@ features that support Interactive Fiction development.
 Clojure style, but fall back to Scheme/Racket when Clojure depends on syntax we don't have (like `[vectors]`).
 No need to ask permission for obvious stdlib additions.
 
-**Purity:** Keep functions pure. All side-effects must go through the formal effects system (`:effects` in outcomes).
+**Purity:** Keep functions pure. All side-effects must go through the formal effects system (quoted effect lists).
 This enables future state-space exploration for winnability analysis.
 
 **LLM interface:** The game will be played via an LLM, so prefer explicit formal action interfaces like

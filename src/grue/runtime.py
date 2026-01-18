@@ -1230,56 +1230,25 @@ class GrueRuntime:
         """Convert a BehaviorSuccess/Blocked/etc. or effect list to ActionResult.
 
         Supports two formats:
-        1. Old syntax: BehaviorSuccess/Blocked/Redirect/Default objects with :effects
-        2. New syntax: Quoted list of effect descriptors '((move @x @y) (success))
+        1. Simple outcomes: BehaviorSuccess/Blocked/Redirect/Default objects
+        2. Effect lists: Quoted list of effect descriptors '((move @x @y) (success))
         """
-        # New syntax: behavior returned an effect list
+        # Effect list syntax: behavior returned a quoted list
         if isinstance(result, (list, SList)):
             return self._process_effect_list(result)
 
         if isinstance(result, BehaviorSuccess):
-            # Execute effects
-            effects_applied = []
-            if result.effects:
-                executor = EffectExecutor(self, self._functions)
-                for effect in result.effects:
-                    try:
-                        # Pass the captured environment so effects can access local variables
-                        executor.execute(effect, result.env)
-                        effects_applied.append(str(effect))
-                    except Exception as e:
-                        return ActionResult(
-                            outcome="error",
-                            error=f"Error executing effect: {e}"
-                        )
-
             self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
-
             return ActionResult(
                 outcome="success",
                 context=list(result.context.items()),
-                effects_applied=effects_applied
             )
 
         if isinstance(result, BehaviorBlocked):
-            # Execute effects even when blocked (e.g., tracking failed attempts)
-            effects_applied = []
-            if result.effects:
-                executor = EffectExecutor(self, self._functions)
-                for effect in result.effects:
-                    try:
-                        executor.execute(effect, result.env)
-                        effects_applied.append(str(effect))
-                    except Exception as e:
-                        return ActionResult(
-                            outcome="error",
-                            error=f"Error executing blocked effect: {e}"
-                        )
             return ActionResult(
                 outcome="blocked",
                 reason=result.reason,
                 context=list(result.context.items()),
-                effects_applied=effects_applied
             )
 
         if isinstance(result, BehaviorRedirect):

@@ -112,15 +112,13 @@ class BehaviorSuccess:
 
     Usage in behaviors:
         (success)                           ; Simple success
-        (success :message "Done!")          ; With context
-        (success :effect (move! @key @player))  ; With effect
+        (success :message "Done!")          ; With message context
+        (success :context ((key value)))    ; With structured context
 
-    The env field captures the lexical environment at the time of success,
-    allowing effects to be evaluated with access to local variables.
+    For behaviors with effects, use quoted effect lists instead:
+        '((move @key @player) (success :message "Got it!"))
     """
     context: dict[str, Any] = field(default_factory=dict)
-    effects: list[SExpr] = field(default_factory=list)
-    env: Optional["Environment"] = None
 
 
 @dataclass
@@ -130,15 +128,9 @@ class BehaviorBlocked:
     Usage in behaviors:
         (blocked :reason locked)
         (blocked :reason no-key :message "The door is locked.")
-        (blocked :reason rats :effects ((set! anger (+ anger 1))))
-
-    Effects may be executed even when an action is blocked (e.g., to track
-    failed attempts).
     """
     reason: str = "unknown"
     context: dict[str, Any] = field(default_factory=dict)
-    effects: list[SExpr] = field(default_factory=list)
-    env: Optional["Environment"] = None
 
 
 @dataclass
@@ -1896,21 +1888,13 @@ class ExprEvaluator:
         Examples:
             (success)
             (success :message "Done!")
-            (success :effect (move! @key @player))
-            (success :context ((mechanism push-bar)))  ; Legacy format
+            (success :context ((mechanism push-bar)))
         """
         kwargs = self._parse_kwargs(form)
         context: dict[str, Any] = {}
-        effects: list[SExpr] = []
 
         for key, val in kwargs.items():
-            if key == "effect":
-                effects.append(val)  # Keep as SExpr
-            elif key == "effects":
-                # Allow list of effects
-                if isinstance(val, SList):
-                    effects.extend(val.items)
-            elif key == "context":
+            if key == "context":
                 # Format: ((key value) ...) - values evaluated if expressions
                 context.update(self._parse_context_list(val, env))
             elif key == "message":
@@ -1920,8 +1904,7 @@ class ExprEvaluator:
                 # Direct key-value pair - always evaluate to resolve variables
                 context[key] = self.eval(val, env)
 
-        # Capture current environment for effects to use during execution
-        return BehaviorSuccess(context=context, effects=effects, env=env)
+        return BehaviorSuccess(context=context)
 
     def _eval_blocked(self, form: SList, env: Optional[Environment] = None) -> BehaviorBlocked:
         """(blocked :reason REASON [:key value ...])
@@ -1929,12 +1912,10 @@ class ExprEvaluator:
         Examples:
             (blocked :reason locked)
             (blocked :reason no-key :message "The door is locked.")
-            (blocked :reason rats :effects ((set! anger (+ anger 1))))
         """
         kwargs = self._parse_kwargs(form)
         reason = "unknown"
         context: dict[str, Any] = {}
-        effects: list[SExpr] = []
 
         for key, val in kwargs.items():
             if key == "reason":
@@ -1943,21 +1924,13 @@ class ExprEvaluator:
                     reason = val.name
                 else:
                     reason = str(self.eval(val, env))
-            elif key == "effect":
-                effects.append(val)  # Keep as SExpr for later execution
-            elif key == "effects":
-                # Allow list of effects
-                if isinstance(val, SList):
-                    effects.extend(val.items)
             elif key == "context":
-                # Legacy format - literals only
                 context.update(self._parse_context_list(val))
             else:
                 # Other context values - evaluate to resolve variables
                 context[key] = self.eval(val, env)
 
-        # Capture current environment for effects to use during execution
-        return BehaviorBlocked(reason=reason, context=context, effects=effects, env=env)
+        return BehaviorBlocked(reason=reason, context=context)
 
     def _eval_redirect(self, form: SList, env: Optional[Environment] = None) -> BehaviorRedirect:
         """(redirect ACTION [:key value ...]) or (redirect :action ACTION) or (redirect :to ROOM)

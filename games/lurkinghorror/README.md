@@ -173,18 +173,17 @@ variables (USERNAME?, LOGGED-IN?) to implement a multi-step interaction:
          ...>>
 ```
 
-**In Grue**: Convert to object behaviors that check global state:
+**In Grue**: Convert to object behaviors that check object properties:
 
 ```scheme
-(globals
-  :logged-in false
-  :username false)
-
-:type (fn (?value)
-  (cond
-    ((not username) (redirect :action (do ?self :login ?value)))
-    ((not logged-in) (redirect :action (do ?self :password ?value)))
-    ...))
+(object @pc
+  :properties (:logged-in false :username false)
+  :behaviors (
+    :type (fn (?value)
+      (cond
+        ((not (:username @pc)) (redirect :action (do ?self :login ?value)))
+        ((not (:logged-in @pc)) (redirect :action (do ?self :password ?value)))
+        ...))))
 ```
 
 **How to spot**: Look for:
@@ -213,12 +212,12 @@ These are called from multiple places and easy to miss.
 
 ```scheme
 :turn-off (fn ()
-  (success :effects ((clear-flag! ?self POWER)
-                     (set! logged-in false)
-                     (set! username false)
-                     (move! @menu-box nil)
-                     (move! @more-box nil)
-                     ...)))
+  '((clear-flag ?self POWER)
+    (set @pc :logged-in false)
+    (set @pc :username false)
+    (move @menu-box nil)
+    (move @more-box nil)
+    (success)))
 ```
 
 **How to spot**: Search for `INIT-` routines and trace all call sites.
@@ -251,7 +250,7 @@ certain actions. Easy to assume they start somewhere visible.
   ...)
 
 :password (fn (?value)
-  (success :effects ((move! @menu-box @pc)) ...))
+  '((move @menu-box @pc) (success)))
 ```
 
 **How to spot**: Objects without `(IN ...)` in ZIL, or with `(IN GLOBAL-OBJECTS)` or `(IN LOCAL-GLOBALS)`.
