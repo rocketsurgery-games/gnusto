@@ -108,7 +108,7 @@
   (assert (context? message "You see nothing special about the noise.")))
 
 (test "turn on light when already lit"
-  :setup ((set! lit true))
+  :setup ((set @terminal-room :lit true))
   (do @light :turn-on)
   (assert (outcome? success))
   (assert (context? message "It's already light.")))

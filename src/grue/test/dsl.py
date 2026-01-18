@@ -688,7 +688,10 @@ class TestRunner:
                     gname = gname.name
                 if isinstance(expected, Symbol):
                     expected = expected.name
-                actual = runtime.state.globals.get(gname)
+                try:
+                    actual = runtime.get_global(gname)
+                except KeyError:
+                    actual = None
                 if actual != expected:
                     failures.append(
                         f"Global '{gname}' is '{actual}', expected '{expected}'"

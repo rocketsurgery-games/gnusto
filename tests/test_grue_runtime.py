@@ -356,7 +356,7 @@ class TestReset:
         # Modify state
         runtime.state.objects["PLAYER"].location = "GARDEN"
         runtime.state.objects["KEY"].location = "PLAYER"
-        runtime.state.globals["score"] = 100
+        runtime.set_object_property("PLAYER", "score", 100)
 
         assert runtime.get_player_location() == "GARDEN"
         assert "KEY" in runtime.get_inventory()
@@ -366,7 +366,7 @@ class TestReset:
 
         assert runtime.get_player_location() == "LOBBY"
         assert "KEY" not in runtime.get_inventory()
-        assert runtime.state.globals["score"] == 0
+        assert runtime.get_object_property("PLAYER", "score") == 0
 
 
 class TestEventQueue:
@@ -1057,7 +1057,7 @@ class TestGeneralizedFn:
         assert result.reason == "locked"
 
         # Unlock the door
-        runtime.clear_object_flag("DOOR", "locked")
+        runtime.set_object_property("DOOR", "locked", False)
         result = runtime.do("DOOR", "open")
         assert result.outcome == "success"
 
@@ -1121,13 +1121,13 @@ class TestGeneralizedFn:
         assert result.reason == "locked"
 
         # Remove locked property
-        runtime.clear_object_flag("BOX", "locked")
+        runtime.set_object_property("BOX", "locked", False)
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
         assert result.reason == "sealed"
 
         # Remove sealed property
-        runtime.clear_object_flag("BOX", "sealed")
+        runtime.set_object_property("BOX", "sealed", False)
         result = runtime.do("BOX", "open")
         assert result.outcome == "success"
 

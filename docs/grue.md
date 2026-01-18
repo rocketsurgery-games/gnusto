@@ -31,11 +31,18 @@ not imperative mutations. An action transforms state:
 State × Action → State'
 ```
 
-The "mutative" syntax (`set!`, `move!`) is notation for describing the delta,
+The "mutative" syntax (`set`, `move!`) is notation for describing the delta,
 not actual mutation. This enables:
 - State space exploration (branching without rollback complexity)
 - Deterministic replay
 - Easy save/restore
+
+### Unified Property Model
+
+All object state is stored as properties. Boolean properties serve the role that "flags"
+played in ZIL (e.g., `:locked true` instead of a separate LOCKED flag). Access properties
+using Clojure-style keyword-as-function syntax: `(:locked @door)` returns the value,
+`(:locked @door false)` provides a default. Set properties with `(set @door :locked true)`.
 
 ### LLM as Interpreter
 
@@ -58,7 +65,6 @@ and generates narrative from outcomes. This separation allows:
 ; Atoms
 @entity         ; entities (objects, rooms) - @ prefix, lowercase
 ?binding        ; context bindings - ? prefix
-FLAG            ; flags/constants - UPPERCASE
 :keyword        ; keywords (self-evaluating, Clojure-style)
 "string"        ; string literals
 42              ; numbers
@@ -85,17 +91,17 @@ true false      ; booleans
 ### Predicates (Pure Functions → Boolean)
 
 ```scheme
-; Object queries
-(has-flag @door LOCKED)       ; does object have flag?
+; Object queries - properties are accessed with keyword-as-function syntax
+(:locked @door)               ; get property (error if missing)
+(:locked @door false)         ; get property with default
 (:score @player)              ; get property value (error if missing)
 (:score @player 0)            ; get property with default
-(prop @player score)          ; legacy: get property (nil if missing)
 (loc @key)                    ; get object's location
 (= ?with @master-key)         ; equality
 
 ; Location predicates
 (in-room? @player @lobby @hallway)  ; is object in any listed room?
-(room-has-flag? OUTSIDE)            ; does player's current room have flag?
+(:outside (loc (player)))           ; check room property
 (here? @chest)                      ; is object in player's room?
 (held? @key)                        ; is object in player's inventory?
 (visible? @door)                    ; can player see object?
@@ -107,8 +113,8 @@ true false      ; booleans
 (not EXPR)
 
 ; Quantifiers (see Formal Semantics for details)
-(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
-(every? (fn (?x) (has-flag ?x SMALL)) (contents @chest))
+(some (fn (?x) (:light ?x)) (inventory))
+(every? (fn (?x) (:small ?x)) (contents @chest))
 
 ; Event queue
 (queued? HACKER-HELPS)        ; is event currently active?
@@ -123,14 +129,12 @@ followed by a terminator (`success`, `blocked`, `redirect`, or `default`):
 ```scheme
 ; Return effects from a behavior as a quoted list
 '((move @key @player)         ; object moves to destination
-  (set-flag @door LOCKED)     ; add flag to object
+  (set @door :locked true)    ; set property on object
   (success :message "Done.")) ; terminator
 
 ; Available effect descriptors (in quoted lists):
 (move OBJ DEST)               ; move object to destination
-(set-flag OBJ FLAG)           ; add flag to object
-(clear-flag OBJ FLAG)         ; remove flag from object
-(set OBJ :prop VALUE)         ; set property on object
+(set OBJ :prop VALUE)         ; set property on object (booleans for flags)
 (set-in OBJ PATH VALUE)       ; set nested property (PATH is list of keys)
 (inc OBJ :prop [AMT])         ; increment numeric property (default: 1)
 (dec OBJ :prop [AMT])         ; decrement numeric property (default: 1)
@@ -149,18 +153,16 @@ Everything in the game world is an object, including the player and rooms.
 (object @outside-door
   :description "A heavy exterior door with an electronic lock"
   :location @mass-ave           ; where object is (or nil for abstract objects)
-  :flags (DOOR LOCKED OPENABLE FIXED)
-  :properties (:lock-type electronic :key-required @master-key)
+  :properties (:door true :locked true :openable true :fixed true
+               :lock-type electronic :key-required @master-key)
   :behaviors (
     :open (cond ...)
     :unlock (cond ...)
     :through (cond ...)))
 ```
 
-**Flags vs Properties:**
-- Flags are boolean presence/absence markers, optimized for `has-flag` checks
-- Properties are key-value pairs for arbitrary data
-- In practice, could unify these (flags are just boolean properties)
+**Properties:** All object state is stored as properties. Boolean properties (like `:locked true`)
+serve the role that flags played in ZIL. Use keyword-as-function syntax to check: `(:locked @door)`.
 
 ### Rooms
 
@@ -169,12 +171,12 @@ Rooms are objects with exits. The player's location is always a room.
 ```scheme
 (room @mass-ave
   :description "The intersection of Mass Ave and Memorial Drive"
-  :flags (OUTSIDE LIT)
+  :properties (:outside true :lit true)
   :exits ((in :to @lobby :via @outside-door)))
 
 (room @lobby
   :description "The building's main lobby"
-  :flags (INSIDE LIT)
+  :properties (:inside true :lit true)
   :exits ((out :to @mass-ave :via @outside-door)
           (north :to @hallway)))
 ```
@@ -215,24 +217,23 @@ regardless of the object's `:location`. This is useful for:
 (object @junk
   :location nil
   :description "junk"
-  :flags (NDESCBIT))
+  :properties (:nodesc true))
 
 (room @dead-storage :globals (@junk))   ; junk visible here
 (room @storage-room :globals (@junk))   ; and here too
 ```
 
-Objects in `:globals` override the `INVISIBLE` flag - they represent "known" scenery
+Objects in `:globals` override the `:invisible` property - they represent "known" scenery
 that the player can always see and interact with when in that room.
 
 ### The Player
 
-The player is an object identified by the `PERSON` flag. "Global" state is just player properties.
+The player is an object identified by the `:person` property. Score/moves are player properties.
 
 ```scheme
 (object @player
   :location @terminal-room      ; starting room
-  :flags (PERSON)
-  :properties (:score 0 :moves 0 :game-phase beginning))
+  :properties (:person true :score 0 :moves 0 :game-phase beginning))
 ```
 
 Inventory is just objects whose location is the player:
@@ -248,13 +249,12 @@ Objects can contain other objects. An object's location can be another object.
 (object @chest
   :description "An old wooden chest"
   :location @attic
-  :flags (CONTAINER OPENABLE LOCKED)
-  :properties (:key-required @brass-key))
+  :properties (:container true :openable true :locked true :key-required @brass-key))
 
 (object @coin
   :description "A gold coin"
   :location @chest              ; inside the chest
-  :flags (TAKEBIT))
+  :properties (:takeable true))
 ```
 
 Visibility rules:
@@ -270,26 +270,26 @@ an action targets the object (or references it via `:with`, etc.).
 (object @outside-door
   :behaviors (
     :open (cond
-      ((and (room-has-flag? OUTSIDE)
+      ((and (:outside (loc (player)))
             (in-room? @player @mass-ave @smith-st @courtyard))
         (success))  ; door auto-closes, no state change
 
-      ((room-has-flag? OUTSIDE)
+      ((:outside (loc (player)))
         (blocked :reason locked-from-outside))
 
       (true
         (success :context ((note auto-closing)))))
 
     :unlock (cond
-      ((and (room-has-flag? OUTSIDE) (= ?with @master-key))
+      ((and (:outside (loc (player))) (= ?with @master-key))
         (blocked :reason wrong-key-type
                  :context ((detail electronic-lock))))
 
-      ((room-has-flag? OUTSIDE)
+      ((:outside (loc (player)))
         (blocked :reason locked-from-outside))
 
-      ((and (has-flag ?self LOCKED) (= ?with @master-key))
-        '((clear-flag ?self LOCKED) (success)))
+      ((and (:locked ?self) (= ?with @master-key))
+        '((set ?self :locked false) (success)))
 
       ((has-flag ?self LOCKED)
         (blocked :reason need-key))
@@ -986,11 +986,8 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 |----------|-----------|---------|-------------|
 | `(:key obj)` | - | any | Property value (error if missing) |
 | `(:key obj default)` | - | any | Property value (default if missing) |
-| `has-flag` | OBJ FLAG | bool | Does object have flag? |
 | `loc` | OBJ | string | Object's location |
-| `prop` | OBJ PROP | any | Legacy: property value (nil if missing) |
-| `desc` | OBJ | string | Object's :description (shorthand for `(prop OBJ :description)`) |
-| `flags` | OBJ | set | All flags on object |
+| `desc` | OBJ | string | Object's :description |
 | `visible?` | OBJ | bool | Is object visible to player? |
 | `held?` | OBJ | bool | Is object in player's inventory? |
 | `here?` | OBJ | bool | Is object in player's room? |
@@ -1002,7 +999,6 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 | `at?` | OBJ ROOM | bool | Is object at room? |
 | `room?` | NAME | bool | Is this a room? |
 | `in-room?` | OBJ ROOM... | bool | Is object in any listed room? |
-| `room-has-flag?` | FLAG | bool | Does player's room have flag? |
 | `inventory` | - | list | Player's inventory objects |
 | `contents` | CONTAINER | list | Objects inside container |
 | `exit?` | DIRECTION | bool | Does exit exist from current room? |
@@ -1088,12 +1084,9 @@ Effects describe state changes. By convention, their names end with `!`.
 |--------|-----------|-------------|
 | `move!` | OBJ DEST | Move object to destination |
 | `take!` | OBJ | Move object to player's inventory (shorthand for `(move! OBJ @player)`) |
-| `set-flag!` | OBJ FLAG | Add flag to object |
-| `clear-flag!` | OBJ FLAG | Remove flag from object |
-| `set` | OBJ :PROP VAL | Set property on object (preferred) |
-| `set-prop!` | OBJ PROP VAL | Set property on object (legacy) |
-| `set!` | NAME VAL | Set global variable *(deprecated)* |
-| `inc!` | NAME [AMOUNT] | Increment global *(deprecated)* |
+| `set` | OBJ :PROP VAL | Set property on object (use `:prop true` for boolean flags) |
+| `set-prop!` | OBJ PROP VAL | Set property on object (legacy syntax) |
+| `inc!` | score [AMOUNT] | Increment score (player property) |
 | `queue!` | EVENT [COUNT] | Queue event (indefinite or countdown) |
 | `dequeue!` | EVENT | Remove event from queue |
 

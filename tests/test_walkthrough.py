@@ -497,7 +497,7 @@ class TestPart5Hand:
         # Set up: player has hand, is in alchemy-lab with prof dead
         game.move_object("@mummified-hand", "@player")
         game.move_object("@player", "@alchemy-lab")
-        game.state.globals["prof-dead"] = True  # Prof is gone
+        game.bindings["prof-dead"] = True  # Prof is gone (test state)
         game.state.objects["@alchemy-lab"].properties["on"] = True  # Lights on
 
         # Dip hand in vat
@@ -511,7 +511,7 @@ class TestPart5Hand:
         """Hand becomes animated (PERSON flag) after dipping and waiting."""
         game.move_object("@mummified-hand", "@player")
         game.move_object("@player", "@alchemy-lab")
-        game.state.globals["prof-dead"] = True
+        game.bindings["prof-dead"] = True  # Prof is gone (test state)
         game.state.objects["@alchemy-lab"].properties["on"] = True
 
         # Dip hand

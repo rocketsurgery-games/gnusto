@@ -16,6 +16,9 @@ class MockWorldState:
     """Mock world state for testing."""
 
     def __init__(self):
+        # Bindings (for testing expression evaluation)
+        self.bindings: dict[str, any] = {}
+
         # Object locations
         self.locations = {
             "FLASHLIGHT": "PLAYER",
@@ -36,6 +39,7 @@ class MockWorldState:
         }
 
         # Object properties (unified with flags using lowercase names)
+        # score/moves are player properties, not globals
         self.properties = {
             "FLASHLIGHT": {"battery_level": 100, "DESC": "A sturdy flashlight",
                           "takeable": True, "light": True, "on": True},
@@ -43,20 +47,11 @@ class MockWorldState:
             "DOOR": {"locked": True, "door": True},
             "HACKER": {"blocking": True, "personality": "antisocial", "person": True},
             "CHAIR": {"takeable": True},
-        }
-
-        # Global variables
-        self.globals = {
-            "SCORE": 0,
-            "MOVES": 0,
-            "GAME_PHASE": "beginning",
+            "PLAYER": {"score": 0, "moves": 0},
         }
 
         # Rooms set
         self.rooms = {"TERMINAL-ROOM", "HALLWAY", "MAINTENANCE-CLOSET"}
-
-    def get_object_flag(self, obj: str, flag: str) -> bool:
-        return flag in self.flags.get(obj, set())
 
     def get_object_location(self, obj: str) -> str | None:
         return self.locations.get(obj)
@@ -67,13 +62,14 @@ class MockWorldState:
     def has_object_property(self, obj: str, prop: str) -> bool:
         return prop in self.properties.get(obj, {})
 
-    def get_object_flags(self, obj: str) -> set[str]:
-        return self.flags.get(obj, set())
-
     def get_global(self, name: str):
-        if name not in self.globals:
-            raise KeyError(f"Unknown global: {name}")
-        return self.globals[name]
+        # Check bindings first (for test variables)
+        if name in self.bindings:
+            return self.bindings[name]
+        # score/moves are player properties
+        if name.lower() in ("score", "moves"):
+            return self.properties.get("PLAYER", {}).get(name.lower(), 0)
+        raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     def get_player_location(self) -> str:
         return self.locations["PLAYER"]
@@ -100,22 +96,19 @@ class MockWorldState:
         return [obj for obj, loc in self.locations.items() if loc == container]
 
     # Mutable operations
-    def set_object_flag(self, obj: str, flag: str) -> None:
-        if obj not in self.flags:
-            self.flags[obj] = set()
-        self.flags[obj].add(flag)
-
-    def clear_object_flag(self, obj: str, flag: str) -> None:
-        if obj in self.flags:
-            self.flags[obj].discard(flag)
-
     def set_object_property(self, obj: str, prop: str, value) -> None:
         if obj not in self.properties:
             self.properties[obj] = {}
         self.properties[obj][prop] = value
 
     def set_global(self, name: str, value) -> None:
-        self.globals[name] = value
+        # score/moves are player properties
+        if name.lower() in ("score", "moves"):
+            if "PLAYER" not in self.properties:
+                self.properties["PLAYER"] = {}
+            self.properties["PLAYER"][name.lower()] = value
+        else:
+            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     def move_object(self, obj: str, dest: str) -> None:
         self.locations[obj] = dest
@@ -320,14 +313,14 @@ class TestEffects:
     def test_set_global(self):
         state = MockWorldState()
         execute_effect("(set! SCORE 10)", state)
-        assert state.globals["SCORE"] == 10
+        assert state.properties["PLAYER"]["score"] == 10
 
     def test_inc(self):
         state = MockWorldState()
         execute_effect("(inc! SCORE)", state)
-        assert state.globals["SCORE"] == 1
+        assert state.properties["PLAYER"]["score"] == 1
         execute_effect("(inc! SCORE 5)", state)
-        assert state.globals["SCORE"] == 6
+        assert state.properties["PLAYER"]["score"] == 6
 
     def test_set_rejects_let_bound_variable(self):
         """set! should error when targeting a let-bound variable."""
@@ -347,14 +340,14 @@ class TestEffects:
         with pytest.raises(EvalError, match="cannot modify let-bound variable"):
             executor.execute(parse("(inc! ?counter)"), env)
 
-    def test_set_works_on_global_when_no_local_shadow(self):
-        """set! should work fine on globals even when an env is present."""
+    def test_set_works_on_score_when_no_local_shadow(self):
+        """set! should work fine on score even when an env is present."""
         state = MockWorldState()
         env = Environment(bindings={"?other-var": 42})  # Different variable
         executor = EffectExecutor(state)
 
         executor.execute(parse("(set! SCORE 999)"), env)
-        assert state.globals["SCORE"] == 999
+        assert state.properties["PLAYER"]["score"] == 999
 
     def test_seq(self):
         state = MockWorldState()
@@ -366,19 +359,19 @@ class TestEffects:
         """
         execute_effect(expr, state)
         assert state.locations["CHAIR"] == "PLAYER"
-        assert state.globals["SCORE"] == 5
+        assert state.properties["PLAYER"]["score"] == 5
         assert state.properties["CHAIR"]["touchbit"] is True
 
     def test_when_true(self):
         state = MockWorldState()
-        execute_effect("(when (= SCORE 0) (inc! SCORE 10))", state)
-        assert state.globals["SCORE"] == 10
+        execute_effect("(when (= score 0) (inc! SCORE 10))", state)
+        assert state.properties["PLAYER"]["score"] == 10
 
     def test_when_false(self):
         state = MockWorldState()
-        state.globals["SCORE"] = 50
-        execute_effect("(when (= SCORE 0) (inc! SCORE 10))", state)
-        assert state.globals["SCORE"] == 50  # unchanged
+        state.properties["PLAYER"]["score"] = 50
+        execute_effect("(when (= score 0) (inc! SCORE 10))", state)
+        assert state.properties["PLAYER"]["score"] == 50  # unchanged
 
 
 class TestRealWorldScenarios:
@@ -948,30 +941,6 @@ class TestEffectInterpreterMutations:
         assert state.locations["KEY"] == "HALLWAY"
         assert "move KEY to HALLWAY" in result.effects_applied
 
-    def test_set_flag_effect(self):
-        """Set-flag effect adds flag to object."""
-        state = MockStateWithQueues()
-        interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["set-flag", "DOOR", "OPENBIT"],
-            ["success"]
-        ])
-        assert result.outcome == "success"
-        assert "OPENBIT" in state.flags["DOOR"]
-        assert "set-flag DOOR OPENBIT" in result.effects_applied
-
-    def test_clear_flag_effect(self):
-        """Clear-flag effect removes flag from object."""
-        state = MockStateWithQueues()
-        interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["clear-flag", "DOOR", "LOCKED"],
-            ["success"]
-        ])
-        assert result.outcome == "success"
-        assert "LOCKED" not in state.flags["DOOR"]
-        assert "clear-flag DOOR LOCKED" in result.effects_applied
-
     def test_set_global_effect(self):
         """Set effect changes global variable."""
         state = MockStateWithQueues()
@@ -981,44 +950,44 @@ class TestEffectInterpreterMutations:
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.globals["SCORE"] == 100
+        assert state.properties["PLAYER"]["score"] == 100
         assert "set SCORE = 100" in result.effects_applied
 
     def test_inc_effect(self):
-        """Inc effect increments global variable."""
+        """Inc effect increments score."""
         state = MockStateWithQueues()
-        state.globals["SCORE"] = 10
+        state.properties["PLAYER"]["score"] = 10
         interp = EffectInterpreter(state)
         result = interp.interpret([
             ["inc", "SCORE"],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.globals["SCORE"] == 11
+        assert state.properties["PLAYER"]["score"] == 11
 
     def test_inc_effect_with_amount(self):
         """Inc effect with custom amount."""
         state = MockStateWithQueues()
-        state.globals["SCORE"] = 10
+        state.properties["PLAYER"]["score"] = 10
         interp = EffectInterpreter(state)
         result = interp.interpret([
             ["inc", "SCORE", 5],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.globals["SCORE"] == 15
+        assert state.properties["PLAYER"]["score"] == 15
 
     def test_dec_effect(self):
-        """Dec effect decrements global variable."""
+        """Dec effect decrements score."""
         state = MockStateWithQueues()
-        state.globals["SCORE"] = 10
+        state.properties["PLAYER"]["score"] = 10
         interp = EffectInterpreter(state)
         result = interp.interpret([
             ["dec", "SCORE"],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.globals["SCORE"] == 9
+        assert state.properties["PLAYER"]["score"] == 9
 
     def test_queue_effect(self):
         """Queue effect adds event to queue."""
@@ -1072,14 +1041,14 @@ class TestEffectInterpreterMutations:
         interp = EffectInterpreter(state)
         result = interp.interpret([
             ["move", "KEY", "PLAYER"],
-            ["set-flag", "KEY", "TAKEN"],
+            ["set", "KEY", Keyword("taken"), True],
             ["inc", "SCORE", 10],
             ["success", Keyword("message"), "You take the key."]
         ])
         assert result.outcome == "success"
         assert state.locations["KEY"] == "PLAYER"
-        assert "TAKEN" in state.flags["KEY"]
-        assert state.globals["SCORE"] == 10
+        assert state.properties["KEY"]["taken"] is True
+        assert state.properties["PLAYER"]["score"] == 10
         assert len(result.effects_applied) == 3
 
 
@@ -1142,10 +1111,10 @@ class TestEffectInterpreterSetup:
         interp = EffectInterpreter(state)
         effects_applied = interp.interpret_setup([
             ["move", "KEY", "PLAYER"],
-            ["set-flag", "DOOR", "OPENBIT"]
+            ["set", "DOOR", Keyword("open"), True]
         ])
         assert state.locations["KEY"] == "PLAYER"
-        assert "OPENBIT" in state.flags["DOOR"]
+        assert state.properties["DOOR"]["open"] is True
         assert len(effects_applied) == 2
 
     def test_setup_rejects_terminators(self):
@@ -1173,9 +1142,9 @@ class TestQuasiquote:
     @pytest.fixture
     def evaluator(self):
         state = MockWorldState()
-        state.globals["x"] = 42
-        state.globals["nums"] = [1, 2, 3]
-        state.globals["condition"] = True
+        state.bindings["x"] = 42
+        state.bindings["nums"] = [1, 2, 3]
+        state.bindings["condition"] = True
         return ExprEvaluator(state)
 
     def test_quasiquote_without_unquotes(self, evaluator):
@@ -1200,7 +1169,7 @@ class TestQuasiquote:
 
     def test_quasiquote_unquote_splicing_empty(self, evaluator):
         """Unquote-splicing with empty list contributes nothing."""
-        evaluator.state.globals["empty"] = []
+        evaluator.state.bindings["empty"] = []
         result = evaluator.eval(parse("`(a ,@empty c)"))
         assert result == ["a", "c"]
 
@@ -1211,13 +1180,13 @@ class TestQuasiquote:
 
     def test_quasiquote_conditional_effects(self, evaluator):
         """Quasiquote with conditional effect inclusion."""
-        evaluator.state.globals["condition"] = True
+        evaluator.state.bindings["condition"] = True
         result = evaluator.eval(parse(
             "`((effect1) ,@(if condition '((effect2)) '()) (success))"
         ))
         assert result == [["effect1"], ["effect2"], ["success"]]
 
-        evaluator.state.globals["condition"] = False
+        evaluator.state.bindings["condition"] = False
         result = evaluator.eval(parse(
             "`((effect1) ,@(if condition '((effect2)) '()) (success))"
         ))
@@ -1225,8 +1194,8 @@ class TestQuasiquote:
 
     def test_quasiquote_multiple_unquotes(self, evaluator):
         """Multiple unquotes in same list."""
-        evaluator.state.globals["a"] = 1
-        evaluator.state.globals["b"] = 2
+        evaluator.state.bindings["a"] = 1
+        evaluator.state.bindings["b"] = 2
         result = evaluator.eval(parse("`(,a ,b ,(+ a b))"))
         assert result == [1, 2, 3]
 

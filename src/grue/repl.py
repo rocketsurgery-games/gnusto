@@ -463,8 +463,8 @@ def print_result(result: Any) -> bool:
         rt = result.runtime
         print("\n=== Game State ===")
         print(f"Player location: {rt.get_player_location()}")
-        print(f"Score: {rt.state.globals.get('score', 0)}")
-        print(f"Moves: {rt.state.globals.get('moves', 0)}")
+        print(f"Score: {rt.get_object_property(rt.player_name, 'score') or 0}")
+        print(f"Moves: {rt.get_object_property(rt.player_name, 'moves') or 0}")
         print(f"\nObjects:")
         for name, obj_state in sorted(rt.state.objects.items()):
             if name not in rt.state.rooms:

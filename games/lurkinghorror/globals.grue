@@ -79,7 +79,7 @@
   :behaviors (
     :turn-on (fn ()
       (cond
-        (lit
+        ((:lit (loc (player)))
           (success :message "It's already light."))
         (true
           (blocked :reason no-source :message "You need a light source!"))))

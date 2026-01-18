@@ -56,7 +56,6 @@ class StateSnapshot:
     """Immutable snapshot of game state for comparison."""
     player_location: str
     objects: dict[str, tuple[str | None, frozenset[str], dict[str, Any]]]
-    globals: dict[str, Any]
 
     @classmethod
     def from_runtime(cls, runtime: GrueRuntime) -> "StateSnapshot":
@@ -73,7 +72,6 @@ class StateSnapshot:
         return cls(
             player_location=runtime.get_player_location(),
             objects=objects,
-            globals=dict(runtime.state.globals),
         )
 
     def diff(self, other: "StateSnapshot") -> dict[str, Any]:
@@ -96,17 +94,6 @@ class StateSnapshot:
                 obj_changes[name] = {"from": old, "to": new}
         if obj_changes:
             changes["objects"] = obj_changes
-
-        # Check global changes
-        global_changes = {}
-        all_globals = set(self.globals.keys()) | set(other.globals.keys())
-        for name in all_globals:
-            old = self.globals.get(name)
-            new = other.globals.get(name)
-            if old != new:
-                global_changes[name] = {"from": old, "to": new}
-        if global_changes:
-            changes["globals"] = global_changes
 
         return changes
 
@@ -185,8 +172,10 @@ class GrueTestHarness:
         return None
 
     def get_global(self, name: str) -> Any:
-        """Get global variable."""
-        return self.runtime.state.globals.get(name)
+        """Get global variable (only score/moves are supported)."""
+        if name.lower() in ("score", "moves"):
+            return self.runtime.get_object_property(self.runtime.player_name, name.lower()) or 0
+        raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     def snapshot(self) -> StateSnapshot:
         """Capture current state."""
@@ -219,8 +208,11 @@ class GrueTestHarness:
             self.runtime.state.objects[obj].properties[prop] = value
 
     def set_global(self, name: str, value: Any) -> None:
-        """Set global variable."""
-        self.runtime.state.globals[name] = value
+        """Set global variable (only score/moves are supported)."""
+        if name.lower() in ("score", "moves"):
+            self.runtime.set_object_property(self.runtime.player_name, name.lower(), value)
+        else:
+            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     # === Action Execution ===
 
@@ -443,13 +435,28 @@ class GrueTestCase(unittest.TestCase):
         )
 
     def assert_state_unchanged(self, msg: str | None = None) -> None:
-        """Assert the last action didn't change state."""
+        """Assert the last action didn't change state (ignores moves increment on player)."""
         trace = self.harness.last_trace
         self.assertIsNotNone(trace, "No action has been executed")
-        changes = trace.changes
-        # Ignore 'moves' increment as that's expected
-        if "globals" in changes and changes["globals"].keys() == {"moves"}:
-            del changes["globals"]
+        changes = dict(trace.changes)  # Make a copy to modify
+        # Ignore 'moves' increment on player object as that's expected
+        player_name = self.harness.runtime.player_name
+        if "objects" in changes and player_name in changes["objects"]:
+            player_change = changes["objects"][player_name]
+            if player_change:
+                # Check if only moves changed
+                old_props = player_change["from"][2] if player_change["from"] else {}
+                new_props = player_change["to"][2] if player_change["to"] else {}
+                old_moves = old_props.get("moves", 0)
+                new_moves = new_props.get("moves", 0)
+                # If only moves changed, remove player from object changes
+                old_no_moves = {k: v for k, v in old_props.items() if k != "moves"}
+                new_no_moves = {k: v for k, v in new_props.items() if k != "moves"}
+                if old_no_moves == new_no_moves and old_moves != new_moves:
+                    changes["objects"] = dict(changes["objects"])  # Copy
+                    del changes["objects"][player_name]
+                    if not changes["objects"]:
+                        del changes["objects"]
         self.assertEqual(changes, {}, msg or f"Expected no state change, got: {changes}")
 
     def assert_effect_applied(

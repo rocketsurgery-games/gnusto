@@ -46,7 +46,6 @@ class GameState:
     """Complete runtime game state."""
     objects: dict[str, ObjectState] = field(default_factory=dict)
     rooms: set[str] = field(default_factory=set)
-    globals: dict[str, Any] = field(default_factory=dict)
     queues: dict[str, int | None] = field(default_factory=dict)  # event -> countdown (None = indefinite)
 
     def copy(self) -> "GameState":
@@ -79,6 +78,7 @@ class GrueRuntime:
         self.state = self._init_state()
         self.bindings: dict[str, Any] = {}  # Current action bindings (?with, ?on, self, etc.)
         self.player_name = self._find_player_name()  # Detect player entity by PERSON flag
+        self._init_player_properties()  # Initialize score/moves on player
         self._functions = self._init_functions()  # User-defined functions from world.functions
 
     def _init_functions(self) -> dict[str, GrueFn]:
@@ -193,11 +193,19 @@ class GrueRuntime:
                 properties=props,
             )
 
-        # Initialize built-in globals
-        state.globals["score"] = 0
-        state.globals["moves"] = 0
-
         return state
+
+    def _init_player_properties(self) -> None:
+        """Initialize score/moves as player properties."""
+        if self.player_name in self.state.objects:
+            self.state.objects[self.player_name].properties["score"] = 0
+            self.state.objects[self.player_name].properties["moves"] = 0
+
+    def _increment_moves(self) -> None:
+        """Increment the moves counter on the player."""
+        if self.player_name in self.state.objects:
+            props = self.state.objects[self.player_name].properties
+            props["moves"] = props.get("moves", 0) + 1
 
     def _find_player_name(self) -> str:
         """Find the player entity.
@@ -221,16 +229,11 @@ class GrueRuntime:
         self.bindings = {}
         self._functions = self._init_functions()
         self.player_name = self._find_player_name()
+        self._init_player_properties()
 
     # -------------------------------------------------------------------------
     # MutableWorldState interface - used by ExprEvaluator and EffectExecutor
     # -------------------------------------------------------------------------
-
-    def get_object_flag(self, obj: str, flag: str) -> bool:
-        """Check if object has flag (stored as boolean property)."""
-        if obj not in self.state.objects:
-            return False
-        return bool(self.state.objects[obj].properties.get(flag, False))
 
     def get_object_location(self, obj: str) -> str | None:
         if obj == self.player_name:
@@ -273,14 +276,6 @@ class GrueRuntime:
                 return True
         return False
 
-    def get_object_flags(self, obj: str) -> set[str]:
-        """Get all flags (boolean True properties) on object."""
-        if obj not in self.state.objects:
-            return set()
-        # Return set of property names that are True (flags)
-        props = self.state.objects[obj].properties
-        return {k for k, v in props.items() if v is True}
-
     def get_global(self, name: str) -> Any:
         # Check bindings first (for ?self, ?actor, ?with, ?on, etc.)
         if name.startswith("?"):
@@ -293,11 +288,9 @@ class GrueRuntime:
         if name in self.bindings:
             return self.bindings[name]
 
-        # Then check globals
+        # score/moves are player properties
         if name.lower() in ("score", "moves"):
-            return self.state.globals.get(name.lower(), 0)
-        if name in self.state.globals:
-            return self.state.globals[name]
+            return self.get_object_property(self.player_name, name.lower()) or 0
 
         # Check constants (from top-level (def name value))
         if name in self.world.constants:
@@ -467,22 +460,16 @@ class GrueRuntime:
                 return (exit_def.to, exit_def.via)
         return None
 
-    def set_object_flag(self, obj: str, flag: str) -> None:
-        """Set flag on object (stored as boolean property)."""
-        if obj in self.state.objects:
-            self.state.objects[obj].properties[flag] = True
-
-    def clear_object_flag(self, obj: str, flag: str) -> None:
-        """Clear flag from object (stored as boolean property)."""
-        if obj in self.state.objects:
-            self.state.objects[obj].properties[flag] = False
-
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
         if obj in self.state.objects:
             self.state.objects[obj].properties[prop] = value
 
     def set_global(self, name: str, value: Any) -> None:
-        self.state.globals[name.lower() if name.lower() in ("score", "moves") else name] = value
+        # score/moves are player properties
+        if name.lower() in ("score", "moves"):
+            self.set_object_property(self.player_name, name.lower(), value)
+        else:
+            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     def move_object(self, obj: str, dest: str) -> None:
         if obj in self.state.objects:
@@ -1168,7 +1155,7 @@ class GrueRuntime:
             self.state.objects[actor].location = dest
             effects = [f"{actor} moved to {dest}" + (f" (via {via})" if via else "")]
 
-        self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+        self._increment_moves()
 
         # Check for :on-enter behavior in destination room
         on_enter_result = self._check_room_on_enter(dest, from_room, actor)
@@ -1270,7 +1257,7 @@ class GrueRuntime:
             return self._process_effect_list(result)
 
         if isinstance(result, BehaviorSuccess):
-            self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+            self._increment_moves()
             return ActionResult(
                 outcome="success",
                 context=list(result.context.items()),
@@ -1345,7 +1332,7 @@ class GrueRuntime:
 
         # Increment moves for successful actions
         if outcome.outcome == "success":
-            self.state.globals["moves"] = self.state.globals.get("moves", 0) + 1
+            self._increment_moves()
 
         # Convert EffectOutcome to ActionResult
         # EffectOutcome stores message in context dict

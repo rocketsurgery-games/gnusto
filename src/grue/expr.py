@@ -30,8 +30,6 @@ Built-in Predicates:
 
 Built-in Effects:
     (move! OBJ DEST)          - Move object to destination
-    (set-flag! OBJ FLAG)      - Set flag on object
-    (clear-flag! OBJ FLAG)    - Clear flag from object
     (set-prop! OBJ PROP VAL)  - Set property on object
     (set! GLOBAL VAL)         - Set global variable
     (inc! GLOBAL)             - Increment global by 1
@@ -157,20 +155,12 @@ class BehaviorDefault:
 class WorldState(Protocol):
     """Protocol for world state access."""
 
-    def get_object_flag(self, obj: str, flag: str) -> bool:
-        """Check if object has flag."""
-        ...
-
     def get_object_location(self, obj: str) -> str | None:
         """Get object's current location."""
         ...
 
     def get_object_property(self, obj: str, prop: str) -> Any:
         """Get object property value."""
-        ...
-
-    def get_object_flags(self, obj: str) -> set[str]:
-        """Get all flags on object."""
         ...
 
     def get_global(self, name: str) -> Any:
@@ -216,14 +206,6 @@ class WorldState(Protocol):
 
 class MutableWorldState(WorldState, Protocol):
     """Protocol for mutable world state (effects)."""
-
-    def set_object_flag(self, obj: str, flag: str) -> None:
-        """Set flag on object."""
-        ...
-
-    def clear_object_flag(self, obj: str, flag: str) -> None:
-        """Clear flag from object."""
-        ...
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
         """Set object property value."""
@@ -312,8 +294,7 @@ class EffectInterpreter:
 
     # Effect names that mutate state
     MUTATIONS = frozenset({
-        "move", "set-flag", "clear-flag", "set-prop",
-        "set", "set-in", "inc", "dec", "queue", "dequeue", "take"
+        "move", "set-prop", "set", "set-in", "inc", "dec", "queue", "dequeue", "take"
     })
 
     # Effect names that terminate the effect list
@@ -478,20 +459,6 @@ class EffectInterpreter:
             obj, dest = args[0], args[1]
             self.state.move_object(obj, dest)
             self._effects_applied.append(f"move {obj} to {dest}")
-
-        elif name == "set-flag":
-            if len(args) != 2:
-                raise EvalError(f"'set-flag' expects 2 arguments, got {len(args)}")
-            obj, flag = args[0], args[1]
-            self.state.set_object_flag(obj, flag)
-            self._effects_applied.append(f"set-flag {obj} {flag}")
-
-        elif name == "clear-flag":
-            if len(args) != 2:
-                raise EvalError(f"'clear-flag' expects 2 arguments, got {len(args)}")
-            obj, flag = args[0], args[1]
-            self.state.clear_object_flag(obj, flag)
-            self._effects_applied.append(f"clear-flag {obj} {flag}")
 
         elif name == "set-prop":
             if len(args) != 3:
@@ -970,8 +937,6 @@ class ExprEvaluator:
             "set!": self._eval_mutation_dispatch,
             "inc!": self._eval_mutation_dispatch,
             "set-prop!": self._eval_mutation_dispatch,
-            "set-flag!": self._eval_mutation_dispatch,
-            "clear-flag!": self._eval_mutation_dispatch,
             "move!": self._eval_mutation_dispatch,
         }
 
@@ -1529,7 +1494,7 @@ class ExprEvaluator:
 
         Examples:
             (when (held? @key) (print "has key") (success))
-            (when (> heat 20) (set-flag! @food RMUNGBIT))
+            (when (> heat 20) (set-prop! @food :ruined true))
         """
         if len(form) < 3:
             raise EvalError(f"'when' expects at least 2 arguments, got {len(form) - 1}")
@@ -2161,11 +2126,8 @@ class ExprEvaluator:
                 print(f"{prefix}@{value} (room)")
             elif self.state.is_object(value):
                 loc = self.state.get_object_location(value)
-                flags = self.state.get_object_flags(value)
                 print(f"{prefix}@{value}")
                 print(f"{prefix}  location: {loc or 'nil'}")
-                if flags:
-                    print(f"{prefix}  flags: {', '.join(sorted(flags))}")
             else:
                 # Plain string
                 print(f"{prefix}{value}")
@@ -2873,8 +2835,6 @@ class ExprEvaluator:
             "set!": self._eval_set_global_impl,
             "inc!": self._eval_inc_global_impl,
             "set-prop!": self._eval_set_prop_impl,
-            "set-flag!": self._eval_set_flag_impl,
-            "clear-flag!": self._eval_clear_flag_impl,
             "move!": self._eval_move_impl,
         }
 
@@ -2951,36 +2911,6 @@ class ExprEvaluator:
         if not hasattr(self.state, "set_object_property"):
             raise EvalError("'set-prop!' requires mutable state")
         self.state.set_object_property(obj, prop, value)
-        return None
-
-    def _eval_set_flag_impl(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set-flag! OBJ FLAG) - Set an object flag."""
-        if len(form) != 3:
-            raise EvalError(f"'set-flag!' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        if isinstance(obj, Symbol):
-            obj = obj.name
-        flag = self.eval(form[2], env)
-        if isinstance(flag, Symbol):
-            flag = flag.name
-        if not hasattr(self.state, "set_object_flag"):
-            raise EvalError("'set-flag!' requires mutable state")
-        self.state.set_object_flag(obj, flag)
-        return None
-
-    def _eval_clear_flag_impl(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(clear-flag! OBJ FLAG) - Clear an object flag."""
-        if len(form) != 3:
-            raise EvalError(f"'clear-flag!' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        if isinstance(obj, Symbol):
-            obj = obj.name
-        flag = self.eval(form[2], env)
-        if isinstance(flag, Symbol):
-            flag = flag.name
-        if not hasattr(self.state, "clear_object_flag"):
-            raise EvalError("'clear-flag!' requires mutable state")
-        self.state.clear_object_flag(obj, flag)
         return None
 
     # === Quantifiers ===
@@ -3080,10 +3010,8 @@ class EffectExecutor:
         self._predicates = ExprEvaluator(state, self._functions, allow_mutations=True)
         self._effects: dict[str, Callable[..., None]] = {
             "move!": self._exec_move,
-            "set-flag!": self._exec_set_flag,
-            "clear-flag!": self._exec_clear_flag,
             "set-prop!": self._exec_set_prop,
-            "set": self._exec_set,  # New: (set @obj :prop value)
+            "set": self._exec_set,  # (set @obj :prop value)
             "set!": self._exec_set_global,
             "inc!": self._exec_inc,
             "seq": self._exec_seq,
@@ -3157,22 +3085,6 @@ class EffectExecutor:
         # Trigger on-enter if we moved the player to a room
         if from_room is not None and check_enter:
             check_enter(dest, from_room, player_name)
-
-    def _exec_set_flag(self, form: SList) -> None:
-        """(set-flag! OBJ FLAG)"""
-        if len(form) != 3:
-            raise EvalError(f"'set-flag!' expects 2 arguments, got {len(form) - 1}")
-        obj = self._eval(form[1])
-        flag = self._eval(form[2])
-        self.state.set_object_flag(obj, flag)
-
-    def _exec_clear_flag(self, form: SList) -> None:
-        """(clear-flag! OBJ FLAG)"""
-        if len(form) != 3:
-            raise EvalError(f"'clear-flag!' expects 2 arguments, got {len(form) - 1}")
-        obj = self._eval(form[1])
-        flag = self._eval(form[2])
-        self.state.clear_object_flag(obj, flag)
 
     def _exec_set_prop(self, form: SList) -> None:
         """(set-prop! OBJ PROP VALUE)
