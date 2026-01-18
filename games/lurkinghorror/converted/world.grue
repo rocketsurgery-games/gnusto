@@ -14,5 +14,5 @@
 
 (object @player
   :location @terminal-room
-  :flags (PERSON))
+  :properties (:person true))
 

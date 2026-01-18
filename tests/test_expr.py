@@ -26,7 +26,7 @@ class MockWorldState:
             "PLAYER": "TERMINAL-ROOM",
         }
 
-        # Object flags
+        # Object flags (legacy - kept for backward compatibility in some tests)
         self.flags = {
             "FLASHLIGHT": {"TAKEBIT", "LIGHTBIT", "ONBIT"},
             "KEY": {"TAKEBIT"},
@@ -35,11 +35,14 @@ class MockWorldState:
             "CHAIR": {"TAKEBIT"},
         }
 
-        # Object properties
+        # Object properties (unified with flags using lowercase names)
         self.properties = {
-            "FLASHLIGHT": {"battery_level": 100, "DESC": "A sturdy flashlight"},
-            "DOOR": {"locked": True},
-            "HACKER": {"blocking": True, "personality": "antisocial"},
+            "FLASHLIGHT": {"battery_level": 100, "DESC": "A sturdy flashlight",
+                          "takeable": True, "light": True, "on": True},
+            "KEY": {"takeable": True},
+            "DOOR": {"locked": True, "door": True},
+            "HACKER": {"blocking": True, "personality": "antisocial", "person": True},
+            "CHAIR": {"takeable": True},
         }
 
         # Global variables
@@ -60,6 +63,9 @@ class MockWorldState:
 
     def get_object_property(self, obj: str, prop: str):
         return self.properties.get(obj, {}).get(prop)
+
+    def has_object_property(self, obj: str, prop: str) -> bool:
+        return prop in self.properties.get(obj, {})
 
     def get_object_flags(self, obj: str) -> set[str]:
         return self.flags.get(obj, set())
@@ -120,11 +126,11 @@ class TestBasicPredicates:
 
     def test_has_flag_true(self):
         state = MockWorldState()
-        assert eval_predicate("(has-flag FLASHLIGHT TAKEBIT)", state) is True
+        assert eval_predicate("(:takeable FLASHLIGHT)", state) is True
 
     def test_has_flag_false(self):
         state = MockWorldState()
-        assert eval_predicate("(has-flag DOOR TAKEBIT)", state) is False
+        assert eval_predicate("(:takeable DOOR)", state) is False
 
     def test_equality(self):
         state = MockWorldState()
@@ -144,35 +150,35 @@ class TestBooleanOperators:
 
     def test_and_true(self):
         state = MockWorldState()
-        expr = "(and (has-flag FLASHLIGHT TAKEBIT) (has-flag FLASHLIGHT LIGHTBIT))"
+        expr = "(and (:takeable FLASHLIGHT) (:light FLASHLIGHT))"
         assert eval_predicate(expr, state) is True
 
     def test_and_false(self):
         state = MockWorldState()
-        expr = "(and (has-flag FLASHLIGHT TAKEBIT) (has-flag DOOR TAKEBIT))"
+        expr = "(and (:takeable FLASHLIGHT) (:takeable DOOR))"
         assert eval_predicate(expr, state) is False
 
     def test_or_true(self):
         state = MockWorldState()
-        expr = "(or (has-flag DOOR TAKEBIT) (has-flag FLASHLIGHT TAKEBIT))"
+        expr = "(or (:takeable DOOR) (:takeable FLASHLIGHT))"
         assert eval_predicate(expr, state) is True
 
     def test_or_false(self):
         state = MockWorldState()
-        expr = "(or (has-flag DOOR TAKEBIT) (has-flag HACKER TAKEBIT))"
+        expr = "(or (:takeable DOOR) (:takeable HACKER))"
         assert eval_predicate(expr, state) is False
 
     def test_not(self):
         state = MockWorldState()
-        assert eval_predicate("(not (has-flag DOOR TAKEBIT))", state) is True
-        assert eval_predicate("(not (has-flag FLASHLIGHT TAKEBIT))", state) is False
+        assert eval_predicate("(not (:takeable DOOR))", state) is True
+        assert eval_predicate("(not (:takeable FLASHLIGHT))", state) is False
 
     def test_complex_boolean(self):
         state = MockWorldState()
         # TAKE precondition: has TAKEBIT, is visible, not already held
         expr = """
         (and
-          (has-flag CHAIR TAKEBIT)
+          (:takeable CHAIR)
           (visible? CHAIR)
           (not (held? CHAIR)))
         """
@@ -263,26 +269,26 @@ class TestQuantifiers:
 
     def test_some_true(self):
         state = MockWorldState()
-        # Some item in inventory has LIGHTBIT - returns truthy value
-        expr = "(some (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))"
+        # Some item in inventory has light property - returns truthy value
+        expr = "(some (fn (?obj) (:light ?obj)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is True
 
     def test_some_false(self):
         state = MockWorldState()
-        # No item in inventory has PERSONBIT - returns nil
-        expr = "(some (fn (?obj) (has-flag ?obj PERSONBIT)) (inventory PLAYER))"
+        # No item in inventory has person property - returns nil
+        expr = "(some (fn (?obj) (:person ?obj)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is False
 
     def test_every_true(self):
         state = MockWorldState()
         # All items in inventory have TAKEBIT
-        expr = "(every? (fn (?obj) (has-flag ?obj TAKEBIT)) (inventory PLAYER))"
+        expr = "(every? (fn (?obj) (:takeable ?obj)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is True
 
     def test_every_false(self):
         state = MockWorldState()
-        # Not all items in inventory have LIGHTBIT (KEY doesn't)
-        expr = "(every? (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))"
+        # Not all items in inventory have light property (KEY doesn't)
+        expr = "(every? (fn (?obj) (:light ?obj)) (inventory PLAYER))"
         assert eval_predicate(expr, state) is False
 
 
@@ -296,15 +302,15 @@ class TestEffects:
 
     def test_set_flag(self):
         state = MockWorldState()
-        assert "OPENBIT" not in state.flags.get("DOOR", set())
-        execute_effect("(set-flag! DOOR OPENBIT)", state)
-        assert "OPENBIT" in state.flags["DOOR"]
+        assert not state.properties.get("DOOR", {}).get("open")
+        execute_effect("(set DOOR :open true)", state)
+        assert state.properties["DOOR"]["open"] is True
 
     def test_clear_flag(self):
         state = MockWorldState()
-        assert "LOCKED" in state.flags["DOOR"]
-        execute_effect("(clear-flag! DOOR LOCKED)", state)
-        assert "LOCKED" not in state.flags["DOOR"]
+        assert state.properties["DOOR"]["locked"] is True
+        execute_effect("(set DOOR :locked false)", state)
+        assert state.properties["DOOR"]["locked"] is False
 
     def test_set_prop(self):
         state = MockWorldState()
@@ -356,12 +362,12 @@ class TestEffects:
         (seq
           (move! CHAIR PLAYER)
           (inc! SCORE 5)
-          (set-flag! CHAIR TOUCHBIT))
+          (set CHAIR :touchbit true))
         """
         execute_effect(expr, state)
         assert state.locations["CHAIR"] == "PLAYER"
         assert state.globals["SCORE"] == 5
-        assert "TOUCHBIT" in state.flags["CHAIR"]
+        assert state.properties["CHAIR"]["touchbit"] is True
 
     def test_when_true(self):
         state = MockWorldState()
@@ -385,7 +391,7 @@ class TestRealWorldScenarios:
         # Chair is takeable, visible, and not held
         take_pre = """
         (and
-          (has-flag CHAIR TAKEBIT)
+          (:takeable CHAIR)
           (visible? CHAIR)
           (not (held? CHAIR)))
         """
@@ -394,7 +400,7 @@ class TestRealWorldScenarios:
         # Flashlight is already held
         take_flashlight = """
         (and
-          (has-flag FLASHLIGHT TAKEBIT)
+          (:takeable FLASHLIGHT)
           (visible? FLASHLIGHT)
           (not (held? FLASHLIGHT)))
         """
@@ -414,31 +420,33 @@ class TestRealWorldScenarios:
     def test_open_door_with_key(self):
         """UNLOCK then OPEN door scenario."""
         state = MockWorldState()
-        state.flags["DOOR"].add("LOCKBIT")
+        # Door starts locked with door property
+        state.properties["DOOR"]["locked"] = True
+        state.properties["DOOR"]["door"] = True
 
         # Precondition: door is locked, we have key
         unlock_pre = """
         (and
-          (has-flag DOOR LOCKBIT)
-          (has-flag DOOR LOCKED)
+          (:door DOOR)
+          (:locked DOOR)
           (held? KEY))
         """
         assert eval_predicate(unlock_pre, state) is True
 
         # Effect: clear locked flag
-        execute_effect("(clear-flag! DOOR LOCKED)", state)
+        execute_effect("(set DOOR :locked false)", state)
 
         # Now we can open
         open_pre = """
         (and
-          (has-flag DOOR DOORBIT)
-          (not (has-flag DOOR LOCKED)))
+          (:door DOOR)
+          (not (:locked DOOR)))
         """
         assert eval_predicate(open_pre, state) is True
 
         # Open the door
-        execute_effect("(set-flag! DOOR OPENBIT)", state)
-        assert eval_predicate("(has-flag DOOR OPENBIT)", state) is True
+        execute_effect("(set DOOR :open true)", state)
+        assert eval_predicate("(:open DOOR)", state) is True
 
     def test_light_check_with_flashlight(self):
         """Check if player has light source (from invariants)."""
@@ -450,15 +458,15 @@ class TestRealWorldScenarios:
         (or
           (prop (loc PLAYER) lit)
           (some (fn (?obj)
-                  (and (has-flag ?obj LIGHTBIT)
-                       (has-flag ?obj ONBIT)))
+                  (and (:light ?obj)
+                       (:on ?obj)))
                 (inventory PLAYER)))
         """
         # Room is dark but flashlight is on
         assert eval_predicate(light_check, state) is True
 
         # Turn off flashlight
-        state.flags["FLASHLIGHT"].remove("ONBIT")
+        state.properties["FLASHLIGHT"]["on"] = False
         assert eval_predicate(light_check, state) is False
 
 
@@ -482,12 +490,13 @@ class TestUserDefinedFunctions:
         state = MockWorldState()
         executor = EffectExecutor(state)
 
-        # Define function that checks if an object has a specific flag
-        executor.execute(parse("(defn is-takeable? (obj) (has-flag obj TAKEBIT))"))
+        # Define function that checks if an object has a specific property
+        executor.execute(parse("(defn is-takeable? (obj) (:takeable obj))"))
 
         # Call with different objects
         assert executor._predicates.eval(parse("(is-takeable? FLASHLIGHT)")) is True
-        assert executor._predicates.eval(parse("(is-takeable? HACKER)")) is False
+        # HACKER has no takeable property - returns None which is falsy
+        assert not executor._predicates.eval(parse("(is-takeable? HACKER)"))
 
     def test_define_with_multiple_args(self):
         """Define function with multiple arguments."""
@@ -511,7 +520,7 @@ class TestUserDefinedFunctions:
         # Define function with and/or/not
         executor.execute(parse("""
             (defn can-take? (obj)
-              (and (has-flag obj TAKEBIT)
+              (and (:takeable obj)
                    (visible? obj)
                    (not (held? obj))))
         """))
@@ -527,12 +536,13 @@ class TestUserDefinedFunctions:
         executor = EffectExecutor(state)
 
         # Define helper
-        executor.execute(parse("(defn is-person? (obj) (has-flag obj PERSONBIT))"))
+        executor.execute(parse("(defn is-person? (obj) (:person obj))"))
         # Define function that uses helper
         executor.execute(parse("(defn is-person-here? (obj) (and (is-person? obj) (here? obj)))"))
 
         assert executor._predicates.eval(parse("(is-person-here? HACKER)")) is True
-        assert executor._predicates.eval(parse("(is-person-here? CHAIR)")) is False
+        # CHAIR returns None for :person (falsy), so (and nil ...) is False
+        assert not executor._predicates.eval(parse("(is-person-here? CHAIR)"))
 
     def test_wrong_arity_error(self):
         """Calling function with wrong number of arguments raises error."""
@@ -583,11 +593,12 @@ class TestUserDefinedFunctions:
 
         # Define function directly
         evaluator.define_function("always-true", [], parse("true"))
-        evaluator.define_function("is-lit", ["obj"], parse("(has-flag obj LIGHTBIT)"))
+        evaluator.define_function("is-lit", ["obj"], parse("(:light obj)"))
 
         assert evaluator.eval(parse("(always-true)")) is True
         assert evaluator.eval(parse("(is-lit FLASHLIGHT)")) is True
-        assert evaluator.eval(parse("(is-lit KEY)")) is False
+        # KEY has no light property - returns None which is falsy
+        assert not evaluator.eval(parse("(is-lit KEY)"))
 
     def test_shared_function_registry(self):
         """Executor and evaluator share function registry."""

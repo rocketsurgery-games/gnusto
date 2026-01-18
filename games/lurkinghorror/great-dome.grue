@@ -140,7 +140,7 @@
 (object @tentacle
   :location nil  ; Global, present via room :globals
   :description "ropy strand"
-  :flags (NDESCBIT)  ; Not INVISIBLE initially - visible when in @great-dome
+  :properties (:nodesc true)  ; Not :invisible initially - visible when in @great-dome
 
   :behaviors (
     :examine (fn ()

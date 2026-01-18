@@ -33,7 +33,7 @@ class TestBasicParsing:
         source = """
         (room LOBBY
           :description "The main lobby"
-          :flags (INSIDE LIT))
+          :properties (:inside true :lit true))
         """
         world = parse_grue(source)
 
@@ -41,15 +41,15 @@ class TestBasicParsing:
         room = world.rooms["LOBBY"]
         assert room.name == "LOBBY"
         assert room.description == "The main lobby"
-        assert "INSIDE" in room.flags
-        assert "LIT" in room.flags
+        assert room.properties.get("inside") is True
+        assert room.properties.get("lit") is True
 
     def test_room_with_exits(self):
         """Parse a room with exits."""
         source = """
         (room LOBBY
           :description "The main lobby"
-          :flags (INSIDE LIT)
+          :properties (:inside true :lit true)
           :exits
             ((north :to HALLWAY)
              (out :to STREET :via FRONT-DOOR)))
@@ -75,7 +75,7 @@ class TestBasicParsing:
         (object KEY
           :description "A brass key"
           :location PLAYER
-          :flags (TAKEABLE))
+          :properties (:takeable true))
         """
         world = parse_grue(source)
 
@@ -84,7 +84,7 @@ class TestBasicParsing:
         assert obj.name == "KEY"
         assert obj.description == "A brass key"
         assert obj.location == "PLAYER"
-        assert "TAKEABLE" in obj.flags
+        assert obj.properties.get("takeable") is True
 
     def test_object_with_properties(self):
         """Parse an object with properties."""
@@ -92,7 +92,7 @@ class TestBasicParsing:
         (object DOOR
           :description "A wooden door"
           :location LOBBY
-          :flags (DOOR LOCKED)
+          :properties (:door true :locked true)
           :properties
             ((lock-type electronic)
              (key-required MASTER-KEY)))
@@ -113,7 +113,7 @@ class TestBehaviorParsing:
         (object DOOR
           :description "A door"
           :location LOBBY
-          :flags (DOOR)
+          :properties (:door true)
           :behaviors (
             :open (fn ()
               (cond
@@ -138,11 +138,11 @@ class TestBehaviorParsing:
         (object DOOR
           :description "A door"
           :location LOBBY
-          :flags (DOOR LOCKED)
+          :properties (:door true :locked true)
           :behaviors (
             :open (fn ()
               (cond
-                ((not (has-flag ?self LOCKED)) (success))
+                ((not (:locked ?self)) (success))
                 (true (blocked :reason locked))))))
         """
         world = parse_grue(source)
@@ -161,11 +161,11 @@ class TestBehaviorParsing:
         (object DOOR
           :description "A door"
           :location LOBBY
-          :flags (DOOR LOCKED)
+          :properties (:door true :locked true)
           :behaviors (
             :unlock (fn (?key)
               (cond
-                ((= ?key KEY) '((clear-flag ?self LOCKED) (success)))))))
+                ((= ?key KEY) '((set ?self :locked false) (success)))))))
         """
         world = parse_grue(source)
 
@@ -234,7 +234,7 @@ class TestVictoryDefeat:
         """Parse defeat condition."""
         source = """
         (defeat EATEN-BY-GRUE
-          :when (and (not (room-has-flag? LIT))
+          :when (and (not (room-has-flag? "lit"))
                      (not (held? LAMP)))
           :context ((death-type grue)))
         """

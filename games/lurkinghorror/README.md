@@ -13,10 +13,10 @@ non-trivial objects have unit tests (as in `./terminal-room.test.grue`) to valid
 The original compiled game is in ./compiled/lurking.dat, and can be run from the root of the repo with `frotz
 games/lurkinghorror/lurking.dat`. There are also sound files in that directory, but they haven't been integrated.
 
-# Object Flags Reference
+# Object Properties Reference
 
-ZIL uses bit flags to control object behavior. These are set via `:flags (FLAG1 FLAG2 ...)` in Grue. Understanding
-these flags is essential when converting ZIL source to Grue.
+ZIL uses bit flags to control object behavior. In Grue, these are set via `:properties (:prop-name true ...)`.
+Understanding these properties is essential when converting ZIL source to Grue.
 
 ## Visibility and Description
 
@@ -106,49 +106,49 @@ Typical combinations:
 
 ```scheme
 ; Takeable object - can pick up and carry
-:flags (TAKEBIT)
+:properties (:takeable true)
 
 ; Scenery - visible in room but not in listing, can't take
-:flags (NDESCBIT)
+:properties (:nodesc true)
 
 ; Container that starts closed
-:flags (CONTBIT SEARCHBIT OPENABLE)
+:properties (:container true :searchable true :openable true)
 
 ; Open container (e.g., box that starts open)
-:flags (CONTBIT OPENBIT SEARCHBIT)
+:properties (:container true :open true :searchable true)
 
 ; Surface (table, counter)
-:flags (CONTBIT OPENBIT SEARCHBIT SURFACEBIT)
+:properties (:container true :open true :searchable true :surface true)
 
 ; Chair/bed - can sit in/on
-:flags (VEHBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
+:properties (:vehicle true :surface true :container true :open true :searchable true)
 
 ; NPC with inventory
-:flags (PERSON CONTBIT OPENBIT SEARCHBIT)
+:properties (:person true :container true :open true :searchable true)
 
 ; Lit indoor room
-:flags (ONBIT)
+:properties (:on true)
 
 ; Dark outdoor room
-:flags (OUTSIDE)
+:properties (:outside true)
 
 ; Hidden object - revealed later
-:flags (INVISIBLE)  ; or start with location nil
+:properties (:invisible true)  ; or start with location nil
 
 ; Screen UI element
-:flags (NDESCBIT READBIT)
+:properties (:nodesc true :readable true)
 
 ; Heavy object with custom take
-:flags (TAKEBIT TRYTAKEBIT)
+:properties (:takeable true :trytakeable true)
 ```
 
 ## Runtime Implementation Notes
 
-The runtime checks these flags in several places:
-- `is_visible()`: Filters INVISIBLE; recursively checks container OPENBIT/TRANSBIT
-- `get_visible_objects(for_description=True)`: Also filters NDESCBIT for room listings
-- Default behaviors use TAKEBIT, CONTBIT, OPENBIT, etc. to determine valid actions
-- Events can use `has-flag` and `set-flag!`/`clear-flag!` to check and modify flags
+The runtime checks these properties in several places:
+- `is_visible()`: Filters `:invisible`; recursively checks container `:open`/`:transparent`
+- `get_visible_objects(for_description=True)`: Also filters `:nodesc` for room listings
+- Default behaviors use `:takeable`, `:container`, `:open`, etc. to determine valid actions
+- Events can use `(:prop @obj)` to check and `(set @obj :prop val)` to modify properties
 
 
 # ZIL to Grue Conversion Pitfalls

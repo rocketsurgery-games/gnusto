@@ -98,7 +98,7 @@
 (object @air
   :description "air"
   :location @global
-  :flags (NDESCBIT NOABIT))
+  :properties (:nodesc true))
   ; No :examine - falls through to default "You see nothing special about the air."
 
 (object @ground
@@ -116,7 +116,7 @@
 (object @dirt
   :description "dirt"
   :location @global
-  :flags (NDESCBIT NOABIT))
+  :properties (:nodesc true))
   ; No :examine - falls through to default "You see nothing special about the dirt."
 
 (object @corridor

@@ -134,12 +134,12 @@ class TestParser:
 class TestRealWorldExamples:
     """Test expressions from the design doc."""
 
-    def test_predicate_has_flag(self):
-        expr = parse("(has-flag OBJ TAKEBIT)")
+    def test_predicate_property_lookup(self):
+        """Keyword lookup syntax for property check."""
+        expr = parse("(:takeable OBJ)")
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("has-flag")
+        assert expr[0] == Keyword("takeable")
         assert expr[1] == Symbol("OBJ")
-        assert expr[2] == Symbol("TAKEBIT")
 
     def test_predicate_loc(self):
         expr = parse("(= (loc OBJ) PLAYER)")
@@ -159,10 +159,14 @@ class TestRealWorldExamples:
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("move!")
 
-    def test_effect_set_flag(self):
-        expr = parse("(set-flag! DOOR OPENBIT)")
+    def test_effect_set_property(self):
+        """Set property syntax."""
+        expr = parse("(set DOOR :open true)")
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("set-flag!")
+        assert expr[0] == Symbol("set")
+        assert expr[1] == Symbol("DOOR")
+        assert expr[2] == Keyword("open")
+        assert expr[3] is True
 
     def test_effect_inc(self):
         expr = parse("(inc! SCORE 5)")
@@ -174,7 +178,7 @@ class TestRealWorldExamples:
         """Test the TAKE precondition from the design doc."""
         source = """
         (and
-          (has-flag object TAKEBIT)
+          (:takeable object)
           (visible? object)
           (not (held? object)))
         """
@@ -189,7 +193,7 @@ class TestRealWorldExamples:
         assert expr[0] == Symbol("when")
 
     def test_quantifier(self):
-        expr = parse('(some (fn (?obj) (has-flag ?obj LIGHTBIT)) (inventory PLAYER))')
+        expr = parse('(some (fn (?obj) (:lightbit ?obj)) (inventory PLAYER))')
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("some")
 

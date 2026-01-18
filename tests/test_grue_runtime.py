@@ -17,9 +17,9 @@ class TestBasicRuntime:
     def test_init_state(self):
         """Runtime initializes state from world definition."""
         source = """
-        (room LOBBY :description "A lobby" :flags (LIT))
-        (object PLAYER :location LOBBY :flags (PERSON))
-        (object KEY :location LOBBY :flags (TAKEABLE))
+        (room LOBBY :description "A lobby" :properties (:lit true))
+        (object PLAYER :location LOBBY :properties (:person true))
+        (object KEY :location LOBBY :properties (:takeable true))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -101,7 +101,7 @@ class TestBehaviorExecution:
         (object PLAYER :location LOBBY)
         (object DOOR
           :location LOBBY
-          :flags (DOOR)
+          :properties (:door true)
           :behaviors (
             :open (fn ()
               (cond
@@ -120,11 +120,11 @@ class TestBehaviorExecution:
         (object PLAYER :location LOBBY)
         (object DOOR
           :location LOBBY
-          :flags (DOOR LOCKED)
+          :properties (:door true :locked true)
           :behaviors (
             :open (fn ()
               (cond
-                ((not (has-flag ?self LOCKED)) (success))
+                ((not (:locked ?self)) (success))
                 (true (blocked :reason locked))))))
         """
         world = parse_grue(source)
@@ -142,24 +142,24 @@ class TestBehaviorExecution:
         (object PLAYER :location LOBBY)
         (object DOOR
           :location LOBBY
-          :flags (DOOR LOCKED)
+          :properties (:door true :locked true)
           :behaviors (
             :unlock (fn ()
               (cond
-                ((has-flag ?self LOCKED)
-                  '((clear-flag ?self LOCKED) (success)))))))
+                ((:locked ?self)
+                  '((set ?self :locked false) (success)))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # Door starts locked
-        assert runtime.state.objects["DOOR"].properties.get("LOCKED")
+        assert runtime.state.objects["DOOR"].properties.get("locked")
 
         result = runtime.do("DOOR", "unlock")
         assert result.outcome == "success"
 
         # Now unlocked
-        assert not runtime.state.objects["DOOR"].properties.get("LOCKED")
+        assert not runtime.state.objects["DOOR"].properties.get("locked")
 
     def test_behavior_with_context(self):
         """Behavior returns context hints."""
@@ -247,7 +247,7 @@ class TestVictoryDefeat:
     def test_defeat_condition(self):
         """Defeat condition check."""
         source = """
-        (room LOBBY :description "A lobby" :flags (LIT))
+        (room LOBBY :description "A lobby" :properties (:lit true))
         (room DARKNESS :description "Darkness")
         (object PLAYER :location LOBBY)
         (defeat EATEN-BY-GRUE :when (= (loc PLAYER) DARKNESS))
@@ -311,8 +311,8 @@ class TestInventoryManagement:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object KEY :location LOBBY :flags (TAKEABLE))
-        (object COIN :location PLAYER :flags (TAKEABLE))
+        (object KEY :location LOBBY :properties (:takeable true))
+        (object COIN :location PLAYER :properties (:takeable true))
         (object HIDDEN :location ELSEWHERE)
         """
         world = parse_grue(source)
@@ -328,8 +328,8 @@ class TestInventoryManagement:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object KEY :location PLAYER :flags (TAKEABLE))
-        (object LAMP :location LOBBY :flags (TAKEABLE))
+        (object KEY :location PLAYER :properties (:takeable true))
+        (object LAMP :location LOBBY :properties (:takeable true))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -348,7 +348,7 @@ class TestReset:
         (room LOBBY :description "A lobby")
         (room GARDEN :description "A garden")
         (object PLAYER :location LOBBY)
-        (object KEY :location LOBBY :flags (TAKEABLE))
+        (object KEY :location LOBBY :properties (:takeable true))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -494,7 +494,7 @@ class TestRedirectFollowing:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object CHAIR :location LOBBY :flags (FURNITURE)
+        (object CHAIR :location LOBBY :properties (:furniture true)
           :behaviors (
             :sit (fn ()
               (cond
@@ -542,11 +542,11 @@ class TestRedirectFollowing:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object DOOR :location LOBBY :flags (LOCKED)
+        (object DOOR :location LOBBY :properties (:locked true)
           :behaviors (
             :open (fn ()
               (cond
-                ((has-flag ?self LOCKED) (blocked :reason locked))
+                ((:locked ?self) (blocked :reason locked))
                 (true (success))))
             :enter (fn ()
               (cond
@@ -1041,10 +1041,10 @@ class TestGeneralizedFn:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object DOOR :location LOBBY :flags (LOCKED)
+        (object DOOR :location LOBBY :properties (:locked true)
           :behaviors (
             :open (fn ()
-              (if (has-flag ?self LOCKED)
+              (if (:locked ?self)
                   (blocked :reason locked :message "The door is locked.")
                   (success :message "The door opens.")))))
         """
@@ -1057,7 +1057,7 @@ class TestGeneralizedFn:
         assert result.reason == "locked"
 
         # Unlock the door
-        runtime.clear_object_flag("DOOR", "LOCKED")
+        runtime.clear_object_flag("DOOR", "locked")
         result = runtime.do("DOOR", "open")
         assert result.outcome == "success"
 
@@ -1103,12 +1103,12 @@ class TestGeneralizedFn:
         source = """
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
-        (object BOX :location LOBBY :flags (LOCKED SEALED)
+        (object BOX :location LOBBY :properties (:locked true :sealed true)
           :behaviors (
             :open (fn ()
-              (if (has-flag ?self LOCKED)
+              (if (:locked ?self)
                   (blocked :reason locked)
-                  (if (has-flag ?self SEALED)
+                  (if (:sealed ?self)
                       (blocked :reason sealed)
                       (success))))))
         """
@@ -1120,14 +1120,14 @@ class TestGeneralizedFn:
         assert result.outcome == "blocked"
         assert result.reason == "locked"
 
-        # Remove LOCKED flag
-        runtime.clear_object_flag("BOX", "LOCKED")
+        # Remove locked property
+        runtime.clear_object_flag("BOX", "locked")
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
         assert result.reason == "sealed"
 
-        # Remove SEALED flag
-        runtime.clear_object_flag("BOX", "SEALED")
+        # Remove sealed property
+        runtime.clear_object_flag("BOX", "sealed")
         result = runtime.do("BOX", "open")
         assert result.outcome == "success"
 
@@ -1200,8 +1200,8 @@ class TestEffectListSyntax:
         """Behavior returns effect list with move and success."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
-        (object @key :location LOBBY :flags (TAKEABLE)
+        (object @player :location LOBBY :properties (:person true))
+        (object @key :location LOBBY :properties (:takeable true)
           :behaviors (
             :take (fn ()
               '((move @key @player)
@@ -1224,7 +1224,7 @@ class TestEffectListSyntax:
         """Behavior returns blocked with reason."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
+        (object @player :location LOBBY :properties (:person true))
         (object @door :location LOBBY
           :behaviors (
             :open (fn ()
@@ -1242,33 +1242,33 @@ class TestEffectListSyntax:
         """Effect list can set flags."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
+        (object @player :location LOBBY :properties (:person true))
         (object @lamp :location LOBBY
           :behaviors (
             :turn-on (fn ()
-              '((set-flag @lamp LIT)
+              '((set @lamp :lit true)
                 (success :message "The lamp is now on.")))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        assert not runtime.state.objects["@lamp"].properties.get("LIT")
+        assert not runtime.state.objects["@lamp"].properties.get("lit")
 
         result = runtime.do("@lamp", "turn-on")
         assert result.outcome == "success"
-        assert runtime.state.objects["@lamp"].properties.get("LIT")
+        assert runtime.state.objects["@lamp"].properties.get("lit")
 
     def test_conditional_effects(self):
         """Behaviors can use conditionals to decide which effects to return."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
-        (object @box :location LOBBY :flags (OPENABLE)
+        (object @player :location LOBBY :properties (:person true))
+        (object @box :location LOBBY :properties (:openable true)
           :behaviors (
             :open (fn ()
-              (if (has-flag @box OPENBIT)
+              (if (:open @box)
                   '((blocked :reason already-open :message "It's already open."))
-                  '((set-flag @box OPENBIT)
+                  '((set @box :open true)
                     (success :message "You open the box."))))))
         """
         world = parse_grue(source)
@@ -1277,7 +1277,7 @@ class TestEffectListSyntax:
         # First open succeeds
         result = runtime.do("@box", "open")
         assert result.outcome == "success"
-        assert runtime.state.objects["@box"].properties.get("OPENBIT")
+        assert runtime.state.objects["@box"].properties.get("open")
 
         # Second open is blocked
         result = runtime.do("@box", "open")
@@ -1292,7 +1292,7 @@ class TestEffectListSyntax:
         """
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
+        (object @player :location LOBBY :properties (:person true))
         (object @button :location LOBBY
           :behaviors (
             :push (fn ()
@@ -1300,7 +1300,7 @@ class TestEffectListSyntax:
         (object @mechanism :location LOBBY
           :behaviors (
             :activate (fn ()
-              '((set-flag @mechanism ACTIVE)
+              '((set @mechanism :active true)
                 (success :message "Click!")))))
         """
         world = parse_grue(source)
@@ -1310,14 +1310,14 @@ class TestEffectListSyntax:
         result = runtime.do("@button", "push")
         # After redirect, the mechanism should be activated
         assert result.outcome == "success"
-        assert runtime.state.objects["@mechanism"].properties.get("ACTIVE")
+        assert runtime.state.objects["@mechanism"].properties.get("active")
 
     def test_default_terminator(self):
         """Effect list can fall through to default behavior."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
-        (object @generic-item :location LOBBY :flags (TAKEABLE)
+        (object @player :location LOBBY :properties (:person true))
+        (object @generic-item :location LOBBY :properties (:takeable true)
           :behaviors (
             :examine (fn ()
               '((default)))))
@@ -1335,12 +1335,12 @@ class TestEffectListSyntax:
         """Effect list tracks which effects were applied."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
+        (object @player :location LOBBY :properties (:person true))
         (object @widget :location LOBBY
           :behaviors (
             :activate (fn ()
-              '((set-flag @widget ACTIVE)
-                (set-flag @widget POWERED)
+              '((set @widget :active true)
+                (set @widget :powered true)
                 (success :message "Activated!")))))
         """
         world = parse_grue(source)
@@ -1348,18 +1348,18 @@ class TestEffectListSyntax:
 
         result = runtime.do("@widget", "activate")
         assert result.outcome == "success"
-        assert len(result.effects_applied) == 2  # Two set-flag effects
+        assert len(result.effects_applied) == 2  # Two set effects
 
     def test_multiple_mutations_in_effect_list(self):
         """Effect list can have multiple mutations before terminator."""
         source = """
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :flags (PERSON))
-        (object @treasure :location LOBBY :flags (TAKEABLE)
+        (object @player :location LOBBY :properties (:person true))
+        (object @treasure :location LOBBY :properties (:takeable true)
           :behaviors (
             :take (fn ()
               '((move @treasure @player)
-                (set-flag @treasure TAKEN)
+                (set @treasure :taken true)
                 (inc score 10)
                 (success :message "You take the treasure! +10 points")))))
         """
@@ -1372,5 +1372,5 @@ class TestEffectListSyntax:
         result = runtime.do("@treasure", "take")
         assert result.outcome == "success"
         assert runtime.state.objects["@treasure"].location == "@player"
-        assert runtime.state.objects["@treasure"].properties.get("TAKEN")
+        assert runtime.state.objects["@treasure"].properties.get("taken")
         assert runtime.get_global("score") == 10

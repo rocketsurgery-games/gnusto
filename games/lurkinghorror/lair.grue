@@ -22,7 +22,6 @@
 
 (room @lair-1
   :description "Wet Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((up :to @large-chamber)
      (south :to @lair-6)
@@ -38,7 +37,6 @@
 
 (room @lair-2
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((east :to @lair-1)
      (west :to @lair-7)
@@ -54,7 +52,6 @@
 
 (room @lair-3
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((west :to @lair-7)
      (south :to @lair-4)
@@ -70,7 +67,6 @@
 
 (room @lair-4
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((up :to @lair-3)
      (east :to @lair-10)
@@ -87,7 +83,6 @@
 
 (room @lair-5
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((down :to @outer-lair)
      (up :to @lair-5)      ; Loop
@@ -104,7 +99,6 @@
 
 (room @lair-6
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((east :to @lair-1)
      (west :to @lair-3)
@@ -120,7 +114,6 @@
 
 (room @lair-7
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((west :to @lair-1)
      (down :to @lair-7)    ; Loop
@@ -137,7 +130,6 @@
 
 (room @lair-8
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((east :to @lair-2)
      (up :to @lair-6)
@@ -152,7 +144,6 @@
 
 (room @lair-9
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((up :to @lair-2)
      (east :to @lair-8)
@@ -168,7 +159,6 @@
 
 (room @lair-10
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((north :to @lair-10)  ; Loop
      (west :to @lair-7)
@@ -183,7 +173,6 @@
 
 (room @lair-11
   :description "Wet Tunnel"
-  :flags ()
   :exits
     ((east :to @lair-9)
      (up :to @lair-11)     ; Loop
@@ -205,13 +194,12 @@
 
 (room @outer-lair
   :description "Wet Tunnel"
-  :flags (ONBIT)  ; Lit by phosphorescence
+  :properties (:on true :point "south")  ; Lit by phosphorescence
   :exits
     ((up :to @lair-5)
      (in :to @inner-lair :via @curtain-door)
      (south :to @inner-lair :via @curtain-door))
   :globals (@curtain-door @pool)
-  :properties (:point "south")
 
   :behaviors (
     :describe (fn ()
@@ -234,11 +222,10 @@
 
 (room @inner-lair
   :description "Inner Lair"
-  :flags (ONBIT)  ; Wan sourceless light
+  :properties (:on true :point "down")  ; Wan sourceless light
   :exits
     ((up :to @outer-lair :via @curtain-door))
   :globals (@curtain-door @pool)
-  :properties (:point "down")
 
   :behaviors (
     :describe (fn ()
@@ -382,8 +369,6 @@
 (object @crawling-slime
   :location nil  ; Appears when touching curtain
   :description "crawling slime"
-  :flags ()
-
   :behaviors (
     :describe (fn ()
       (cond

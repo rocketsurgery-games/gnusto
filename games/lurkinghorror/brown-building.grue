@@ -421,7 +421,6 @@
 (object @flier
   :location nil  ; Appears during flier encounter
   :description "creature"
-  :flags ()
   :properties (:count 0)  ; Stage counter for flier approach (1-5+)
 
   :behaviors (

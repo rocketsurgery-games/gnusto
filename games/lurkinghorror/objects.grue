@@ -21,8 +21,7 @@
 (object @keyring
   :description "keyring"
   :location @hacker
-  :flags (CONTBIT NDESCBIT SEARCHBIT)  ; NDESCBIT hides from room listing; SEARCHBIT makes it searchable
-  :properties ())
+  :properties (:container true :nodesc true :searchable true))  ; nodesc hides from room listing; searchable makes it searchable
 
 (object @carton
   :description "white carton"

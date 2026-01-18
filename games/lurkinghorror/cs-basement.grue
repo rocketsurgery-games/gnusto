@@ -199,7 +199,7 @@
 (object @manhole-passage
   :location @storage-room
   :description "manhole"
-  :flags (INVISIBLE)  ; Barrier object for exit
+  :properties (:invisible true)  ; Barrier object for exit
 
   :behaviors (
     :through (fn ()

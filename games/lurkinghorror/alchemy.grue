@@ -71,7 +71,6 @@
 
 (room @alchemy-lab
   :description "Lab"
-  :flags ()  ; Starts dark until professor turns on lights
   :exits
     ((north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
      (down :to @under-alchemy-lab :via @alchemy-lab-down-barrier))
@@ -112,7 +111,6 @@
 
 (room @under-alchemy-lab
   :description "Cinderblock Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((north :to @brick-tunnel)
      (up :to @alchemy-lab :via @alchemy-trapdoor-up-barrier))

@@ -16,7 +16,6 @@
 (room @muddy-tunnel
   :description "Muddy Tunnel"
   :ldesc "The tunnel you came through continues down, barely large enough to enter. It is made of sticky gelatinous mud that's been pushed by something into a semblance of a passage."
-  :flags ()  ; Dark!
   :exits
     ((up :to @tunnel-entrance)
      (east :to @tunnel-entrance)
@@ -25,7 +24,6 @@
 
 (room @large-chamber
   :description "Large Chamber"
-  :flags ()  ; Dark!
   :exits
     ((up :to @muddy-tunnel)
      (down :to @lair-1 :via @urchins-barrier))
@@ -111,8 +109,7 @@
 (object @urchins
   :location @slots  ; Start in slots, emerge later
   :description "urchins"
-  :flags (INVISIBLE PERSON)  ; Start invisible in slots
-  :properties (:freed false)  ; True after wire is cut
+  :properties (:invisible true :person true :freed false)  ; Start invisible in slots
 
   :behaviors (
     :describe (fn ()

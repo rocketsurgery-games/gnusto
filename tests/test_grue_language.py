@@ -259,7 +259,7 @@ class TestWorldLevelDefn:
 
             (room LOBBY :desc "A lobby")
 
-            (object PLAYER :location LOBBY :flags (PERSON))
+            (object PLAYER :location LOBBY :properties (:person true))
         """)
 
         assert "always-42" in world.functions
@@ -278,7 +278,7 @@ class TestWorldLevelDefn:
             (defn is-equal? (a b) (= a b))
 
             (room LOBBY :desc "A lobby")
-            (object PLAYER :location LOBBY :flags (PERSON))
+            (object PLAYER :location LOBBY :properties (:person true))
         """)
 
         runtime = GrueRuntime(world)
@@ -296,7 +296,7 @@ class TestWorldLevelDefn:
             (defn third-fn () 3)
 
             (room LOBBY :desc "A lobby")
-            (object PLAYER :location LOBBY :flags (PERSON))
+            (object PLAYER :location LOBBY :properties (:person true))
         """)
 
         assert len(world.functions) == 3
@@ -315,7 +315,7 @@ class TestWorldLevelDefn:
             (defn outer () (inner))
 
             (room LOBBY :desc "A lobby")
-            (object PLAYER :location LOBBY :flags (PERSON))
+            (object PLAYER :location LOBBY :properties (:person true))
         """)
 
         runtime = GrueRuntime(world)

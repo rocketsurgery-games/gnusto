@@ -15,7 +15,6 @@
 
 (room @cave-room
   :description "Renovated Cave"
-  :flags ()  ; Dark!
   :exits
     ((south :to @brick-tunnel)
      (down :to @cave-altar))
@@ -28,7 +27,6 @@
 
 (room @cave-altar
   :description "Before the Altar"
-  :flags ()  ; Dark!
   :exits
     ((up :to @cave-room))
   :globals (@carvings)
@@ -197,7 +195,6 @@
 ; Brick tunnel connects to @under-alchemy-lab (defined in alchemy.grue)
 (room @brick-tunnel
   :description "Brick Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((up :to @storage-room :via @manhole-passage)
      (north :to @cave-room)
@@ -228,7 +225,6 @@
 
 (room @tunnel
   :description "Steam Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((up :to @tomb :via @access-hatch-barrier)
      (east :to @tunnel-east :via @steam-barrier)
@@ -254,7 +250,6 @@
 
 (room @tunnel-west
   :description "Steam Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((east :to @tunnel :via @rats-barrier)
      (west :to @tunnel-entrance :via @rats-barrier))
@@ -267,7 +262,6 @@
 
 (room @tunnel-entrance
   :description "Tunnel Entrance"
-  :flags ()  ; Dark!
   :exits
     ((east :to @tunnel-west)
      (west :to @muddy-tunnel)
@@ -282,7 +276,6 @@
 
 (room @tunnel-east
   :description "Steam Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((west :to @tunnel :via @rats-barrier)
      (east :to @steam-tunnel))
@@ -298,7 +291,6 @@
 (room @steam-tunnel
   :description "Steam Tunnel"
   :ldesc "The steam tunnel is narrow here, and its construction is more archaic. It's now mostly brick, although the floor is concrete. The steam pipe and coaxial cable continue along their appointed paths. The tunnel is damp and even a little muddy."
-  :flags ()  ; Dark!
   :exits
     ((west :to @tunnel-east :via @rats-barrier)
      (east :to @steam-tunnel-east))
@@ -306,7 +298,6 @@
 
 (room @steam-tunnel-east
   :description "Steam Tunnel"
-  :flags ()  ; Dark!
   :exits
     ((west :to @steam-tunnel :via @rats-barrier)
      (south :to @elevator-pit :via @brick-wall-barrier))
@@ -334,7 +325,6 @@
 (room @elevator-pit
   :description "Elevator Pit"
   :ldesc "You are in a grimy pit beneath an elevator shaft."
-  :flags ()  ; Dark!
   :exits ((north :to @steam-tunnel-east)))
 
 ; === Steam Tunnel Objects ===
