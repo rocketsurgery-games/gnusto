@@ -192,7 +192,6 @@ class GrueWorld:
     victory: GrueVictory | None = None
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
     defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
-    globals: dict[str, Any] = field(default_factory=dict)  # global variables
     constants: dict[str, Any] = field(default_factory=dict)  # immutable constants from (def name value)
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
     functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
@@ -787,9 +786,8 @@ def _parse_defn(expr: SList, world: GrueWorld) -> None:
 def _parse_def(expr: SList, world: GrueWorld) -> None:
     """Parse (def name value) and store in world.constants.
 
-    Unlike globals, constants are immutable and evaluated at load time.
-    The value is stored as an unevaluated S-expression to be evaluated
-    when first accessed at runtime.
+    Constants are immutable and defined at load time. The value is stored
+    as an unevaluated S-expression to be evaluated when first accessed.
     """
     if len(expr) != 3:
         raise FormParseError(f"'def' expects 2 arguments (name, value), got {len(expr) - 1}")

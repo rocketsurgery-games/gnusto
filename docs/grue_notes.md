@@ -1,21 +1,16 @@
 # Grue Language + Runtime
 
-## Globals → Object Properties (frotzlm-krs)
-Globals are a ZIL/MDL legacy from 70s 8-bit systems. We're eliminating them in favor of
+## Globals → Object Properties ✓
+The `(globals)` form (a ZIL/MDL legacy) has been removed. All game state now uses
 Clojure-style object properties:
 
 ```scheme
-; Old (globals)
-(globals :microwave-timer 0)
-(set! microwave-timer 120)
-
-; New (object properties)
 (object @microwave :properties (:timer 0))
 (:timer @microwave)                        ; keyword-as-function read
 (success :effects ((set @microwave :timer 120)))  ; effect for mutation
 ```
 
-See epic frotzlm-krs for implementation tasks.
+Built-in runtime globals (`score`, `moves`, `lit`) are still supported.
 
 ## "Global" objects
 
@@ -63,7 +58,7 @@ The obvious downside is that it complicates references, adds garbage collection,
 
 ## Multi-part encapsulation
 Can we completely encapsulate something complex like the elevator, so that it's easily reusable?
-- It uses globals to track state -- buttons, direction, location, etc.
+- It uses object properties to track state -- buttons, direction, location, etc.
 - Multiple door objects connecting in/out of external rooms
   - (@cs-elevator-room) exit connects back to itself
   - (@elevator-exit) redirects to external room on exit

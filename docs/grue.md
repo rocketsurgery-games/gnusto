@@ -671,15 +671,12 @@ Turn-based event handler. Events fire each turn while queued.
 
 See [Turn-Based Events](#turn-based-events) for detailed documentation.
 
-#### `(globals :name value ...)` *(Deprecated)*
-> **Note:** Globals are deprecated. Use object properties instead for better
-> encapsulation. State should live on the object it describes.
+#### `(globals :name value ...)` *(Removed)*
+> **Note:** The `(globals)` form has been removed. Use object properties instead.
+> State should live on the object it describes.
 
 ```scheme
-; DEPRECATED - don't use globals for new code:
-(globals :microwave-timer 0)
-
-; PREFERRED - use object properties:
+; Use object properties:
 (object @microwave
   :properties (:timer 0 :temp 0))
 
@@ -687,6 +684,8 @@ See [Turn-Based Events](#turn-based-events) for detailed documentation.
 (:timer @microwave)              ; read property
 (set @microwave :timer 120)      ; write property (as effect)
 ```
+
+Built-in runtime globals (`score`, `moves`) are still available via `(inc score)` etc.
 
 ### Special Forms (Custom Evaluation)
 
