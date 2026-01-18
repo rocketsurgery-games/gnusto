@@ -1,21 +1,5 @@
 # Grue Language + Runtime
 
-## Globals → Object Properties ✓
-The `(globals)` form (a ZIL/MDL legacy) has been removed. All game state now uses
-Clojure-style object properties:
-
-```scheme
-(object @microwave :properties (:timer 0))
-(:timer @microwave)                        ; keyword-as-function read
-'((set @microwave :timer 120) (success))   ; effect for mutation
-```
-
-Built-in runtime globals (`score`, `moves`, `lit`) are still supported.
-
-## "Global" objects
-
-`(room :globals (@obj) ... )` feels like kind of a hack. It's used to make objects visible from multiple rooms, but the object still has to have a `:location nil`, which seems... weird?
-
 ## Flag/bit cleanup
 Are these really different from boolean props? Or was it just an optimization in grue? They're used for lots of "built-in" behaviors; is there a cleaner way to accomplish this?
 
@@ -42,10 +26,8 @@ These are only used in game code, but they could just as well be boolean propert
 AN CONTBIT DOORBIT LOCKED NOABIT NOTHEBIT OUTSIDE POWERBIT READBIT RLANDBIT RMUNGBIT SEARCHBIT SLIMEBIT TAKEBIT THE TOOLBIT TOUCHBIT TRYTAKEBIT WEAPONBIT WEARBIT
 
 
-## Result context
-What do we _really_ want from effects like `(success :context (description "..."))`? Consider pulling all the context (e.g., `:context ((timer-display ...`) into explicit ui-effects that give instructions on how context should be displayed to the user.
-
-This is best addressed when we start bolting on the LM adapter for real. This will give us a much clearer idea of what we need to solve real needs.
+## "Global" objects
+`(room :globals (@obj) ... )` feels like kind of a hack. It's used to make objects visible from multiple rooms, but the object still has to have a `:location nil`, which seems... weird?
 
 ## Multiline strings
 It could make strings a lot more readable if we made multi-line string literals that require explicit

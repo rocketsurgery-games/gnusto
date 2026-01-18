@@ -75,7 +75,8 @@ true false      ; booleans
 (form :key1 value1 :key2 value2)
 
 ; Keyword as function (Clojure-style)
-(:key obj)      ; lookup :key on obj
+(:key obj)         ; lookup :key on obj (error if missing)
+(:key obj default) ; lookup :key, return default if missing
 
 ; Result/response maps
 (outcome :status blocked :reason locked)
@@ -86,7 +87,9 @@ true false      ; booleans
 ```scheme
 ; Object queries
 (has-flag @door LOCKED)       ; does object have flag?
-(prop @player score)          ; get property value (nil if missing)
+(:score @player)              ; get property value (error if missing)
+(:score @player 0)            ; get property with default
+(prop @player score)          ; legacy: get property (nil if missing)
 (loc @key)                    ; get object's location
 (= ?with @master-key)         ; equality
 
@@ -981,9 +984,11 @@ is called. Functions are pure (no side effects) unless their name ends with `!`.
 
 | Function | Arguments | Returns | Description |
 |----------|-----------|---------|-------------|
+| `(:key obj)` | - | any | Property value (error if missing) |
+| `(:key obj default)` | - | any | Property value (default if missing) |
 | `has-flag` | OBJ FLAG | bool | Does object have flag? |
 | `loc` | OBJ | string | Object's location |
-| `prop` | OBJ PROP | any | Property value (nil if missing) |
+| `prop` | OBJ PROP | any | Legacy: property value (nil if missing) |
 | `desc` | OBJ | string | Object's :description (shorthand for `(prop OBJ :description)`) |
 | `flags` | OBJ | set | All flags on object |
 | `visible?` | OBJ | bool | Is object visible to player? |

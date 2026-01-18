@@ -2256,13 +2256,16 @@ class ExprEvaluator:
         """(:key obj [default]) - look up key on obj.
 
         Works on:
-        - Objects: looks up runtime property, returns None if not found
+        - Objects: looks up runtime property
         - Quoted maps/lists with keyword-value pairs: (:foo '(:foo "bar")) => "bar"
         - Dicts: standard key lookup
 
+        If no default is provided and the key is missing, raises an error.
+        With a default, returns the default for missing keys.
+
         Examples:
             (:size @pc) => 30
-            (:missing @pc) => None
+            (:missing @pc) => ERROR (no such property)
             (:missing @pc "default") => "default"
             (:foo '(:foo "bar" :baz "qux")) => "bar"
         """
@@ -2270,12 +2273,17 @@ class ExprEvaluator:
             raise EvalError(f"Keyword lookup requires 1-2 arguments: (:{key.name} obj [default])")
 
         target = self.eval(form[1], env)
-        default = self.eval(form[2], env) if len(form) == 3 else None
+        has_default = len(form) == 3
+        default = self.eval(form[2], env) if has_default else None
         key_name = key.name
 
         # Handle dict
         if isinstance(target, dict):
-            return target.get(key_name, default)
+            if key_name in target:
+                return target[key_name]
+            if has_default:
+                return default
+            raise EvalError(f"Key ':{key_name}' not found in dict")
 
         # Handle list (quoted keyword-value list like '(:foo "bar" :baz "qux"))
         if isinstance(target, (list, tuple)):
@@ -2283,14 +2291,21 @@ class ExprEvaluator:
             for i in range(0, len(items) - 1, 2):
                 if isinstance(items[i], Keyword) and items[i].name == key_name:
                     return items[i + 1]
-            return default
+            if has_default:
+                return default
+            raise EvalError(f"Key ':{key_name}' not found in list")
 
         # Handle object name (string) - look up property via state
         if isinstance(target, str):
-            val = self.state.get_object_property(target, key_name)
-            return val if val is not None else default
+            if self.state.has_object_property(target, key_name):
+                return self.state.get_object_property(target, key_name)
+            if has_default:
+                return default
+            raise EvalError(f"Property ':{key_name}' not found on object '{target}'")
 
-        return default
+        if has_default:
+            return default
+        raise EvalError(f"Cannot look up ':{key_name}' on {type(target).__name__}")
 
     # === Data constructors ===
 
