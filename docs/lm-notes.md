@@ -1,7 +1,28 @@
 # Language model implementation
 
-The core innovation in FrotzVM is the use of a language model to parse and interpret user input; and to adapt world state to user-visible descriptions. 
+The core innovation in FrotzVM is the use of a language model to parse and interpret user input; and to adapt world state to user-visible descriptions. The idea's pretty simple: there's a logical world model that maintains the state of all the world's rooms, objects, actors, and their varied relationships to one another. It interprets actions, enforces constraints, and provides structured responses and world state information that the LM interprets on behalf of the player.
 
+
+
+
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                                                                      │
+    │           written/spoken commands                                    │
+    │           structured interactions                                    │
+    │                 ┌────────┐                                           │
+    │              ┌─►│ Input  ├──┐                                        │
+    │  ┌────────┐  │  └────────┘  │  ┌────────┐   actions    ┌─────────┐   │
+    │  │        ├──┘              └─►│        ├─────────────►│         │   │
+    │  │  User  │                    │   LM   │              │  World  │   │
+    │  │        │◄─┐              ┌──┤        │◄─────────────┤         │   │
+    │  └────────┘  │  ┌────────┐  │  └────────┘  world state └─────────┘   │
+    │              └──┤ Output │◄─┘               updates                  │
+    │                 └────────┘                                           │
+    │             text descriptions                                        │
+    │             structured data                                          │
+    │             images & sounds                                          │
+    │                                                                      │
+    └──────────────────────────────────────────────────────────────────────┘
 
 
 ## Result context

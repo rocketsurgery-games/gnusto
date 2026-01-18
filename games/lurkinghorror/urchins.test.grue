@@ -116,7 +116,7 @@
   :setup ((move! @player @aero-lobby) (move! @mummified-hand @player) (set @mummified-hand :person true))
   (do @urchin :give @mummified-hand)
   (assert (outcome? success))
-  (assert (no-flag? @bolt-cutters INVISIBLE))
+  (assert (no-flag? @bolt-cutters invisible))
   (assert (loc? @bolt-cutters @aero-lobby)))
 
 (test "giving non-hand item to urchin is refused"

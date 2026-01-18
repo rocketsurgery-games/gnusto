@@ -1,11 +1,64 @@
-; GRUE Default Behaviors
+; GRUE Built-in Functions and Default Behaviors
 ;
-; These behaviors apply when an object doesn't define its own behavior
-; for a verb. They implement the standard IF game mechanics.
+; This file provides:
+; 1. Convenience predicates built on primitives (held?, here?, in?, etc.)
+; 2. Default behaviors for common verbs (take, drop, open, close, etc.)
 ;
-; Bindings available in all behaviors:
+; Bindings available in behaviors:
 ;   ?self   - the target object
 ;   ?actor  - who is performing the action (usually PLAYER)
+
+; ============================================================
+; CONVENIENCE PREDICATES
+; ============================================================
+; These predicates are built on top of the primitive functions
+; (player), (loc), and (=). They provide a cleaner API for
+; common IF queries.
+
+; (held? OBJ) - is OBJ in the player's inventory?
+(defn held? (?obj)
+  (= (loc ?obj) (player)))
+
+; (here? OBJ) - is OBJ in the same room as the player?
+(defn here? (?obj)
+  (= (loc ?obj) (loc (player))))
+
+; (in? OBJ CONTAINER) - is OBJ directly inside CONTAINER?
+(defn in? (?obj ?container)
+  (= (loc ?obj) ?container))
+
+; (held-by? OBJ HOLDER) - is OBJ held by HOLDER?
+(defn held-by? (?obj ?holder)
+  (= (loc ?obj) ?holder))
+
+; (at? OBJ OTHER) - is OBJ at the same location as OTHER?
+(defn at? (?obj ?other)
+  (= (loc ?obj) (loc ?other)))
+
+; (loc? OBJ EXPECTED) - is OBJ at EXPECTED location?
+(defn loc? (?obj ?expected)
+  (= (loc ?obj) ?expected))
+
+; ============================================================
+; SEQUENCE SUGAR
+; ============================================================
+; Convenience functions for working with collections.
+
+; (first COLL) - get first element, or nil if empty
+(defn first (?coll)
+  (if (empty? ?coll)
+    nil
+    (nth ?coll 0)))
+
+; (empty? COLL) - is collection nil or empty?
+(defn empty? (?coll)
+  (or (nil? ?coll) (= (count ?coll) 0)))
+
+; ============================================================
+; DEFAULT BEHAVIORS
+; ============================================================
+; These behaviors apply when an object doesn't define its own
+; behavior for a verb. They implement standard IF mechanics.
 
 ; === take ===
 ; Default take behavior - requires TAKEBIT flag, object must be accessible

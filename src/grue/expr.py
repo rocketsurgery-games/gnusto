@@ -8,20 +8,18 @@ This module provides:
 - Type checking for expressions
 
 Built-in Predicates:
-    (has-flag OBJ FLAG)       - Check if object has flag
     (= A B)                   - Equality
     (> A B), (< A B), etc     - Numeric comparisons
     (and EXPR ...)            - Logical and
     (or EXPR ...)             - Logical or
     (not EXPR)                - Logical not
+    (player)                  - Get player entity name
     (loc OBJ)                 - Get object location
     (prop OBJ PROP)           - Get object property value
-    (flags OBJ)               - Get object flags
     (visible? OBJ)            - Is object visible to player
-    (held? OBJ)               - Is object held by player
-    (here? OBJ)               - Is object in player's room
-    (in? OBJ CONTAINER)       - Is object in container
+    (inside? OBJ CONTAINER)   - Is object recursively inside container
     (room? LOC)               - Is location a room
+    ; Defined in builtins.grue: held?, here?, in?, held-by?, at?, loc?
     (in-room? OBJ ROOM ...)   - Is object in any of listed rooms
     (some PRED COLL)          - First truthy predicate result, or nil
     (every? PRED COLL)        - True if all elements satisfy predicate
@@ -840,12 +838,26 @@ class ExprEvaluator:
         self,
         state: WorldState,
         functions: dict[str, GrueFn] | None = None,
-        allow_mutations: bool = False
+        allow_mutations: bool = False,
+        include_builtins: bool = True
     ):
         self.state = state
         self._allow_mutations = allow_mutations
         # User-defined functions: name -> GrueFn
-        self._functions: dict[str, GrueFn] = functions if functions is not None else {}
+        # If functions dict provided, use it directly (allows sharing between instances)
+        # Otherwise, include built-in functions (held?, here?, first, empty?, etc.) by default
+        if functions is not None:
+            self._functions = functions  # Use the provided dict (shared)
+            # Add builtins to the shared dict if requested
+            if include_builtins:
+                builtins = _get_cached_builtin_functions()
+                for name, fn in builtins.items():
+                    if name not in self._functions:
+                        self._functions[name] = fn
+        elif include_builtins:
+            self._functions = dict(_get_cached_builtin_functions())
+        else:
+            self._functions = {}
         # Mutation handlers (only used when allow_mutations=True)
         self._mutation_handlers = self._init_mutation_handlers()
         # Map of special form names to handlers
@@ -871,26 +883,17 @@ class ExprEvaluator:
             "<=": self._eval_lte,
 
             # Object queries
-            "has-flag": self._eval_has_flag,
-            "has-flag?": self._eval_has_flag,  # alias
+            "player": self._eval_player,
             "loc": self._eval_loc,
             "prop": self._eval_prop,
             "desc": self._eval_desc,
-            "flags": self._eval_flags,
 
             # Convenience predicates
+            # NOTE: held?, here?, in?, held-by?, at?, loc? are now defined in builtins.grue
             "visible?": self._eval_visible,
-            "held?": self._eval_held,
-            "here?": self._eval_here,
-            "loc?": self._eval_loc_check,
-            "in?": self._eval_in,
-            "contained-in?": self._eval_in,  # alias for in?
             "inside?": self._eval_inside,  # recursive containment check
-            "held-by?": self._eval_held_by,
-            "at?": self._eval_at,
             "room?": self._eval_room,
             "in-room?": self._eval_in_room,
-            "room-has-flag?": self._eval_room_has_flag,
 
             # Collections/quantifiers
             "some": self._eval_some,
@@ -943,14 +946,13 @@ class ExprEvaluator:
             "join": self._eval_join,
 
             # Sequence operations (Clojure stdlib)
+            # NOTE: first, empty? moved to builtins.grue
             "nth": self._eval_nth,
             "list-set": self._eval_list_set,
             "concat": self._eval_concat,
-            "first": self._eval_first,
             "rest": self._eval_rest,
             "count": self._eval_count,
             "cons": self._eval_cons,
-            "empty?": self._eval_empty,
             "get-in": self._eval_get_in,
 
             # Higher-order collection functions
@@ -1242,13 +1244,19 @@ class ExprEvaluator:
 
     # === Object queries ===
 
-    def _eval_has_flag(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(has-flag OBJ FLAG)"""
-        if len(form) != 3:
-            raise EvalError(f"'has-flag' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        flag = self.eval(form[2], env)
-        return self.state.get_object_flag(obj, flag)
+    def _eval_player(self, form: SList, env: Optional[Environment] = None) -> str:
+        """(player) - returns the player entity name.
+
+        Used for predicates that need to reference the player outside of
+        behavior contexts where ?actor isn't bound.
+
+        Example:
+            (= (loc @key) (player))    ; is key held by player?
+            (:outside (loc (player)))  ; is player in an outdoor room?
+        """
+        if len(form) != 1:
+            raise EvalError(f"'player' expects 0 arguments, got {len(form) - 1}")
+        return self.state.get_player_name()
 
     def _eval_loc(self, form: SList, env: Optional[Environment] = None) -> str | None:
         """(loc OBJ)"""
@@ -1288,13 +1296,6 @@ class ExprEvaluator:
         desc = self.state.get_object_property(obj, "description")
         return desc if desc is not None else ""
 
-    def _eval_flags(self, form: SList, env: Optional[Environment] = None) -> set[str]:
-        """(flags OBJ)"""
-        if len(form) != 2:
-            raise EvalError(f"'flags' expects 1 argument, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        return self.state.get_object_flags(obj)
-
     # === Convenience predicates ===
 
     def _eval_visible(self, form: SList, env: Optional[Environment] = None) -> bool:
@@ -1304,39 +1305,7 @@ class ExprEvaluator:
         obj = self.eval(form[1], env)
         return self.state.is_visible(obj)
 
-    def _eval_held(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(held? OBJ) - shorthand for (= (loc OBJ) PLAYER)"""
-        if len(form) != 2:
-            raise EvalError(f"'held?' expects 1 argument, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        loc = self.state.get_object_location(obj)
-        return loc == self.state.get_player_name()
-
-    def _eval_here(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(here? OBJ) - shorthand for (= (loc OBJ) (loc PLAYER))"""
-        if len(form) != 2:
-            raise EvalError(f"'here?' expects 1 argument, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        obj_loc = self.state.get_object_location(obj)
-        player_loc = self.state.get_player_location()
-        return obj_loc == player_loc
-
-    def _eval_loc_check(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(loc? OBJ EXPECTED-LOC) - check if OBJ is at expected location."""
-        if len(form) != 3:
-            raise EvalError(f"'loc?' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        expected = self.eval(form[2], env)
-        actual = self.state.get_object_location(obj)
-        return actual == expected
-
-    def _eval_in(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(in? OBJ CONTAINER)"""
-        if len(form) != 3:
-            raise EvalError(f"'in?' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        container = self.eval(form[2], env)
-        return self.state.get_object_location(obj) == container
+    # NOTE: held?, here?, loc?, in?, held-by?, at? moved to builtins.grue
 
     def _eval_inside(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(inside? OBJ CONTAINER) - recursive check if OBJ is inside CONTAINER.
@@ -1368,24 +1337,6 @@ class ExprEvaluator:
             current = loc
         return False
 
-    def _eval_held_by(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(held-by? OBJ ACTOR) - check if OBJ's location is ACTOR."""
-        if len(form) != 3:
-            raise EvalError(f"'held-by?' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        actor = self.eval(form[2], env)
-        return self.state.get_object_location(obj) == actor
-
-    def _eval_at(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(at? OBJ ACTOR) - check if OBJ is at ACTOR's location (same room)."""
-        if len(form) != 3:
-            raise EvalError(f"'at?' expects 2 arguments, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        actor = self.eval(form[2], env)
-        obj_loc = self.state.get_object_location(obj)
-        actor_loc = self.state.get_object_location(actor)
-        return obj_loc == actor_loc
-
     def _eval_room(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(room? LOC)"""
         if len(form) != 2:
@@ -1414,15 +1365,6 @@ class ExprEvaluator:
                 return True
 
         return False
-
-    def _eval_room_has_flag(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(room-has-flag? FLAG) - check if player's current room has the specified flag."""
-        if len(form) != 2:
-            raise EvalError(f"'room-has-flag?' expects 1 argument, got {len(form) - 1}")
-
-        flag = self.eval(form[1], env)
-        player_room = self.state.get_player_location()
-        return self.state.get_object_flag(player_room, flag)
 
     # === Collections/quantifiers ===
 
@@ -2539,18 +2481,7 @@ class ExprEvaluator:
             result.extend(coll)
         return result
 
-    def _eval_first(self, form: SList, env: Optional[Environment] = None) -> Any:
-        """(first COLL) - get first element, or nil if empty."""
-        if len(form) != 2:
-            raise EvalError(f"'first' expects 1 argument, got {len(form) - 1}")
-        coll = self.eval(form.items[1], env)
-
-        if isinstance(coll, (list, tuple)):
-            return coll[0] if coll else None
-        elif isinstance(coll, str):
-            return coll[0] if coll else None
-        else:
-            raise EvalError(f"'first' expects sequence, got {type(coll).__name__}")
+    # NOTE: first moved to builtins.grue
 
     def _eval_rest(self, form: SList, env: Optional[Environment] = None) -> list:
         """(rest COLL) - return all but first element as list."""
@@ -2601,29 +2532,7 @@ class ExprEvaluator:
         else:
             raise EvalError(f"'cons' expects sequence as second argument, got {type(coll).__name__}")
 
-    def _eval_empty(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(empty? COLL) - check if collection is empty.
-
-        Returns true if collection is nil, empty list, or empty string.
-
-        Examples:
-            (empty? '()) => true
-            (empty? nil) => true
-            (empty? '(1 2)) => false
-            (empty? "") => true
-        """
-        if len(form) != 2:
-            raise EvalError(f"'empty?' expects 1 argument, got {len(form) - 1}")
-        coll = self.eval(form.items[1], env)
-
-        if coll is None:
-            return True
-        elif isinstance(coll, (list, tuple)):
-            return len(coll) == 0
-        elif isinstance(coll, str):
-            return len(coll) == 0
-        else:
-            raise EvalError(f"'empty?' expects sequence, got {type(coll).__name__}")
+    # NOTE: empty? moved to builtins.grue
 
     def _eval_get_in(self, form: SList, env: Optional[Environment] = None) -> Any:
         """(get-in TARGET KEYS [DEFAULT]) - traverse nested structure via keys.
@@ -3149,11 +3058,25 @@ class EffectExecutor:
     def __init__(
         self,
         state: MutableWorldState,
-        functions: dict[str, GrueFn] | None = None
+        functions: dict[str, GrueFn] | None = None,
+        include_builtins: bool = True
     ):
         self.state = state
         # Shared function registry between evaluator and executor
-        self._functions: dict[str, GrueFn] = functions if functions is not None else {}
+        # If functions dict provided, use it directly (allows sharing between instances)
+        # Otherwise, create a new dict with built-in functions
+        if functions is not None:
+            self._functions = functions  # Use the provided dict (shared)
+            # Add builtins to the shared dict if requested
+            if include_builtins:
+                builtins = _get_cached_builtin_functions()
+                for name, fn in builtins.items():
+                    if name not in self._functions:
+                        self._functions[name] = fn
+        elif include_builtins:
+            self._functions = dict(_get_cached_builtin_functions())
+        else:
+            self._functions = {}
         self._predicates = ExprEvaluator(state, self._functions, allow_mutations=True)
         self._effects: dict[str, Callable[..., None]] = {
             "move!": self._exec_move,
@@ -3433,20 +3356,75 @@ class EffectExecutor:
         self.state.move_object(obj, player)
 
 
-def eval_predicate(expr: str | SExpr, state: WorldState) -> bool:
+def get_builtin_functions() -> dict[str, GrueFn]:
+    """Load the built-in functions from builtins.grue.
+
+    These functions (held?, here?, in?, etc.) are defined in Grue
+    and provide convenience predicates built on primitives.
+    """
+    from pathlib import Path
+    from .sexpr import parse_all
+
+    builtins_path = Path(__file__).parent / "builtins.grue"
+    if not builtins_path.exists():
+        return {}
+
+    source = builtins_path.read_text()
+    exprs = parse_all(source)
+
+    functions: dict[str, GrueFn] = {}
+    for expr in exprs:
+        if isinstance(expr, SList) and len(expr) >= 4:
+            head = expr[0]
+            if isinstance(head, Symbol) and head.name == "defn":
+                # Parse: (defn name (params) body)
+                name = expr[1].name if isinstance(expr[1], Symbol) else str(expr[1])
+                params_expr = expr[2]
+                body = expr[3]
+
+                # Extract param names (strip ? prefix)
+                params = []
+                if isinstance(params_expr, SList):
+                    for p in params_expr:
+                        if isinstance(p, Symbol):
+                            pname = p.name
+                            if pname.startswith("?"):
+                                pname = pname[1:]
+                            params.append(pname)
+
+                functions[name] = GrueFn(params=params, body=body)
+
+    return functions
+
+
+# Cache built-in functions
+_BUILTIN_FUNCTIONS: dict[str, GrueFn] | None = None
+
+
+def _get_cached_builtin_functions() -> dict[str, GrueFn]:
+    """Get cached built-in functions (lazy-loaded)."""
+    global _BUILTIN_FUNCTIONS
+    if _BUILTIN_FUNCTIONS is None:
+        _BUILTIN_FUNCTIONS = get_builtin_functions()
+    return _BUILTIN_FUNCTIONS
+
+
+def eval_predicate(expr: str | SExpr, state: WorldState, include_builtins: bool = True) -> bool:
     """
     Convenience function to evaluate a predicate expression.
 
     Args:
         expr: S-expression string or parsed expression
         state: World state to evaluate against
+        include_builtins: Whether to include built-in functions (default: True)
 
     Returns:
         Boolean result of predicate
     """
     if isinstance(expr, str):
         expr = parse(expr)
-    evaluator = ExprEvaluator(state)
+    functions = _get_cached_builtin_functions() if include_builtins else {}
+    evaluator = ExprEvaluator(state, functions)
     result = evaluator.eval(expr)
     return bool(result)
 

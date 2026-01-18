@@ -92,7 +92,7 @@
     :setup ((move! @bolt-cutters @player))
     (do @padlock :cut)
     (assert (outcome? success))
-    (assert (no-flag? @padlock LOCKED)))
+    (assert (no-flag? @padlock locked)))
 )
 
 (test-group "hatch after padlock removed"

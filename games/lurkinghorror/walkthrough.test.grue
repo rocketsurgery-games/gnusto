@@ -831,7 +831,7 @@
 
   ; Unlock and open roof door with master key
   (do @roof-door :unlock @master-key)
-  (assert (no-flag? @roof-door LOCKED))
+  (assert (no-flag? @roof-door locked))
   (do @roof-door :open)
   (assert (:open @roof-door))
 
@@ -919,8 +919,8 @@
   ; At this point the ritual is in progress and we can escape
   ; Verify escape state is correct
   (assert (not (:moved @lab-bench)))
-  (assert (no-flag? @pentagram RMUNGBIT))
-  (assert (no-flag? @alchemy-trap-door OPENBIT))
+  (assert (no-flag? @pentagram rmung))
+  (assert (no-flag? @alchemy-trap-door open))
 
   ; Cut pentagram with knife to escape
   (do @pentagram :cut @knife)
@@ -957,7 +957,7 @@
 
   ; Hand was obtained from inside-dome during brown building detour
   (assert (held? @mummified-hand))
-  (assert (no-flag? @mummified-hand PERSON))  ; Not animated yet
+  (assert (no-flag? @mummified-hand person))  ; Not animated yet
   (assert (= (:animation-count @mummified-hand) 0))
   ; Verify vat and elixir are in their proper locations
   (assert (in? @vat @lab-bench))
@@ -1114,7 +1114,7 @@
   (do @input-cable :unplug)
 
   ; Verify endgame state is correct
-  (assert (no-flag? @output-cable RMUNGBIT))  ; Not already cut
+  (assert (no-flag? @output-cable rmung))  ; Not already cut
   (assert (held? @boots))               ; Boots from brown-basement
   (assert (:wearable @boots))   ; Wearing boots (electrical safety)
   (assert (held? @gloves))              ; Gloves from temporary-basement

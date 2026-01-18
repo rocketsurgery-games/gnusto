@@ -188,6 +188,13 @@ class TestBooleanOperators:
 class TestObjectQueries:
     """Test object query predicates."""
 
+    def test_player(self):
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+        assert evaluator.eval(parse("(player)")) == "PLAYER"
+        # Can be used in expressions
+        assert evaluator.eval(parse("(= (loc FLASHLIGHT) (player))")) is True
+
     def test_loc(self):
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
@@ -199,13 +206,6 @@ class TestObjectQueries:
         evaluator = ExprEvaluator(state)
         assert evaluator.eval(parse("(prop FLASHLIGHT battery_level)")) == 100
         assert evaluator.eval(parse("(prop DOOR locked)")) is True
-
-    def test_flags(self):
-        state = MockWorldState()
-        evaluator = ExprEvaluator(state)
-        flags = evaluator.eval(parse("(flags FLASHLIGHT)"))
-        assert "TAKEBIT" in flags
-        assert "LIGHTBIT" in flags
 
     def test_loc_equality(self):
         state = MockWorldState()

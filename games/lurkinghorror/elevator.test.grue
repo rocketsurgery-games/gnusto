@@ -16,7 +16,7 @@
 
   (test "elevator doors start closed"
     (do @elevator-door-1 :examine)
-    (assert (no-flag? @elevator-door-1 OPENBIT)))
+    (assert (no-flag? @elevator-door-1 open)))
 )
 
 (test-group "elevator call buttons"
@@ -105,7 +105,7 @@
   (test "open button does nothing when moving"
     :setup ((set-prop! @cs-elevator-room stopped false) (set @elevator-door :open false))
     (do @open-button :push)
-    (assert (no-flag? @elevator-door OPENBIT)))
+    (assert (no-flag? @elevator-door open)))
 )
 
 (test-group "door auto-close"
@@ -113,8 +113,8 @@
 
   (test "doors close when event fires"
     (wait)
-    (assert (no-flag? @elevator-door OPENBIT))
-    (assert (no-flag? @elevator-door-1 OPENBIT)))
+    (assert (no-flag? @elevator-door open))
+    (assert (no-flag? @elevator-door-1 open)))
 )
 
 (test-group "elevator movement"

@@ -146,7 +146,7 @@
   :behaviors (
     :examine (fn ()
       (cond
-        ((room-has-flag? "outside")
+        ((:outside (loc (player)))
           (success :message "It's still coming down."))
         (true
           (success :message "You are inside."))))))

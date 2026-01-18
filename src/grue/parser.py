@@ -87,13 +87,18 @@ def _load_defaults() -> GrueWorld:
 
 
 def _merge_defaults(world: GrueWorld, defaults: GrueWorld) -> None:
-    """Merge default behaviors into a world (in place).
+    """Merge default behaviors and functions into a world (in place).
 
-    Only adds defaults for verbs not already defined in world.defaults.
+    Only adds defaults/functions not already defined in the world.
     """
     for verb, behavior in defaults.defaults.items():
         if verb not in world.defaults:
             world.defaults[verb] = behavior
+
+    # Also merge built-in functions (e.g., held?, here?, in?)
+    for name, fn in defaults.functions.items():
+        if name not in world.functions:
+            world.functions[name] = fn
 
 
 def load_grue(path: str | Path, include_defaults: bool = True) -> GrueWorld:

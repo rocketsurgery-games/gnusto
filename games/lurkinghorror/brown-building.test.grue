@@ -26,7 +26,7 @@
   :setup ((move! @player @brown-top-floor) (set @roof-door :locked true) (move! @master-key @player))
   (do @roof-door :unlock @master-key)
   (assert (outcome? success))
-  (assert (no-flag? @roof-door LOCKED)))
+  (assert (no-flag? @roof-door locked)))
 
 (test "can access roof after unlocking door"
   :setup ((move! @player @brown-top-floor) (set @roof-door :locked false) (set @roof-door :open true))

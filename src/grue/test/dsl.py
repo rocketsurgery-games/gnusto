@@ -10,7 +10,7 @@ Sequential test (standard style):
       :setup ((move! @player @room))    ; optional setup
       (do @door :unlock @key)           ; actions
       (do @door :open)
-      (assert (has-flag? @door OPENBIT))
+      (assert (has-flag? @door open))
       (until (loc? @player @goal)       ; loop until condition
         (do @movement :go north))
       (run walkthrough/segment)         ; run named action list
@@ -55,11 +55,11 @@ Result predicates (check last action result):
 State predicates (check game state):
     (player-at? ROOM)
     (loc? OBJ LOCATION)
-    (has-flag? OBJ FLAG)
-    (no-flag? OBJ FLAG)
+    (has-flag? OBJ PROP)     - Object has truthy property (use lowercase: open, locked)
+    (no-flag? OBJ PROP)      - Object property is falsy (use lowercase: open, locked)
     (held? OBJ)              - Object in player inventory
     (in? OBJ CONTAINER)      - Object inside container
-    (prop? OBJ PROP VALUE)
+    (prop? OBJ PROP VALUE)   - Object property equals value
     (global? NAME VALUE)
     (queued? EVENT)
     (not-queued? EVENT)
@@ -632,10 +632,12 @@ class TestRunner:
                     obj = obj.name
                 if isinstance(flag, Symbol):
                     flag = flag.name
+                # Normalize flag name to lowercase (properties are lowercase)
+                flag = flag.lower()
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
                 elif not runtime.state.objects[obj].properties.get(flag):
-                    failures.append(f"Object '{obj}' missing flag '{flag}'")
+                    failures.append(f"Object '{obj}' missing property '{flag}'")
 
             elif name == "no-flag?":
                 if len(pred) != 3:
@@ -647,10 +649,12 @@ class TestRunner:
                     obj = obj.name
                 if isinstance(flag, Symbol):
                     flag = flag.name
+                # Normalize flag name to lowercase (properties are lowercase)
+                flag = flag.lower()
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
                 elif runtime.state.objects[obj].properties.get(flag):
-                    failures.append(f"Object '{obj}' has unexpected flag '{flag}'")
+                    failures.append(f"Object '{obj}' has unexpected property '{flag}'")
 
             elif name == "loc?":
                 if len(pred) != 3:
@@ -733,7 +737,7 @@ class TestRunner:
                     failures.append(f"Event '{event}' should not be queued")
 
             elif name == "not-flag?":
-                # Alias for no-flag? - check object does NOT have a flag
+                # Alias for no-flag? - check object does NOT have a property
                 if len(pred) != 3:
                     failures.append("(not-flag? OBJ FLAG) requires 2 arguments")
                     continue
@@ -743,10 +747,12 @@ class TestRunner:
                     obj = obj.name
                 if isinstance(flag, Symbol):
                     flag = flag.name
+                # Normalize flag name to lowercase (properties are lowercase)
+                flag = flag.lower()
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
                 elif runtime.state.objects[obj].properties.get(flag):
-                    failures.append(f"Object '{obj}' has unexpected flag '{flag}'")
+                    failures.append(f"Object '{obj}' has unexpected property '{flag}'")
 
             elif name == "death?":
                 # Check if result context contains (death true)
