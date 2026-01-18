@@ -128,6 +128,9 @@ followed by a terminator (`success`, `blocked`, `redirect`, or `default`):
 (set-flag OBJ FLAG)           ; add flag to object
 (clear-flag OBJ FLAG)         ; remove flag from object
 (set OBJ :prop VALUE)         ; set property on object
+(set-in OBJ PATH VALUE)       ; set nested property (PATH is list of keys)
+(inc OBJ :prop [AMT])         ; increment numeric property (default: 1)
+(dec OBJ :prop [AMT])         ; decrement numeric property (default: 1)
 (queue EVENT [COUNT])         ; activate event
 (dequeue EVENT)               ; deactivate event
 
@@ -689,6 +692,12 @@ See [Turn-Based Events](#turn-based-events) for detailed documentation.
 ; Access with keyword-as-function:
 (:timer @microwave)              ; read property
 (set @microwave :timer 120)      ; write property (as effect)
+(inc @microwave :timer 60)       ; increment property (as effect)
+(dec @microwave :timer)          ; decrement property by 1 (as effect)
+
+; Nested property access:
+(get-in @elevator '(:buttons :go 2))     ; read nested value
+(set-in @elevator '(:buttons :go 2) true) ; set nested value (as effect)
 ```
 
 Built-in runtime globals (`score`, `moves`) are still available via `(inc score)` etc.
@@ -1015,6 +1024,7 @@ Standard library functions for working with strings and lists:
 | `empty?` | LIST | bool | Is list empty? |
 | `cons` | ELEM LIST | list | Prepend element to list |
 | `concat` | LISTS... | list | Concatenate lists |
+| `get-in` | TARGET KEYS [DEFAULT] | any | Traverse nested structure via list of keys |
 
 #### Higher-Order Collection Functions
 

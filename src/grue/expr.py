@@ -295,8 +295,12 @@ class EffectInterpreter:
             (set-flag obj flag)       - Set flag
             (clear-flag obj flag)     - Clear flag
             (set-prop obj prop val)   - Set property
+            (set @obj :prop val)      - Set object property
             (set global val)          - Set global variable
+            (set-in @obj path val)    - Set nested property (path is list of keys)
+            (inc @obj :prop [amt])    - Increment object property
             (inc global [amt])        - Increment global
+            (dec @obj :prop [amt])    - Decrement object property
             (dec global [amt])        - Decrement global
             (queue event [countdown]) - Queue event
             (dequeue event)           - Remove event from queue
@@ -311,7 +315,7 @@ class EffectInterpreter:
     # Effect names that mutate state
     MUTATIONS = frozenset({
         "move", "set-flag", "clear-flag", "set-prop",
-        "set", "inc", "dec", "queue", "dequeue", "take"
+        "set", "set-in", "inc", "dec", "queue", "dequeue", "take"
     })
 
     # Effect names that terminate the effect list
@@ -520,22 +524,61 @@ class EffectInterpreter:
                 raise EvalError(f"'set' expects 2-3 arguments, got {len(args)}")
 
         elif name == "inc":
-            if len(args) < 1 or len(args) > 2:
-                raise EvalError(f"'inc' expects 1-2 arguments, got {len(args)}")
-            global_name = args[0]
-            amount = args[1] if len(args) > 1 else 1
-            current = self.state.get_global(global_name)
-            self.state.set_global(global_name, current + amount)
-            self._effects_applied.append(f"inc {global_name} by {amount}")
+            # Two forms:
+            # (inc @obj :prop [amount]) - increment object property (2-3 args)
+            # (inc global-name [amount]) - increment global (1-2 args, legacy)
+            if len(args) == 3 or (len(args) == 2 and hasattr(args[1], 'name')):
+                # Object property form: (inc @obj :prop) or (inc @obj :prop amt)
+                obj, prop = args[0], args[1]
+                if hasattr(prop, 'name'):
+                    prop = prop.name
+                amount = args[2] if len(args) > 2 else 1
+                current = self.state.get_object_property(obj, prop) or 0
+                self.state.set_object_property(obj, prop, current + amount)
+                self._effects_applied.append(f"inc {obj} {prop} by {amount}")
+            elif len(args) >= 1 and len(args) <= 2:
+                # Global form: (inc global-name) or (inc global-name amt)
+                global_name = args[0]
+                amount = args[1] if len(args) > 1 else 1
+                current = self.state.get_global(global_name)
+                self.state.set_global(global_name, current + amount)
+                self._effects_applied.append(f"inc {global_name} by {amount}")
+            else:
+                raise EvalError(f"'inc' expects 1-3 arguments, got {len(args)}")
 
         elif name == "dec":
-            if len(args) < 1 or len(args) > 2:
-                raise EvalError(f"'dec' expects 1-2 arguments, got {len(args)}")
-            global_name = args[0]
-            amount = args[1] if len(args) > 1 else 1
-            current = self.state.get_global(global_name)
-            self.state.set_global(global_name, current - amount)
-            self._effects_applied.append(f"dec {global_name} by {amount}")
+            # Two forms:
+            # (dec @obj :prop [amount]) - decrement object property (2-3 args)
+            # (dec global-name [amount]) - decrement global (1-2 args, legacy)
+            if len(args) == 3 or (len(args) == 2 and hasattr(args[1], 'name')):
+                # Object property form: (dec @obj :prop) or (dec @obj :prop amt)
+                obj, prop = args[0], args[1]
+                if hasattr(prop, 'name'):
+                    prop = prop.name
+                amount = args[2] if len(args) > 2 else 1
+                current = self.state.get_object_property(obj, prop) or 0
+                self.state.set_object_property(obj, prop, current - amount)
+                self._effects_applied.append(f"dec {obj} {prop} by {amount}")
+            elif len(args) >= 1 and len(args) <= 2:
+                # Global form: (dec global-name) or (dec global-name amt)
+                global_name = args[0]
+                amount = args[1] if len(args) > 1 else 1
+                current = self.state.get_global(global_name)
+                self.state.set_global(global_name, current - amount)
+                self._effects_applied.append(f"dec {global_name} by {amount}")
+            else:
+                raise EvalError(f"'dec' expects 1-3 arguments, got {len(args)}")
+
+        elif name == "set-in":
+            # (set-in @obj '(:path :keys) value) - set nested property
+            if len(args) != 3:
+                raise EvalError(f"'set-in' expects 3 arguments, got {len(args)}")
+            obj, path, value = args[0], args[1], args[2]
+            if not isinstance(path, (list, tuple)) or len(path) == 0:
+                raise EvalError("'set-in' path must be a non-empty list")
+            self._set_in(obj, path, value)
+            path_str = ".".join(str(k.name if hasattr(k, 'name') else k) for k in path)
+            self._effects_applied.append(f"set-in {obj} {path_str} = {value}")
 
         elif name == "queue":
             if len(args) < 1 or len(args) > 2:
@@ -563,6 +606,78 @@ class EffectInterpreter:
 
         else:
             raise EvalError(f"Unknown mutation effect: {name}")
+
+    def _set_in(self, obj: str, path: list, value: Any) -> None:
+        """Set a nested property value on an object.
+
+        For a single-key path like (:prop), directly sets the property.
+        For multi-key paths like (:outer :inner), gets the outer property,
+        updates it immutably, and sets the whole structure back.
+        """
+        if len(path) == 1:
+            # Simple case: just set the property
+            prop = path[0]
+            if hasattr(prop, 'name'):
+                prop = prop.name
+            self.state.set_object_property(obj, prop, value)
+            return
+
+        # For nested paths, we need to get the existing structure,
+        # create a modified copy, and set it back
+        first_key = path[0]
+        if hasattr(first_key, 'name'):
+            first_key = first_key.name
+
+        # Get the current value at the first key
+        current = self.state.get_object_property(obj, first_key)
+        if current is None:
+            current = {}
+
+        # Build the new nested value
+        new_value = self._assoc_in(current, path[1:], value)
+        self.state.set_object_property(obj, first_key, new_value)
+
+    def _assoc_in(self, coll: Any, path: list, value: Any) -> Any:
+        """Recursively associate a value at a nested path (like Clojure assoc-in)."""
+        if not path:
+            return value
+
+        key = path[0]
+        if hasattr(key, 'name'):
+            key = key.name
+
+        rest_path = path[1:]
+
+        if isinstance(coll, dict):
+            new_dict = dict(coll)
+            new_dict[key] = self._assoc_in(coll.get(key), rest_path, value)
+            return new_dict
+        elif isinstance(coll, (list, tuple)):
+            if isinstance(key, int):
+                # Extend list if needed
+                new_list = list(coll)
+                while len(new_list) <= key:
+                    new_list.append(None)
+                new_list[key] = self._assoc_in(new_list[key] if key < len(coll) else None,
+                                               rest_path, value)
+                return new_list
+            else:
+                # Treat as keyword-value list
+                from .sexpr import Keyword
+                new_list = list(coll)
+                for i in range(0, len(new_list) - 1, 2):
+                    item_key = new_list[i]
+                    key_name = item_key.name if isinstance(item_key, Keyword) else item_key
+                    if key_name == key:
+                        new_list[i + 1] = self._assoc_in(new_list[i + 1], rest_path, value)
+                        return new_list
+                # Key not found, append it
+                new_list.extend([Keyword(key) if isinstance(key, str) else key,
+                                self._assoc_in(None, rest_path, value)])
+                return new_list
+        else:
+            # Create a new dict if current is None or not a collection
+            return {key: self._assoc_in(None, rest_path, value)}
 
     def _terminator_to_outcome(self, terminator: list) -> EffectOutcome:
         """Convert a terminator effect to an EffectOutcome."""
@@ -834,6 +949,7 @@ class ExprEvaluator:
             "count": self._eval_count,
             "cons": self._eval_cons,
             "empty?": self._eval_empty,
+            "get-in": self._eval_get_in,
 
             # Higher-order collection functions
             "map": self._eval_map,
@@ -2439,6 +2555,74 @@ class ExprEvaluator:
             return len(coll) == 0
         else:
             raise EvalError(f"'empty?' expects sequence, got {type(coll).__name__}")
+
+    def _eval_get_in(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(get-in TARGET KEYS [DEFAULT]) - traverse nested structure via keys.
+
+        Navigates into nested maps/objects using a sequence of keys.
+        Returns DEFAULT (or nil) if path not found.
+
+        TARGET can be:
+        - An object reference (@obj) - traverses properties
+        - A dict/map - traverses keys
+        - A list of key-value pairs
+
+        KEYS is a list of keys to traverse (can be keywords or indices).
+
+        Examples:
+            (get-in @elevator '(:buttons :go 2)) => true
+            (get-in {:a {:b 1}} '(:a :b)) => 1
+            (get-in @obj '(:nested :prop) "default") => "default" if not found
+        """
+        if len(form) < 3 or len(form) > 4:
+            raise EvalError(f"'get-in' expects 2-3 arguments, got {len(form) - 1}")
+
+        target = self.eval(form.items[1], env)
+        keys = self.eval(form.items[2], env)
+        default = self.eval(form.items[3], env) if len(form) > 3 else None
+
+        if not isinstance(keys, (list, tuple)):
+            raise EvalError(f"'get-in' keys must be a list, got {type(keys).__name__}")
+
+        current = target
+        for key in keys:
+            if current is None:
+                return default
+            current = self._get_in_step(current, key)
+
+        return current if current is not None else default
+
+    def _get_in_step(self, target: Any, key: Any) -> Any:
+        """Single step of get-in traversal."""
+        from .sexpr import Keyword
+
+        # Extract key name from Keyword if needed
+        key_name = key.name if isinstance(key, Keyword) else key
+
+        # Handle object name (string starting with @) - look up property
+        if isinstance(target, str) and target.startswith("@"):
+            if isinstance(key_name, str):
+                return self.state.get_object_property(target, key_name)
+            return None
+
+        # Handle dict
+        if isinstance(target, dict):
+            return target.get(key_name)
+
+        # Handle list with keyword-value pairs or by index
+        if isinstance(target, (list, tuple)):
+            if isinstance(key_name, int):
+                return target[key_name] if 0 <= key_name < len(target) else None
+            # Try keyword-value lookup
+            for i in range(0, len(target) - 1, 2):
+                item_key = target[i]
+                if isinstance(item_key, Keyword) and item_key.name == key_name:
+                    return target[i + 1]
+                elif item_key == key_name:
+                    return target[i + 1]
+            return None
+
+        return None
 
     # === Higher-order collection functions ===
 

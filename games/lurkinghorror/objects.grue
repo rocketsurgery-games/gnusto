@@ -142,7 +142,7 @@
     :drink (fn ()
       (cond
         ((> (prop ?self size) 1)
-         '((set-prop ?self size (- (prop ?self size) 1))
+         '((dec ?self :size)
            (success :message "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now.")))
         (true
          (blocked :reason empty :message "The bottle is empty."))))

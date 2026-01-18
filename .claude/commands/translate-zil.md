@@ -76,6 +76,9 @@ Behaviors use `cond` with outcomes that can be simple or include effects via quo
 - `(clear-flag OBJ FLAG)` - Clear flag
 - `(move OBJ DEST)` - Move object
 - `(set OBJ :prop VAL)` - Set property
+- `(set-in OBJ '(:path :keys) VAL)` - Set nested property
+- `(inc OBJ :prop [AMT])` - Increment property (default: 1)
+- `(dec OBJ :prop [AMT])` - Decrement property (default: 1)
 
 ### GRUE Outcomes
 - `(success :context (...))` - Action succeeds with no state change
