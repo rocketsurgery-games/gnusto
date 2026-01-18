@@ -228,9 +228,13 @@ that the player can always see and interact with when in that room.
 
 ### The Player
 
-The player is an object identified by the `:person` property. Score/moves are player properties.
+The player object must be declared in the world definition with `(world ... :player @name)`.
+The object should have the `:person` property for semantic clarity. Score and moves are
+stored as properties on the player object.
 
 ```scheme
+(world :name "My Game" :player @player)
+
 (object @player
   :location @terminal-room      ; starting room
   :properties (:person true :score 0 :moves 0 :game-phase beginning))
@@ -291,14 +295,14 @@ an action targets the object (or references it via `:with`, etc.).
       ((and (:locked ?self) (= ?with @master-key))
         '((set ?self :locked false) (success)))
 
-      ((has-flag ?self LOCKED)
+      ((:locked ?self)
         (blocked :reason need-key))
 
       (true
         (blocked :reason not-locked)))
 
     :through (cond
-      ((room-has-flag? OUTSIDE)
+      ((:outside (loc (player)))
         (redirect :action (go :direction in)))
 
       (true
@@ -427,7 +431,7 @@ Events are commonly used to alter behavior based on ongoing situations:
                  :context ((blocker @hacker)
                            (message "You'll mung the bits, chomper!"))))
       (true
-        '((clear-flag ?self POWER) (success))))))
+        '((set ?self :power false) (success))))))
 ```
 
 ### Turn-Based Events
@@ -493,34 +497,34 @@ to ZIL's interrupt routines (`I-HACKER-HELPS`, `I-FOOD-HINT`, etc.).
 
 ### Time and Turns
 
-Games track turns via the `moves` global, incremented on successful actions.
+Games track turns via the `:moves` property on the player, incremented on successful actions.
 
 ```scheme
-; In PLAYER properties
-(moves 0)
+(object @player
+  :properties (:person true :score 0 :moves 0))
 ```
 
 For static analysis, we model time as part of state: each turn increments
-`moves` and may trigger countdown-based events.
+the player's `:moves` and may trigger countdown-based events.
 
 ### Win/Lose Conditions
 
 ```scheme
 (victory
-  :when (and (>= (prop @player score) 100)
-             (prop @player defeated-evil))
+  :when (and (>= (:score @player) 100)
+             (:defeated-evil @player))
   :context ((ending good)))
 
 (defeat eaten-by-grue
-  :when (and (not (room-has-flag? LIT))
-             (not (some (fn (?obj) (and (has-flag ?obj LIGHT)
-                                        (has-flag ?obj ON)))
+  :when (and (not (:lit (loc (player))))
+             (not (some (fn (?obj) (and (:light ?obj)
+                                        (:on ?obj)))
                         (inventory))))
   :context ((death-type grue)))
 
 (defeat fell-in-pit
   :when (and (= (loc @player) @dark-pit)
-             (not (has-flag @rope TIED)))
+             (not (:tied @rope)))
   :context ((death-type falling)))
 ```
 
@@ -606,8 +610,8 @@ GRUE has three categories of constructs, each with different evaluation semantic
 | Category | Examples | Evaluation |
 |----------|----------|------------|
 | **Declarative Forms** | `world`, `room`, `object`, `victory`, `defeat`, `default` | Data definitions, not evaluated at runtime |
-| **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `any`, `all` | Custom evaluation rules |
-| **Functions** | `has-flag`, `loc`, `move!`, `set-flag!` | Uniform evaluation (all arguments evaluated) |
+| **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `fn`, `let` | Custom evaluation rules |
+| **Functions** | `loc`, `held?`, `visible?`, `move!`, `set` | Uniform evaluation (all arguments evaluated) |
 
 ### Declarative Forms (Data Definitions)
 
@@ -618,7 +622,7 @@ at parse time to build the `GrueWorld` datastructure and are not evaluated at ru
 Game metadata and player declaration.
 - `:name` - Game title (optional)
 - `:description` - Game description (optional)
-- `:player` - Entity name of the player object (recommended)
+- `:player` - Entity name of the player object (**required**)
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:
@@ -703,7 +707,8 @@ See [Turn-Based Events](#turn-based-events) for detailed documentation.
 (set-in @elevator '(:buttons :go 2) true) ; set nested value (as effect)
 ```
 
-Built-in runtime globals (`score`, `moves`) are still available via `(inc score)` etc.
+`score` and `moves` are stored as properties on the player object. Access them with
+`(:score @player)` and `(:moves @player)`, or use `(inc! score)` as shorthand.
 
 ### Special Forms (Custom Evaluation)
 
@@ -715,7 +720,7 @@ Anonymous function (lambda). Creates a closure that can be called later.
 ```scheme
 (fn (?item)
   (cond
-    ((has-flag ?item TAKEBIT) '((move ?item ?actor) (success)))
+    ((:takeable ?item) '((move ?item ?actor) (success)))
     (true (blocked :reason not-takeable))))
 ```
 
@@ -728,13 +733,13 @@ entity (object/room), defines a scoped function visible only within that entity.
 ```scheme
 ; Global function
 (defn is-lit (obj)
-  (and (has-flag obj LIGHT)
-       (has-flag obj ON)))
+  (and (:light obj)
+       (:on obj)))
 
 ; Entity-scoped function
 (object @door
   (defn check-locked ()
-    (if (has-flag ?self LOCKED)
+    (if (:locked ?self)
       (blocked :reason locked)
       (success)))
 
@@ -781,7 +786,7 @@ Each object can still have unique properties that the shared functions read via 
 #### `(if COND THEN ELSE)`
 Conditional expression. Evaluates COND, then returns THEN if truthy, ELSE otherwise.
 ```scheme
-(if (has-flag @door LOCKED)
+(if (:locked @door)
     (blocked :reason locked)
     (success))
 ```
@@ -791,7 +796,7 @@ Local binding with sequential semantics (like Clojure's `let`, not Scheme's para
 Each binding can reference earlier bindings in the same `let`.
 ```scheme
 (let ((target-room (exit-to ?direction)))
-  (if (room-has-flag? target-room DARK)
+  (if (not (:lit target-room))
       (blocked :reason too-dark)
       (success)))
 
@@ -806,8 +811,8 @@ evaluated in order until one is truthy; its outcome form is then returned.
 
 ```scheme
 (cond
-  ((has-flag ?self LOCKED) (blocked :reason locked))
-  (true '((set-flag ?self OPENBIT) (success))))
+  ((:locked ?self) (blocked :reason locked))
+  (true '((set ?self :open true) (success))))
 ```
 
 #### `(match (EXPRS...) CLAUSE ...)`
@@ -815,10 +820,10 @@ Pattern matching on a tuple of values. Cleaner than nested `cond` when matching
 multiple conditions.
 
 ```scheme
-(match ((has-flag ?self LOCKED) (has-flag ?self OPEN))
+(match ((:locked ?self) (:open ?self))
   ((true _)      (blocked :reason locked))
   ((_ true)      (blocked :reason already-open))
-  ((false false) '((set-flag ?self OPEN) (success))))
+  ((false false) '((set ?self :open true) (success))))
 ```
 
 Pattern elements:
@@ -907,29 +912,29 @@ Arguments evaluated left-to-right, stopping at first true.
 #### `(when COND EFFECT)`
 Conditional effect. Only executes EFFECT if COND is truthy.
 ```scheme
-(when (has-flag ?self FIRSTTIME)
-  (seq (clear-flag! ?self FIRSTTIME)
-       (set! score (+ score 10))))
+(when (:firsttime ?self)
+  (seq (set ?self :firsttime false)
+       (inc! score 10)))
 ```
 
 #### `(seq EFFECT ...)`
 Sequential effect execution. Effects are executed in order.
 ```scheme
 (seq (move! ?self ?actor)
-     (set-flag! ?self MOVEDBIT))
+     (set ?self :moved true))
 ```
 
 #### `(some PRED COLL)`
 Existential quantifier (Clojure-style). Returns first truthy result of `(PRED x)`, or nil.
 ```scheme
-(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
+(some (fn (?x) (:light ?x)) (inventory))
 (some (fn (?x) (> ?x 5)) '(1 3 7 9))  ; => true (from 7)
 ```
 
 #### `(every? PRED COLL)`
 Universal quantifier. Returns true if `(PRED x)` is truthy for all elements.
 ```scheme
-(every? (fn (?x) (has-flag ?x SMALL)) (contents @chest))
+(every? (fn (?x) (:small ?x)) (contents @chest))
 (every? (fn (?x) (> ?x 0)) '(1 2 3))  ; => true
 ```
 
@@ -1127,7 +1132,7 @@ LLM actions like `(do @microwave :set-timer 120)` or `(do @microwave :set-temp h
 
 Bindings are accessed with the `?` prefix:
 ```scheme
-(has-flag ?self LOCKED)      ; is target object locked?
+(:locked ?self)              ; is target object locked?
 (= ?with @master-key)        ; was master-key used as instrument?
 ```
 
@@ -1137,7 +1142,7 @@ The `?` prefix retrieves the binding value. If a binding is not set, it returns 
 
 In `some` and `every?` quantifiers, the lambda parameter is lexically scoped:
 ```scheme
-(some (fn (?x) (has-flag ?x LIGHT)) (inventory))
+(some (fn (?x) (:light ?x)) (inventory))
 ```
 Here `?x` is bound to each inventory item in turn, shadowing any outer `?x`.
 
@@ -1146,8 +1151,8 @@ Here `?x` is bound to each inventory item in turn, shadowing any outer `?x`.
 Functions defined with `defn` use lexical scoping for parameters:
 ```scheme
 (defn is-lit (obj)
-  (and (has-flag obj LIGHT)
-       (has-flag obj ON)))
+  (and (:light obj)
+       (:on obj)))
 ```
 
 ### Naming Conventions
@@ -1214,11 +1219,9 @@ Tests use a sequential style with explicit actions and assertions:
 | `(until PRED BODY...)` | Loop until predicate is true (max 100 iterations) |
 | `(wait)` | Pass time and process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
-| `(set-prop! @obj PROP VAL)` | Set property on object (inline setup) |
-| `(set! VAR VALUE)` | Set global variable *(deprecated)* |
+| `(set @obj :prop VAL)` | Set property on object (inline setup) |
+| `(set-prop! @obj PROP VAL)` | Set property (legacy syntax) |
 | `(move! @obj @loc)` | Move object to location (inline setup) |
-| `(set-flag! @obj FLAG)` | Set flag on object (inline setup) |
-| `(clear-flag! @obj FLAG)` | Clear flag from object (inline setup) |
 | `(queue! EVENT [DELAY])` | Queue an event (inline setup) |
 | `(dequeue! EVENT)` | Remove event from queue (inline setup) |
 
@@ -1238,7 +1241,7 @@ This is useful for full walkthrough tests that need to skip unimplemented mechan
 
   ; SKIP: Complex ritual state - position for escape
   (move! @player @pentagram)
-  (set-flag! @pentagram RMUNGBIT)
+  (set @pentagram :rmung true)
 
   ; ... continue test ...)
 ```
@@ -1332,10 +1335,8 @@ the same initial state.
 | `(held? OBJ)` | Object is in player's inventory |
 | `(loc? OBJ LOCATION)` | Object is at location |
 | `(in? OBJ CONTAINER)` | Object is inside container |
-| `(has-flag? OBJ FLAG)` | Object has flag |
-| `(no-flag? OBJ FLAG)` | Object does not have flag |
 | `(prop? OBJ PROP VALUE)` | Object property has value |
-| `(global? NAME VALUE)` | Global variable has value |
+| `(:prop @obj)` | Check property is truthy |
 | `(queued? EVENT)` | Event is in queue |
 | `(not-queued? EVENT)` | Event is not in queue |
 
@@ -1344,8 +1345,7 @@ works in `(assert ...)` via the evaluator fallback.
 
 ### Test Effects
 
-Setup can use any standard effect: `move!`, `set!`, `set-flag!`, `clear-flag!`,
-`set-prop!`, `queue!`, etc.
+Setup can use any standard effect: `move!`, `set`, `set-prop!`, `queue!`, etc.
 
 ## Open Questions
 
