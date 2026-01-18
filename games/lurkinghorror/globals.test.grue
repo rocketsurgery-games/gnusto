@@ -125,7 +125,7 @@
   (assert (context? message "It's still coming down.")))
 
 (test "examine snow inside"
-  :setup ((move! @player @terminal-room) (clear-flag! @terminal-room OUTSIDE))
+  :setup ((move! @player @terminal-room) (set @terminal-room :outside false))
   (do @snow :examine)
   (assert (outcome? success))
   (assert (context? message "You are inside.")))

@@ -36,28 +36,28 @@
 )
 
 (test-group "enter elevator"
-  :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set-flag! @elevator-door OPENBIT) (set-flag! @elevator-door-1 OPENBIT))
+  :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open true) (set @elevator-door-1 :open true))
 
   (test "can enter elevator through open doors"
     (go :direction south)
     (assert (loc? @player @cs-elevator-room)))
 
   (test "cannot enter through closed doors"
-    :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (clear-flag! @elevator-door OPENBIT) (clear-flag! @elevator-door-1 OPENBIT))
+    :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open false) (set @elevator-door-1 :open false))
     (go :direction south)
     (assert (outcome? blocked))
     (assert (loc? @player @comp-center)))
 )
 
 (test-group "exit elevator"
-  :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set-flag! @elevator-door OPENBIT) (set-flag! @elevator-door-1 OPENBIT))
+  :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open true) (set @elevator-door-1 :open true))
 
   (test "can exit elevator through open doors"
     (go :direction north)
     (assert (loc? @player @comp-center)))
 
   (test "cannot exit through closed doors"
-    :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (clear-flag! @elevator-door OPENBIT))
+    :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open false))
     (go :direction north)
     (assert (outcome? blocked))
     (assert (loc? @player @cs-elevator-room)))
@@ -92,24 +92,24 @@
   :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true))
 
   (test "open button opens doors"
-    :setup ((clear-flag! @elevator-door OPENBIT) (clear-flag! @elevator-door-1 OPENBIT))
+    :setup ((set @elevator-door :open false) (set @elevator-door-1 :open false))
     (do @open-button :push)
-    (assert (has-flag? @elevator-door OPENBIT))
-    (assert (has-flag? @elevator-door-1 OPENBIT)))
+    (assert (:open @elevator-door))
+    (assert (:open @elevator-door-1)))
 
   (test "close button schedules close"
-    :setup ((set-flag! @elevator-door OPENBIT) (set-flag! @elevator-door-1 OPENBIT))
+    :setup ((set @elevator-door :open true) (set @elevator-door-1 :open true))
     (do @close-button :push)
     (assert (queued? elevator-door-closes)))
 
   (test "open button does nothing when moving"
-    :setup ((set-prop! @cs-elevator-room stopped false) (clear-flag! @elevator-door OPENBIT))
+    :setup ((set-prop! @cs-elevator-room stopped false) (set @elevator-door :open false))
     (do @open-button :push)
     (assert (no-flag? @elevator-door OPENBIT)))
 )
 
 (test-group "door auto-close"
-  :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set-flag! @elevator-door OPENBIT) (set-flag! @elevator-door-1 OPENBIT) (queue! elevator-door-closes 0))
+  :setup ((move! @player @comp-center) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open true) (set @elevator-door-1 :open true) (queue! elevator-door-closes 0))
 
   (test "doors close when event fires"
     (wait)
@@ -118,7 +118,7 @@
 )
 
 (test-group "elevator movement"
-  :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (clear-flag! @elevator-door OPENBIT) (clear-flag! @elevator-door-1 OPENBIT) (set-prop! @cs-elevator-room go-buttons '(false false false true)) (queue! elevator-moves 0))
+  :setup ((move! @player @cs-elevator-room) (set-prop! @cs-elevator-room floor 1) (set-prop! @cs-elevator-room stopped true) (set @elevator-door :open false) (set @elevator-door-1 :open false) (set-prop! @cs-elevator-room go-buttons '(false false false true)) (queue! elevator-moves 0))
 
   (test "elevator starts moving on event"
     (wait)

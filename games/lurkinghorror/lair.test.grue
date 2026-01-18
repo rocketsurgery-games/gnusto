@@ -20,7 +20,7 @@
 )
 
 (test-group "slime curtain"
-  :setup ((move! @player @outer-lair) (move! @slime-curtain @outer-lair) (set-flag! @curtain-door INVISIBLE))
+  :setup ((move! @player @outer-lair) (move! @slime-curtain @outer-lair) (set @curtain-door :invisible true))
 
   (test "can examine curtain"
     (do @slime-curtain :examine)
@@ -46,7 +46,7 @@
 )
 
 (test-group "curtain door"
-  :setup ((move! @player @outer-lair) (move! @slime-curtain nil) (clear-flag! @curtain-door INVISIBLE) (set-flag! @curtain-door LOCKED) (clear-flag! @curtain-door OPENBIT))
+  :setup ((move! @player @outer-lair) (move! @slime-curtain nil) (set @curtain-door :invisible false) (set @curtain-door :locked true) (set @curtain-door :open false))
 
   (test "door starts locked"
     (do @curtain-door :open)
@@ -60,13 +60,13 @@
     (assert (not-flag? @curtain-door LOCKED)))
 
   (test "can open unlocked door"
-    :setup ((clear-flag! @curtain-door LOCKED))
+    :setup ((set @curtain-door :locked false))
     (do @curtain-door :open)
     (assert (outcome? success))
-    (assert (has-flag? @curtain-door OPENBIT)))
+    (assert (:open @curtain-door)))
 
   (test "can go through open door to inner-lair"
-    :setup ((clear-flag! @curtain-door LOCKED) (set-flag! @curtain-door OPENBIT))
+    :setup ((set @curtain-door :locked false) (set @curtain-door :open true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @inner-lair)))
@@ -90,7 +90,7 @@
 )
 
 (test-group "repeater puzzle"
-  :setup ((move! @player @inner-lair) (move! @repeater @inner-lair) (move! @input-cable @input-socket) (clear-flag! @repeater OPENBIT))
+  :setup ((move! @player @inner-lair) (move! @repeater @inner-lair) (move! @input-cable @input-socket) (set @repeater :open false))
 
   (test "can examine repeater"
     (do @repeater :examine)
@@ -99,40 +99,40 @@
   (test "can take cover to open"
     (do @repeater-cover :take)
     (assert (outcome? success))
-    (assert (has-flag? @repeater OPENBIT)))
+    (assert (:open @repeater)))
 
   (test "can unplug input cable"
-    :setup ((set-flag! @repeater OPENBIT))
+    :setup ((set @repeater :open true))
     (do @input-cable :unplug)
     (assert (outcome? success))
     (assert (loc? @input-cable @repeater)))
 
   (test "can cut output cable with axe"
-    :setup ((set-flag! @repeater OPENBIT) (move! @axe @player))
+    :setup ((set @repeater :open true) (move! @axe @player))
     (do @output-cable :cut @axe)
     (assert (outcome? success))
-    (assert (has-flag? @output-cable RMUNGBIT)))
+    (assert (:rmung @output-cable)))
 )
 
 (test-group "power line"
-  :setup ((move! @player @inner-lair) (move! @high-voltage @inner-lair) (clear-flag! @high-voltage POWERBIT) (clear-flag! @high-voltage RMUNGBIT))
+  :setup ((move! @player @inner-lair) (move! @high-voltage @inner-lair) (set @high-voltage :powered false) (set @high-voltage :rmung false))
 
   (test "can take power line (pulls it up)"
     (do @high-voltage :take)
     (assert (outcome? success))
-    (assert (has-flag? @high-voltage POWERBIT)))
+    (assert (:powered @high-voltage)))
 
   (test "need axe to cut line"
-    :setup ((set-flag! @high-voltage POWERBIT) (move! @high-voltage @player))
+    :setup ((set @high-voltage :powered true) (move! @high-voltage @player))
     (do @high-voltage :cut @bolt-cutters)
     (assert (outcome? blocked))
     (assert (reason? too-thick)))
 
   (test "axe cuts line after 3 hits"
-    :setup ((set-flag! @high-voltage POWERBIT) (move! @high-voltage @player) (move! @axe @player) (set-prop! @high-voltage cut-count 2))
+    :setup ((set @high-voltage :powered true) (move! @high-voltage @player) (move! @axe @player) (set-prop! @high-voltage cut-count 2))
     (do @high-voltage :cut @axe)
     (assert (outcome? success))
-    (assert (has-flag? @high-voltage RMUNGBIT)))
+    (assert (:rmung @high-voltage)))
 )
 
 (test-group "rubber boots"
@@ -152,7 +152,7 @@
     :setup ((move! @boots @player))
     (do @boots :wear)
     (assert (outcome? success))
-    (assert (has-flag? @boots WEARBIT)))
+    (assert (:wearable @boots)))
 )
 
 (test-group "frob battle"

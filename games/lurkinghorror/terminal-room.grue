@@ -3,7 +3,7 @@
   :ldesc "This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
   empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((south :to @cs-2nd :via @hacker-exit-barrier)
      (out :to @cs-2nd :via @hacker-exit-barrier))
@@ -56,7 +56,7 @@
 (object @hacker-exit-barrier
   :location @terminal-room
   :description "passage"
-  :flags (INVISIBLE)
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond

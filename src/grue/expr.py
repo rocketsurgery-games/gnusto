@@ -2260,12 +2260,11 @@ class ExprEvaluator:
         - Quoted maps/lists with keyword-value pairs: (:foo '(:foo "bar")) => "bar"
         - Dicts: standard key lookup
 
-        If no default is provided and the key is missing, raises an error.
-        With a default, returns the default for missing keys.
+        Returns None for missing keys (like Clojure's keyword lookup), or the default if provided.
 
         Examples:
             (:size @pc) => 30
-            (:missing @pc) => ERROR (no such property)
+            (:missing @pc) => None
             (:missing @pc "default") => "default"
             (:foo '(:foo "bar" :baz "qux")) => "bar"
         """
@@ -2281,9 +2280,7 @@ class ExprEvaluator:
         if isinstance(target, dict):
             if key_name in target:
                 return target[key_name]
-            if has_default:
-                return default
-            raise EvalError(f"Key ':{key_name}' not found in dict")
+            return default
 
         # Handle list (quoted keyword-value list like '(:foo "bar" :baz "qux"))
         if isinstance(target, (list, tuple)):
@@ -2291,17 +2288,13 @@ class ExprEvaluator:
             for i in range(0, len(items) - 1, 2):
                 if isinstance(items[i], Keyword) and items[i].name == key_name:
                     return items[i + 1]
-            if has_default:
-                return default
-            raise EvalError(f"Key ':{key_name}' not found in list")
+            return default
 
         # Handle object name (string) - look up property via state
         if isinstance(target, str):
             if self.state.has_object_property(target, key_name):
                 return self.state.get_object_property(target, key_name)
-            if has_default:
-                return default
-            raise EvalError(f"Property ':{key_name}' not found on object '{target}'")
+            return default
 
         if has_default:
             return default

@@ -33,7 +33,7 @@ from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 class ObjectState:
     """Runtime state for an object.
 
-    Flags are stored as boolean properties (e.g., OPENBIT -> properties["OPENBIT"] = True).
+    Flags are stored as boolean properties with natural names (e.g., :open, :takeable).
     This unifies the data model - everything is a property.
     """
     name: str
@@ -359,11 +359,11 @@ class GrueRuntime:
         player_loc = self.get_player_location()
         if not player_loc or player_loc in self.state.rooms:
             return None
-        # Check if player's location has VEHBIT
+        # Check if player's location is a vehicle
         obj_state = self.state.objects.get(player_loc)
-        if obj_state and obj_state.properties.get("VEHBIT"):
-            # SURFACEBIT means "on", otherwise "in"
-            prep = "on" if obj_state.properties.get("SURFACEBIT") else "in"
+        if obj_state and obj_state.properties.get("vehicle"):
+            # Surface means "on", otherwise "in"
+            prep = "on" if obj_state.properties.get("surface") else "in"
             return (player_loc, prep)
         return None
 
@@ -377,7 +377,7 @@ class GrueRuntime:
             name for name, obj in self.state.objects.items()
             if obj.location == self.player_name
             and name != self.player_name
-            and not obj.properties.get("INVISIBLE")
+            and not obj.properties.get("invisible")
         ]
 
     def is_visible(self, obj: str) -> bool:
@@ -404,8 +404,8 @@ class GrueRuntime:
         if room_def and obj in room_def.globals:
             return True
 
-        # Check INVISIBLE flag (only for non-global objects)
-        if obj_state.properties.get("INVISIBLE"):
+        # Check invisible property (only for non-global objects)
+        if obj_state.properties.get("invisible"):
             return False
 
         if loc is None:
@@ -428,14 +428,14 @@ class GrueRuntime:
         # Check if in a container/on a surface
         if loc in self.state.objects:
             container = self.state.objects[loc]
-            # Surface objects (SURFACEBIT) make contents always visible
-            if container.properties.get("SURFACEBIT") and self.is_visible(loc):
+            # Surface objects make contents always visible
+            if container.properties.get("surface") and self.is_visible(loc):
                 return True
-            # Transparent containers (TRANSBIT) make contents visible even when closed
-            if container.properties.get("TRANSBIT") and self.is_visible(loc):
+            # Transparent containers make contents visible even when closed
+            if container.properties.get("transparent") and self.is_visible(loc):
                 return True
-            # Container objects require OPENBIT to see contents
-            if container.properties.get("OPENBIT") and self.is_visible(loc):
+            # Container objects require open to see contents
+            if container.properties.get("open") and self.is_visible(loc):
                 return True
         return False
 
@@ -660,7 +660,7 @@ class GrueRuntime:
                 continue
             if for_description:
                 obj_state = self.state.objects[name]
-                if obj_state.properties.get("NDESCBIT"):
+                if obj_state.properties.get("nodesc"):
                     continue
             result.append(name)
         return result

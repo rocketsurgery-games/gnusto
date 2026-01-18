@@ -11,7 +11,7 @@
 ; Default take behavior - requires TAKEBIT flag, object must be accessible
 
 (default take (cond
-  ((not (has-flag ?self TAKEBIT))
+  ((not (:takeable ?self))
     (blocked :reason not-takeable :message "That's not something you can take."))
 
   ((held-by? ?self ?actor)
@@ -37,27 +37,27 @@
 ; Default open behavior for OPENABLE objects
 
 (default open (cond
-  ((not (has-flag ?self OPENABLE))
+  ((not (:openable ?self))
     (blocked :reason not-openable :message "That's not something you can open."))
 
-  ((has-flag ?self OPENBIT)
+  ((:open ?self)
     (blocked :reason already-open :message "It's already open."))
 
   (true
-    '((set-flag ?self OPENBIT) (success :message "Opened.")))))
+    '((set ?self :open true) (success :message "Opened.")))))
 
 ; === close ===
 ; Default close behavior for OPENABLE objects
 
 (default close (cond
-  ((not (has-flag ?self OPENABLE))
+  ((not (:openable ?self))
     (blocked :reason not-closeable :message "That's not something you can close."))
 
-  ((not (has-flag ?self OPENBIT))
+  ((not (:open ?self))
     (blocked :reason already-closed :message "It's already closed."))
 
   (true
-    '((clear-flag ?self OPENBIT) (success :message "Closed.")))))
+    '((set ?self :open false) (success :message "Closed.")))))
 
 ; === put ===
 ; Default put behavior - put ?self into ?value (the container)
@@ -67,11 +67,11 @@
   ((not (held-by? ?self ?actor))
     (blocked :reason not-held :message "You're not carrying that."))
 
-  ((not (has-flag ?value CONTBIT))
+  ((not (:container ?value))
     (blocked :reason not-container :message "That's not a container."))
 
   ; Container must be open (has OPENBIT) or not be openable at all
-  ((and (has-flag ?value OPENABLE) (not (has-flag ?value OPENBIT)))
+  ((and (:openable ?value) (not (:open ?value)))
     (blocked :reason closed :message "It's closed."))
 
   (true

@@ -4,8 +4,7 @@
 ; [NEEDS-TRANSLATION] ACCESS-HATCH
 (object @access-hatch
   :description "hatch"
-  :flags (DOORBIT OPENABLE NDESCBIT LOCKED SEARCHBIT SURFACEBIT CONTBIT)
-
+  :properties (:door true :openable true :nodesc true :locked true :searchable true :surface true :container true)
   ; --- ZIL Source ---
   ; <ROUTINE ACCESS-HATCH-F ()
   ;   <COND
@@ -62,8 +61,7 @@
 (object @access-panel
   :description "access panel"
   :location @cs-elevator-room
-  :flags (NDESCBIT AN CONTBIT SEARCHBIT OPENABLE)
-  :properties (:capacity 20)
+  :properties (:nodesc true :an true :container true :searchable true :openable true :capacity 20)
 
   ; --- ZIL Source ---
   ; <ROUTINE ACCESS-PANEL-F ()
@@ -88,15 +86,14 @@
 
 (object @air
   :description "air"
-  :flags (AN NOABIT)
+  :properties (:an true :noabit true)
 )
 
 ; [NEEDS-TRANSLATION] ALARM-BUTTON
 (object @alarm-button
   :description "alarm button"
   :location @cs-elevator-room
-  :flags (NDESCBIT AN)
-
+  :properties (:nodesc true :an true)
   ; --- ZIL Source ---
   ; <ROUTINE ALARM-BUTTON-F ()
   ;   <COND
@@ -115,8 +112,7 @@
 ; [NEEDS-TRANSLATION] ALCHEMY-DOOR
 (object @alchemy-door
   :description "Alchemy Department door"
-  :flags (DOORBIT OPENABLE NDESCBIT READBIT LOCKED)
-
+  :properties (:door true :openable true :nodesc true :readable true :locked true)
   ; --- ZIL Source ---
   ; <ROUTINE ALCHEMY-DOOR-F ()
   ;   <COND
@@ -172,8 +168,7 @@
 ; [NEEDS-TRANSLATION] ALCHEMY-TRAP-DOOR
 (object @alchemy-trap-door
   :description "metal plate"
-  :flags (DOORBIT NDESCBIT OPENABLE)
-
+  :properties (:door true :nodesc true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE ALCHEMY-TRAP-DOOR-F ()
   ;   <COND
@@ -216,8 +211,7 @@
 ; [NEEDS-TRANSLATION] ALCHEMY-WINDOW
 (object @alchemy-window
   :description "frosted glass window"
-  :flags (NDESCBIT READBIT TRANSBIT)
-
+  :properties (:nodesc true :readable true :transparent true)
   ; --- ZIL Source ---
   ; <ROUTINE ALCHEMY-WINDOW-F ()
   ;   <COND
@@ -251,8 +245,7 @@
 ; [NEEDS-TRANSLATION] ARCHWAY
 (object @archway
   :description "archway"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE ARCHWAY-F ()
   ;   <COND
@@ -281,8 +274,7 @@
 (object @assignment
   :description "assignment"
   :location @player
-  :flags (AN READBIT TAKEBIT)
-  :properties (:size 1)
+  :properties (:an true :readable true :takeable true :size 1)
 
   ; --- ZIL Source ---
   ; <ROUTINE ASSIGNMENT-F ()
@@ -308,16 +300,14 @@
 (object @axe
   :description "fire axe"
   :location @emergency-cabinet
-  :flags (TRYTAKEBIT TAKEBIT WEAPONBIT)
-  :properties (:size 10)
+  :properties (:trytake true :takeable true :weapon true :size 10)
 )
 
 ; [NEEDS-TRANSLATION] BASEMENT-BUTTON
 (object @basement-button
   :description "B button"
   :location @cs-elevator-room
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-BUTTON-F ("AUX" OLD)
   ;   <COND
@@ -357,8 +347,7 @@
 (object @bolt-cutter
   :description "bolt cutter"
   :location @urchin
-  :flags (INVISIBLE TAKEBIT TOOLBIT WEAPONBIT)
-  :properties (:size 10 :value 5)
+  :properties (:invisible true :takeable true :tool true :weapon true :size 10 :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE BOLT-CUTTER-F ()
@@ -382,8 +371,7 @@
 (object @boots
   :description "pair of rubber boots"
   :location @brown-basement
-  :flags (TAKEBIT)
-
+  :properties (:takeable true)
   ; --- ZIL Source ---
   ; <ROUTINE BOOTS-F ()
   ;   <COND
@@ -402,8 +390,7 @@
 ; [NEEDS-TRANSLATION] BRICK-HOLE
 (object @brick-hole
   :description "hole"
-  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT)
-
+  :properties (:nodesc true :open true :container true :searchable true)
   ; --- ZIL Source ---
   ; <ROUTINE BRICK-HOLE-F ()
   ;   <COND
@@ -447,8 +434,7 @@
 (object @brick-wall
   :description "brick wall"
   :location @steam-tunnel-east
-  :flags (SEARCHBIT OPENBIT CONTBIT)
-  :properties (:contfcn "BRICK-WALL-CONT" :descfcn "BRICK-WALL-DESC")
+  :properties (:searchable true :open true :container true :contfcn "BRICK-WALL-CONT" :descfcn "BRICK-WALL-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE BRICK-WALL-F ()
@@ -560,8 +546,7 @@
 ; [NEEDS-TRANSLATION] BROKEN-BRICK
 (object @broken-brick
   :description "broken brick"
-  :flags (NDESCBIT TAKEBIT WEAPONBIT)
-
+  :properties (:nodesc true :takeable true :weapon true)
   ; --- ZIL Source ---
   ; <ROUTINE BROKEN-BRICK-F ()
   ;   <COND
@@ -586,8 +571,7 @@
   :description "bronze plug"
   :fdesc "In the exact center of the flat area is a bronze plug."
   :location @on-dome
-  :flags (TAKEBIT TRYTAKEBIT WEAPONBIT)
-
+  :properties (:takeable true :trytake true :weapon true)
   ; --- ZIL Source ---
   ; <ROUTINE BRONZE-PLUG-F ()
   ;   <COND
@@ -622,8 +606,7 @@
 (object @brown-elevator
   :description "elevator doors"
   :location @brown-building
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE BROWN-ELEVATOR-F ()
   ;   <COND (<VERB? OPEN PRY WEDGE> <TELL "It's broken." CR>)>
@@ -638,8 +621,7 @@
 ; [NEEDS-TRANSLATION] CABLE
 (object @cable
   :description "coaxial cable"
-  :flags (NDESCBIT VEHBIT)
-
+  :properties (:nodesc true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE CABLE-F ("OPT" RARG)
   ;   <COND
@@ -687,8 +669,7 @@
 (object @carton
   :description "cardboard carton"
   :location @refrigerator
-  :flags (READBIT TRYTAKEBIT TAKEBIT SEARCHBIT FOODBIT CONTBIT OPENABLE)
-  :properties (:capacity 10)
+  :properties (:readable true :trytake true :takeable true :searchable true :food true :container true :openable true :capacity 10)
 
   ; --- ZIL Source ---
   ; <ROUTINE CARTON-F ()
@@ -729,8 +710,7 @@
 (object @carving-symbol
   :description "incised symbol"
   :location @slab
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE CARVING-SYMBOL-F ()
   ;   <COND
@@ -749,8 +729,7 @@
 ; [NEEDS-TRANSLATION] CARVINGS
 (object @carvings
   :description "carvings"
-  :flags (NDESCBIT READBIT SEARCHBIT OPENBIT CONTBIT)
-
+  :properties (:nodesc true :readable true :searchable true :open true :container true)
   ; --- ZIL Source ---
   ; <ROUTINE CARVINGS-F ()
   ;   <COND
@@ -777,14 +756,13 @@
 (object @catwalk
   :description "catwalk"
   :location @top-of-dome
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
 )
 
 ; [NEEDS-TRANSLATION] CEILING
 (object @ceiling
   :description "ceiling"
-  :flags (NDESCBIT TOUCHBIT)
-
+  :properties (:nodesc true :touched true)
   ; --- ZIL Source ---
   ; <ROUTINE CEILING-F ()
   ;   <COND
@@ -801,8 +779,7 @@
 (object @chain
   :description "greasy chain"
   :location @elevator-pit
-  :flags (TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
-  :properties (:size 20 :descfcn "CHAIN-DESC")
+  :properties (:takeable true :surface true :container true :searchable true :size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -925,8 +902,7 @@
 ; [NEEDS-TRANSLATION] CHAIN-1
 (object @chain-1
   :description "greasy chain"
-  :flags (NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT)
-  :properties (:size 20 :descfcn "CHAIN-DESC")
+  :properties (:nodesc true :takeable true :surface true :container true :searchable true :size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -1049,8 +1025,7 @@
 ; [NEEDS-TRANSLATION] CHAIN-2
 (object @chain-2
   :description "greasy chain"
-  :flags (INVISIBLE NDESCBIT TAKEBIT SURFACEBIT CONTBIT SEARCHBIT OPENBIT)
-  :properties (:size 20 :descfcn "CHAIN-DESC")
+  :properties (:invisible true :nodesc true :takeable true :surface true :container true :searchable true :open true :size 20 :descfcn "CHAIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIN-F ()
@@ -1175,8 +1150,7 @@
   :description "chair"
   :fdesc "Nearby is one of those ugly molded plastic chairs."
   :location @terminal-room
-  :flags (TAKEBIT VEHBIT SEARCHBIT CONTBIT OPENBIT FURNITURE SURFACEBIT)
-  :properties (:size 100)
+  :properties (:takeable true :vehicle true :searchable true :container true :open true :furniture true :surface true :size 100)
 
   ; --- ZIL Source ---
   ; <ROUTINE CHAIR-F ("OPT" RARG)
@@ -1209,8 +1183,7 @@
 (object @chinese-food
   :description "Chinese food"
   :location @carton
-  :flags (NOABIT TAKEBIT TRYTAKEBIT FOODBIT)
-  :properties (:heat 0)
+  :properties (:noabit true :takeable true :trytake true :food true :heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE CHINESE-FOOD-F ()
@@ -1247,8 +1220,7 @@
 (object @close-button
   :description "close button"
   :location @cs-elevator-room
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE CLOSE-BUTTON-F ()
   ;   <COND
@@ -1269,8 +1241,7 @@
 (object @coke
   :description "two liter bottle of Classic Coke"
   :location @refrigerator
-  :flags (TAKEBIT FOODBIT OPENABLE)
-  :properties (:size 5 :heat 0)
+  :properties (:takeable true :food true :openable true :size 5 :heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE COKE-F ("AUX" SIZ TIRE)
@@ -1343,8 +1314,7 @@
 (object @controls
   :description "microwave controls"
   :location @kitchen
-  :flags (NDESCBIT NOABIT)
-
+  :properties (:nodesc true :noabit true)
   ; --- ZIL Source ---
   ; <ROUTINE CONTROLS-F ("AUX" ADJ N)
   ;   <COND
@@ -1446,16 +1416,14 @@
 (object @crowbar
   :description "crowbar"
   :location @temporary-basement
-  :flags (TAKEBIT WEAPONBIT)
-  :properties (:size 10)
+  :properties (:takeable true :weapon true :size 10)
 )
 
 ; [NEEDS-TRANSLATION] CURTAIN
 (object @curtain
   :description "slime curtain"
   :location @outer-lair
-  :flags (NDESCBIT)
-  :properties (:value 5)
+  :properties (:nodesc true :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE CURTAIN-F ("AUX" W)
@@ -1517,8 +1485,7 @@
 ; [NEEDS-TRANSLATION] CURTAIN-DOOR
 (object @curtain-door
   :description "ancient door"
-  :flags (AN INVISIBLE NDESCBIT DOORBIT LOCKED OPENABLE)
-
+  :properties (:an true :invisible true :nodesc true :door true :locked true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE CURTAIN-DOOR-F ()
   ;   <COND
@@ -1546,14 +1513,13 @@
 
 (object @dirt
   :description "dirt"
-  :flags (NOABIT)
+  :properties (:noabit true)
 )
 
 ; [NEEDS-TRANSLATION] DOME
 (object @dome
   :description "dome"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE DOME-F ()
   ;   <COND
@@ -1577,8 +1543,7 @@
 ; [NEEDS-TRANSLATION] DOME-DOOR
 (object @dome-door
   :description "door"
-  :flags (NDESCBIT DOORBIT OPENABLE)
-
+  :properties (:nodesc true :door true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE DOME-DOOR-F ()
   ;   <COND
@@ -1608,8 +1573,7 @@
 (object @dome-ladder
   :description "wooden ladder"
   :location @top-of-dome
-  :flags (TAKEBIT)
-  :properties (:size 120 :descfcn "DOME-LADDER-DESC")
+  :properties (:takeable true :size 120 :descfcn "DOME-LADDER-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE DOME-LADDER-F ()
@@ -1680,8 +1644,7 @@
 ; [NEEDS-TRANSLATION] DOWN-BUTTON
 (object @down-button
   :description "down-arrow"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE DOWN-BUTTON-F ()
   ;   <UP-BUTTON-F ,E-DOWN>
@@ -1696,8 +1659,7 @@
 ; [NEEDS-TRANSLATION] EAST-WALL
 (object @east-wall
   :description "east wall"
-  :flags (AN)
-
+  :properties (:an true)
   ; --- ZIL Source ---
   ; <ROUTINE WALL-F ()
   ;   <COND
@@ -1714,8 +1676,7 @@
 ; [NEEDS-TRANSLATION] ELEVATOR
 (object @elevator
   :description "elevator"
-  :flags (AN VEHBIT)
-
+  :properties (:an true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-F ("AUX" DOOR)
   ;   <COND
@@ -1753,15 +1714,14 @@
 (object @elevator-ceiling
   :description "tangle of machinery"
   :location @shaft-2
-  :flags (NDESCBIT OPENBIT SEARCHBIT CONTBIT SURFACEBIT)
+  :properties (:nodesc true :open true :searchable true :container true :surface true)
 )
 
 ; [NEEDS-TRANSLATION] ELEVATOR-DOOR
 (object @elevator-door
   :description "elevator doors"
   :location @cs-elevator-room
-  :flags (NDESCBIT AN DOORBIT OPENABLE)
-
+  :properties (:nodesc true :an true :door true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOOR-F ()
   ;   <COND
@@ -1785,8 +1745,7 @@
 (object @elevator-door-1
   :description "elevator doors"
   :location @comp-center
-  :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -1884,8 +1843,7 @@
 (object @elevator-door-2
   :description "elevator doors"
   :location @cs-2nd
-  :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -1983,8 +1941,7 @@
 (object @elevator-door-3
   :description "elevator doors"
   :location @cs-3rd
-  :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2082,8 +2039,7 @@
 (object @elevator-door-b
   :description "elevator doors"
   :location @cs-basement
-  :flags (SEARCHBIT AN CONTBIT DOORBIT OPENABLE)
-  :properties (:contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2181,8 +2137,7 @@
 (object @elevator-floor
   :description "tangle of machinery"
   :location @shaft-b
-  :flags (NDESCBIT OPENBIT SEARCHBIT CONTBIT)
-
+  :properties (:nodesc true :open true :searchable true :container true)
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-FLOOR-F ()
   ;   <COND
@@ -2207,8 +2162,7 @@
 (object @elixir
   :description "tarry liquid"
   :location @vat
-  :flags (TAKEBIT TRYTAKEBIT)
-
+  :properties (:takeable true :trytake true)
   ; --- ZIL Source ---
   ; <ROUTINE ELIXIR-F ()
   ;   <COND
@@ -2246,8 +2200,7 @@
 (object @emergency-cabinet
   :description "emergency cabinet"
   :location @inf-4
-  :flags (CONTBIT TRANSBIT READBIT AN SEARCHBIT OPENABLE)
-  :properties (:capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
+  :properties (:container true :transparent true :readable true :an true :searchable true :openable true :capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE EMERGENCY-CABINET-F ()
@@ -2292,8 +2245,7 @@
 ; [NEEDS-TRANSLATION] EYES
 (object @eyes
   :description "your eyes"
-  :flags (NOABIT NOTHEBIT)
-
+  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE EYES-F ()
   ;   <COND
@@ -2310,15 +2262,14 @@
 
 (object @feet
   :description "your feet"
-  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
 )
 
 ; [NEEDS-TRANSLATION] FLASHLIGHT
 (object @flashlight
   :description "flashlight"
   :location @access-panel
-  :flags (TAKEBIT LIGHTBIT)
-
+  :properties (:takeable true :lit true)
   ; --- ZIL Source ---
   ; <ROUTINE FLASHLIGHT-F ("AUX" OLIT)
   ;   <COND
@@ -2352,8 +2303,7 @@
 (object @flask
   :description "metal flask"
   :location @temporary-lab
-  :flags (TAKEBIT CONTBIT SEARCHBIT OPENABLE)
-  :properties (:size 50 :capacity 9 :contfcn "FLASK-CONT")
+  :properties (:takeable true :container true :searchable true :openable true :size 50 :capacity 9 :contfcn "FLASK-CONT")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLASK-F ()
@@ -2440,8 +2390,7 @@
 ; [NEEDS-TRANSLATION] FLIER-SHAPE
 (object @flier-shape
   :description "dark shape"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE FLIER-SHAPE-F ()
   ;   <COND
@@ -2462,8 +2411,7 @@
 (object @floor-button
   :description "floor button"
   :location @cs-elevator-room
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-BUTTON-F ("AUX" OLD)
   ;   <COND
@@ -2503,8 +2451,7 @@
 (object @floor-wax
   :description "floor wax"
   :location @plastic-container
-  :flags (NOABIT TRYTAKEBIT TAKEBIT TOUCHBIT)
-  :properties (:descfcn "FLOOR-WAX-DESC")
+  :properties (:noabit true :trytake true :takeable true :touched true :descfcn "FLOOR-WAX-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-WAX-F ()
@@ -2573,8 +2520,7 @@
 (object @floor-waxer
   :description "floor waxer"
   :location @inf-2
-  :flags (VEHBIT SURFACEBIT POWERBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:descfcn "FLOOR-WAXER-DESC" :contfcn "FLOOR-WAXER-F")
+  :properties (:vehicle true :surface true :powered true :open true :container true :searchable true :descfcn "FLOOR-WAXER-DESC" :contfcn "FLOOR-WAXER-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-WAXER-F ("OPT" RARG)
@@ -2645,8 +2591,7 @@
 (object @forklift
   :description "forklift"
   :location @aero-basement
-  :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-
+  :properties (:vehicle true :surface true :open true :container true :searchable true)
   ; --- ZIL Source ---
   ; <ROUTINE FORKLIFT-F ("AUX" O "OPT" RARG)
   ;   <COND
@@ -2758,8 +2703,7 @@
 ; [NEEDS-TRANSLATION] FROB
 (object @frob
   :description "thing"
-  :flags (NDESCBIT PERSON)
-
+  :properties (:nodesc true :person true)
   ; --- ZIL Source ---
   ; <ROUTINE FROB-F ()
   ;   <COND
@@ -2804,8 +2748,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-FLOOR-WAXER
 (object @global-floor-waxer
   :description "floor waxer"
-  :flags (NDESCBIT VEHBIT SURFACEBIT ONBIT OPENBIT CONTBIT SEARCHBIT)
-
+  :properties (:nodesc true :vehicle true :surface true :on true :open true :container true :searchable true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-FLOOR-WAXER-F ()
   ;   <COND
@@ -2836,8 +2779,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-HOLE
 (object @global-hole
   :description "hole"
-  :flags (NDESCBIT TOUCHBIT)
-
+  :properties (:nodesc true :touched true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-HOLE-F ()
   ;   <COND
@@ -2854,8 +2796,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-MAINTENANCE-MAN
 (object @global-maintenance-man
   :description "maintenance man"
-  :flags (PERSON)
-
+  :properties (:person true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-MAINTENANCE-MAN-F ()
   ;   <COND
@@ -2876,7 +2817,7 @@
 )
 
 (object @global-objects
-  :flags (AN CONTBIT DOORBIT INVISIBLE LOCKED NDESCBIT NOABIT NOTHEBIT ONBIT OUTSIDE OPENBIT PERSON POWERBIT READBIT RLANDBIT RMUNGBIT SEARCHBIT SLIMEBIT SURFACEBIT TAKEBIT THE TOOLBIT TOUCHBIT TRANSBIT TRYTAKEBIT VEHBIT WEAPONBIT WEARBIT)
+  :properties (:an true :container true :door true :invisible true :locked true :nodesc true :noabit true :nothebit true :on true :outside true :open true :person true :powered true :readable true :rland true :rmung true :searchable true :slime true :surface true :takeable true :the true :tool true :touched true :transparent true :trytake true :vehicle true :weapon true :wearable true)
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-ROOM
@@ -2906,8 +2847,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-SLEEP
 (object @global-sleep
   :description "sleep"
-  :flags (NOABIT NOTHEBIT)
-
+  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-SLEEP-F ()
   ;   <COND
@@ -2924,8 +2864,7 @@
 ; [NEEDS-TRANSLATION] GLOBAL-URCHINS
 (object @global-urchins
   :description "missing urchins"
-  :flags (NDESCBIT PERSON)
-
+  :properties (:nodesc true :person true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-URCHINS-F ("OPT" OBJ)
   ;   <COND (<NOT .OBJ> <SET OBJ ,GLOBAL-URCHINS>)>
@@ -2958,8 +2897,7 @@
 (object @gloves
   :description "pair of electrician's gloves"
   :location @temporary-basement
-  :flags (TAKEBIT)
-
+  :properties (:takeable true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOVES-F ()
   ;   <COND
@@ -3032,8 +2970,7 @@
 (object @hacker
   :description "hacker"
   :location @terminal-room
-  :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
-  :properties (:descfcn "HACKER-DESC" :contfcn "HACKER-F")
+  :properties (:searchable true :person true :open true :container true :descfcn "HACKER-DESC" :contfcn "HACKER-F")
 
   :behaviors (
     ; TODO: This is auto-converted output. See terminal-room.grue for
@@ -3044,8 +2981,7 @@
 ; [NEEDS-TRANSLATION] HAND
 (object @hand
   :description "human hand"
-  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
-  :properties (:value 5 :heat 0 :contfcn "HAND-F")
+  :properties (:takeable true :searchable true :open true :container true :value 5 :heat 0 :contfcn "HAND-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE HAND-F ("OPT" RARG)
@@ -3118,20 +3054,19 @@
 
 (object @hands
   :description "your hand"
-  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
 )
 
 (object @head
   :description "your head"
-  :flags (NOABIT NOTHEBIT)
+  :properties (:noabit true :nothebit true)
 )
 
 ; [NEEDS-TRANSLATION] HELP-KEY
 (object @help-key
   :description "HELP key"
   :location @pc
-  :flags (NDESCBIT READBIT)
-  :properties (:text "It says \"HELP\" in reassuring blue letters.")
+  :properties (:nodesc true :readable true :text "It says \"HELP\" in reassuring blue letters.")
 
   ; --- ZIL Source ---
   ; <ROUTINE HELP-KEY-F ()
@@ -3168,8 +3103,7 @@
 ; [NEEDS-TRANSLATION] HIGH-VOLTAGE
 (object @high-voltage
   :description "power line"
-  :flags (TAKEBIT WEAPONBIT)
-
+  :properties (:takeable true :weapon true)
   ; --- ZIL Source ---
   ; <ROUTINE HIGH-VOLTAGE-F ()
   ;   <COND
@@ -3295,15 +3229,14 @@
 
 (object @him
   :description "him"
-  :flags (NOABIT NOTHEBIT NDESCBIT TOUCHBIT)
+  :properties (:noabit true :nothebit true :nodesc true :touched true)
 )
 
 ; [NEEDS-TRANSLATION] HOOK
 (object @hook
   :description "hook"
   :location @elevator-floor
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE HOOK-F ()
   ;   <COND
@@ -3326,8 +3259,7 @@
 (object @input-cable
   :description "coaxial cable"
   :location @input-socket
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE INPUT-CABLE-F ()
   ;   <COND
@@ -3375,8 +3307,7 @@
 (object @input-socket
   :description "socket"
   :location @repeater
-  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT)
-
+  :properties (:nodesc true :open true :container true :searchable true)
   ; --- ZIL Source ---
   ; <ROUTINE INPUT-SOCKET-F ()
   ;   <COND
@@ -3396,7 +3327,7 @@
 )
 
 (object @intname
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
 )
 
 ; [NEEDS-TRANSLATION] INTNUM
@@ -3422,8 +3353,7 @@
 (object @iron-plate
   :description "iron plate"
   :location @cave-altar
-  :flags (AN NDESCBIT CONTBIT TRANSBIT OPENABLE)
-
+  :properties (:an true :nodesc true :container true :transparent true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE IRON-PLATE-F ()
   ;   <COND
@@ -3482,14 +3412,13 @@
 
 (object @it
   :description "it"
-  :flags (AN NOABIT NOTHEBIT NDESCBIT TOUCHBIT)
+  :properties (:an true :noabit true :nothebit true :nodesc true :touched true)
 )
 
 ; [NEEDS-TRANSLATION] JUNK
 (object @junk
   :description "junk"
-  :flags (NDESCBIT NOABIT)
-
+  :properties (:nodesc true :noabit true)
   ; --- ZIL Source ---
   ; <ROUTINE JUNK-F ()
   ;   <COND
@@ -3516,33 +3445,32 @@
 (object @key-1
   :description "red aluminum Yale key"
   :location @keyring
-  :flags (TAKEBIT)
+  :properties (:takeable true)
 )
 
 (object @key-2
   :description "green aluminum Yale key"
   :location @keyring
-  :flags (TAKEBIT)
+  :properties (:takeable true)
 )
 
 (object @key-3
   :description "green brass Yale key"
   :location @keyring
-  :flags (TAKEBIT)
+  :properties (:takeable true)
 )
 
 (object @key-4
   :description "green aluminum Medeco key"
   :location @keyring
-  :flags (TAKEBIT)
+  :properties (:takeable true)
 )
 
 ; [NEEDS-TRANSLATION] KEYRING
 (object @keyring
   :description "keyring"
   :location @hacker
-  :flags (NDESCBIT TAKEBIT CONTBIT SURFACEBIT OPENBIT)
-  :properties (:contfcn "HACKER-F")
+  :properties (:nodesc true :takeable true :container true :surface true :open true :contfcn "HACKER-F")
 
   ; --- ZIL Source ---
   ; <ROUTINE KEYRING-F ()
@@ -3565,8 +3493,7 @@
 (object @kitchen-counter
   :description "kitchen counter"
   :location @kitchen
-  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :open true :container true :searchable true :surface true :capacity 200)
 )
 
 ; [NEEDS-TRANSLATION] KNIFE
@@ -3575,8 +3502,7 @@
   :fdesc "Lying to one side of the altar stone is a sharp, thin-bladed
 knife."
   :location @cave-altar
-  :flags (TAKEBIT WEAPONBIT TOOLBIT)
-
+  :properties (:takeable true :weapon true :tool true)
   ; --- ZIL Source ---
   ; <ROUTINE KNIFE-F ()
   ;   <COND
@@ -3631,8 +3557,7 @@ knife."
 (object @lab-bench
   :description "lab bench"
   :location @alchemy-lab
-  :flags (SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:capacity 200)
+  :properties (:surface true :open true :container true :searchable true :capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE LAB-BENCH-F ()
@@ -3664,8 +3589,7 @@ knife."
 ; [NEEDS-TRANSLATION] LADDER
 (object @ladder
   :description "ladder"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE LADDER-F ()
   ;   <COND
@@ -3715,8 +3639,7 @@ knife."
 (object @lovecraft
   :description "Alchemy Department computer"
   :location @alchemy-lab
-  :flags (READBIT AN)
-  :properties (:text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
+  :properties (:readable true :an true :text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE LOVECRAFT-F ()
@@ -3754,8 +3677,7 @@ knife."
 ; [NEEDS-TRANSLATION] LURKER
 (object @lurker
   :description "thing"
-  :flags (NDESCBIT PERSON)
-
+  :properties (:nodesc true :person true)
   ; --- ZIL Source ---
   ; <ROUTINE LURKER-F ()
   ;   <COND
@@ -3786,8 +3708,7 @@ knife."
 (object @maintenance-man
   :description "maintenance man"
   :location @floor-waxer
-  :flags (PERSON)
-
+  :properties (:person true)
   ; --- ZIL Source ---
   ; <ROUTINE MAINTENANCE-MAN-F ("AUX" W)
   ;   <COND
@@ -3860,8 +3781,7 @@ knife."
 (object @manhole
   :description "manhole"
   :location @storage-room
-  :flags (OPENBIT CONTBIT SEARCHBIT RMUNGBIT DOORBIT)
-  :properties (:capacity 200 :descfcn "MANHOLE-DESC")
+  :properties (:open true :container true :searchable true :rmung true :door true :capacity 200 :descfcn "MANHOLE-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE MANHOLE-F ()
@@ -3918,8 +3838,7 @@ knife."
   :fdesc "In one corner of the room a manhole cover is partly buried in the dirt and
 crud."
   :location @manhole
-  :flags (TAKEBIT TRYTAKEBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties (:size 200)
+  :properties (:takeable true :trytake true :surface true :container true :open true :searchable true :size 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE MANHOLE-COVER-F ()
@@ -3977,8 +3896,7 @@ crud."
 (object @mass
   :description "whitish mass"
   :location @inner-lair
-  :flags (NDESCBIT PERSON)
-
+  :properties (:nodesc true :person true)
   ; --- ZIL Source ---
   ; <ROUTINE MASS-F ()
   ;   <COND
@@ -4033,8 +3951,7 @@ crud."
 ; [NEEDS-TRANSLATION] MASTER-KEY
 (object @master-key
   :description "master key"
-  :flags (TAKEBIT TRYTAKEBIT)
-  :properties (:value 5)
+  :properties (:takeable true :trytake true :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE MASTER-KEY-F ()
@@ -4060,8 +3977,7 @@ crud."
 ; [NEEDS-TRANSLATION] ME
 (object @me
   :description "yourself"
-  :flags (PERSON TOUCHBIT NOABIT NOTHEBIT)
-
+  :properties (:person true :touched true :noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE ME-F ("AUX" OLIT)
   ;   <COND
@@ -4095,8 +4011,7 @@ crud."
 ; [NEEDS-TRANSLATION] MENU-BOX
 (object @menu-box
   :description "menu box"
-  :flags (NDESCBIT READBIT)
-  :properties (:text "\"Edit Classics Paper.\"")
+  :properties (:nodesc true :readable true :text "\"Edit Classics Paper.\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE MENU-BOX-F ()
@@ -4122,8 +4037,7 @@ crud."
 (object @microwave
   :description "microwave oven"
   :location @kitchen
-  :flags (NDESCBIT SEARCHBIT CONTBIT TRANSBIT OPENABLE)
-  :properties (:capacity 30)
+  :properties (:nodesc true :searchable true :container true :transparent true :openable true :capacity 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE MICROWAVE-F ()
@@ -4174,8 +4088,7 @@ crud."
 ; [NEEDS-TRANSLATION] MORE-BOX
 (object @more-box
   :description "more box"
-  :flags (READBIT NDESCBIT)
-
+  :properties (:readable true :nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE MORE-BOX-F ()
   ;   <COND
@@ -4198,8 +4111,7 @@ crud."
 (object @mouse
   :description "mouse"
   :location @pc
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE MOUSE-F ()
   ;   <COND
@@ -4221,8 +4133,7 @@ crud."
 ; [NEEDS-TRANSLATION] NEW-BRICK
 (object @new-brick
   :description "new brick"
-  :flags (NDESCBIT TAKEBIT WEAPONBIT)
-
+  :properties (:nodesc true :takeable true :weapon true)
   ; --- ZIL Source ---
   ; <ROUTINE NEW-BRICK-F ()
   ;   <COND
@@ -4244,8 +4155,7 @@ crud."
 (object @nitrogen
   :description "cold liquid"
   :location @flask
-  :flags (TAKEBIT WEAPONBIT)
-
+  :properties (:takeable true :weapon true)
   ; --- ZIL Source ---
   ; <ROUTINE NITROGEN-F ()
   ;   <COND
@@ -4307,8 +4217,7 @@ crud."
 ; [NEEDS-TRANSLATION] NOT-HERE-OBJECT
 (object @not-here-object
   :description "it"
-  :flags (NOABIT NOTHEBIT)
-
+  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE NOT-HERE-OBJECT-F ("AUX" TBL PRSO? X)
   ;   <COND
@@ -4344,8 +4253,7 @@ crud."
 (object @note
   :description "piece of paper"
   :location @secret-hole
-  :flags (TAKEBIT READBIT)
-  :properties (:value 5)
+  :properties (:takeable true :readable true :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE NOTE-F ()
@@ -4378,8 +4286,7 @@ crud."
 ; [NEEDS-TRANSLATION] ODD-PAPER
 (object @odd-paper
   :description "classics paper"
-  :flags (READBIT NDESCBIT)
-
+  :properties (:readable true :nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE ODD-PAPER-F ()
   ;   <COND
@@ -4406,8 +4313,7 @@ crud."
 ; [NEEDS-TRANSLATION] OFFICE-DOOR
 (object @office-door
   :description "office"
-  :flags (NDESCBIT DOORBIT OPENABLE)
-
+  :properties (:nodesc true :door true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE OFFICE-DOOR-F ()
   ;   <TELL "The offices are inaccessible." CR>
@@ -4423,8 +4329,7 @@ crud."
 (object @open-button
   :description "open button"
   :location @cs-elevator-room
-  :flags (NDESCBIT AN)
-
+  :properties (:nodesc true :an true)
   ; --- ZIL Source ---
   ; <ROUTINE OPEN-BUTTON-F ()
   ;   <COND
@@ -4443,15 +4348,14 @@ crud."
 
 (object @outlet
   :description "outlet"
-  :flags (NDESCBIT AN)
+  :properties (:nodesc true :an true)
 )
 
 ; [NEEDS-TRANSLATION] OUTPUT-CABLE
 (object @output-cable
   :description "cablelike appendage"
   :location @repeater
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE OUTPUT-CABLE-F ()
   ;   <COND
@@ -4492,8 +4396,7 @@ crud."
 ; [NEEDS-TRANSLATION] OUTSIDE-DOOR
 (object @outside-door
   :description "outside door"
-  :flags (DOORBIT LOCKED NDESCBIT OPENABLE)
-
+  :properties (:door true :locked true :nodesc true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE OUTSIDE-DOOR-F ()
   ;   <COND
@@ -4521,8 +4424,7 @@ crud."
 (object @padlock
   :description "padlock"
   :location @access-hatch
-  :flags (NDESCBIT TAKEBIT TRYTAKEBIT LOCKED OPENABLE)
-
+  :properties (:nodesc true :takeable true :trytake true :locked true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE PADLOCK-F ("AUX" LP)
   ;   <COND
@@ -4594,8 +4496,7 @@ crud."
   :description "pc"
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
-  :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties (:size 30)
+  :properties (:takeable true :trytake true :open true :container true :searchable true :surface true :size 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE PC-F ("AUX" TMP)
@@ -4678,8 +4579,7 @@ crud."
 (object @peach-tree
   :description "peach tree"
   :location @inside-dome
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE PEACH-TREE-F ()
   ;   <COND
@@ -4718,8 +4618,7 @@ crud."
 (object @pentagram
   :description "pentagram"
   :location @alchemy-lab
-  :flags (NDESCBIT VEHBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :vehicle true :open true :container true :searchable true :capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE PENTAGRAM-F ("AUX" O "OPT" RARG)
@@ -4807,8 +4706,7 @@ crud."
 (object @plastic-container
   :description "plastic container"
   :location @inf-1
-  :flags (TAKEBIT CONTBIT READBIT SEARCHBIT OPENABLE)
-  :properties (:capacity 30 :size 15 :text "\"Frobozz Magic Floor Wax (and Dessert Topping)\"")
+  :properties (:takeable true :container true :readable true :searchable true :openable true :capacity 30 :size 15 :text "\"Frobozz Magic Floor Wax (and Dessert Topping)\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE PLASTIC-CONTAINER-F ()
@@ -4841,8 +4739,7 @@ crud."
 ; [NEEDS-TRANSLATION] PLATFORM
 (object @platform
   :description "platform"
-  :flags (NDESCBIT VEHBIT SURFACEBIT)
-
+  :properties (:nodesc true :vehicle true :surface true)
   ; --- ZIL Source ---
   ; <ROUTINE PLATFORM-F ()
   ;   <COND
@@ -4865,8 +4762,7 @@ crud."
 (object @player
   :description "it"
   :location @terminal-room
-  :flags (NDESCBIT INVISIBLE PERSON CONTBIT TRANSBIT)
-
+  :properties (:nodesc true :invisible true :person true :container true :transparent true)
   ; --- ZIL Source ---
   ; <ROUTINE PLAYER-F ("AUX" DOOR)
   ;   <COND
@@ -4899,8 +4795,7 @@ crud."
 ; [NEEDS-TRANSLATION] POOL
 (object @pool
   :description "pool"
-  :flags (NDESCBIT VEHBIT)
-
+  :properties (:nodesc true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE POOL-F ()
   ;   <COND
@@ -4951,8 +4846,7 @@ crud."
 ; [NEEDS-TRANSLATION] POWER-CORD
 (object @power-cord
   :description "power cord"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE POWER-CORD-F ()
   ;   <COND
@@ -5018,8 +4912,7 @@ crud."
 (object @pressure-valve
   :description "pressure valve"
   :location @tunnel-east
-  :flags (NDESCBIT OPENABLE)
-  :properties (:value 5)
+  :properties (:nodesc true :openable true :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE PRESSURE-VALVE-F ()
@@ -5069,8 +4962,7 @@ crud."
 (object @professor
   :description "professor"
   :location @alchemy-dept
-  :flags (PERSON OPENBIT CONTBIT SEARCHBIT)
-  :properties (:value 5 :contfcn "PROFESSOR-F" :descfcn "PROFESSOR-DESC")
+  :properties (:person true :open true :container true :searchable true :value 5 :contfcn "PROFESSOR-F" :descfcn "PROFESSOR-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE PROFESSOR-F ("OPT" RARG)
@@ -5172,7 +5064,7 @@ crud."
 
 (object @program
   :description "program"
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
 )
 
 ; [NEEDS-TRANSLATION] PSEUDO-OBJECT
@@ -5208,8 +5100,7 @@ crud."
 (object @readout
   :description "display"
   :location @kitchen
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE READOUT-F ("AUX" SEC)
   ;   <COND
@@ -5240,8 +5131,7 @@ crud."
 (object @refrigerator
   :description "refrigerator"
   :location @kitchen
-  :flags (NDESCBIT SEARCHBIT CONTBIT OPENABLE READBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE REFRIGERATOR-F ()
@@ -5275,8 +5165,7 @@ crud."
 (object @repeater
   :description "metal box"
   :location @inner-lair
-  :flags (TRANSBIT CONTBIT SEARCHBIT OPENABLE)
-  :properties (:descfcn "REPEATER-DESC")
+  :properties (:transparent true :container true :searchable true :openable true :descfcn "REPEATER-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE REPEATER-F ()
@@ -5304,8 +5193,7 @@ crud."
 (object @repeater-cover
   :description "metal cover"
   :location @repeater
-  :flags (TAKEBIT OPENABLE)
-
+  :properties (:takeable true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE REPEATER-COVER-F ()
   ;   <COND
@@ -5344,8 +5232,7 @@ crud."
 ; [NEEDS-TRANSLATION] ROD
 (object @rod
   :description "reinforcing rod"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   ; --- ZIL Source ---
   ; <ROUTINE ROD-F ()
   ;   <COND
@@ -5372,8 +5259,7 @@ crud."
 ; [NEEDS-TRANSLATION] ROOF-DOOR
 (object @roof-door
   :description "roof door"
-  :flags (DOORBIT LOCKED NDESCBIT OPENABLE)
-
+  :properties (:door true :locked true :nodesc true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE ROOF-DOOR-F ()
   ;   <COND
@@ -5402,7 +5288,7 @@ crud."
 (object @roof-door-sign
   :description "sign"
   :location @brown-top-floor
-  :flags (READBIT NDESCBIT)
+  :properties (:readable true :nodesc true)
   :properties (:text "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below,
 it says \"This means you!\" and below that in different handwriting,
 it says \"Who, me?\"")
@@ -5414,15 +5300,13 @@ it says \"Who, me?\"")
 
 (object @secret-hole
   :description "cylindrical hole"
-  :flags (CONTBIT OPENBIT SEARCHBIT)
-  :properties (:capacity 5)
+  :properties (:container true :open true :searchable true :capacity 5)
 )
 
 ; [NEEDS-TRANSLATION] SHAFT-1
 (object @shaft-1
   :description "elevator shaft"
-  :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
-
+  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5469,8 +5353,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-2
 (object @shaft-2
   :description "elevator shaft"
-  :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
-
+  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5517,8 +5400,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-3
 (object @shaft-3
   :description "elevator shaft"
-  :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
-
+  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5565,8 +5447,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-B
 (object @shaft-b
   :description "elevator shaft"
-  :flags (NDESCBIT AN SEARCHBIT OPENBIT CONTBIT VEHBIT)
-
+  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5615,8 +5496,7 @@ it says \"Who, me?\"")
   :description "sign-up sheet"
   :fdesc "Taped to the wall to the right of the archway is a sign-up sheet."
   :location @alchemy-dept
-  :flags (TAKEBIT TRYTAKEBIT READBIT)
-
+  :properties (:takeable true :trytake true :readable true)
   ; --- ZIL Source ---
   ; <ROUTINE SIGNUP-F ()
   ;   <COND
@@ -5648,8 +5528,7 @@ it says \"Who, me?\"")
 (object @slab
   :description "slab of granite"
   :location @cave-altar
-  :flags (NDESCBIT SEARCHBIT VEHBIT OPENBIT SURFACEBIT CONTBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :searchable true :vehicle true :open true :surface true :container true :capacity 200)
 
   ; --- ZIL Source ---
   ; <ROUTINE SLAB-F ()
@@ -5721,8 +5600,7 @@ it says \"Who, me?\"")
 (object @slots
   :description "slot"
   :location @large-chamber
-  :flags (NDESCBIT OPENBIT CONTBIT VEHBIT)
-
+  :properties (:nodesc true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SLOTS-F ()
   ;   <COND
@@ -5769,8 +5647,7 @@ it says \"Who, me?\"")
 (object @smooth-stone
   :description "smooth stone"
   :location @platform-room
-  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT WEAPONBIT)
-  :properties (:value 5 :descfcn "SMOOTH-STONE-DESC")
+  :properties (:takeable true :searchable true :open true :container true :weapon true :value 5 :descfcn "SMOOTH-STONE-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE SMOOTH-STONE-F ()
@@ -5851,8 +5728,7 @@ it says \"Who, me?\"")
 (object @snack
   :description "package of Funny Bones"
   :location @kitchen-counter
-  :flags (TAKEBIT FOODBIT READBIT OPENABLE)
-  :properties (:heat 0 :text "\"Funny Bones\"")
+  :properties (:takeable true :food true :readable true :openable true :heat 0 :text "\"Funny Bones\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE SNACK-F ()
@@ -5929,15 +5805,14 @@ it says \"Who, me?\"")
 
 (object @steam-pipes
   :description "steam pipes"
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
 )
 
 ; [NEEDS-TRANSLATION] STONE-SYMBOL
 (object @stone-symbol
   :description "carved symbol"
   :location @smooth-stone
-  :flags (NDESCBIT)
-  :properties (:size 0)
+  :properties (:nodesc true :size 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE STONE-SYMBOL-F ()
@@ -5960,8 +5835,7 @@ it says \"Who, me?\"")
 (object @stop-switch
   :description "stop switch"
   :location @cs-elevator-room
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE STOP-SWITCH-F ()
   ;   <COND
@@ -5977,8 +5851,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] STUDENTS
 (object @students
   :description "missing students"
-  :flags (NDESCBIT PERSON)
-
+  :properties (:nodesc true :person true)
   ; --- ZIL Source ---
   ; <ROUTINE STUDENTS-F ()
   ;   <GLOBAL-URCHINS-F ,STUDENTS>
@@ -5994,8 +5867,7 @@ it says \"Who, me?\"")
 (object @tattoo
   :description "tattoo"
   :location @hand
-  :flags (NDESCBIT)
-  :properties (:size 0)
+  :properties (:nodesc true :size 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE TATTOO-F ()
@@ -6015,8 +5887,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] TENTACLE
 (object @tentacle
   :description "ropy strand"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   ; --- ZIL Source ---
   ; <ROUTINE TENTACLE-F ()
   ;   <COND
@@ -6053,8 +5924,7 @@ it says \"Who, me?\"")
 (object @tub
   :description "tub of dirt"
   :location @inside-dome
-  :flags (NDESCBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties (:capacity 30)
+  :properties (:nodesc true :container true :open true :searchable true :capacity 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE TUB-F ()
@@ -6088,8 +5958,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] UP-BUTTON
 (object @up-button
   :description "up-arrow"
-  :flags (NDESCBIT AN)
-
+  :properties (:nodesc true :an true)
   ; --- ZIL Source ---
   ; <ROUTINE UP-BUTTON-F ("AUX" OLD FLOOR "OPT" BIT)
   ;   <SET
@@ -6127,8 +5996,7 @@ it says \"Who, me?\"")
 (object @urchin
   :description "urchin"
   :location @aero-lobby
-  :flags (PERSON AN SEARCHBIT OPENBIT CONTBIT)
-  :properties (:descfcn "URCHIN-DESC")
+  :properties (:person true :an true :searchable true :open true :container true :descfcn "URCHIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-F ("AUX" MANY?)
@@ -6222,8 +6090,7 @@ it says \"Who, me?\"")
 (object @urchin-clothes
   :description "clothes"
   :location @urchin
-  :flags (NDESCBIT TRYTAKEBIT TAKEBIT)
-
+  :properties (:nodesc true :trytake true :takeable true)
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-CLOTHES-F ()
   ;   <COND
@@ -6244,8 +6111,7 @@ it says \"Who, me?\"")
 (object @urchin-wire
   :description "wire"
   :location @large-chamber
-  :flags (NDESCBIT)
-  :properties (:value 5)
+  :properties (:nodesc true :value 5)
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-WIRE-F ()
@@ -6292,8 +6158,7 @@ it says \"Who, me?\"")
 (object @urchins
   :description "urchins"
   :location @slots
-  :flags (INVISIBLE PERSON NOABIT)
-  :properties (:descfcn "URCHINS-DESC")
+  :properties (:invisible true :person true :noabit true :descfcn "URCHINS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHINS-F ()
@@ -6337,7 +6202,7 @@ it says \"Who, me?\"")
 (object @vat
   :description "vat"
   :location @lab-bench
-  :flags (TAKEBIT READBIT OPENBIT CONTBIT TRANSBIT SEARCHBIT)
+  :properties (:takeable true :readable true :open true :container true :transparent true :searchable true)
   :properties (:capacity 20 :size 20 :text "The text is a long chemical-sounding name typed on a
 label affixed to the container. Below is written in pencil
 \"Elixir of Life.\"" :contfcn "VAT-CONT-F")
@@ -6429,8 +6294,7 @@ label affixed to the container. Below is written in pencil
 ; [NEEDS-TRANSLATION] YAK-WINDOW
 (object @yak-window
   :description "YAK editor"
-  :flags (NDESCBIT READBIT)
-  :properties (:text "\"YAK 5.3\"")
+  :properties (:nodesc true :readable true :text "\"YAK 5.3\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE YAK-WINDOW-F ()

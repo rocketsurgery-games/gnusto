@@ -17,32 +17,32 @@
   (assert (player-at? @brown-top-floor)))
 
 (test "roof-door blocks access when locked"
-  :setup ((move! @player @brown-top-floor) (set-flag! @roof-door LOCKED) (clear-flag! @roof-door OPENBIT))
+  :setup ((move! @player @brown-top-floor) (set @roof-door :locked true) (set @roof-door :open false))
   (go :direction west)
   (assert (outcome? blocked))
   (assert (reason? locked)))
 
 (test "can unlock roof-door with master key"
-  :setup ((move! @player @brown-top-floor) (set-flag! @roof-door LOCKED) (move! @master-key @player))
+  :setup ((move! @player @brown-top-floor) (set @roof-door :locked true) (move! @master-key @player))
   (do @roof-door :unlock @master-key)
   (assert (outcome? success))
   (assert (no-flag? @roof-door LOCKED)))
 
 (test "can access roof after unlocking door"
-  :setup ((move! @player @brown-top-floor) (clear-flag! @roof-door LOCKED) (set-flag! @roof-door OPENBIT))
+  :setup ((move! @player @brown-top-floor) (set @roof-door :locked false) (set @roof-door :open true))
   (go :direction west)
   (assert (outcome? success))
   (assert (player-at? @brown-roof)))
 
 (test "tub search reveals mummified hand"
-  :setup ((move! @player @inside-dome) (clear-flag! @mummified-hand TOUCHBIT) (move! @mummified-hand nil))
+  :setup ((move! @player @inside-dome) (set @mummified-hand :touched false) (move! @mummified-hand nil))
   (do @tub :search)
   (assert (outcome? success))
-  (assert (has-flag? @mummified-hand TOUCHBIT))
+  (assert (:touched @mummified-hand))
   (assert (loc? @mummified-hand @tub)))
 
 (test "second search finds nothing"
-  :setup ((move! @player @inside-dome) (set-flag! @mummified-hand TOUCHBIT))
+  :setup ((move! @player @inside-dome) (set @mummified-hand :touched true))
   (do @tub :search)
   (assert (outcome? success)))
 
@@ -71,36 +71,36 @@
   (assert (reason? flier-blocks)))
 
 (test "cannot climb tentacle without gloves - burns"
-  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (clear-flag! @gloves WEARBIT))
+  :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @gloves :wearable false))
   (go :direction up)
   (assert (outcome? blocked))
   (assert (reason? burns)))
 
 (test "can climb tentacle with gloves"
-  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (set-flag! @gloves WEARBIT))
+  :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @gloves :wearable true))
   (go :direction up)
   (assert (outcome? success))
   (assert (player-at? @top-of-dome)))
 
 (test "creature flees when reaching top-of-dome"
-  :setup ((move! @player @great-dome) (clear-flag! @tentacle INVISIBLE) (clear-flag! @dome-ladder TOUCHBIT) (move! @dome-ladder nil) (move! @gloves @player) (set-flag! @gloves WORNBIT))
+  :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @dome-ladder :touched false) (move! @dome-ladder nil) (move! @gloves @player) (set @gloves :wornbit true))
   (go :direction up)
   (assert (outcome? success))
   (assert (player-at? @top-of-dome))
-  (assert (has-flag? @tentacle INVISIBLE))
-  (assert (has-flag? @dome-ladder TOUCHBIT))
+  (assert (:invisible @tentacle))
+  (assert (:touched @dome-ladder))
   (assert (loc? @dome-ladder @top-of-dome)))
 
 (test "bronze plug starts in socket"
-  :setup ((clear-flag! @bronze-plug RMUNGBIT))
+  :setup ((set @bronze-plug :rmung false))
   (do @bronze-plug :examine)
   (assert (loc? @bronze-plug @on-dome)))
 
 (test "prying plug reveals secret hole"
-  :setup ((move! @player @on-dome) (clear-flag! @bronze-plug RMUNGBIT) (move! @secret-hole nil))
+  :setup ((move! @player @on-dome) (set @bronze-plug :rmung false) (move! @secret-hole nil))
   (do @bronze-plug :pry nil)
   (assert (outcome? success))
-  (assert (has-flag? @bronze-plug RMUNGBIT))
+  (assert (:rmung @bronze-plug))
   (assert (loc? @secret-hole @on-dome)))
 
 (test "note is in secret hole"

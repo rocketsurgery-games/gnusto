@@ -40,7 +40,7 @@
 
     :on-enter (fn (?from)
       (cond
-        ((has-flag @iron-plate OPENBIT)
+        ((:open @iron-plate)
           '((queue panel-noises -1)
             (success)))
         (true (success))))))
@@ -50,8 +50,7 @@
 (object @slab
   :location @cave-altar
   :description "slab of granite"
-  :flags (NDESCBIT SEARCHBIT VEHBIT OPENBIT SURFACEBIT CONTBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :searchable true :vehicle true :open true :surface true :container true :capacity 200)
 
   :behaviors (
     :examine (fn ()
@@ -82,8 +81,7 @@
 (object @carving-symbol
   :location @slab
   :description "incised symbol"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "The symbol appears to be the oldest thing carved on the altar. It is beautifully incised in the rocks. Its age is apparent from its wear and the overlay of newer carvings and scratchings over it. It depicts a strange, tentacled creature with a single great eye."))
@@ -94,8 +92,7 @@
 (object @carvings
   :location nil  ; Global object
   :description "carvings"
-  :flags (NDESCBIT READBIT SEARCHBIT OPENBIT CONTBIT)
-
+  :properties (:nodesc true :readable true :searchable true :open true :container true)
   :behaviors (
     :examine (fn ()
       (cond
@@ -114,8 +111,7 @@
   :location @cave-altar
   :description "knife"
   :fdesc "Lying to one side of the altar stone is a sharp, thin-bladed knife."
-  :flags (TAKEBIT WEAPONBIT TOOLBIT)
-  :properties (:size 5)
+  :properties (:takeable true :weapon true :tool true :size 5)
 
   :behaviors (
     :examine (fn ()
@@ -127,14 +123,13 @@
 (object @iron-plate
   :location @cave-altar
   :description "iron plate"
-  :flags (AN NDESCBIT CONTBIT TRANSBIT OPENABLE)
-  :properties (:pit-seen false)  ; Set after looking in the pit
+  :properties (:an true :nodesc true :container true :transparent true :openable true :pit-seen false)  ; Set after looking in the pit
 
   :behaviors (
     :examine (fn ()
       (success :message
         (str "The plate is iron, about two feet square, and "
-             (if (not (has-flag ?self OPENBIT)) "looks like it could be slid " "")
+             (if (not (:open ?self)) "looks like it could be slid " "")
              "open. A curious feature of the plate is that it has upward projecting dents in it which appear to have been punched from below.")))
 
     :open (fn ()
@@ -142,19 +137,19 @@
         ((:pit-seen @iron-plate)
           (blocked :reason traumatized
                    :message "You would sooner die than open that panel again."))
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open :message "It's already open."))
         (true
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (queue panel-noises -1)
             (success :message "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below.")))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          '((clear-flag ?self OPENBIT)
+          '((set ?self :open false)
             (dequeue panel-noises)
             (success :message "You close the panel. You no longer hear the noises, much to your relief.")))))
 
@@ -168,7 +163,7 @@
       (cond
         ((:pit-seen @iron-plate)
           (blocked :reason traumatized :message "You find yourself unable to do that again."))
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (success :message "Disturbing noises issue from the open panel."))
         (true
           (success :message "You hear very faint noises through the closed panel."))))
@@ -177,8 +172,8 @@
       (cond
         ((:pit-seen @iron-plate)
           (blocked :reason traumatized :message "You would sooner die than open that panel again."))
-        ((has-flag ?self OPENBIT)
-          '((clear-flag ?self OPENBIT)
+        ((:open ?self)
+          '((set ?self :open false)
             (dequeue panel-noises)
             (set @iron-plate :pit-seen true)
             (success :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students.")))
@@ -244,7 +239,7 @@
     :describe (fn ()
       (success :context
         ((description
-          (str (if (has-flag @steam-pipes HOT)
+          (str (if (:hot @steam-pipes)
                  "Clouds of steam obscure the passageway to the east. "
                  "")
                "You have gone from the arctic to the tropics. The concrete tunnel has odd molds and fungi growing on its walls and ceiling, and the floor is squishy. Torn clots of insulation litter the floor. Along the ceiling runs a thick tangle of coaxial cable. The tunnel heads east and west. A rusty metal ladder leads up.")))))
@@ -298,7 +293,7 @@
       (success :context
         ((description
           (str "A thick bundle of coaxial cable runs east to west along the ceiling. There is a pressure release valve on the steam pipe here."
-               (if (has-flag @pressure-valve OPENBIT) " The valve is wide open." ""))))))))
+               (if (:open @pressure-valve) " The valve is wide open." ""))))))))
 
 (room @steam-tunnel
   :description "Steam Tunnel"
@@ -322,7 +317,7 @@
       (success :context
         ((description
           (str "The steam pipe and coaxial cable turn upwards and disappear into the ceiling here. The tunnel itself comes to an end in a grimy, damp, and dripping triad of crumbling brick walls."
-               (if (and (not (:broken @brick-wall)) (not (has-flag @brick-wall TOUCHBIT)))
+               (if (and (not (:broken @brick-wall)) (not (:touched @brick-wall)))
                  " The south wall looks particularly decrepit."
                  ""))))))
 
@@ -347,8 +342,7 @@
 (object @cable
   :location nil  ; Global object
   :description "coaxial cable"
-  :flags (NDESCBIT)
-  :properties (:on false)  ; True when player is on the cable
+  :properties (:nodesc true :on false)  ; True when player is on the cable
 
   :behaviors (
     :examine (fn ()
@@ -373,21 +367,19 @@
 (object @steam-pipes
   :location nil  ; Global object
   :description "steam pipes"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message
         (str "Thick, insulated steam pipes run through the tunnel. "
-             (if (has-flag ?self HOT)
+             (if (:hot ?self)
                "They're hissing and radiating intense heat."
                "They're warm to the touch."))))))
 
 (object @ladder
   :location @tunnel
   :description "rusty ladder"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "A rusty metal ladder is bolted to the wall, leading up to an access hatch."))
@@ -398,42 +390,40 @@
 (object @access-hatch-barrier
   :location @tunnel
   :description "access hatch"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
-        ((not (has-flag @access-hatch OPENBIT))
+        ((not (:open @access-hatch))
           (blocked :reason closed :message "The access hatch is closed."))
         (true (success))))))
 
 (object @access-hatch
   :location @tunnel
   :description "access hatch"
-  :flags (NDESCBIT OPENABLE)
-
+  :properties (:nodesc true :openable true)
   :behaviors (
     :examine (fn ()
       (success :message
         (str "A rusty metal hatch "
              (if (= (loc @player) @tomb) "in the floor" "in the ceiling")
              ". It is "
-             (if (has-flag ?self OPENBIT) "open" "closed") ".")))
+             (if (:open ?self) "open" "closed") ".")))
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open :message "It's already open."))
         (true
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (success :message "With some effort, you push open the heavy hatch.")))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          '((clear-flag ?self OPENBIT)
+          '((set ?self :open false)
             (success :message "You pull the hatch closed.")))))))
 
 ; === Pressure Valve ===
@@ -441,43 +431,42 @@
 (object @pressure-valve
   :location @tunnel-east
   :description "pressure valve"
-  :flags (NDESCBIT)
-  :properties (:turns 0)
+  :properties (:nodesc true :turns 0)
 
   :behaviors (
     :examine (fn ()
       (success :message
         (str "A large pressure release valve on the steam pipe. It has a wheel handle. "
-             (if (has-flag ?self OPENBIT)
+             (if (:open ?self)
                "The valve is wide open, releasing clouds of scalding steam."
                "The valve is closed."))))
 
     :turn (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           ; Closing the valve
-          '((clear-flag ?self OPENBIT)
-            (clear-flag @steam-pipes HOT)
+          '((set ?self :open false)
+            (set @steam-pipes :hot false)
             (set @pressure-valve :turns 0)
             (success :message "You turn the valve closed. The steam dissipates, and the passage east clears.")))
         (true
           ; Opening the valve
-          '((set-flag ?self OPENBIT)
-            (set-flag @steam-pipes HOT)
+          '((set ?self :open true)
+            (set @steam-pipes :hot true)
             (set @pressure-valve :turns (+ (:turns @pressure-valve) 1))
             (queue rats-go-away 3)
             (success :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east.")))))
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open :message "It's already open."))
         (true
           (redirect :action (do ?self :turn)))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed :message "It's already closed."))
         (true
           (redirect :action (do ?self :turn)))))))
@@ -486,12 +475,11 @@
 (object @steam-barrier
   :location @tunnel
   :description "steam"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
-        ((has-flag @pressure-valve OPENBIT)
+        ((:open @pressure-valve)
           (blocked :reason scalding
                    :message "You would be plunging into scalding steam. Not such a smart idea, if you ask me."))
         (true (success))))))
@@ -501,8 +489,7 @@
 (object @rats
   :location @tunnel-west  ; Start location
   :description "rats"
-  :flags (NDESCBIT ATTACKBIT)
-  :properties (:anger 0)  ; Increments when trying to pass rats
+  :properties (:nodesc true :attackable true :anger 0)  ; Increments when trying to pass rats
 
   :behaviors (
     :describe (fn ()
@@ -520,7 +507,7 @@
 
     :give (fn (?item)
       (cond
-        ((has-flag ?item FOODBIT)
+        ((:food ?item)
           '((move ?item nil)
             (success :message (str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))))
         (true
@@ -530,8 +517,7 @@
 (object @rats-barrier
   :location nil  ; Used in multiple rooms
   :description "rats"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     ; :through receives ?dest (destination room) and ?from (current room)
     :through (fn (?dest ?from)
@@ -549,8 +535,7 @@
 (object @dead-rat
   :location nil  ; Appears when rats killed by steam
   :description "dead rat"
-  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
-  :properties (:heat 0)
+  :properties (:takeable true :searchable true :open true :container true :heat 0)
 
   :behaviors (
     :describe (fn ()
@@ -562,9 +547,9 @@
 
     :take (fn ()
       (cond
-        ((not (has-flag ?self TOUCHBIT))
+        ((not (:touched ?self))
           ; First time taking - lice and fleas
-          '((set-flag ?self TOUCHBIT)
+          '((set ?self :touched true)
             (take ?self)
             (success :message "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out.")))
         (true (default))))
@@ -585,8 +570,7 @@
 (object @rat-symbol
   :location @dead-rat
   :description "branded symbol"
-  :flags (NDESCBIT)
-  :properties (:size 0)
+  :properties (:nodesc true :size 0)
 
   :behaviors (
     :examine (fn ()
@@ -600,7 +584,7 @@
 (event rats-go-away
   :on-turn
     (cond
-      ((not (has-flag @pressure-valve OPENBIT))
+      ((not (:open @pressure-valve))
         '((dequeue rats-go-away)
           (success)))
       ((in? @rats (loc @player))
@@ -628,8 +612,7 @@
 (object @brick-wall
   :location @steam-tunnel-east
   :description "brick wall"
-  :flags (NDESCBIT)
-  :properties (:broken false)  ; Set when wall is destroyed
+  :properties (:nodesc true :broken false)  ; Set when wall is destroyed
 
   :behaviors (
     :examine (fn ()
@@ -637,7 +620,7 @@
         ((:broken @brick-wall)
           (success :message "The south wall has been broken through, revealing a passage beyond."))
         (true
-          '((set-flag ?self TOUCHBIT)
+          '((set ?self :touched true)
             (success :message "The south wall is made of crumbling old bricks. Some look loose.")))))
 
     :attack (fn ()
@@ -664,8 +647,7 @@
 (object @brick-wall-barrier
   :location @steam-tunnel-east
   :description "brick wall"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
@@ -676,8 +658,7 @@
 (object @broken-brick
   :location nil  ; Appears when wall is broken
   :description "broken brick"
-  :flags (NDESCBIT TAKEBIT WEAPONBIT)
-
+  :properties (:nodesc true :takeable true :weapon true)
   :behaviors (
     :examine (fn ()
       (success :message "A chunk of broken brick from the wall."))))
@@ -685,8 +666,7 @@
 (object @new-brick
   :location nil  ; May appear in different contexts
   :description "new brick"
-  :flags (NDESCBIT TAKEBIT WEAPONBIT)
-
+  :properties (:nodesc true :takeable true :weapon true)
   :behaviors (
     :examine (fn ()
       (success :message "This brick looks newer and more recent than the others. It must have been used to patch the wall."))))

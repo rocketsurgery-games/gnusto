@@ -18,14 +18,14 @@
 (room @aero-basement
   :description "Aero Basement"
   :ldesc "This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ((east :to @cs-basement)
           (west :to @aero-stairs)))
 
 (room @temporary-lab
   :description "Temporary Lab"
   :ldesc "This is a laboratory of some sort. It takes up most of the building on this level, all the interior walls having been knocked down. (One reason these temporary buildings are still here is their flexibility: no one cares if they get more or less destroyed.) A stairway leads down, and a door leads north."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ((down :to @temporary-basement)
           (north :to @smith-st-2)
           (out :to @smith-st-2))
@@ -35,7 +35,7 @@
     :on-enter (fn (?from)
       (cond
         ; Coming from outside - stop freezing
-        ((has-flag ?from OUTSIDE)
+        ((:outside ?from)
           '((dequeue freezing)
             (set freeze-count 0)
             (success :message "You push your way into the comparative warmth of a laboratory.")))
@@ -48,7 +48,7 @@
 (room @temporary-basement
   :description "Temporary Basement"
   :ldesc "During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @cs-basement)
      (east :to @dead-storage)
@@ -56,7 +56,7 @@
 
 (room @dead-storage
   :description "Dead Storage"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @temporary-basement)
      (east :to @storage-room :via @junk-barrier))
@@ -74,7 +74,7 @@
 (room @storage-room
   :description "Ancient Storage"
   :ldesc "What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @dead-storage)
      (down :to @brick-tunnel :via @manhole-passage))
@@ -83,7 +83,7 @@
   :behaviors (
     :on-enter (fn (?from)
       ; Reveal the manhole when entering
-      '((clear-flag @manhole INVISIBLE)
+      '((set @manhole :invisible false)
         (success)))))
 
 ; === Junk Barrier (blocks east exit until cleared) ===
@@ -91,8 +91,7 @@
 (object @junk-barrier
   :location @dead-storage
   :description "junk pile"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
@@ -110,8 +109,7 @@
 (object @junk
   :location nil  ; Global object, present via room :globals
   :description "junk"
-  :flags (NDESCBIT)
-  :properties (:moved 0)  ; Counter: need > junk-moves-needed to clear path
+  :properties (:nodesc true :moved 0)  ; Counter: need > junk-moves-needed to clear path
 
   :behaviors (
     :examine (fn ()
@@ -134,14 +132,13 @@
 (object @forklift
   :location @aero-basement
   :description "forklift"
-  :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:capacity 100)
+  :properties (:vehicle true :surface true :open true :container true :searchable true :capacity 100)
 
   :behaviors (
     :examine (fn ()
       (success :message
         (str "This is a rusty "
-             (if (has-flag ?self POWER) "and wheezing " "")
+             (if (:powered ?self) "and wheezing " "")
              "old forklift. It looks like you could control it fairly easily, though.")))
 
     :enter (fn ()
@@ -156,20 +153,20 @@
       (cond
         ((not (in? @player ?self))
           (blocked :reason not-aboard :message "You have to get in it first."))
-        ((has-flag ?self POWER)
+        ((:powered ?self)
           (blocked :reason already-on :message "It's wheezing away already."))
         (true
-          '((set-flag ?self POWER)
+          '((set ?self :powered true)
             (success :message "The forklift sputters to life.")))))
 
     :turn-off (fn ()
       (cond
         ((not (in? @player ?self))
           (blocked :reason not-aboard :message "You have to get in it first."))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason already-off :message "It's already off."))
         (true
-          '((clear-flag ?self POWER)
+          '((set ?self :powered false)
             (success :message "The forklift coughs once, and dies.")))))
 
     ; Move junk with the forklift
@@ -177,7 +174,7 @@
       (cond
         ((not (in? @player ?self))
           (blocked :reason not-aboard :message "You're trying to operate the forklift by telepathy?"))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason not-running :message "You can't move anything with a forklift that isn't running."))
         ((not (= ?target @junk))
           (blocked :reason wrong-target :message (str "The forklift is ineffective in manipulating " ?target ".")))
@@ -215,8 +212,7 @@
 (object @manhole
   :location @storage-room
   :description "manhole"
-  :flags (INVISIBLE OPENBIT CONTBIT SEARCHBIT DOORBIT)
-  :properties (:capacity 200)
+  :properties (:invisible true :open true :container true :searchable true :door true :capacity 200)
 
   :behaviors (
     :describe (fn ()
@@ -262,8 +258,7 @@
   :location @manhole
   :description "manhole cover"
   :fdesc "In one corner of the room a manhole cover is partly buried in the dirt and crud."
-  :flags (TAKEBIT TRYTAKEBIT SURFACEBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties (:size 200)
+  :properties (:takeable true :trytake true :surface true :container true :open true :searchable true :size 200)
 
   :behaviors (
     :examine (fn ()
@@ -320,8 +315,7 @@
 (object @crowbar
   :location @temporary-basement
   :description "crowbar"
-  :flags (TAKEBIT WEAPONBIT)
-  :properties (:size 10)
+  :properties (:takeable true :weapon true :size 10)
 
   :behaviors (
     :examine (fn ()
@@ -333,8 +327,7 @@
 (object @gloves
   :location @temporary-basement
   :description "pair of electrician's gloves"
-  :flags (TAKEBIT WEARBIT)
-  :properties (:size 5)
+  :properties (:takeable true :wearable true :size 5)
 
   :behaviors (
     :examine (fn ()
@@ -345,12 +338,12 @@
 
     :wear (fn ()
       (cond
-        ((has-flag ?self WEARBIT)
+        ((:wearable ?self)
           ; Already wearing check would be handled by runtime
-          '((set-flag ?self WEARBIT)
+          '((set ?self :wearable true)
             (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))
         (true
-          '((set-flag ?self WEARBIT)
+          '((set ?self :wearable true)
             (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))))))
 
 ; === Pool (global object for puddles/water) ===
@@ -358,8 +351,7 @@
 (object @pool
   :location nil  ; Global object, present via room :globals
   :description "pool of water"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "Stagnant, slime-encrusted puddles cover parts of the floor."))
@@ -377,14 +369,13 @@
 (object @flask
   :location @temporary-lab
   :description "metal flask"
-  :flags (TAKEBIT CONTBIT SEARCHBIT OPENABLE TRANSBIT)
-  :properties (:size 50 :capacity 9)
+  :properties (:takeable true :container true :searchable true :openable true :transparent true :size 50 :capacity 9)
 
   :behaviors (
     :examine (fn ()
       (success :message
         (str "This is a large metal flask, about the size of a water cooler bottle. "
-             (if (has-flag ?self OPENBIT)
+             (if (:open ?self)
                (str "The flask is open"
                     (if (in? @nitrogen ?self) ", and a thin, cold mist flows out of it" "")
                     ".")
@@ -398,25 +389,25 @@
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open :message "It's already open."))
         ((in? @nitrogen ?self)
           ; Has nitrogen - release mist when opened
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (move @mist (loc @player))
             (queue nitrogen-evaporates 3)
             (success :message "You open the flask, and a cold, white mist boils out.")))
         (true
           ; Empty flask
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (success :message "You open the flask.")))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          '((clear-flag ?self OPENBIT)
+          '((set ?self :open false)
             (dequeue nitrogen-evaporates)
             (queue mist-dissipates 2)
             (success :message "You screw the flask closed.")))))
@@ -431,8 +422,7 @@
 (object @nitrogen
   :location @flask
   :description "cold liquid"
-  :flags (TAKEBIT WEAPONBIT)
-  :properties (:countdown 5)  ; Countdown timer for nitrogen evaporation
+  :properties (:takeable true :weapon true :countdown 5)  ; Countdown timer for nitrogen evaporation
 
   :behaviors (
     :examine (fn ()
@@ -459,8 +449,7 @@
 (object @mist
   :location nil  ; Created when flask is opened
   :description "mist"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message

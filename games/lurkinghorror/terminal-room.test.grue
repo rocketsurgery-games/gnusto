@@ -127,7 +127,7 @@
   :setup ((queue! hacker-helps))
 
   (test "can't turn off PC"
-    :setup ((set-flag! @pc POWER))
+    :setup ((set @pc :powered true))
     (do @pc :turn-off)
     (assert (outcome? blocked))
     (assert (reason? hacker-interference)))
@@ -155,7 +155,7 @@
 )
 
 (test "nightmare wake-up via lurker sequence"
-  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (clear-flag! @smooth-stone TOUCHBIT) (set-prop! @lurker count 0))
+  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (set @smooth-stone :touched false) (set-prop! @lurker count 0))
   (do @smooth-stone :take)
   (assert (outcome? success))
   (assert (held? @smooth-stone))

@@ -9,7 +9,7 @@
 (object @hands
   :description "your hands"
   :location @global  ; Always accessible
-  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
   :behaviors (
     :examine (fn ()
       (success :message "They're still attached to your wrists."))
@@ -22,7 +22,7 @@
 (object @feet
   :description "your feet"
   :location @global
-  :flags (NDESCBIT TOOLBIT TOUCHBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
   :behaviors (
     :examine (fn ()
       (success :message "They're at the ends of your legs, as usual."))))
@@ -30,7 +30,7 @@
 (object @head
   :description "your head"
   :location @global
-  :flags (NDESCBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :noabit true :nothebit true)
   :behaviors (
     :examine (fn ()
       (success :message "It's on your shoulders."))))
@@ -38,7 +38,7 @@
 (object @eyes
   :description "your eyes"
   :location @global
-  :flags (NDESCBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :noabit true :nothebit true)
   :behaviors (
     :open (fn ()
       (success :message "They are."))
@@ -48,7 +48,7 @@
 (object @me
   :description "yourself"
   :location @global
-  :flags (NDESCBIT PERSON TOUCHBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :person true :touched true :noabit true :nothebit true)
   :behaviors (
     :examine (fn ()
       ; TODO: V-DIAGNOSE - show status/health
@@ -75,7 +75,7 @@
 (object @light
   :description "light"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :turn-on (fn ()
       (cond
@@ -89,7 +89,7 @@
 (object @ceiling
   :description "ceiling"
   :location @global
-  :flags (NDESCBIT TOUCHBIT)
+  :properties (:nodesc true :touched true)
   :behaviors (
     :look-under (fn ()
       ; In ZIL this redirects to V-LOOK; we just return success since look is special
@@ -104,7 +104,7 @@
 (object @ground
   :description "floor"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It's still there."))
@@ -122,7 +122,7 @@
 (object @corridor
   :description "passage"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :through (fn ()
       ; V-WALK-AROUND in ZIL
@@ -133,7 +133,7 @@
 (object @noise
   :description "noise"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   ; No :examine - falls through to default "You see nothing special about the noise."
   :behaviors (
     :listen (fn ()
@@ -142,11 +142,11 @@
 (object @snow
   :description "snow"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (cond
-        ((room-has-flag? OUTSIDE)
+        ((room-has-flag? "outside")
           (success :message "It's still coming down."))
         (true
           (success :message "You are inside."))))))
@@ -158,7 +158,7 @@
 (object @wall
   :description "wall"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -170,7 +170,7 @@
 (object @north-wall
   :description "north wall"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -180,7 +180,7 @@
 (object @south-wall
   :description "south wall"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -190,7 +190,7 @@
 (object @east-wall
   :description "east wall"
   :location @global
-  :flags (NDESCBIT AN)
+  :properties (:nodesc true :an true)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -200,7 +200,7 @@
 (object @west-wall
   :description "west wall"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -214,7 +214,7 @@
 (object @global-room
   :description "room"
   :location @global
-  :flags (NDESCBIT)
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       ; In ZIL this redirects to V-LOOK
@@ -233,7 +233,7 @@
 (object @global-hole
   :description "hole"
   :location @global
-  :flags (NDESCBIT TOUCHBIT)
+  :properties (:nodesc true :touched true)
   :behaviors (
     :reach-in (fn ()
       (success :message "You find nothing of interest."))))
@@ -245,7 +245,7 @@
 (object @global-sleep
   :description "sleep"
   :location @global
-  :flags (NDESCBIT NOABIT NOTHEBIT)
+  :properties (:nodesc true :noabit true :nothebit true)
   :behaviors (
     :take (fn ()
       ; "take sleep" -> "sleep"

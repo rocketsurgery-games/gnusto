@@ -6,7 +6,7 @@
   :ldesc "This basement level room is made of smooth, damp-seeming concrete.
 Fluorescent lights cast harsh shadows. To the west is a stairway, and
 to the east the basement area continues."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @aero-stairs)
@@ -17,7 +17,7 @@ to the east the basement area continues."
 ; [NEEDS-TRANSLATION] Room AERO-LOBBY: ACTION AERO-LOBBY-F
 (room @aero-lobby
   :description "Aero Lobby"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @inf-1)
@@ -40,7 +40,7 @@ to the east the basement area continues."
   :description "Stairway"
   :ldesc "A dimly lit stairway leads up and down from here. A corridor continues
 east."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (east :to @aero-basement)
@@ -52,7 +52,7 @@ east."
 ; [NEEDS-TRANSLATION] Room ALCHEMY-DEPT: ACTION ALCHEMY-DEPT-F
 (room @alchemy-dept
   :description "Department of Alchemy"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @chemistry-bldg :via @alchemy-door)
@@ -135,7 +135,7 @@ east."
   :ldesc "You are at the bottom of a deeply cut, smooth basalt bowl. Dimly seen
 shapes crowd you on all sides. Ahead, in the focus of the movement, is
 a rock platform."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (in :to @platform-room)
@@ -198,7 +198,7 @@ a rock platform."
   :ldesc "This is a cluttered basement below the Brown Building. Discarded equipment
 nearly blocks an already narrow hallway that terminates in a stairway leading
 up. The passage itself continues northwest."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (nw :to @brown-tunnel)
@@ -209,7 +209,7 @@ up. The passage itself continues northwest."
 ; [NEEDS-TRANSLATION] Room BROWN-BUILDING: ACTION BROWN-BUILDING-F
 (room @brown-building
   :description "Brown Building"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @courtyard)
@@ -240,7 +240,7 @@ up. The passage itself continues northwest."
 tower and the small protrusion containing the stairs are dwarfed by a
 semitransparent dome which towers above you. The blowing snow obscures
 all detail of the city across the river to the south."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (east :to @brown-top-floor :via @brown-roof-exit-barrier)
@@ -262,7 +262,7 @@ all detail of the city across the river to the south."
   :description "Top Floor"
   :ldesc "This is the top of the stairway. A door leads out to the roof here, and
 you can hear the wind blowing beyond. There is a sign on the door."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @brown-roof :via @roof-door)
@@ -276,7 +276,7 @@ you can hear the wind blowing beyond. There is a sign on the door."
   :ldesc "This cluttered passage leads southeast. It is full of apparently discarded
 electronic equipment, old rusty file cabinets, and other detritus. A stairway
 also leads up."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (se :to @brown-basement)
@@ -349,7 +349,7 @@ also leads up."
 ; [NEEDS-TRANSLATION] Room CHEMISTRY-BLDG: ACTION CHEMISTRY-BLDG-F
 (room @chemistry-bldg
   :description "Chemistry Building"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @inf-5)
@@ -375,7 +375,7 @@ also leads up."
 ; [NEEDS-TRANSLATION] Room COMP-CENTER: ACTION COMP-CENTER-F
 (room @comp-center
   :description "Computer Center"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @smith-st)
@@ -403,7 +403,7 @@ cold, angular, overwhelming in size, and bears a striking resemblance
 to a wind tunnel whenever the breeze picks up. Right now this is true
 of the whole campus, though. A huge mass lurks nearby, and an almost
 featureless skyscraper is to the north."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (north :to @brown-building)
@@ -422,7 +422,7 @@ featureless skyscraper is to the north."
 ; [NEEDS-TRANSLATION] Room CS-2ND: ACTION CS-2ND-F
 (room @cs-2nd
   :description "Second Floor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @kitchen)
@@ -446,7 +446,7 @@ featureless skyscraper is to the north."
 ; [NEEDS-TRANSLATION] Room CS-3RD: ACTION CS-3RD-F
 (room @cs-3rd
   :description "Third Floor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @cs-elevator-room :via @cs-elevator-enter-barrier)
@@ -474,7 +474,7 @@ featureless skyscraper is to the north."
 ; [NEEDS-TRANSLATION] Room CS-BASEMENT: ACTION CS-BASEMENT-F
 (room @cs-basement
   :description "Basement"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @aero-basement)
@@ -500,7 +500,7 @@ featureless skyscraper is to the north."
 ; [NEEDS-TRANSLATION] Room CS-ELEVATOR-ROOM: ACTION CS-ELEVATOR-ROOM-F
 (room @cs-elevator-room
   :description "Elevator"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @cs-basement :via @cs-elevator-exit-barrier)
@@ -534,7 +534,7 @@ featureless skyscraper is to the north."
 ; [NEEDS-TRANSLATION] Room CS-ROOF: ACTION CS-ROOF-F
 (room @cs-roof
   :description "Roof"
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (in :to @cs-3rd)
@@ -592,7 +592,7 @@ featureless skyscraper is to the north."
   :ldesc "You are perched precariously on the roof of the Great Dome. A set of
 narrow indentations in the dome provides a dangerous route to the very
 tip-top of the dome."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (south :to @top-of-dome :via @dome-door)
@@ -664,7 +664,7 @@ tip-top of the dome."
   :description "Engineering Building"
   :ldesc "This building extends a long way south from the Infinite Corridor. It
 too is full of closed, locked offices."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @inf-1)
@@ -678,8 +678,7 @@ too is full of closed, locked offices."
 classwork. Right now, the majestic buildings of the main campus are
 almost invisible in the howling blizzard. A locked door bars your
 way to the north."
-  :flags (ONBIT OUTSIDE)
-
+  :properties (:on true :outside true)
   ; --- Room ACTION Routine ---
   ; <ROUTINE GREAT-COURT-F (RARG)
   ;   <COND
@@ -691,7 +690,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room GREAT-DOME: ACTION GREAT-DOME-F
 (room @great-dome
   :description "Great Dome"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (down :to @inf-3)
@@ -728,7 +727,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INF-1: ACTION INF-F
 (room @inf-1
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @mass-ave)
@@ -777,7 +776,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INF-2: ACTION INF-F
 (room @inf-2
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @inf-1)
@@ -823,7 +822,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INF-3: ACTION INF-F
 (room @inf-3
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @inf-2)
@@ -872,7 +871,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INF-4: ACTION INF-F
 (room @inf-4
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @inf-3)
@@ -918,7 +917,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INF-5: ACTION INF-F
 (room @inf-5
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @inf-4)
@@ -965,7 +964,7 @@ way to the north."
 ; [NEEDS-TRANSLATION] Room INNER-LAIR: ACTION INNER-LAIR-F
 (room @inner-lair
   :description "Inner Lair"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (up :to @outer-lair :via @curtain-door)
@@ -1001,7 +1000,7 @@ way to the north."
 makes it clear it is a weather observation station. For some reason,
 it also contains a small peach tree. Wind whistles outside, and snow
 blasts against the semitransparent material of the dome."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (out :to @brown-roof :via @inside-dome-exit-barrier)
@@ -1025,7 +1024,7 @@ blasts against the semitransparent material of the dome."
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
 counter are a refrigerator and a microwave."
-  :flags (RLANDBIT ONBIT)
+  :properties (:rland true :on true)
   :exits
     (
       (east :to @cs-2nd)
@@ -1506,7 +1505,7 @@ counter are a refrigerator and a microwave."
 (room @mass-ave
   :description "Mass. Ave."
   :ldesc "%"
-  :flags (OUTSIDE ONBIT)
+  :properties (:outside true :on true)
   :exits
     (
       (east :to @inf-1)
@@ -1540,7 +1539,7 @@ something into a semblance of a passage."
   :ldesc "This is the central corridor of the
 Nutrition Building. The main building is south, and a stairway leads
 down."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @inf-5)
@@ -1556,7 +1555,7 @@ fraternities to install cows, Volkswagen Beetles, giant birthday candles,
 and other bizarre objects. The top is flat, round, and about five feet
 in diameter. It's very windy, which has kept the snow from
 accumulating here. The only way off is down."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (down :to @dome-roof)
@@ -1582,7 +1581,7 @@ accumulating here. The only way off is down."
 ; [NEEDS-TRANSLATION] Room OUTER-LAIR: ACTION LAIR-F
 (room @outer-lair
   :description "Wet Tunnel"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @inner-lair :via @curtain-door)
@@ -1623,8 +1622,7 @@ accumulating here. The only way off is down."
   :ldesc "You stand before a low rock platform, more like an afterthought of
 piled rocks or a glacial moraine than a work of artifice. You are
 pushed against the pile by the crowd around you."
-  :flags (ONBIT)
-
+  :properties (:on true)
   ; --- Room ACTION Routine ---
   ; <ROUTINE PLATFORM-ROOM-F (RARG)
   ;   <COND
@@ -1655,7 +1653,7 @@ pushed against the pile by the crowd around you."
 ; [NEEDS-TRANSLATION] Room SMITH-ST: ACTION SMITH-ST-F
 (room @smith-st
   :description "Smith Street"
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (east :to @smith-st-2)
@@ -1683,7 +1681,7 @@ pushed against the pile by the crowd around you."
 ; [NEEDS-TRANSLATION] Room SMITH-ST-2: ACTION SMITH-ST-2-F
 (room @smith-st-2
   :description "Smith Street"
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     (
       (west :to @smith-st)
@@ -1789,7 +1787,7 @@ foundations are said to be."
 stairway leads up. A narrow
 crack in the northwest corner of the room opens into a larger
 space."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (nw :to @tomb :via @tomb-squeeze-barrier)
@@ -1803,7 +1801,7 @@ space."
 war-related research. Naturally, these buildings, though flimsy and ugly,
 are still around. This is the basement of one of them. The basement
 extends west, a stairway leads up, and a large passage is to the east."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (west :to @cs-basement)
@@ -1844,7 +1842,7 @@ computers, and printers. An exit leads south. Banners, posters, and
 signs festoon the walls. Most of the tables are covered with waste
 paper, old pizza boxes, and empty Coke cans. There are usually a lot of
 people here, but tonight it's almost deserted."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (south :to @cs-2nd :via @hacker-exit-barrier)
@@ -1890,7 +1888,7 @@ people here, but tonight it's almost deserted."
 ; [NEEDS-TRANSLATION] Room TOMB: ACTION TOMB-F
 (room @tomb
   :description "Tomb"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (out :to @tomb :via @tomb-squeeze-barrier)
@@ -1921,7 +1919,7 @@ people here, but tonight it's almost deserted."
 ; [NEEDS-TRANSLATION] Room TOP-OF-DOME: ACTION TOP-OF-DOME-F
 (room @top-of-dome
   :description "Top of Dome"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (north :to @dome-roof :via @dome-door)
@@ -2092,7 +2090,7 @@ point. The temperature has dropped considerably, as well."
 Harsh sounds split the air. Something sticky grabs at your feet.
 There is no color, everything is drained of brightness, dull and
 lifeless. A path descends into a shallow bowl of black basalt."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     (
       (down :to @bowl-room)

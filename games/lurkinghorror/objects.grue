@@ -16,8 +16,7 @@
 (object @master-key
   :description "master key"
   :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
-  :flags (TAKEBIT KEYBIT)
-  :properties ())
+  :properties (:takeable true :key true))
 
 (object @keyring
   :description "keyring"
@@ -28,8 +27,7 @@
 (object @carton
   :description "white carton"
   :location @refrigerator  ; In the kitchen refrigerator
-  :flags (TAKEBIT CONTBIT OPENBIT)
-  :properties (:heat 0)  ; Heatable object - can be warmed in microwave
+  :properties (:takeable true :container true :open true :heat 0)  ; Heatable object - can be warmed in microwave
 
   :behaviors (
     :examine (fn ()
@@ -49,8 +47,7 @@
 (object @chinese-food
   :description "Chinese food"
   :location @carton  ; Inside the carton
-  :flags (FOODBIT)
-  :properties (:heat 0)  ; 0=cold, 12+=hot, higher=overcooked
+  :properties (:food true :heat 0)  ; 0=cold, 12+=hot, higher=overcooked
 
   :behaviors (
     :examine (fn ()
@@ -78,14 +75,13 @@
 (object @snack
   :description "package of Funny Bones"
   :location @kitchen-counter  ; In ZIL: (IN KITCHEN-COUNTER)
-  :flags (TAKEBIT FOODBIT READBIT OPENABLE)
-  :properties (:heat 0)
+  :properties (:takeable true :food true :readable true :openable true :heat 0)
 
   :behaviors (
     :examine (fn ()
       (let ((?state (cond
-                      ((has-flag ?self RMUNGBIT) "an empty")
-                      ((has-flag ?self OPENBIT)
+                      ((:rmung ?self) "an empty")
+                      ((:open ?self)
                        (if (> (prop ?self heat) 0)
                            (str "an open, " (heat-desc ?self))
                            "an open"))
@@ -97,31 +93,30 @@
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
          (blocked :reason already-open :message "It's already open."))
         (true
-         '((set-flag ?self OPENBIT)
+         '((set ?self :open true)
            (success :message "You open the package, revealing yummy junk food inside.")))))
 
     :eat (fn ()
       (cond
-        ((has-flag ?self RMUNGBIT)
+        ((:rmung ?self)
          (blocked :reason empty :message "You already did. There's nothing left but the wrapper."))
         ((> (prop ?self heat) 12)
          (blocked :reason too-hot :message "You discover that they are too hot to eat."))
-        ((has-flag ?self OPENBIT)
-         '((set-flag ?self RMUNGBIT)
+        ((:open ?self)
+         '((set ?self :rmung true)
            (success :message "You devour the delicious food-like substance.")))
         (true
-         '((set-flag ?self OPENBIT)
-           (set-flag ?self RMUNGBIT)
+         '((set ?self :open true)
+           (set ?self :rmung true)
            (success :message "You tear open the package and devour the delicious food-like substance.")))))))
 
 (object @coke
   :description "two liter bottle of Classic Coke"
   :location @refrigerator  ; In ZIL: (IN REFRIGERATOR)
-  :flags (TAKEBIT FOODBIT OPENABLE)
-  :properties (:size 5 :heat 0)  ; size: 5=full, 4=partly empty, 3=partly full, 2=nearly empty, 1=empty
+  :properties (:takeable true :food true :openable true :size 5 :heat 0)  ; size: 5=full, 4=partly empty, 3=partly full, 2=nearly empty, 1=empty
 
   :behaviors (
     :examine (fn ()
@@ -158,58 +153,49 @@
 (object @keys
   :description "keys"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @food
   :description "food"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @students
   :description "missing students"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @program
   :description "the program"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @lovecraft
   :description "Lovecraft"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 ; @smooth-stone is now defined in yuggoth.grue with full behavior
 
 (object @urchins
   :description "urchins"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @repeater
   :description "repeater"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @cable
   :description "cable"
   :location nil
-  :flags (INVISIBLE)
-  :properties ())
+  :properties (:invisible true))
 
 (object @hand
   :description "your hand"
   :location @player
-  :flags (INVISIBLE NDESCBIT)
-  :properties ())
+  :properties (:invisible true :nodesc true))
 
 ; @dead-rat is now fully implemented in steam-tunnels.grue
 

@@ -9,9 +9,8 @@
   :description "pc"
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
-  :flags (TAKEBIT TRYTAKEBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
   ; Login state: logged-in becomes true after valid password, username is set to login ID (or true for invalid)
-  :properties (:size 30 :unplugged false :logged-in false :username false)
+  :properties (:takeable true :trytake true :open true :container true :searchable true :surface true :size 30 :unplugged false :logged-in false :username false)
 
   (def pc-desc "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key.")
   (def login-please "\"LOGIN PLEASE:\"")
@@ -24,7 +23,7 @@
       (let ((?screen (current-screen-content)))
         (cond
           ; PC is off
-          ((not (has-flag ?self POWER))
+          ((not (:powered ?self))
             (success :context ((power off))
                      :message (str pc-desc " It is currently turned off.")))
           ; PC is on with screen content
@@ -39,7 +38,7 @@
     ; LISTEN - Hums when powered on
     :listen (fn ()
       (cond
-        ((has-flag ?self POWER)
+        ((:powered ?self)
           (success :message "It hums contentedly."))
         (true
           (blocked :reason not-powered :message "It's silent."))))
@@ -52,9 +51,9 @@
                     :context ((hacker-blocks true))))
         ((prop ?self unplugged)
           (default))  ; Normal take when already unplugged
-        ((has-flag ?self POWER)
+        ((:powered ?self)
           ; Taking while on: turn off and unplug
-          '((clear-flag ?self POWER)
+          '((set ?self :powered false)
             (set-prop ?self unplugged true)
             (move ?self ?actor)
             (success :context ((auto-unplug true) (was-powered true))
@@ -76,7 +75,7 @@
         (cond
           ((and (queued? hacker-helps) (< (prop @player hacker-help-stage) 3))
             (blocked :reason hacker-working :message "There's nothing recognizable on the screen."))
-          ((not (has-flag ?self POWER))
+          ((not (:powered ?self))
             (blocked :reason not-powered :message "The screen is dark."))
           (?screen
             (redirect :action (do ?screen :read)))
@@ -88,10 +87,10 @@
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "It's unplugged. You should plug it in first."))
-        ((has-flag ?self POWER)
+        ((:powered ?self)
           (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
         (true
-          '((set-flag ?self POWER)
+          '((set ?self :powered true)
             (success :context ((booting true))
                      :message (str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum."))))))
 
@@ -102,10 +101,10 @@
           (blocked :reason hacker-interference
                    :context ((blocker @hacker))
                    :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason already-off :message "It's already off."))
         (true
-          '((clear-flag ?self POWER)
+          '((set ?self :powered false)
             (set @pc :logged-in false)
             (set @pc :username false)
             (move @menu-box nil)
@@ -131,9 +130,9 @@
           (blocked :reason hacker-interference
                    :context ((blocker @hacker))
                    :message "The hacker stops you. \"You'll mung the bits, chomper!\""))
-        ((has-flag ?self POWER)
+        ((:powered ?self)
           ; Unplug while on: turn off first, reset login state
-          '((clear-flag ?self POWER)
+          '((set ?self :powered false)
             (set-prop ?self unplugged true)
             (set @pc :logged-in false)
             (set @pc :username false)
@@ -160,7 +159,7 @@
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
         ((not (:username @pc))
           ; No username yet - redirect to login
@@ -179,7 +178,7 @@
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
         ((or (= ?value "xyzzy") (= ?value "872325412"))
           ; Valid login ID (xyzzy or the actual ID 872325412)
@@ -196,7 +195,7 @@
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))
-        ((not (has-flag ?self POWER))
+        ((not (:powered ?self))
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
         ((and (= (:username @pc) "xyzzy")
               (or (= ?value "plugh") (= ?value "uhlersoth")))
@@ -216,8 +215,7 @@
 (object @mouse
   :description "mouse"
   :location @pc
-  :flags (NDESCBIT)
-  :properties ()
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn () (success :message "It's a plastic pointing device."))
     :take (fn () (blocked :reason attached :message "It's attached to the computer."))
@@ -231,15 +229,14 @@
 (object @help-key
   :description "HELP key"
   :location @pc
-  :flags (NDESCBIT READBIT)
-  :properties (:text "It says \"HELP\" in reassuring blue letters.")
+  :properties (:nodesc true :readable true :text "It says \"HELP\" in reassuring blue letters.")
   :behaviors (
     :examine (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
     :read (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
     ; CLICK/PUSH - show contextual help based on PC state
     :click (fn ()
       (cond
-        ((not (has-flag @pc POWER))
+        ((not (:powered @pc))
           (success :message "Well, nothing happens. Perhaps you should turn on the computer?"))
         ((not (:logged-in @pc))
           (cond
@@ -268,8 +265,7 @@
 (object @menu-box
   :description "menu box"
   :location nil  ; Appears on PC after successful login
-  :flags (NDESCBIT READBIT)
-  :properties (:text "Edit Classics Paper.")
+  :properties (:nodesc true :readable true :text "Edit Classics Paper.")
 
   :behaviors (
     :examine (fn () (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))
@@ -284,8 +280,7 @@
 (object @yak-window
   :description "YAK editor"
   :location nil  ; Appears after clicking menu-box
-  :flags (NDESCBIT READBIT)
-  :properties (:text "YAK 5.3")
+  :properties (:nodesc true :readable true :text "YAK 5.3")
 
   :behaviors (
     :examine (fn () (success :message "There's a box for your paper."))
@@ -295,11 +290,11 @@
     :click (fn ()
       (cond
         ; First time - odd paper appears
-        ((not (has-flag @odd-paper TOUCHBIT))
+        ((not (:touched @odd-paper))
           '((move @yak-window nil)
             (move @odd-paper @pc)
             (move @more-box @pc)
-            (set-flag @odd-paper TOUCHBIT)
+            (set @odd-paper :touched true)
             (success :message "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different.")))
 
         ; Already seen - paper is lost
@@ -310,8 +305,7 @@
 (object @odd-paper
   :description "classics paper"
   :location nil  ; Appears after clicking yak-window
-  :flags (READBIT NDESCBIT)
-  :properties (:read-page false)
+  :properties (:readable true :nodesc true :read-page false)
 
   :behaviors (
     :examine (fn ()
@@ -335,8 +329,7 @@
 (object @more-box
   :description "more box"
   :location nil  ; Appears with odd-paper
-  :flags (READBIT NDESCBIT)
-  :properties ()
+  :properties (:readable true :nodesc true)
 
   :behaviors (
     :examine (fn () (success :message "It says \"MORE\" in a subdued typeface."))

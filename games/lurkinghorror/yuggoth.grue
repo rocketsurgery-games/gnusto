@@ -18,7 +18,7 @@
 (room @yuggoth
   :description "Place"
   :ldesc "This is a place. Things move about on a broken, rocky surface. Harsh sounds split the air. Something sticky grabs at your feet. There is no color, everything is drained of brightness, dull and lifeless. A path descends into a shallow bowl of black basalt."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ((down :to @bowl-room))
 
   :behaviors (
@@ -29,7 +29,7 @@
 (room @bowl-room
   :description "Basalt Bowl"
   :ldesc "You are at the bottom of a deeply cut, smooth basalt bowl. Dimly seen shapes crowd you on all sides. Ahead, in the focus of the movement, is a rock platform."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((up :to @yuggoth)
      (in :to @platform-room)
@@ -47,7 +47,7 @@
 (room @platform-room
   :description "At Platform"
   :ldesc "You stand before a low rock platform, more like an afterthought of piled rocks or a glacial moraine than a work of artifice. You are pushed against the pile by the crowd around you."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ()  ; No exits - trapped until lurker sequence completes
   :globals (@platform)
 
@@ -94,8 +94,7 @@
 (object @platform
   :location nil  ; Global, present via room :globals
   :description "platform"
-  :flags (NDESCBIT VEHBIT SURFACEBIT)
-
+  :properties (:nodesc true :vehicle true :surface true)
   :behaviors (
     :examine (fn ()
       (success :message "The platform is made of the same rocks as the surrounding terrain. In fact, you can't tell whether it is natural or constructed."))
@@ -114,13 +113,12 @@
 (object @smooth-stone
   :location nil  ; Appears in @platform-room during nightmare
   :description "smooth stone"
-  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT WEAPONBIT)
-  :properties (:value 5)
+  :properties (:takeable true :searchable true :open true :container true :weapon true :value 5)
 
   :behaviors (
     :describe (fn ()
       (cond
-        ((not (has-flag ?self TOUCHBIT))
+        ((not (:touched ?self))
           (success :context ((description "One small stone stands out in the pile, smooth, shiny, and glowing with a blazing light."))))
         (true
           (success :context ((description "A smooth, shiny stone lies here."))))))
@@ -132,7 +130,7 @@
       (cond
         ; In nightmare realm - triggers lurker
         ((= (loc ?self) @platform-room)
-          '((set-flag ?self TOUCHBIT)
+          '((set ?self :touched true)
             (move ?self @player)
             (queue lurker-appears)
             (success :message "You pick up the stone. It feels warm in your hand.")))
@@ -146,8 +144,7 @@
 (object @stone-symbol
   :location @smooth-stone
   :description "carved symbol"
-  :flags (NDESCBIT)
-  :properties (:size 0)
+  :properties (:nodesc true :size 0)
 
   :behaviors (
     :examine (fn ()
@@ -162,8 +159,7 @@
 (object @lurker
   :location nil  ; Appears during lurker-appears event
   :description "thing"
-  :flags (NDESCBIT PERSON)
-  :properties (:count 0)  ; Stage counter for lurker appearance (1-3)
+  :properties (:nodesc true :person true :count 0)  ; Stage counter for lurker appearance (1-3)
 
   :behaviors (
     :describe (fn ()

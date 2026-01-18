@@ -36,7 +36,7 @@
 
 (room @inf-1
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @mass-ave)
      (north :to @aero-lobby)
@@ -66,7 +66,7 @@
 
 (room @inf-2
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @inf-1)
      (east :to @inf-3 :via @waxer-exit-barrier))
@@ -84,7 +84,7 @@
 
 (room @inf-3
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @inf-2)
      (east :to @inf-4 :via @waxer-exit-barrier)
@@ -105,7 +105,7 @@
 
 (room @inf-4
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @inf-3)
      (east :to @inf-5 :via @waxer-exit-barrier))
@@ -123,7 +123,7 @@
 
 (room @inf-5
   :description "Infinite Corridor"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((west :to @inf-4)
      (north :to @nutrition-bldg :via @waxer-exit-barrier)
@@ -144,7 +144,7 @@
 (room @engineering-bldg
   :description "Engineering Building"
   :ldesc "This building extends a long way south from the Infinite Corridor. It too is full of closed, locked offices."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((north :to @inf-1))
   :globals (@office-door))
@@ -152,7 +152,7 @@
 (room @nutrition-bldg
   :description "Fruits and Nuts"
   :ldesc "This is the central corridor of the Nutrition Building. The main building is south, and a stairway leads down."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((south :to @inf-5)
      (down :to @brown-tunnel)))
@@ -161,7 +161,7 @@
 
 (room @mass-ave
   :description "Mass. Ave."
-  :flags (OUTSIDE ONBIT)
+  :properties (:outside true :on true)
   :exits
     ((east :to @inf-1)
      (in :to @inf-1))
@@ -175,7 +175,7 @@
     :on-enter (fn (?from-room)
       (cond
         ; Coming from inside - start freezing
-        ((not (has-flag ?from-room OUTSIDE))
+        ((not (:outside ?from-room))
           '((queue freezing)
             (success)))
         (true (success))))))
@@ -186,8 +186,7 @@
 (object @great-court-exit-barrier
   :location @inf-3
   :description "passage"
-  :flags (INVISIBLE)
-  :properties (:warned false)
+  :properties (:invisible true :warned false)
   :behaviors (
     :through (fn ()
       (cond

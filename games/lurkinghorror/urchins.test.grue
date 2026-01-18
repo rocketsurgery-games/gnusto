@@ -59,7 +59,7 @@
   (assert (outcome? blocked)))
 
 (test "urchins can be examined"
-  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (clear-flag! @urchins INVISIBLE))
+  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set @urchins :invisible false))
   (do @urchins :examine)
   (assert (outcome? success)))
 
@@ -109,11 +109,11 @@
 (test "bolt cutters start invisible in urchin"
   :setup ()
   (do @bolt-cutters :examine)
-  (assert (has-flag? @bolt-cutters INVISIBLE))
+  (assert (:invisible @bolt-cutters))
   (assert (loc? @bolt-cutters @urchin)))
 
 (test "showing twitching hand to urchin drops bolt cutters"
-  :setup ((move! @player @aero-lobby) (move! @mummified-hand @player) (set-flag! @mummified-hand PERSON))
+  :setup ((move! @player @aero-lobby) (move! @mummified-hand @player) (set @mummified-hand :person true))
   (do @urchin :give @mummified-hand)
   (assert (outcome? success))
   (assert (no-flag? @bolt-cutters INVISIBLE))

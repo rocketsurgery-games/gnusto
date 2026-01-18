@@ -78,7 +78,7 @@
 )
 
 (test-group "floor wax"
-  :setup ((move! @player @inf-3) (move! @plastic-container @player) (move! @floor-wax @plastic-container) (set-flag! @plastic-container OPENBIT))
+  :setup ((move! @player @inf-3) (move! @plastic-container @player) (move! @floor-wax @plastic-container) (set @plastic-container :open true))
 
   (test "wax starts in container"
     (do @plastic-container :examine)
@@ -96,7 +96,7 @@
 )
 
 (test-group "emergency cabinet"
-  :setup ((move! @player @inf-4) (clear-flag! @emergency-cabinet RMUNGBIT) (clear-flag! @emergency-cabinet OPENBIT) (move! @axe @emergency-cabinet))
+  :setup ((move! @player @inf-4) (set @emergency-cabinet :rmung false) (set @emergency-cabinet :open false) (move! @axe @emergency-cabinet))
 
   (test "cabinet in inf-4"
     (do @emergency-cabinet :examine)
@@ -125,11 +125,11 @@
     :setup ((move! @gloves @player))
     (do @emergency-cabinet :break)
     (assert (outcome? success))
-    (assert (has-flag? @emergency-cabinet RMUNGBIT)))
+    (assert (:rmung @emergency-cabinet)))
 )
 
 (test-group "axe"
-  :setup ((move! @player @inf-4) (move! @axe @emergency-cabinet) (clear-flag! @emergency-cabinet RMUNGBIT))
+  :setup ((move! @player @inf-4) (move! @axe @emergency-cabinet) (set @emergency-cabinet :rmung false))
 
   (test "cannot take axe through glass"
     (do @axe :take)
@@ -137,7 +137,7 @@
     (assert (reason? enclosed)))
 
   (test "can take axe after breaking glass"
-    :setup ((set-flag! @emergency-cabinet RMUNGBIT))
+    :setup ((set @emergency-cabinet :rmung true))
     (do @axe :take)
     (assert (outcome? success))
     (assert (held? @axe)))
@@ -159,7 +159,7 @@
 )
 
 (test-group "loose maintenance man blocking"
-  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-5) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (set-flag! @maintenance-man PERSON))
+  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-5) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (set @maintenance-man :person true))
 
   (test "loose maintenance man blocks passage"
     (go :direction east)

@@ -22,7 +22,7 @@
   (assert (outcome? success)))
 
 (test "taking smooth-stone works"
-  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (clear-flag! @smooth-stone TOUCHBIT))
+  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (set @smooth-stone :touched false))
   (do @smooth-stone :take)
   (assert (outcome? success))
   (assert (loc? @smooth-stone @player)))

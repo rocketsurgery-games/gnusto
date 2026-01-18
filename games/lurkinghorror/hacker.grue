@@ -8,8 +8,7 @@
 (object @hacker
   :description "hacker"
   :location @terminal-room
-  :flags (SEARCHBIT PERSON OPENBIT CONTBIT)
-  :properties (:trade false :lair-cnt 0 :help-stage 0 :food-hint 0 :comp-cnt 0)
+  :properties (:searchable true :person true :open true :container true :trade false :lair-cnt 0 :help-stage 0 :food-hint 0 :comp-cnt 0)
 
   (def hacker-desc "The hacker sits comfortably on an office chair facing a terminal table,
     or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly,
@@ -69,7 +68,7 @@
     ; ?item is the object being shown to the hacker
     :show (fn (?item) (cond
       ; Show food
-      ((has-flag ?item FOODBIT) (success :context ((response "\"Winnage! I could do with some of that.\""))))
+      ((:food ?item) (success :context ((response "\"Winnage! I could do with some of that.\""))))
 
       ; Show specific items
       ((= ?item @smooth-stone)  (success :context ((response "\"Odd-looking thing. Are you a rock-jock?\""))))
@@ -81,7 +80,7 @@
     ; ?item is the object being given to the hacker
     :give (fn (?item) (cond
       ; Give overcooked chinese food
-      ((and (= ?item @carton) (in? @chinese-food @carton) (has-flag @chinese-food RMUNGBIT))
+      ((and (= ?item @carton) (in? @chinese-food @carton) (:rmung @chinese-food))
         '((move @carton nil)
           (success :context ((response "\"Ouch! This is ridiculous! You've overcooked it. Look at those poor shrimp! It's ruined, chomper!\" He throws it away.")))))
 
@@ -108,7 +107,7 @@
         (blocked :reason food-cold :context ((response "\"Yuck! This isn't warm enough!\" He thrusts it back into your hands."))))
 
       ; Give snack (not eaten)
-      ((and (= ?item @snack) (not (has-flag @snack RMUNGBIT)))
+      ((and (= ?item @snack) (not (:rmung @snack)))
         '((move @snack @hacker)
           (success :context ((response "\"Hey, thanks!\" He stuffs it down in no time. \"I could really do with some Chinese food, though.\"")))))
 
@@ -146,7 +145,7 @@
         (blocked :reason needs-keys :context ((response "\"Well, I can't give you my keys, I need them.\" He fondles his keyring proudly."))))
 
       ; Ask for master key - key not visible (suspicious)
-      ((and (= ?item @master-key) (not (has-flag @master-key TOUCHBIT)))
+      ((and (= ?item @master-key) (not (:touched @master-key)))
         (blocked :reason suspicious :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
 
       ; Ask for master key - player already fed hacker (loan it)
@@ -160,7 +159,7 @@
         (blocked :reason quid-pro-quo :context ((response "\"Fat chance! This is a master key! What have you done for me lately?\""))))
 
       ; Ask for other keys
-      ((has-flag ?item KEYBIT)
+      ((:key ?item)
         (blocked :reason boring-keys :context ((response "\"Those are boring old keys. They don't open anything interesting.\""))))
 
       ; Ask for anything else
@@ -181,7 +180,7 @@
 
       ; About keys/keyring - reveals master key!
       ((or (= ?topic @keyring) (= ?topic @keys))
-        '((set-flag @master-key TOUCHBIT)
+        '((set @master-key :touched true)
           (move @master-key @keyring)
           (success :context ((response "\"I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech.\" He pulls the keyring out on its chain, and shows off a key you hadn't noticed before. \"This is a master key,\" he says.")))))
 
@@ -190,7 +189,7 @@
         (success :context ((response "\"Yeah! I'd love some yummy Chinese food. Szechuan style. Ummm!\""))))
 
       ; About the master key - depends on whether it's been revealed (TOUCHBIT)
-      ((and (= ?topic @master-key) (not (has-flag @master-key TOUCHBIT)))
+      ((and (= ?topic @master-key) (not (:touched @master-key)))
         (success :context ((response "\"Who said anything about any master keys?\" he asks suspiciously."))))
       ((= ?topic @master-key)
         (success :context ((response "\"That's one of my best keys. It's a Tech master key. Not that it really opens every door at Tech, but I'd say three out of five, at least. Naturally, some labs are off-limits even to this key.\""))))

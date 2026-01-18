@@ -11,10 +11,10 @@
   (test "about keys reveals master key"
     (do @hacker :ask-about @keys)
     (assert (outcome? success))
-    (assert (has-flag? @master-key TOUCHBIT)))
+    (assert (:touched @master-key)))
 
   (test "about keys again - already revealed"
-    :setup ((set-flag! @master-key TOUCHBIT))
+    :setup ((set @master-key :touched true))
     (do @hacker :ask-about @keys)
     (assert (outcome? success)))
 
@@ -64,7 +64,7 @@
     (assert (reason? suspicious)))
 
   (test "master key - revealed but no quid pro quo"
-    :setup ((set-flag! @master-key TOUCHBIT))
+    :setup ((set @master-key :touched true))
     (do @hacker :ask-for @master-key)
     (assert (outcome? blocked))
     (assert (reason? quid-pro-quo)))

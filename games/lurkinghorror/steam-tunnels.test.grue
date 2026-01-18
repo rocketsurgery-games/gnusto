@@ -25,7 +25,7 @@
     (assert (outcome? success)))
 
   (test "looking in open pit reveals truth"
-    :setup ((set-flag! @iron-plate OPENBIT))
+    :setup ((set @iron-plate :open true))
     (do @iron-plate :look-inside)
     (assert (outcome? success))
     (assert (prop? @iron-plate pit-seen true)))
@@ -46,24 +46,24 @@
 )
 
 (test-group "pressure valve"
-  :setup ((move! @player @tunnel-east) (clear-flag! @pressure-valve OPENBIT) (clear-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel-east) (set @pressure-valve :open false) (set @steam-pipes :hot false))
 
   (test "valve can be turned on"
     (do @pressure-valve :turn)
     (assert (outcome? success))
-    (assert (has-flag? @pressure-valve OPENBIT))
-    (assert (has-flag? @steam-pipes HOT)))
+    (assert (:open @pressure-valve))
+    (assert (:hot @steam-pipes)))
 
   (test "valve can be turned off"
-    :setup ((set-flag! @pressure-valve OPENBIT) (set-flag! @steam-pipes HOT))
+    :setup ((set @pressure-valve :open true) (set @steam-pipes :hot true))
     (do @pressure-valve :turn)
     (assert (outcome? success))
-    (assert (not (has-flag? @pressure-valve OPENBIT)))
-    (assert (not (has-flag? @steam-pipes HOT))))
+    (assert (not (:open @pressure-valve)))
+    (assert (not (:hot @steam-pipes))))
 )
 
 (test-group "steam blocking"
-  :setup ((move! @player @tunnel) (set-flag! @pressure-valve OPENBIT) (set-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel) (set @pressure-valve :open true) (set @steam-pipes :hot true))
 
   (test "steam blocks east passage"
     (do @player :go east)
@@ -72,7 +72,7 @@
 )
 
 (test-group "passage when valve closed"
-  :setup ((move! @player @tunnel) (clear-flag! @pressure-valve OPENBIT) (clear-flag! @steam-pipes HOT))
+  :setup ((move! @player @tunnel) (set @pressure-valve :open false) (set @steam-pipes :hot false))
 
   (test "can pass when valve closed"
     (do @player :go east)
@@ -109,18 +109,18 @@
 )
 
 (test-group "access hatch"
-  :setup ((move! @player @tunnel) (clear-flag! @access-hatch OPENBIT))
+  :setup ((move! @player @tunnel) (set @access-hatch :open false))
 
   (test "hatch can be opened"
     (do @access-hatch :open)
     (assert (outcome? success))
-    (assert (has-flag? @access-hatch OPENBIT)))
+    (assert (:open @access-hatch)))
 
   (test "hatch can be closed"
-    :setup ((set-flag! @access-hatch OPENBIT))
+    :setup ((set @access-hatch :open true))
     (do @access-hatch :close)
     (assert (outcome? success))
-    (assert (not (has-flag? @access-hatch OPENBIT))))
+    (assert (not (:open @access-hatch))))
 )
 
 (test-group "tunnel navigation"
@@ -168,10 +168,10 @@
 )
 
 (test-group "steam kills rats"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (clear-flag! @pressure-valve OPENBIT) (queue! rats-go-away))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set @pressure-valve :open false) (queue! rats-go-away))
 
   (test "valve kills rats and spawns dead rat"
-    :setup ((set-flag! @pressure-valve OPENBIT))
+    :setup ((set @pressure-valve :open true))
     (wait)
     (assert (outcome? success))
     (assert (loc? @rats nil))
@@ -179,7 +179,7 @@
 )
 
 (test-group "dead rat behaviors"
-  :setup ((move! @player @tunnel-west) (move! @dead-rat @tunnel-west) (clear-flag! @dead-rat TOUCHBIT))
+  :setup ((move! @player @tunnel-west) (move! @dead-rat @tunnel-west) (set @dead-rat :touched false))
 
   (test "can examine dead rat"
     (do @dead-rat :examine)
@@ -188,7 +188,7 @@
   (test "first take shows lice"
     (do @dead-rat :take)
     (assert (outcome? success))
-    (assert (has-flag? @dead-rat TOUCHBIT))
+    (assert (:touched @dead-rat))
     (assert (held? @dead-rat)))
 
   (test "can step on dead rat"
@@ -215,7 +215,7 @@
 )
 
 (test-group "dead rat in elixir"
-  :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (move! @dead-rat @player) (move! @elixir @vat))
+  :setup ((move! @player @alchemy-lab) (set @alchemy-lab :on true) (move! @dead-rat @player) (move! @elixir @vat))
 
   (test "dead rat in elixir comes to life"
     (do @vat :put @dead-rat)

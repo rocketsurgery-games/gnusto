@@ -1,8 +1,7 @@
 (room @cs-2nd
   :description "Second Floor"
   :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room."
-  :flags (ONBIT)
-  :properties (:floor 2)
+  :properties (:on true :floor 2)
   :exits
     ((north :to @terminal-room)
      (west :to @kitchen)

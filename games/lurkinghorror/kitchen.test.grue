@@ -28,15 +28,15 @@
   (test "starts closed"
     (do @refrigerator :examine)
     (assert (outcome? success))
-    (assert (not (has-flag? @refrigerator OPENBIT))))
+    (assert (not (:open @refrigerator))))
 
   (test "can open"
     (do @refrigerator :open)
     (assert (outcome? success))
-    (assert (has-flag? @refrigerator OPENBIT)))
+    (assert (:open @refrigerator)))
 
   (test "can take carton when open"
-    :setup ((set-flag! @refrigerator OPENBIT))
+    :setup ((set @refrigerator :open true))
     (do @carton :take)
     (assert (outcome? success))
     (assert (held? @carton)))
@@ -51,7 +51,7 @@
     (assert (reason? closed)))
 
   (test "can look inside when open"
-    :setup ((set-flag! @refrigerator OPENBIT))
+    :setup ((set @refrigerator :open true))
     (do @refrigerator :look-inside)
     (assert (outcome? success)))
 )
@@ -62,21 +62,21 @@
   (test "starts closed"
     (do @microwave :examine)
     (assert (outcome? success))
-    (assert (not (has-flag? @microwave OPENBIT))))
+    (assert (not (:open @microwave))))
 
   (test "can open"
     (do @microwave :open)
     (assert (outcome? success))
-    (assert (has-flag? @microwave OPENBIT)))
+    (assert (:open @microwave)))
 
   (test "can close"
-    :setup ((set-flag! @microwave OPENBIT))
+    :setup ((set @microwave :open true))
     (do @microwave :close)
     (assert (outcome? success))
-    (assert (not (has-flag? @microwave OPENBIT))))
+    (assert (not (:open @microwave))))
 
   (test "can't open when already open"
-    :setup ((set-flag! @microwave OPENBIT))
+    :setup ((set @microwave :open true))
     (do @microwave :open)
     (assert (outcome? blocked))
     (assert (reason? already-open)))
@@ -157,7 +157,7 @@
     (assert (reason? no-time)))
 
   (test "can't start with door open"
-    :setup ((set-prop! @microwave timer 120) (set-flag! @microwave OPENBIT))
+    :setup ((set-prop! @microwave timer 120) (set @microwave :open true))
     (do @microwave :start)
     (assert (outcome? blocked))
     (assert (reason? door-open)))
@@ -199,7 +199,7 @@
     :setup ((queue! microwave-running))
     (do @microwave :open)
     (assert (outcome? success))
-    (assert (has-flag? @microwave OPENBIT))
+    (assert (:open @microwave))
     (assert (not-queued? microwave-running)))
 )
 
@@ -240,14 +240,14 @@
     (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 22))
-    (assert (has-flag? @chinese-food RMUNGBIT)))
+    (assert (:rmung @chinese-food)))
 
   (test "not overcooked at heat 20"
     :setup ((set-prop! @chinese-food heat 16))
     (wait)
     (assert (outcome? success))
     (assert (prop? @chinese-food heat 20))
-    (assert (not (has-flag? @chinese-food RMUNGBIT))))
+    (assert (not (:rmung @chinese-food))))
 )
 
 (test-group "item-cooling event"
@@ -295,7 +295,7 @@
   (assert (not-queued? microwave-running)))
 
 (test-group "put items in containers"
-  :setup ((move! @player @kitchen) (move! @carton @player) (set-flag! @microwave OPENBIT))
+  :setup ((move! @player @kitchen) (move! @carton @player) (set @microwave :open true))
 
   (test "can put item in open container"
     (do @carton :put @microwave)
@@ -303,7 +303,7 @@
     (assert (in? @carton @microwave)))
 
   (test "can't put item in closed container"
-    :setup ((clear-flag! @microwave OPENBIT))
+    :setup ((set @microwave :open false))
     (do @carton :put @microwave)
     (assert (outcome? blocked))
     (assert (reason? closed)))
@@ -332,7 +332,7 @@
     :setup ((set-prop! @chinese-food heat 18))
     (wait)
     (assert (prop? @chinese-food heat 22))
-    (assert (has-flag? @chinese-food RMUNGBIT)))
+    (assert (:rmung @chinese-food)))
 )
 
 (test-group "chinese food behaviors"
@@ -375,7 +375,7 @@
 )
 
 (test-group "snack behaviors"
-  :setup ((move! @player @kitchen) (move! @snack @player) (clear-flag! @snack OPENBIT) (clear-flag! @snack RMUNGBIT))
+  :setup ((move! @player @kitchen) (move! @snack @player) (set @snack :open false) (set @snack :rmung false))
 
   (test "can examine snack"
     (do @snack :examine)
@@ -388,23 +388,23 @@
   (test "can open snack"
     (do @snack :open)
     (assert (outcome? success))
-    (assert (has-flag? @snack OPENBIT)))
+    (assert (:open @snack)))
 
   (test "can eat snack (opens and eats)"
-    :setup ((clear-flag! @snack OPENBIT))
+    :setup ((set @snack :open false))
     (do @snack :eat)
     (assert (outcome? success))
-    (assert (has-flag? @snack OPENBIT))
-    (assert (has-flag? @snack RMUNGBIT)))
+    (assert (:open @snack))
+    (assert (:rmung @snack)))
 
   (test "can't eat empty snack"
-    :setup ((set-flag! @snack RMUNGBIT))
+    :setup ((set @snack :rmung true))
     (do @snack :eat)
     (assert (outcome? blocked))
     (assert (reason? empty)))
 
   (test "can't eat too hot snack"
-    :setup ((set-flag! @snack OPENBIT) (set-prop! @snack heat 15))
+    :setup ((set @snack :open true) (set-prop! @snack heat 15))
     (do @snack :eat)
     (assert (outcome? blocked))
     (assert (reason? too-hot)))

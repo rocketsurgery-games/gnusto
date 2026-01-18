@@ -9,8 +9,7 @@
 (object @floor-waxer
   :location @inf-2
   :description "floor waxer"
-  :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:going-west false :patrol-started false)  ; going-west: Direction waxer is moving
+  :properties (:vehicle true :surface true :open true :container true :searchable true :going-west false :patrol-started false)  ; going-west: Direction waxer is moving
 
   :behaviors (
     :describe (fn ()
@@ -66,8 +65,7 @@
 (object @maintenance-man
   :location @floor-waxer
   :description "maintenance man"
-  :flags (PERSON)
-  :properties (:slip-seen false :attack-count 0)  ; slip-seen: player saw him slip; attack-count: attack counter
+  :properties (:person true :slip-seen false :attack-count 0)  ; slip-seen: player saw him slip; attack-count: attack counter
 
   :behaviors (
     :examine (fn ()
@@ -112,8 +110,7 @@
 (object @power-cord
   :location nil  ; Global - visible from corridor rooms
   :description "power cord"
-  :flags (NDESCBIT)
-  :properties (:severed false)  ; Whether the power cord has been cut
+  :properties (:nodesc true :severed false)  ; Whether the power cord has been cut
 
   :behaviors (
     :examine (fn ()
@@ -154,7 +151,7 @@
 (object @plastic-container
   :location @inf-1
   :description "plastic container"
-  :flags (TAKEBIT CONTBIT READBIT SEARCHBIT OPENABLE)
+  :properties (:takeable true :container true :readable true :searchable true :openable true)
   :text "\"Frobozz Magic Floor Wax (and Dessert Topping)\""
 
   :behaviors (
@@ -171,8 +168,7 @@
 (object @floor-wax
   :location @plastic-container
   :description "floor wax"
-  :flags (TRYTAKEBIT TAKEBIT TOUCHBIT)
-
+  :properties (:trytake true :takeable true :touched true)
   :behaviors (
     :describe (fn ()
       ; Only show description when on floor
@@ -205,7 +201,7 @@
             `((move @floor-wax ,?here)
               (success :message
                 ,(str "You pour the floor wax all over the floor. It spreads like ants at a picnic."
-                      (if (not (has-flag ?here OUTSIDE))
+                      (if (not (:outside ?here))
                         " The floor is now covered from wall to wall with slippery floor wax."
                         "")
                       (if ?mm-here
@@ -221,7 +217,7 @@
 (object @emergency-cabinet
   :location @inf-4
   :description "emergency cabinet"
-  :flags (CONTBIT TRANSBIT READBIT SEARCHBIT OPENABLE)
+  :properties (:container true :transparent true :readable true :searchable true :openable true)
   :text "\"In case of emergency, break glass.\""
 
   :behaviors (
@@ -229,7 +225,7 @@
       (success :context
         ((description
           (str "There is a "
-               (if (has-flag ?self RMUNGBIT) "formerly " "")
+               (if (:rmung ?self) "formerly " "")
                "glass-fronted emergency cabinet here.")))))
 
     :examine (fn ()
@@ -238,9 +234,9 @@
              "usually contains a fire hose and a fire axe. "
              (if (= (loc @axe) ?self) "This one seems to only have an axe. " "")
              "It "
-             (if (has-flag ?self RMUNGBIT) "had" "has")
+             (if (:rmung ?self) "had" "has")
              " a transparent window"
-             (if (has-flag ?self RMUNGBIT) " but apparently some vandal smashed it" "")
+             (if (:rmung ?self) " but apparently some vandal smashed it" "")
              ". There is writing on the cabinet.")))
 
     :read (fn ()
@@ -248,7 +244,7 @@
 
     :open (fn ()
       (cond
-        ((not (has-flag ?self RMUNGBIT))
+        ((not (:rmung ?self))
           (blocked :reason read-sign
             :message "You should read the sign."))
         (true
@@ -263,11 +259,11 @@
 
     :break (fn ()
       (cond
-        ((has-flag ?self RMUNGBIT)
+        ((:rmung ?self)
           (success :message "The cabinet is already smashed."))
         ((held? @gloves)
-          '((set-flag @emergency-cabinet OPENBIT)
-            (set-flag @emergency-cabinet RMUNGBIT)
+          '((set @emergency-cabinet :open true)
+            (set @emergency-cabinet :rmung true)
             (success :message "Wearing the heavy gloves, you confidently smash the glass with a blow of your hands!")))
         (true
           (blocked :reason bare-hands
@@ -280,13 +276,12 @@
 (object @axe
   :location @emergency-cabinet
   :description "fire axe"
-  :flags (TRYTAKEBIT TAKEBIT WEAPONBIT)
-
+  :properties (:trytake true :takeable true :weapon true)
   :behaviors (
     :take (fn ()
       (cond
         ((and (= (loc ?self) @emergency-cabinet)
-              (not (has-flag @emergency-cabinet RMUNGBIT)))
+              (not (:rmung @emergency-cabinet)))
           (blocked :reason enclosed
             :message "The glass is in the way."))
         ((held? ?self)
@@ -304,8 +299,7 @@
 (object @waxer-exit-barrier
   :location nil
   :description "passage"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn (?dest ?from)
       (cond
@@ -331,7 +325,7 @@
         ; Cord severed, maintenance man loose and chasing
         ((and (:severed @power-cord)
               (= (loc @maintenance-man) ?from)
-              (has-flag @maintenance-man PERSON)
+              (:person @maintenance-man)
               (not (= (loc @floor-wax) ?from)))
           (blocked :reason mm-blocking
             :message "The maintenance man lurches toward you, grasping and panting. There is no way to go around him."))

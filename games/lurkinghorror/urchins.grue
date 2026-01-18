@@ -54,8 +54,7 @@
 (object @urchins-barrier
   :location @large-chamber
   :description "urchins"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
@@ -73,8 +72,7 @@
 (object @slots
   :location @large-chamber
   :description "slots"
-  :flags (NDESCBIT OPENBIT CONTBIT)
-
+  :properties (:nodesc true :open true :container true)
   :behaviors (
     :examine (fn ()
       (success :message
@@ -157,8 +155,7 @@
 (object @urchin-wire
   :location @large-chamber
   :description "wire"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "These are thin, fibrous, ropy growths. They look very tough."))
@@ -175,7 +172,7 @@
           (blocked :reason need-tool :message "You'll need something to cut with."))
         ((= ?tool @bolt-cutters)
           '((set @urchins :freed true)
-            (clear-flag @urchins INVISIBLE)
+            (set @urchins :invisible false)
             (move @urchins @large-chamber)
             (move @urchin-wire nil)
             (success
@@ -184,7 +181,7 @@
                               "Urchins burst forth from the slots. "
                               "")
                             "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you."))))
-        ((or (has-flag ?tool WEAPONBIT) (has-flag ?tool TOOLBIT))
+        ((or (:weapon ?tool) (:tool ?tool))
           (success :message "That drives the wire into the mud, but doesn't cut it."))
         (true
           (blocked :reason wrong-tool :message "That won't cut through this wire."))))))
@@ -194,8 +191,7 @@
 (object @urchin
   :location @aero-lobby  ; Starts in aero lobby
   :description "urchin"
-  :flags (PERSON SEARCHBIT OPENBIT CONTBIT)
-
+  :properties (:person true :searchable true :open true :container true)
   :behaviors (
     :describe (fn ()
       (success :context
@@ -221,8 +217,8 @@
 
     :attack (fn ()
       (cond
-        ((not (has-flag @urchin RMUNGBIT))
-          '((set-flag @urchin RMUNGBIT)
+        ((not (:rmung @urchin))
+          '((set @urchin :rmung true)
             (success :message "The urchin backs off, and then draws a very large switchblade out of his parka. He waves it menacingly at you.")))
         (true
           (success :message "The urchin laughs in your face, fending you off with his switchblade."))))
@@ -230,10 +226,10 @@
     ; Show/give mummified hand -> urchin drops bolt cutters and flees
     :give (fn (?item)
       (cond
-        ((and (= ?item @mummified-hand) (has-flag @mummified-hand PERSON))
+        ((and (= ?item @mummified-hand) (:person @mummified-hand))
           ; Hand is "alive" (twitching) - this scares the urchin
           '((move @urchin nil)
-            (clear-flag @bolt-cutters INVISIBLE)
+            (set @bolt-cutters :invisible false)
             (move @bolt-cutters (loc @player))
             (success
               :message "The urchin sees the hand twitching. \"I heard what happens around here! I'm not gettin' fed to a monster!\" He lets loose a scream of fear and zooms away. Something drops from beneath his parka as he departs. He slows for a moment, decides not to retrieve it, and is quickly out of sight.")))
@@ -243,7 +239,7 @@
     :show (fn (?item)
       ; Same as give for the hand
       (cond
-        ((and (= ?item @mummified-hand) (has-flag @mummified-hand PERSON))
+        ((and (= ?item @mummified-hand) (:person @mummified-hand))
           (redirect :action (do @urchin :give ?item)))
         (true
           (success :message "The urchin glances at it suspiciously but shows no interest. He seems very nervous about talking to you."))))))
@@ -253,8 +249,7 @@
 (object @urchin-clothes
   :location @urchin
   :description "clothes"
-  :flags (NDESCBIT TRYTAKEBIT TAKEBIT)
-
+  :properties (:nodesc true :trytake true :takeable true)
   :behaviors (
     :examine (fn ()
       (success :message "It bulges in odd places."))
@@ -270,8 +265,7 @@
 (object @bolt-cutters
   :location @urchin
   :description "bolt cutters"
-  :flags (INVISIBLE TAKEBIT TOOLBIT WEAPONBIT)
-  :properties (:size 10)
+  :properties (:invisible true :takeable true :tool true :weapon true :size 10)
 
   :behaviors (
     :examine (fn ()

@@ -25,6 +25,8 @@ These are only used in game code, but they could just as well be boolean propert
 
 AN CONTBIT DOORBIT LOCKED NOABIT NOTHEBIT OUTSIDE POWERBIT READBIT RLANDBIT RMUNGBIT SEARCHBIT SLIMEBIT TAKEBIT THE TOOLBIT TOUCHBIT TRYTAKEBIT WEAPONBIT WEARBIT
 
+## Python vs Grue built-ins
+We currently only have a handful of built-ins implemented in Grue. The rest are all python. I believe the language and runtime will benefit from moving all built-ins to Grue, except for those that require special access to runtime internals.
 
 ## "Global" objects
 `(room :globals (@obj) ... )` feels like kind of a hack. It's used to make objects visible from multiple rooms, but the object still has to have a `:location nil`, which seems... weird?

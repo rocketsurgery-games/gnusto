@@ -29,12 +29,12 @@
 (test "sequential-test-basic"
   (do @chair :sit)
   (do @pc :turn-on)
-  (assert (has-flag? @pc POWER)))
+  (assert (:powered @pc)))
 
 ; Test (run) with action list
 (test "run-action-list"
   (run walkthrough/turn-on-pc)
-  (assert (has-flag? @pc POWER)))
+  (assert (:powered @pc)))
 
 ; Test assert works
 (test "assert-passes"
@@ -56,7 +56,7 @@
 
 (test "walkthrough-phase1-pc-on"
   (run walkthrough/turn-on-pc)
-  (assert (has-flag? @pc POWER)))
+  (assert (:powered @pc)))
 
 ; =============================================================================
 ; PHASE 2: MASTER KEY (from hacker trade)
@@ -147,7 +147,7 @@
 (test "walkthrough-phase3-forklift"
   :setup ((move! @forklift @dead-storage)  ; Pre-position forklift at dead-storage
           (move! @player @forklift)         ; Player starts on forklift
-          (set-flag! @forklift POWER)       ; Forklift already running
+          (set @forklift :powered true)       ; Forklift already running
           (set-prop! @junk moved 0))              ; Reset junk counter
 
   ; Verify initial state
@@ -258,12 +258,12 @@
           (move! @knife @player)
           (set-prop! @professor ritual-stage 3)  ; Ritual in progress
           (set-prop! @lab-bench moved false)
-          (clear-flag! @pentagram RMUNGBIT)
-          (clear-flag! @alchemy-trap-door OPENBIT))
+          (set @pentagram :rmung false)
+          (set @alchemy-trap-door :open false))
 
   ; Cut pentagram with knife
   (do @pentagram :cut @knife)
-  (assert (has-flag? @pentagram RMUNGBIT))
+  (assert (:rmung @pentagram))
 
   ; Exit pentagram
   (do @pentagram :exit)
@@ -275,7 +275,7 @@
 
   ; Open trapdoor and escape
   (do @alchemy-trap-door :open)
-  (assert (has-flag? @alchemy-trap-door OPENBIT))
+  (assert (:open @alchemy-trap-door))
 
   ; Go down to escape
   (do @movement :go down)
@@ -298,7 +298,7 @@
   :setup ((move! @player @under-alchemy-lab)
           (set-prop! @professor dead true)
           (set-prop! @lab-bench moved true)
-          (set-flag! @alchemy-trap-door OPENBIT)
+          (set @alchemy-trap-door :open true)
           (move! @ring @alchemy-lab))  ; Ring left behind
 
   ; Go back up to lab
@@ -315,7 +315,7 @@
           (move! @mummified-hand @player)
           (move! @vat @lab-bench)
           (move! @elixir @vat)
-          (clear-flag! @mummified-hand PERSON)
+          (set @mummified-hand :person false)
           (set-prop! @mummified-hand animation-count 0))
 
   ; Dip hand in vat (put INTO vat)
@@ -323,17 +323,17 @@
   (assert (in? @mummified-hand @vat))
 
   ; Wait for hand to animate (3 stages)
-  (until (has-flag? @mummified-hand PERSON)
+  (until (:person @mummified-hand)
     (wait))
 
-  (assert (has-flag? @mummified-hand PERSON)))
+  (assert (:person @mummified-hand)))
 
 ; Test putting ring on animated hand
 (test "walkthrough-phase5-ring-on-hand"
   :setup ((move! @player @alchemy-lab)
           (move! @mummified-hand @player)
           (move! @ring @player)
-          (set-flag! @mummified-hand PERSON))
+          (set @mummified-hand :person true))
 
   ; Put ring on animated hand
   (do @ring :put-on @mummified-hand)
@@ -365,9 +365,9 @@
   :setup ((move! @player @aero-lobby)
           (move! @urchin @aero-lobby)
           (move! @mummified-hand @player)
-          (set-flag! @mummified-hand PERSON)  ; Hand is animated
+          (set @mummified-hand :person true)  ; Hand is animated
           (move! @bolt-cutters @urchin)
-          (set-flag! @bolt-cutters INVISIBLE))
+          (set @bolt-cutters :invisible true))
 
   ; Show animated hand to urchin
   (do @urchin :show @mummified-hand)
@@ -380,7 +380,7 @@
 (test "walkthrough-phase6-get-bolt-cutters"
   :setup ((move! @player @aero-lobby)
           (move! @bolt-cutters @aero-lobby)
-          (clear-flag! @bolt-cutters INVISIBLE))
+          (set @bolt-cutters :invisible false))
 
   ; Take the bolt cutters
   (do @bolt-cutters :take)
@@ -405,7 +405,7 @@
 (test "walkthrough-phase7-lair-entry"
   :setup ((move! @player @lair-1)
           (move! @mummified-hand @player)
-          (set-flag! @mummified-hand PERSON)
+          (set @mummified-hand :person true)
           (move! @ring @mummified-hand))
 
   ; Hand should help navigate - for now just test we can move
@@ -430,18 +430,18 @@
 (test "walkthrough-phase7-unlock-door"
   :setup ((move! @player @outer-lair)
           (move! @slime-curtain nil)  ; Curtain destroyed
-          (clear-flag! @curtain-door INVISIBLE)
-          (set-flag! @curtain-door LOCKED)
-          (clear-flag! @curtain-door OPENBIT)
+          (set @curtain-door :invisible false)
+          (set @curtain-door :locked true)
+          (set @curtain-door :open false)
           (move! @master-key @player))
 
   ; Unlock door with master key
   (do @curtain-door :unlock @master-key)
-  (assert (not (has-flag? @curtain-door LOCKED)))
+  (assert (not (:locked @curtain-door)))
 
   ; Open the door
   (do @curtain-door :open)
-  (assert (has-flag? @curtain-door OPENBIT)))
+  (assert (:open @curtain-door)))
 
 ; Test entering inner lair - direct move for simplicity
 ; The full barrier mechanics are tested in lair.test.grue
@@ -465,8 +465,8 @@
 (test "walkthrough-phase7-cut-powerline"
   :setup ((move! @player @inner-lair)
           (move! @high-voltage @player)
-          (set-flag! @high-voltage POWERBIT)  ; Pulled out of water
-          (clear-flag! @high-voltage RMUNGBIT)
+          (set @high-voltage :powered true)  ; Pulled out of water
+          (set @high-voltage :rmung false)
           (move! @axe @player)
           (set-prop! @high-voltage cut-count 0))
 
@@ -476,7 +476,7 @@
   (do @high-voltage :cut @axe)
 
   ; Line should be cut (exposed conductors)
-  (assert (has-flag? @high-voltage RMUNGBIT)))
+  (assert (:rmung @high-voltage)))
 
 ; Test power line is plugged into socket (end state)
 ; NOTE: The plug action has complex logic tested elsewhere.
@@ -484,8 +484,8 @@
 (test "walkthrough-phase7-plug-powerline"
   :setup ((move! @player @inner-lair)
           (move! @high-voltage @input-socket)  ; Already plugged in
-          (set-flag! @high-voltage RMUNGBIT)
-          (set-flag! @output-cable RMUNGBIT)
+          (set @high-voltage :rmung true)
+          (set @output-cable :rmung true)
           (move! @frob @inner-lair)
           (set-prop! @frob count 1))  ; Frob has appeared
 
@@ -544,7 +544,7 @@
   (do @pc :turn-on)
   (do @pc :login "xyzzy")
   (do @pc :password "plugh")
-  (assert (has-flag? @pc POWER))
+  (assert (:powered @pc))
   (assert (prop? @pc logged-in true))
 
   ; Navigate to odd-paper and trigger compulsion
@@ -675,7 +675,7 @@
   (do @forklift :enter)
   (assert (in? @player @forklift))
   (do @forklift :turn-on)
-  (assert (has-flag? @forklift POWER))
+  (assert (:powered @forklift))
 
   ; Drive forklift east to dead-storage
   (go :direction east)        ; aero-basement -> cs-basement
@@ -751,7 +751,7 @@
   ; Break the glass (requires gloves which player should already have)
   (assert (held? @gloves))
   (do @emergency-cabinet :break)
-  (assert (has-flag? @emergency-cabinet RMUNGBIT))
+  (assert (:rmung @emergency-cabinet))
 
   ; Take the axe
   (do @axe :take)
@@ -784,12 +784,12 @@
 
   ; Wear gloves to safely climb tentacle
   (do @gloves :wear)
-  (assert (has-flag? @gloves WEARBIT))
+  (assert (:wearable @gloves))
 
   ; Climb tentacle to top of dome (creature flees, drops ladder)
   (go :direction up)         ; great-dome -> top-of-dome via tentacle
   (assert (loc? @player @top-of-dome))
-  (assert (has-flag? @tentacle INVISIBLE))  ; Creature fled
+  (assert (:invisible @tentacle))  ; Creature fled
   (assert (in? @dome-ladder @top-of-dome))  ; Ladder available
 
   ; Go out to roof and up to on-dome
@@ -800,7 +800,7 @@
 
   ; Pry bronze plug to reveal secret hole with note
   (do @bronze-plug :pry nil)
-  (assert (has-flag? @bronze-plug RMUNGBIT))
+  (assert (:rmung @bronze-plug))
   (assert (in? @secret-hole @on-dome))
   (do @note :take)
   (assert (held? @note))
@@ -833,7 +833,7 @@
   (do @roof-door :unlock @master-key)
   (assert (no-flag? @roof-door LOCKED))
   (do @roof-door :open)
-  (assert (has-flag? @roof-door OPENBIT))
+  (assert (:open @roof-door))
 
   ; Go to roof and climb to dome
   (go :direction west)       ; brown-top-floor -> brown-roof
@@ -850,7 +850,7 @@
 
   ; Search tub to find mummified hand - flier advances to stage 2
   (do @tub :search)
-  (assert (has-flag? @mummified-hand TOUCHBIT))
+  (assert (:touched @mummified-hand))
   (assert (in? @mummified-hand @tub))
 
   ; Take hand - flier advances to stage 3
@@ -924,7 +924,7 @@
 
   ; Cut pentagram with knife to escape
   (do @pentagram :cut @knife)
-  (assert (has-flag? @pentagram RMUNGBIT))
+  (assert (:rmung @pentagram))
 
   ; Exit pentagram
   (do @pentagram :exit)
@@ -947,7 +947,7 @@
 
   ; The ritual closes the trapdoor, so re-open it to go back up
   (do @alchemy-trap-door :open)
-  (assert (has-flag? @alchemy-trap-door OPENBIT))
+  (assert (:open @alchemy-trap-door))
 
   ; Go back up to get ring
   (go :direction up)
@@ -966,9 +966,9 @@
   ; Animate hand by putting in elixir vat
   (do @vat :put @mummified-hand)
   (assert (outcome? success))
-  (until (has-flag? @mummified-hand PERSON)
+  (until (:person @mummified-hand)
     (wait))
-  (assert (has-flag? @mummified-hand PERSON))
+  (assert (:person @mummified-hand))
 
   ; Put ring on animated hand
   (do @mummified-hand :take)
@@ -991,7 +991,7 @@
   ; Verify urchin has bolt-cutters (hidden)
   (assert (in? @urchin @aero-lobby))
   (assert (in? @bolt-cutters @urchin))
-  (assert (has-flag? @bolt-cutters INVISIBLE))
+  (assert (:invisible @bolt-cutters))
 
   ; Show animated hand to urchin - he flees and drops bolt cutters
   (do @urchin :show @mummified-hand)
@@ -1011,9 +1011,9 @@
 
   ; Cut padlock and open hatch to access steam tunnels
   (do @padlock :cut)
-  (assert (not (has-flag? @padlock LOCKED)))
+  (assert (not (:locked @padlock)))
   (do @access-hatch :open)
-  (assert (has-flag? @access-hatch OPENBIT))
+  (assert (:open @access-hatch))
 
   ; Go down to steam tunnel
   (go :direction down)      ; tomb -> tunnel
@@ -1026,7 +1026,7 @@
 
   ; Turn on valve to release steam - this starts rats-go-away event
   (do @pressure-valve :turn)
-  (assert (has-flag? @pressure-valve OPENBIT))
+  (assert (:open @pressure-valve))
   (assert (queued? rats-go-away))
 
   ; Wait for rats to be killed by steam (event fires after ~3 turns)
@@ -1036,7 +1036,7 @@
 
   ; Close valve to clear steam so we can pass west
   (do @pressure-valve :turn)
-  (assert (not (has-flag? @pressure-valve OPENBIT)))
+  (assert (not (:open @pressure-valve)))
 
   ; Navigate west through now-clear tunnels to large-chamber
   ; Path: tunnel-east -> tunnel -> tunnel-west -> tunnel-entrance -> muddy-tunnel -> large-chamber
@@ -1059,8 +1059,8 @@
   (assert (held? @axe))           ; From emergency-cabinet (Phase 4)
   (assert (held? @boots))         ; From brown-basement (brown building detour)
   (do @boots :wear)               ; Wear boots for electrical safety
-  (assert (has-flag? @boots WEARBIT))
-  (assert (has-flag? @gloves WEARBIT))  ; Already wearing gloves from great-dome climb
+  (assert (:wearable @boots))
+  (assert (:wearable @gloves))  ; Already wearing gloves from great-dome climb
   (assert (in? @nitrogen @flask))  ; Have nitrogen from chem lab
   (assert (prop? @slime-curtain nitrogen-count 0))
 
@@ -1086,7 +1086,7 @@
   ; Unlock and open the ancient door
   (do @curtain-door :unlock @master-key)
   (do @curtain-door :open)
-  (assert (has-flag? @curtain-door OPENBIT))
+  (assert (:open @curtain-door))
 
   ; Enter inner lair through the open door
   (go :direction south)
@@ -1100,14 +1100,14 @@
   ; Pull power line out of water
   (do @high-voltage :take)
   (assert (held? @high-voltage))
-  (assert (has-flag? @high-voltage POWERBIT))
+  (assert (:powered @high-voltage))
 
   ; Cut power line with axe (3 hits)
   (assert (prop? @high-voltage cut-count 0))
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
-  (assert (has-flag? @high-voltage RMUNGBIT))
+  (assert (:rmung @high-voltage))
 
   ; Open repeater box and unplug input cable
   (do @repeater :open)
@@ -1116,9 +1116,9 @@
   ; Verify endgame state is correct
   (assert (no-flag? @output-cable RMUNGBIT))  ; Not already cut
   (assert (held? @boots))               ; Boots from brown-basement
-  (assert (has-flag? @boots WEARBIT))   ; Wearing boots (electrical safety)
+  (assert (:wearable @boots))   ; Wearing boots (electrical safety)
   (assert (held? @gloves))              ; Gloves from temporary-basement
-  (assert (has-flag? @gloves WEARBIT))  ; Wearing gloves (handle conductors)
+  (assert (:wearable @gloves))  ; Wearing gloves (handle conductors)
 
   ; Plug power line into socket - triggers endgame!
   (do @high-voltage :plug @input-socket)

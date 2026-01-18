@@ -200,7 +200,7 @@ class TestPart3Basement:
 
         # Elevator door should be open
         door = game.state.objects.get("@elevator-door-2")
-        assert door.properties.get("OPENBIT")
+        assert door.properties.get("open")
 
     def test_can_reach_aero_basement(self, game):
         """Can navigate to aero basement via stairs."""
@@ -498,7 +498,7 @@ class TestPart5Hand:
         game.move_object("@mummified-hand", "@player")
         game.move_object("@player", "@alchemy-lab")
         game.state.globals["prof-dead"] = True  # Prof is gone
-        game.state.objects["@alchemy-lab"].properties["ONBIT"] = True  # Lights on
+        game.state.objects["@alchemy-lab"].properties["on"] = True  # Lights on
 
         # Dip hand in vat
         result = game.do("@vat", "put", "@mummified-hand")
@@ -512,7 +512,7 @@ class TestPart5Hand:
         game.move_object("@mummified-hand", "@player")
         game.move_object("@player", "@alchemy-lab")
         game.state.globals["prof-dead"] = True
-        game.state.objects["@alchemy-lab"].properties["ONBIT"] = True
+        game.state.objects["@alchemy-lab"].properties["on"] = True
 
         # Dip hand
         game.do("@vat", "put", "@mummified-hand")
@@ -523,13 +523,13 @@ class TestPart5Hand:
 
         # Hand should now be animated (PERSON flag)
         hand = game.state.objects.get("@mummified-hand")
-        assert hand.properties.get("PERSON"), "Hand should be animated"
+        assert hand.properties.get("person"), "Hand should be animated"
 
     def test_can_put_ring_on_animated_hand(self, game):
         """Can put the brass hyrax ring on the animated hand."""
         # Set up animated hand
         game.move_object("@mummified-hand", "@player")
-        game.state.objects["@mummified-hand"].properties["PERSON"] = True
+        game.state.objects["@mummified-hand"].properties["person"] = True
 
         # Give player the ring
         game.move_object("@ring", "@player")
@@ -548,7 +548,7 @@ class TestPart5Hand:
         game.move_object("@ring", "@player")
 
         # Hand is NOT animated
-        game.state.objects["@mummified-hand"].properties["PERSON"] = False
+        game.state.objects["@mummified-hand"].properties["person"] = False
 
         # Try to put ring on hand
         result = game.do("@ring", "put-on", "@mummified-hand")

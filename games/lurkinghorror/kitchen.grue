@@ -35,14 +35,14 @@
             '())
       ; Overcook chinese food if heat > 20 (after this heating)
       ,@(if (and (inside? @chinese-food @microwave) (> new-food-heat 20))
-            '((set-flag @chinese-food RMUNGBIT))
+            '((set @chinese-food :rmung true))
             '()))))
 
 (room @kitchen
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
 counter are a refrigerator and a microwave."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ((east :to @cs-2nd)))
 
 ; === Microwave Oven ===
@@ -52,8 +52,7 @@ counter are a refrigerator and a microwave."
 (object @microwave
   :description "microwave oven"
   :location @kitchen
-  :flags (NDESCBIT SEARCHBIT CONTBIT TRANSBIT OPENABLE)
-  :properties (:capacity 30 :timer 0 :temp 0)
+  :properties (:nodesc true :searchable true :container true :transparent true :openable true :capacity 30 :timer 0 :temp 0)
 
   :behaviors (
     :examine (fn ()
@@ -62,28 +61,28 @@ counter are a refrigerator and a microwave."
           (if (queued? microwave-running)
             "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is on."
             (str "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is off and it's "
-                 (if (has-flag ?self OPENBIT) "open" "closed")
+                 (if (:open ?self) "open" "closed")
                  "."))))))
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open))
         ((queued? microwave-running)
           ; Microwave is running - turn it off when opening
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (dequeue microwave-running)
             (success :context ((description "The microwave oven shuts off, and is now open.")))))
         (true
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (success :context ((description "The microwave oven is now open.")))))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed))
         (true
-          '((clear-flag ?self OPENBIT)
+          '((set ?self :open false)
             (success :context ((description "The microwave oven is now closed.")))))))
 
     ; === LLM Interface Behaviors ===
@@ -129,7 +128,7 @@ counter are a refrigerator and a microwave."
         ((queued? microwave-running)
           (blocked :reason already-running
                    :context ((description "It's already started."))))
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason door-open
                    :context ((description "Nothing happens, as there's a safety interlock engaged when the door is open."))))
         ((= (:timer @microwave) 0)
@@ -185,8 +184,7 @@ counter are a refrigerator and a microwave."
 (object @controls
   :description "microwave controls"
   :location @kitchen
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :context
@@ -204,8 +202,7 @@ counter are a refrigerator and a microwave."
 (object @readout
   :description "display"
   :location @kitchen
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :context
@@ -220,8 +217,7 @@ counter are a refrigerator and a microwave."
 (object @kitchen-counter
   :description "kitchen counter"
   :location @kitchen
-  :flags (NDESCBIT OPENBIT CONTBIT SEARCHBIT SURFACEBIT)
-  :properties (:capacity 200))
+  :properties (:nodesc true :open true :container true :searchable true :surface true :capacity 200))
 
 ; === Refrigerator ===
 ; Contains the chinese food carton.
@@ -229,14 +225,13 @@ counter are a refrigerator and a microwave."
 (object @refrigerator
   :description "refrigerator"
   :location @kitchen
-  :flags (NDESCBIT SEARCHBIT CONTBIT OPENABLE READBIT)
-  :properties (:capacity 200)
+  :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
 
   :behaviors (
     :examine (fn ()
       (success :context
         ((description (str "This is a medium-sized refrigerator whose door is "
-                          (if (has-flag ?self OPENBIT) "open" "closed")
+                          (if (:open ?self) "open" "closed")
                           ". There is a sign on the front.")))))
 
     :read (fn ()
@@ -245,7 +240,7 @@ counter are a refrigerator and a microwave."
 
     :look-inside (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (success :context
             ((description "The interior of the refrigerator is appalling. There are soggy lunch bags, ancient sandwiches and other less identifiable items."))))
         (true

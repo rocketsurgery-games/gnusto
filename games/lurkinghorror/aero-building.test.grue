@@ -67,7 +67,7 @@
   (assert (context? message "It reads \"The Tomb of the Unknown Tool.\"")))
 
 (test-group "padlock puzzle"
-  :setup ((move! @player @tomb) (set-prop! @padlock attached-to @access-hatch) (set-flag! @padlock LOCKED))
+  :setup ((move! @player @tomb) (set-prop! @padlock attached-to @access-hatch) (set @padlock :locked true))
 
   (test "padlock starts locked to access hatch"
     (do @padlock :examine)
@@ -96,22 +96,22 @@
 )
 
 (test-group "hatch after padlock removed"
-  :setup ((move! @player @tomb) (set-prop! @padlock attached-to nil) (clear-flag! @padlock LOCKED))
+  :setup ((move! @player @tomb) (set-prop! @padlock attached-to nil) (set @padlock :locked false))
 
   (test "can open access hatch after padlock removed"
     (do @access-hatch :open)
     (assert (outcome? success))
-    (assert (has-flag? @access-hatch OPENBIT)))
+    (assert (:open @access-hatch)))
 
   (test "can go down through open hatch"
-    :setup ((set-flag! @access-hatch OPENBIT))
+    :setup ((set @access-hatch :open true))
     (go :direction down)
     (assert (outcome? success))
     (assert (player-at? @tunnel)))
 )
 
 (test-group "tunnel to tomb via ladder"
-  :setup ((move! @player @tunnel) (set-prop! @padlock attached-to nil) (clear-flag! @padlock LOCKED) (set-flag! @access-hatch OPENBIT))
+  :setup ((move! @player @tunnel) (set-prop! @padlock attached-to nil) (set @padlock :locked false) (set @access-hatch :open true))
 
   (test "can go up from tunnel to tomb"
     (go :direction up)

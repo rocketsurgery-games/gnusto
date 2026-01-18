@@ -20,7 +20,7 @@
 (room @brown-tunnel
   :description "Cluttered Passage"
   :ldesc "This cluttered passage leads southeast. It is full of apparently discarded electronic equipment, old rusty file cabinets, and other detritus. A stairway also leads up."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits ((se :to @brown-basement)
           (up :to @nutrition-bldg)))
 
@@ -28,7 +28,7 @@
 
 (room @brown-building
   :description "Brown Building"
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((up :to @brown-top-floor)
      (down :to @brown-basement)
@@ -44,7 +44,7 @@
 (room @courtyard
   :description "Small Courtyard"
   :ldesc "This courtyard is a triumph of modern architecture. It is spare, cold, angular, overwhelming in size, and bears a striking resemblance to a wind tunnel whenever the breeze picks up. Right now this is true of the whole campus, though. A huge mass lurks nearby, and an almost featureless skyscraper is to the north."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     ((in :to @brown-building)
      (north :to @brown-building))
@@ -53,7 +53,7 @@
   :behaviors (
     :on-enter (fn (?from)
       (cond
-        ((not (has-flag ?from OUTSIDE))
+        ((not (:outside ?from))
           '((queue freezing)
             (success :message "As you leave, the door closes and locks behind you.")))
         (true (success))))))
@@ -61,14 +61,14 @@
 (room @great-court
   :description "Great Court"
   :ldesc "In the spring and summer, this cheery green court is a haven from classwork. Right now, the majestic buildings of the main campus are almost invisible in the howling blizzard. A locked door bars your way to the north."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits ()  ; Locked door to north - no passage
   :globals (@outside-door)
 
   :behaviors (
     :on-enter (fn (?from)
       (cond
-        ((not (has-flag ?from OUTSIDE))
+        ((not (:outside ?from))
           '((queue freezing)
             (success :message "As you leave, the door closes and locks behind you.")))
         (true (success))))))
@@ -76,7 +76,7 @@
 (room @brown-basement
   :description "Brown Basement"
   :ldesc "This is a cluttered basement below the Brown Building. Discarded equipment nearly blocks an already narrow hallway that terminates in a stairway leading up. The passage itself continues northwest."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((up :to @brown-building)
      (nw :to @brown-tunnel)))
@@ -84,7 +84,7 @@
 (room @brown-top-floor
   :description "Top Floor"
   :ldesc "This is the top of the stairway. A door leads out to the roof here, and you can hear the wind blowing beyond. There is a sign on the door."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((down :to @brown-building)
      (west :to @brown-roof :via @roof-door)
@@ -94,7 +94,7 @@
 (room @brown-roof
   :description "Skyscraper Roof"
   :ldesc "A low parapet surrounds a small roof here. The air conditioning cooling tower and the small protrusion containing the stairs are dwarfed by a semitransparent dome which towers above you. The blowing snow obscures all detail of the city across the river to the south."
-  :flags (ONBIT OUTSIDE)
+  :properties (:on true :outside true)
   :exits
     ((in :to @brown-top-floor :via @roof-door-exit)
      (east :to @brown-top-floor :via @roof-door-exit)
@@ -113,7 +113,7 @@
 (room @inside-dome
   :description "Inside Dome"
   :ldesc "You are inside a large domed area. The dome contains equipment that makes it clear it is a weather observation station. For some reason, it also contains a small peach tree. Wind whistles outside, and snow blasts against the semitransparent material of the dome."
-  :flags (ONBIT)
+  :properties (:on true)
   :exits
     ((down :to @brown-roof :via @dome-exit)
      (out :to @brown-roof :via @dome-exit))
@@ -141,8 +141,7 @@
 (object @brown-elevator
   :location @brown-building
   :description "elevator doors"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "The elevator appears to be out of order."))
@@ -156,63 +155,61 @@
 (object @roof-door
   :location @brown-top-floor
   :description "roof door"
-  :flags (NDESCBIT DOORBIT OPENABLE LOCKED)
-
+  :properties (:nodesc true :door true :openable true :locked true)
   :behaviors (
     :examine (fn ()
       (success :message
         (str "It's a heavy door leading to the roof. It is currently "
-             (if (has-flag ?self OPENBIT) "open" "closed and locked")
+             (if (:open ?self) "open" "closed and locked")
              ".")))
 
     :open (fn ()
       (cond
-        ((has-flag ?self OPENBIT)
+        ((:open ?self)
           (blocked :reason already-open :message "It's already open."))
-        ((has-flag ?self LOCKED)
+        ((:locked ?self)
           (blocked :reason locked :message "The door is securely locked."))
         (true
-          '((set-flag ?self OPENBIT)
+          '((set ?self :open true)
             (success :message "You push the door open, revealing a windswept, snow-covered roof. Frigid wind whips snow into your face.")))))
 
     :close (fn ()
       (cond
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason already-closed :message "It's already closed."))
         (true
-          '((clear-flag ?self OPENBIT)
+          '((set ?self :open false)
             (success :message "You close the door, muffling the howling wind.")))))
 
     :unlock (fn (?key)
       (cond
         ((not (= ?key @master-key))
           (blocked :reason wrong-key :message "That key doesn't fit."))
-        ((not (has-flag ?self LOCKED))
+        ((not (:locked ?self))
           (blocked :reason already-unlocked :message "It's already unlocked."))
         (true
-          '((clear-flag ?self LOCKED)
+          '((set ?self :locked false)
             (success :message "The door is now unlocked.")))))
 
     :through (fn ()
       (cond
-        ((has-flag ?self LOCKED)
+        ((:locked ?self)
           (blocked :reason locked :message "The door is locked."))
-        ((not (has-flag ?self OPENBIT))
+        ((not (:open ?self))
           (blocked :reason closed :message "The door is closed."))
         (true (success))))))
 
 (object @roof-door-exit
   :location @brown-roof
   :description "door"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
         ((in? @flier @brown-roof)
           (blocked :reason flier-blocks
                    :message "The dark shape, its foul stench overpowering the wind, blocks your escape."))
-        ((has-flag @roof-door OPENBIT)
+        ((:open @roof-door)
           (success))
         (true
           (blocked :reason closed :message "The door leading inside is closed."))))))
@@ -220,8 +217,7 @@
 (object @dome-exit
   :location @inside-dome
   :description "exit"
-  :flags (INVISIBLE)
-
+  :properties (:invisible true)
   :behaviors (
     :through (fn ()
       (cond
@@ -232,8 +228,7 @@
 (object @roof-door-sign
   :location @brown-top-floor
   :description "sign"
-  :flags (NDESCBIT READBIT)
-
+  :properties (:nodesc true :readable true)
   :behaviors (
     :examine (fn ()
       (redirect :action (do ?self :read)))
@@ -246,8 +241,7 @@
 (object @weather-dome
   :location @brown-roof
   :description "dome"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "The dome is large and semitransparent. It's made of some sort of milky-colored plastic. It dominates the roof. You can climb up to the entrance via a short ladder."))
@@ -261,8 +255,7 @@
 (object @ladder
   :location nil  ; Global, appears via room :globals
   :description "ladder"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It's a short metal ladder leading up to the dome entrance."))
@@ -275,8 +268,7 @@
 (object @peach-tree
   :location @inside-dome
   :description "peach tree"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "It's a small peach tree planted in a very large tub of earth. It appears healthy, although as it is wintertime, the tree has no leaves."))
@@ -298,8 +290,7 @@
 (object @tub
   :location @inside-dome
   :description "tub of dirt"
-  :flags (NDESCBIT CONTBIT OPENBIT SEARCHBIT)
-  :properties (:capacity 30)
+  :properties (:nodesc true :container true :open true :searchable true :capacity 30)
 
   :behaviors (
     :examine (fn ()
@@ -307,8 +298,8 @@
 
     :search (fn ()
       (cond
-        ((not (has-flag @mummified-hand TOUCHBIT))
-          '((set-flag @mummified-hand TOUCHBIT)
+        ((not (:touched @mummified-hand))
+          '((set @mummified-hand :touched true)
             (move @mummified-hand ?self)
             (success :message "You root around in the dirt for a while, when you encounter something hard. Further exploration reveals it to be a dried, chewed looking human hand.")))
         (true
@@ -320,13 +311,12 @@
 (object @mummified-hand
   :location nil  ; Hidden until found by searching tub
   :description "human hand"
-  :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
-  :properties (:heat 0 :last-pointed-room nil :animation-count 0)
+  :properties (:takeable true :searchable true :open true :container true :heat 0 :last-pointed-room nil :animation-count 0)
 
   :behaviors (
     :describe (fn ()
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           ; Animated hand perches on shoulder when held
           (cond
             ((held? ?self)
@@ -338,7 +328,7 @@
 
     :examine (fn ()
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           ; Animated hand - show stains, scars, ring if present, tattoo
           (success :message
             (str "There are stains, scars, "
@@ -350,7 +340,7 @@
 
     :rub (fn ()
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           (success :message "It's warm and dry."))
         (true
           (success :message "It's dry and cold. In fact, it's mummified."))))
@@ -358,7 +348,7 @@
     ; Animated hand wiggles away from hostile actions
     :take (fn ()
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
               (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
@@ -369,7 +359,7 @@
 
     :throw (fn (?target)
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
               (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
@@ -380,7 +370,7 @@
 
     :attack (fn (?weapon)
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
               (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
@@ -392,11 +382,11 @@
     ; Give/show something TO the animated hand
     :give (fn (?item)
       (cond
-        ((has-flag ?self PERSON)
+        ((:person ?self)
           (cond
             ((in? ?self @vat)
               (success :message "The hand is preoccupied."))
-            ((has-flag ?item PERSON)
+            ((:person ?item)
               (success :message "The hand doesn't react."))
             (true
               (success :message
@@ -408,8 +398,7 @@
 (object @tattoo
   :location @mummified-hand
   :description "tattoo"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "The tattoo is old and faded. It was done in red ink and is very artistically drawn. It depicts a strange symbol."))
@@ -424,8 +413,7 @@
 (object @flier-shape
   :location nil  ; Appears during flier approach
   :description "dark shape"
-  :flags (NDESCBIT)
-
+  :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
       (success :message "You can't tell much from here. It's large and dark, but the dome obscures all detail."))))
