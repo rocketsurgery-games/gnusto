@@ -155,7 +155,7 @@
 (object @elevator-door
   :description "elevator doors"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true :door true :openable true)
+  :properties (:nodesc true :door true :openable true)
   :behaviors (
     :examine (fn ()
       (success :message (str "The elevator doors are " (if (:open ?self) "open" "closed") ".")))
@@ -170,7 +170,7 @@
 (object @open-button
   :description "open button"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
       (success :message "It's a white button labeled \"OPEN\"."))
@@ -276,7 +276,7 @@
 (object @alarm-button
   :description "alarm button"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   :behaviors (
     :examine (fn () (success :message "A red button labeled \"ALARM\"."))
     :push (fn ()
@@ -297,7 +297,7 @@
 (object @access-panel
   :description "access panel"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true :container true :searchable true :openable true :capacity 20)
+  :properties (:nodesc true :container true :searchable true :openable true :capacity 20)
   :behaviors (
     :examine (fn ()
       (success :message (str "A small access panel in the wall. It is " (if (:open ?self) "open" "closed") ".")))))
@@ -308,7 +308,7 @@
 (object @up-button
   :description "up-arrow"
   :location @global  ; Visible on all elevator floors
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
       (let ((?floor (prop (loc @player) floor)))
@@ -417,25 +417,25 @@
 (object @elevator-door-b
   :description "elevator doors"
   :location @cs-basement
-  :properties (:an true :door true :openable true :searchable true :container true :floor 0)
+  :properties (:door true :openable true :searchable true :container true :floor 0)
   :behaviors elevator-door-behaviors)
 
 (object @elevator-door-1
   :description "elevator doors"
   :location @comp-center
-  :properties (:an true :door true :openable true :searchable true :container true :floor 1)
+  :properties (:door true :openable true :searchable true :container true :floor 1)
   :behaviors elevator-door-behaviors)
 
 (object @elevator-door-2
   :description "elevator doors"
   :location @cs-2nd
-  :properties (:an true :door true :openable true :searchable true :container true :floor 2)
+  :properties (:door true :openable true :searchable true :container true :floor 2)
   :behaviors elevator-door-behaviors)
 
 (object @elevator-door-3
   :description "elevator doors"
   :location @cs-3rd
-  :properties (:an true :door true :openable true :searchable true :container true :floor 3)
+  :properties (:door true :openable true :searchable true :container true :floor 3)
   :behaviors elevator-door-behaviors)
 
 ; === Elevator Movement Events ===

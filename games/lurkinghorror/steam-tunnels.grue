@@ -123,7 +123,7 @@
 (object @iron-plate
   :location @cave-altar
   :description "iron plate"
-  :properties (:an true :nodesc true :container true :transparent true :openable true :pit-seen false)  ; Set after looking in the pit
+  :properties (:nodesc true :container true :transparent true :openable true :pit-seen false)  ; Set after looking in the pit
 
   :behaviors (
     :examine (fn ()

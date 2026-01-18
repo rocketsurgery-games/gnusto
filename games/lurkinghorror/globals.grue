@@ -9,7 +9,7 @@
 (object @hands
   :description "your hands"
   :location @global  ; Always accessible
-  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
+  :properties (:nodesc true :tool true :touched true )
   :behaviors (
     :examine (fn ()
       (success :message "They're still attached to your wrists."))
@@ -22,7 +22,7 @@
 (object @feet
   :description "your feet"
   :location @global
-  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
+  :properties (:nodesc true :tool true :touched true )
   :behaviors (
     :examine (fn ()
       (success :message "They're at the ends of your legs, as usual."))))
@@ -30,7 +30,7 @@
 (object @head
   :description "your head"
   :location @global
-  :properties (:nodesc true :noabit true :nothebit true)
+  :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
       (success :message "It's on your shoulders."))))
@@ -38,7 +38,7 @@
 (object @eyes
   :description "your eyes"
   :location @global
-  :properties (:nodesc true :noabit true :nothebit true)
+  :properties (:nodesc true )
   :behaviors (
     :open (fn ()
       (success :message "They are."))
@@ -48,7 +48,7 @@
 (object @me
   :description "yourself"
   :location @global
-  :properties (:nodesc true :person true :touched true :noabit true :nothebit true)
+  :properties (:nodesc true :person true :touched true )
   :behaviors (
     :examine (fn ()
       ; TODO: V-DIAGNOSE - show status/health
@@ -190,7 +190,7 @@
 (object @east-wall
   :description "east wall"
   :location @global
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
       (success :message "It looks like a wall."))
@@ -245,7 +245,7 @@
 (object @global-sleep
   :description "sleep"
   :location @global
-  :properties (:nodesc true :noabit true :nothebit true)
+  :properties (:nodesc true )
   :behaviors (
     :take (fn ()
       ; "take sleep" -> "sleep"

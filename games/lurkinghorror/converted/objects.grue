@@ -61,7 +61,7 @@
 (object @access-panel
   :description "access panel"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true :container true :searchable true :openable true :capacity 20)
+  :properties (:nodesc true :container true :searchable true :openable true :capacity 20)
 
   ; --- ZIL Source ---
   ; <ROUTINE ACCESS-PANEL-F ()
@@ -86,14 +86,13 @@
 
 (object @air
   :description "air"
-  :properties (:an true :noabit true)
 )
 
 ; [NEEDS-TRANSLATION] ALARM-BUTTON
 (object @alarm-button
   :description "alarm button"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   ; --- ZIL Source ---
   ; <ROUTINE ALARM-BUTTON-F ()
   ;   <COND
@@ -274,7 +273,7 @@
 (object @assignment
   :description "assignment"
   :location @player
-  :properties (:an true :readable true :takeable true :size 1)
+  :properties (:readable true :takeable true :size 1)
 
   ; --- ZIL Source ---
   ; <ROUTINE ASSIGNMENT-F ()
@@ -1183,7 +1182,7 @@
 (object @chinese-food
   :description "Chinese food"
   :location @carton
-  :properties (:noabit true :takeable true :trytake true :food true :heat 0)
+  :properties (:takeable true :trytake true :food true :heat 0)
 
   ; --- ZIL Source ---
   ; <ROUTINE CHINESE-FOOD-F ()
@@ -1314,7 +1313,7 @@
 (object @controls
   :description "microwave controls"
   :location @kitchen
-  :properties (:nodesc true :noabit true)
+  :properties (:nodesc true )
   ; --- ZIL Source ---
   ; <ROUTINE CONTROLS-F ("AUX" ADJ N)
   ;   <COND
@@ -1485,7 +1484,7 @@
 ; [NEEDS-TRANSLATION] CURTAIN-DOOR
 (object @curtain-door
   :description "ancient door"
-  :properties (:an true :invisible true :nodesc true :door true :locked true :openable true)
+  :properties (:invisible true :nodesc true :door true :locked true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE CURTAIN-DOOR-F ()
   ;   <COND
@@ -1513,7 +1512,6 @@
 
 (object @dirt
   :description "dirt"
-  :properties (:noabit true)
 )
 
 ; [NEEDS-TRANSLATION] DOME
@@ -1659,7 +1657,6 @@
 ; [NEEDS-TRANSLATION] EAST-WALL
 (object @east-wall
   :description "east wall"
-  :properties (:an true)
   ; --- ZIL Source ---
   ; <ROUTINE WALL-F ()
   ;   <COND
@@ -1676,7 +1673,7 @@
 ; [NEEDS-TRANSLATION] ELEVATOR
 (object @elevator
   :description "elevator"
-  :properties (:an true :vehicle true)
+  :properties (:vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-F ("AUX" DOOR)
   ;   <COND
@@ -1721,7 +1718,7 @@
 (object @elevator-door
   :description "elevator doors"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true :door true :openable true)
+  :properties (:nodesc true :door true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOOR-F ()
   ;   <COND
@@ -1745,7 +1742,7 @@
 (object @elevator-door-1
   :description "elevator doors"
   :location @comp-center
-  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -1843,7 +1840,7 @@
 (object @elevator-door-2
   :description "elevator doors"
   :location @cs-2nd
-  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -1941,7 +1938,7 @@
 (object @elevator-door-3
   :description "elevator doors"
   :location @cs-3rd
-  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2039,7 +2036,7 @@
 (object @elevator-door-b
   :description "elevator doors"
   :location @cs-basement
-  :properties (:searchable true :an true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
+  :properties (:searchable true :container true :door true :openable true :contfcn "ELEVATOR-DOOR-CONT" :descfcn "ELEVATOR-DOORS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE ELEVATOR-DOORS-F ("AUX" TMP AUTO EH?)
@@ -2200,7 +2197,7 @@
 (object @emergency-cabinet
   :description "emergency cabinet"
   :location @inf-4
-  :properties (:container true :transparent true :readable true :an true :searchable true :openable true :capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
+  :properties (:container true :transparent true :readable true :searchable true :openable true :capacity 100 :descfcn "EMERGENCY-CABINET-DESC" :text "\"In case of emergency, break glass.\"")
 
   ; --- ZIL Source ---
   ; <ROUTINE EMERGENCY-CABINET-F ()
@@ -2245,7 +2242,6 @@
 ; [NEEDS-TRANSLATION] EYES
 (object @eyes
   :description "your eyes"
-  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE EYES-F ()
   ;   <COND
@@ -2262,7 +2258,7 @@
 
 (object @feet
   :description "your feet"
-  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
+  :properties (:nodesc true :tool true :touched true )
 )
 
 ; [NEEDS-TRANSLATION] FLASHLIGHT
@@ -2451,7 +2447,7 @@
 (object @floor-wax
   :description "floor wax"
   :location @plastic-container
-  :properties (:noabit true :trytake true :takeable true :touched true :descfcn "FLOOR-WAX-DESC")
+  :properties (:trytake true :takeable true :touched true :descfcn "FLOOR-WAX-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE FLOOR-WAX-F ()
@@ -2817,7 +2813,7 @@
 )
 
 (object @global-objects
-  :properties (:an true :container true :door true :invisible true :locked true :nodesc true :noabit true :nothebit true :on true :outside true :open true :person true :powered true :readable true :rland true :rmung true :searchable true :slime true :surface true :takeable true :the true :tool true :touched true :transparent true :trytake true :vehicle true :weapon true :wearable true)
+  :properties (:container true :door true :invisible true :locked true :nodesc true :on true :outside true :open true :person true :powered true :readable true :rland true :rmung true :searchable true :slime true :surface true :takeable true :tool true :touched true :transparent true :trytake true :vehicle true :weapon true :wearable true)
 )
 
 ; [NEEDS-TRANSLATION] GLOBAL-ROOM
@@ -2847,7 +2843,6 @@
 ; [NEEDS-TRANSLATION] GLOBAL-SLEEP
 (object @global-sleep
   :description "sleep"
-  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE GLOBAL-SLEEP-F ()
   ;   <COND
@@ -3054,12 +3049,11 @@
 
 (object @hands
   :description "your hand"
-  :properties (:nodesc true :tool true :touched true :noabit true :nothebit true)
+  :properties (:nodesc true :tool true :touched true )
 )
 
 (object @head
   :description "your head"
-  :properties (:noabit true :nothebit true)
 )
 
 ; [NEEDS-TRANSLATION] HELP-KEY
@@ -3229,7 +3223,7 @@
 
 (object @him
   :description "him"
-  :properties (:noabit true :nothebit true :nodesc true :touched true)
+  :properties (:nodesc true :touched true)
 )
 
 ; [NEEDS-TRANSLATION] HOOK
@@ -3353,7 +3347,7 @@
 (object @iron-plate
   :description "iron plate"
   :location @cave-altar
-  :properties (:an true :nodesc true :container true :transparent true :openable true)
+  :properties (:nodesc true :container true :transparent true :openable true)
   ; --- ZIL Source ---
   ; <ROUTINE IRON-PLATE-F ()
   ;   <COND
@@ -3412,13 +3406,13 @@
 
 (object @it
   :description "it"
-  :properties (:an true :noabit true :nothebit true :nodesc true :touched true)
+  :properties (:nodesc true :touched true)
 )
 
 ; [NEEDS-TRANSLATION] JUNK
 (object @junk
   :description "junk"
-  :properties (:nodesc true :noabit true)
+  :properties (:nodesc true )
   ; --- ZIL Source ---
   ; <ROUTINE JUNK-F ()
   ;   <COND
@@ -3639,7 +3633,7 @@ knife."
 (object @lovecraft
   :description "Alchemy Department computer"
   :location @alchemy-lab
-  :properties (:readable true :an true :text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
+  :properties (:readable true :text "Written with a marking pen on the display is \"Lovecraft.\"" :size 30)
 
   ; --- ZIL Source ---
   ; <ROUTINE LOVECRAFT-F ()
@@ -3977,7 +3971,7 @@ crud."
 ; [NEEDS-TRANSLATION] ME
 (object @me
   :description "yourself"
-  :properties (:person true :touched true :noabit true :nothebit true)
+  :properties (:person true :touched true )
   ; --- ZIL Source ---
   ; <ROUTINE ME-F ("AUX" OLIT)
   ;   <COND
@@ -4217,7 +4211,6 @@ crud."
 ; [NEEDS-TRANSLATION] NOT-HERE-OBJECT
 (object @not-here-object
   :description "it"
-  :properties (:noabit true :nothebit true)
   ; --- ZIL Source ---
   ; <ROUTINE NOT-HERE-OBJECT-F ("AUX" TBL PRSO? X)
   ;   <COND
@@ -4329,7 +4322,7 @@ crud."
 (object @open-button
   :description "open button"
   :location @cs-elevator-room
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   ; --- ZIL Source ---
   ; <ROUTINE OPEN-BUTTON-F ()
   ;   <COND
@@ -4348,7 +4341,7 @@ crud."
 
 (object @outlet
   :description "outlet"
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
 )
 
 ; [NEEDS-TRANSLATION] OUTPUT-CABLE
@@ -5306,7 +5299,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-1
 (object @shaft-1
   :description "elevator shaft"
-  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
+  :properties (:nodesc true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5353,7 +5346,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-2
 (object @shaft-2
   :description "elevator shaft"
-  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
+  :properties (:nodesc true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5400,7 +5393,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-3
 (object @shaft-3
   :description "elevator shaft"
-  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
+  :properties (:nodesc true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5447,7 +5440,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] SHAFT-B
 (object @shaft-b
   :description "elevator shaft"
-  :properties (:nodesc true :an true :searchable true :open true :container true :vehicle true)
+  :properties (:nodesc true :searchable true :open true :container true :vehicle true)
   ; --- ZIL Source ---
   ; <ROUTINE SHAFT-F ()
   ;   <COND
@@ -5958,7 +5951,7 @@ it says \"Who, me?\"")
 ; [NEEDS-TRANSLATION] UP-BUTTON
 (object @up-button
   :description "up-arrow"
-  :properties (:nodesc true :an true)
+  :properties (:nodesc true )
   ; --- ZIL Source ---
   ; <ROUTINE UP-BUTTON-F ("AUX" OLD FLOOR "OPT" BIT)
   ;   <SET
@@ -5996,7 +5989,7 @@ it says \"Who, me?\"")
 (object @urchin
   :description "urchin"
   :location @aero-lobby
-  :properties (:person true :an true :searchable true :open true :container true :descfcn "URCHIN-DESC")
+  :properties (:person true :searchable true :open true :container true :descfcn "URCHIN-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHIN-F ("AUX" MANY?)
@@ -6158,7 +6151,7 @@ it says \"Who, me?\"")
 (object @urchins
   :description "urchins"
   :location @slots
-  :properties (:invisible true :person true :noabit true :descfcn "URCHINS-DESC")
+  :properties (:invisible true :person true :descfcn "URCHINS-DESC")
 
   ; --- ZIL Source ---
   ; <ROUTINE URCHINS-F ()

@@ -435,7 +435,7 @@
 (object @curtain-door
   :location @outer-lair
   :description "ancient door"
-  :properties (:an true :invisible true :nodesc true :door true :locked true :openable true)
+  :properties (:invisible true :nodesc true :door true :locked true :openable true)
   :behaviors (
     :examine (fn ()
       (success :message

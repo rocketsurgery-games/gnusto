@@ -653,7 +653,7 @@
 (object @lovecraft
   :location @alchemy-lab
   :description "Alchemy Department computer"
-  :properties (:readable true :an true :size 30
+  :properties (:readable true :size 30
                :text "Written with a marking pen on the display is \"Lovecraft.\"")
 
   :behaviors (
