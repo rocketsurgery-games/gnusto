@@ -915,6 +915,8 @@ class ExprEvaluator:
             "when": self._eval_when,
             "match": self._eval_match,
             "condp": self._eval_condp,
+            "->": self._eval_thread_first,
+            "->>": self._eval_thread_last,
             "cond->": self._eval_cond_thread,
             "cond->>": self._eval_cond_thread_last,
 
@@ -1811,6 +1813,65 @@ class ExprEvaluator:
             return self.eval(items[i], env)
 
         return None
+
+    def _eval_thread_first(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(-> initial expr1 expr2 ...)
+
+        Thread-first macro. Threads value as first argument through expressions.
+
+        Examples:
+            (-> 5 (+ 3) (* 2))        => (* (+ 5 3) 2) => 16
+            (-> @obj :prop)           => (:prop @obj)
+            (-> @obj (:nested :key))  => (:key (:nested @obj))
+
+        Each expression receives the previous result as its first argument.
+        If expr is not a list, it's called with value as sole argument.
+        """
+        if len(form) < 2:
+            raise EvalError("'->' requires an initial value")
+
+        value = self.eval(form[1], env)
+
+        for expr in form.items[2:]:
+            if isinstance(expr, SList) and len(expr) > 0:
+                # Insert value after the function name: (fn val arg1 arg2 ...)
+                threaded = SList([expr[0], value] + list(expr.items[1:]))
+                value = self.eval(threaded, env)
+            else:
+                # Just call with value as argument: (expr val)
+                threaded = SList([expr, value])
+                value = self.eval(threaded, env)
+
+        return value
+
+    def _eval_thread_last(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(->> initial expr1 expr2 ...)
+
+        Thread-last macro. Threads value as last argument through expressions.
+
+        Examples:
+            (->> (range 5) (filter odd?) (map inc))
+            => (map inc (filter odd? (range 5)))
+
+        Each expression receives the previous result as its last argument.
+        If expr is not a list, it's called with value as sole argument.
+        """
+        if len(form) < 2:
+            raise EvalError("'->>' requires an initial value")
+
+        value = self.eval(form[1], env)
+
+        for expr in form.items[2:]:
+            if isinstance(expr, SList) and len(expr) > 0:
+                # Append value as last argument: (fn arg1 arg2 ... val)
+                threaded = SList(list(expr.items) + [value])
+                value = self.eval(threaded, env)
+            else:
+                # Just call with value as argument: (expr val)
+                threaded = SList([expr, value])
+                value = self.eval(threaded, env)
+
+        return value
 
     def _eval_cond_thread(self, form: SList, env: Optional[Environment] = None) -> Any:
         """(cond-> initial test1 expr1 test2 expr2 ...)

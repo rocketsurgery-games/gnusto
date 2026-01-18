@@ -842,6 +842,27 @@ Compare expression against test values using a predicate.
 Evaluates `(PRED TEST EXPR)` for each test value. Returns result of first truthy test.
 An odd trailing element is used as default.
 
+#### `(-> INITIAL EXPR1 EXPR2 ...)`
+Thread-first macro. Threads value as first argument through expressions.
+
+```scheme
+(-> 5 (+ 3) (* 2))    ; = (* (+ 5 3) 2) = 16
+(-> @obj :prop)       ; = (:prop @obj)
+```
+
+Each expression receives the previous result as its first argument.
+
+#### `(->> INITIAL EXPR1 EXPR2 ...)`
+Thread-last macro. Threads value as last argument through expressions.
+
+```scheme
+(->> (list 1 2 3)
+  (map (fn (x) (* x 2)))     ; = (map (fn ...) '(1 2 3))
+  (filter (fn (x) (> x 3)))) ; = (filter (fn ...) '(2 4 6)) = '(4 6)
+```
+
+Useful for collection pipelines where collection is the last argument.
+
 #### `(cond-> INITIAL TEST1 EXPR1 ...)`
 Conditional threading (first position). Threads value through expressions when tests pass.
 
