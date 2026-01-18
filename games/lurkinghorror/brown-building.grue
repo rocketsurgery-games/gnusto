@@ -15,11 +15,6 @@
 ;   - Flier creature encounter (triggered by smooth-stone or hand)
 ;   - Hand puzzle: dig in tub to find mummified hand, feed to flier
 
-; === State Globals ===
-
-(globals
-  :flier-count 0)          ; Stage counter for flier approach (1-5+)
-
 ; === Stub Rooms (connected areas not in scope) ===
 
 (room @brown-tunnel
@@ -128,7 +123,7 @@
     ; Trigger flier encounter when entering with smooth-stone
     :on-enter (fn (?from)
       (cond
-        ((and (= flier-count 0) (held? @smooth-stone))
+        ((and (= (:count @flier) 0) (held? @smooth-stone))
           '((queue flier-approach)
             (success :message "As you enter the dome, you feel a chill that has nothing to do with the temperature.")))
         (true (success))))
@@ -136,7 +131,7 @@
     ; Also trigger when entering with the hand
     :on-exit (fn (?to)
       (cond
-        ((and (= flier-count 0) (held? @mummified-hand))
+        ((and (= (:count @flier) 0) (held? @mummified-hand))
           '((queue flier-approach)
             (success)))
         (true (success))))))
@@ -326,7 +321,7 @@
   :location nil  ; Hidden until found by searching tub
   :description "human hand"
   :flags (TAKEBIT SEARCHBIT OPENBIT CONTBIT)
-  :properties (:heat 0)
+  :properties (:heat 0 :last-pointed-room nil :animation-count 0)
 
   :behaviors (
     :describe (fn ()
@@ -439,6 +434,7 @@
   :location nil  ; Appears during flier encounter
   :description "creature"
   :flags ()
+  :properties (:count 0)  ; Stage counter for flier approach (1-5+)
 
   :behaviors (
     :describe (fn ()
@@ -456,7 +452,7 @@
         ((= ?weapon @smooth-stone)
           ; Smooth stone can drive it away
           '((move @flier nil)
-            (set flier-count 0)
+            (set @flier :count 0)
             (dequeue flier-approach)
             (success :message "You hurl the stone at the creature. It strikes true! The flier shrieks in pain and fury, then flees into the storm, disappearing from view.")))
         (true
@@ -469,7 +465,7 @@
           ; Feeding the hand to the flier is the solution
           '((move @mummified-hand nil)
             (move @flier nil)
-            (set flier-count 0)
+            (set @flier :count 0)
             (dequeue flier-approach)
             (success :message "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale.")))
         ((= ?item @smooth-stone)
@@ -508,7 +504,7 @@
 
 (event flier-approach
   :on-turn
-    (let ((?stage (+ flier-count 1))
+    (let ((?stage (+ (:count @flier) 1))
           (?in-dome (= (loc @player) @inside-dome)))
       (cond
         ; Stage 1-5: Advance and show message
@@ -519,26 +515,26 @@
             (cond
               ; Stage 1: Shape appears
               ((= ?stage 1)
-                `((set flier-count ,?stage)
+                `((set @flier :count ,?stage)
                   (move @flier-shape @inside-dome)
                   (move @flier @brown-roof)
                   (queue flier-approach)
                   (success :context ((description ,?msg)))))
               ; Stage 3: Shape drops, flier visible
               ((= ?stage 3)
-                `((set flier-count ,?stage)
+                `((set @flier :count ,?stage)
                   (move @flier-shape nil)
                   (queue flier-approach)
                   (success :context ((description ,?msg)))))
               ; Stage 5: Flier enters if in dome
               ((= ?stage 5)
-                `((set flier-count ,?stage)
+                `((set @flier :count ,?stage)
                   ,@(if ?in-dome '((move @flier @inside-dome)) '())
                   (queue flier-approach)
                   (success :context ((description ,?msg)))))
               ; Other stages (2, 4)
               (true
-                `((set flier-count ,?stage)
+                `((set @flier :count ,?stage)
                   (queue flier-approach)
                   (success :context ((description ,?msg))))))))
 
@@ -548,7 +544,7 @@
           '((move @mummified-hand nil)
             (move @flier nil)
             (dequeue flier-approach)
-            (set flier-count 0)
+            (set @flier :count 0)
             (success :context ((description "In a snake-like strike, the creature attacks! Its toothy jaws close on your hand! Not your hand, but the mummified hand you dug out of the tub! With a disgusting gobbling noise, the flier swallows the hand, and then sails away into the gale.")))))
 
         ; No hand - player is in danger

@@ -42,7 +42,7 @@
         ((description
           (str "This is a tiny, narrow, ill-fitting room. It appears to have been a left over space from the joining of two preexisting buildings. It is roughly coffin shaped. The walls are covered by decades of overlaid graffiti, but there is one which is painted in huge fluorescent letters that were apparently impossible for later artists to completely deface. On the floor is a rusty access hatch"
                (cond
-                 ((= padlock-on @access-hatch) " locked with a huge padlock")
+                 ((= (:attached-to @padlock) @access-hatch) " locked with a huge padlock")
                  ((has-flag @access-hatch OPENBIT) " which is open")
                  (true ""))
                ".")))))))
@@ -76,7 +76,7 @@
   :behaviors (
     :through (fn (?dest ?from)
       (cond
-        ((= padlock-on @access-hatch)
+        ((= (:attached-to @padlock) @access-hatch)
           (blocked :reason locked :message "The padlock locks the hatch in place."))
         ((not (has-flag @access-hatch OPENBIT))
           (blocked :reason closed :message "The access hatch is closed."))
@@ -105,6 +105,7 @@
   :location @access-hatch
   :description "padlock"
   :flags (NDESCBIT TAKEBIT TRYTAKEBIT LOCKED OPENABLE)
+  :properties (:attached-to @access-hatch)  ; Track what padlock is attached to (nil = not attached)
 
   :behaviors (
     :examine (fn ()
@@ -112,7 +113,7 @@
         (str "The padlock has been spray painted many times by graffiti artists. It's currently fluorescent purple. In spite of the many coats of paint, the lock manages to be rusty and, in fact, almost slimy-looking. The padlock is "
              (if (has-flag ?self LOCKED)
                (str "locked"
-                    (if (= padlock-on @access-hatch)
+                    (if (= (:attached-to @padlock) @access-hatch)
                       " to the hatch"
                       ""))
                "unlocked")
@@ -120,7 +121,7 @@
 
     :take (fn ()
       (cond
-        ((= padlock-on @access-hatch)
+        ((= (:attached-to @padlock) @access-hatch)
           (blocked :reason locked :message "The padlock locks the hatch in place."))
         ((held? ?self)
           (blocked :reason already-have :message "You already have it."))
@@ -144,16 +145,8 @@
           (success :message "The padlock is already cut open."))
         (true
           '((clear-flag ?self LOCKED)
-            (set padlock-on nil)
+            (set @padlock :attached-to nil)
             (move ?self (loc @player))
             (success :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls to the floor.")))))))
 
 ; Note: @bolt-cutters is now defined in urchins.grue (obtained from individual urchin)
-
-; ============================================================
-; GLOBALS
-; ============================================================
-
-; Track what the padlock is attached to (nil = not attached)
-(globals
-  :padlock-on @access-hatch)

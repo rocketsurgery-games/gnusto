@@ -5,5 +5,6 @@
 
 (object @player
   :location @terminal-room
-  :flags (PERSON))
+  :flags (PERSON)
+  :properties (:freeze-count 0))
 

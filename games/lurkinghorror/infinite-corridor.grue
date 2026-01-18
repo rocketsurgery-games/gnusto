@@ -10,9 +10,7 @@
 
 ; === Waxer Patrol Initialization ===
 ; The waxer patrol starts when the player first enters the corridor
-
-(globals
-  :waxer-patrol-started false)
+; The :patrol-started property is on @floor-waxer in maintenance-man.grue
 
 ; === Helper for corridor position description ===
 
@@ -58,9 +56,9 @@
     :on-enter (fn (?from-room)
       ; Start the waxer patrol when player first enters the corridor
       (cond
-        (waxer-patrol-started (success))
+        ((:patrol-started @floor-waxer) (success))
         (true
-          '((set waxer-patrol-started true)
+          '((set @floor-waxer :patrol-started true)
             (queue waxer-moves 3)
             (success)))))))
 
@@ -185,18 +183,16 @@
 ; === Great Court Exit Barrier ===
 ; Warns the player they can't get back in at night
 
-(globals
-  :door-warning false)
-
 (object @great-court-exit-barrier
   :location @inf-3
   :description "passage"
   :flags (INVISIBLE)
+  :properties (:warned false)
   :behaviors (
     :through (fn ()
       (cond
-        (door-warning (success))
+        ((:warned @great-court-exit-barrier) (success))
         (true
-          '((set door-warning true)
+          '((set @great-court-exit-barrier :warned true)
             (blocked :reason warning
               :message "Remember, this is one of the doors that's always locked at night. You won't be able to get back in if you go out.")))))))

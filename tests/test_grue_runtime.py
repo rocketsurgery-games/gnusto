@@ -603,66 +603,33 @@ class TestRedirectFollowing:
 
 
 
-class TestGlobalsRuntime:
-    """Test globals initialization and usage at runtime."""
+class TestDefaultGlobals:
+    """Test built-in runtime globals (score, moves)."""
 
-    def test_globals_initialized_from_world(self):
-        """Globals from world definition are available at runtime."""
+    def test_default_globals_initialized(self):
+        """Default globals (score, moves) are initialized to 0."""
         source = """
-        (globals
-          :lair-cnt 0
-          :hacker-help 0
-          :active true)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        assert runtime.get_global("lair-cnt") == 0
-        assert runtime.get_global("hacker-help") == 0
-        assert runtime.get_global("active") is True
-
-    def test_default_globals_preserved(self):
-        """Default globals (score, moves) are set if not defined."""
-        source = """
-        (globals :custom-var 42)
-        (room LOBBY :description "A lobby")
-        (object PLAYER :location LOBBY)
-        """
-        world = parse_grue(source)
-        runtime = GrueRuntime(world)
-
-        # Custom global is set
-        assert runtime.get_global("custom-var") == 42
-        # Default globals still present
+        # Default globals are present
         assert runtime.get_global("score") == 0
         assert runtime.get_global("moves") == 0
 
-    def test_world_can_override_defaults(self):
-        """World can override default global values."""
+    def test_properties_in_behavior_conditions(self):
+        """Object properties can be checked in behavior conditions."""
         source = """
-        (globals :score 100 :moves 50)
-        (room LOBBY :description "A lobby")
-        (object PLAYER :location LOBBY)
-        """
-        world = parse_grue(source)
-        runtime = GrueRuntime(world)
-
-        assert runtime.get_global("score") == 100
-        assert runtime.get_global("moves") == 50
-
-    def test_globals_in_behavior_conditions(self):
-        """Globals can be checked in behavior conditions."""
-        source = """
-        (globals :counter 5)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
+          :properties (:counter 5)
           :behaviors (
             :examine (fn ()
               (cond
-                ((> counter 3)
+                ((> (:counter ?self) 3)
                   (success :message "Counter is high"))
                 (true
                   (success :message "Counter is low"))))))
@@ -674,27 +641,27 @@ class TestGlobalsRuntime:
         assert result.outcome == "success"
         assert ("message", "Counter is high") in result.context
 
-    def test_globals_modified_by_effects(self):
-        """Globals can be modified by set! effects."""
+    def test_properties_modified_by_effects(self):
+        """Object properties can be modified by set effects."""
         source = """
-        (globals :counter 0)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object BUTTON :location LOBBY
+          :properties (:counter 0)
           :behaviors (
             :push (fn ()
-              (cond
-                (true '((inc counter)
-                        (success :message "Counter incremented")))))))
+              (let ((?new-val (+ (:counter ?self) 1)))
+                `((set ?self :counter ,?new-val)
+                  (success :message "Counter incremented"))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        assert runtime.get_global("counter") == 0
+        assert runtime.get_object_property("BUTTON", "counter") == 0
         runtime.do("BUTTON", "push")
-        assert runtime.get_global("counter") == 1
+        assert runtime.get_object_property("BUTTON", "counter") == 1
         runtime.do("BUTTON", "push")
-        assert runtime.get_global("counter") == 2
+        assert runtime.get_object_property("BUTTON", "counter") == 2
 
 
 class TestEventSystem:
@@ -703,14 +670,11 @@ class TestEventSystem:
     def test_event_fires_when_queued(self):
         """Events fire when queued and processed."""
         source = """
-        (globals :stage 0)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
         (event test-event
-          :on-turn (cond
-            (true '((inc stage)
-                    (success :context ((message "Event fired")))))))
+          :on-turn (success :context ((message "Event fired"))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -718,27 +682,23 @@ class TestEventSystem:
         # Event shouldn't fire if not queued
         results = runtime.process_events()
         assert len(results) == 0
-        assert runtime.get_global("stage") == 0
 
         # Queue the event
         runtime.queue_event("test-event")
         results = runtime.process_events()
         assert len(results) == 1
         assert results[0].outcome == "success"
-        assert runtime.get_global("stage") == 1
 
     def test_event_location_constraint(self):
         """Events with location only fire when player is there."""
         source = """
-        (globals :stage 0)
         (room LOBBY :description "A lobby")
         (room GARDEN :description "A garden")
         (object PLAYER :location GARDEN)
 
         (event lobby-only
           :location LOBBY
-          :on-turn (cond
-            (true '((inc stage) (success)))))
+          :on-turn (success))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -748,13 +708,12 @@ class TestEventSystem:
         # Player is in GARDEN, event shouldn't fire
         results = runtime.process_events()
         assert len(results) == 0
-        assert runtime.get_global("stage") == 0
 
         # Move player to LOBBY
         runtime.state.objects["PLAYER"].location = "LOBBY"
         results = runtime.process_events()
         assert len(results) == 1
-        assert runtime.get_global("stage") == 1
+        assert results[0].outcome == "success"
 
     def test_event_countdown(self):
         """Events with countdown wait before firing.
@@ -765,13 +724,11 @@ class TestEventSystem:
         - countdown=3 fires on the third call, etc.
         """
         source = """
-        (globals :stage 0)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
         (event delayed-event
-          :on-turn (cond
-            (true '((inc stage) (success)))))
+          :on-turn (success :context ((message "Event fired"))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
@@ -782,67 +739,38 @@ class TestEventSystem:
         # First call: countdown 3 -> 2, doesn't fire
         results = runtime.process_events()
         assert len(results) == 0
-        assert runtime.get_global("stage") == 0
         assert runtime.get_queue_countdown("delayed-event") == 2
 
         # Second call: countdown 2 -> 1, doesn't fire
         results = runtime.process_events()
         assert len(results) == 0
-        assert runtime.get_global("stage") == 0
         assert runtime.get_queue_countdown("delayed-event") == 1
 
         # Third call: countdown 1, event fires
         results = runtime.process_events()
         assert len(results) == 1
-        assert runtime.get_global("stage") == 1
+        assert results[0].outcome == "success"
 
     def test_event_staged_logic(self):
-        """Events can use stage-based conditions like I-HACKER-HELPS."""
+        """Events can dequeue themselves after completing their sequence."""
         source = """
-        (globals :help-stage 0)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
         (event hacker-helps
           :location LOBBY
-          :on-turn (cond
-            ((= help-stage 0)
-              '((inc help-stage)
-                (success :context ((message "Hacker walks over")))))
-            ((= help-stage 1)
-              '((inc help-stage)
-                (success :context ((message "Hacker types furiously")))))
-            ((= help-stage 2)
-              '((inc help-stage)
-                (success :context ((message "Hacker explains problem")))))
-            (true
-              '((dequeue hacker-helps)
-                (success :context ((message "Hacker returns to seat")))))))
+          :on-turn '((dequeue hacker-helps)
+                     (success :context ((message "Hacker helps you")))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         runtime.queue_event("hacker-helps")
 
-        # Stage 1
+        # Event fires and dequeues itself
         results = runtime.process_events()
         assert len(results) == 1
-        assert ("message", "Hacker walks over") in results[0].context
-        assert runtime.get_global("help-stage") == 1
-
-        # Stage 2
-        results = runtime.process_events()
-        assert ("message", "Hacker types furiously") in results[0].context
-        assert runtime.get_global("help-stage") == 2
-
-        # Stage 3
-        results = runtime.process_events()
-        assert ("message", "Hacker explains problem") in results[0].context
-        assert runtime.get_global("help-stage") == 3
-
-        # Final stage - dequeues itself
-        results = runtime.process_events()
-        assert ("message", "Hacker returns to seat") in results[0].context
+        assert ("message", "Hacker helps you") in results[0].context
         assert not runtime.is_queued("hacker-helps")
 
         # No more events
@@ -930,20 +858,18 @@ class TestRoomBehaviors:
         result = runtime.do("KEY", "examine")
         assert result.outcome == "success"
 
-    def test_room_before_action_with_event_state(self):
-        """Room :before-action can check event queue state."""
+    def test_room_before_action_blocks_certain_targets(self):
+        """Room :before-action can block certain targets."""
         source = """
-        (globals :helping false)
-
         (room TERMINAL-ROOM
           :description "Terminal room"
           :behaviors (
             :before-action (fn (?verb ?target)
               (cond
-                ; Block screen actions while helping
-                ((and helping (= ?target "SCREEN"))
-                  (blocked :reason hacker-busy
-                           :message "The hacker snarls at you."))
+                ; Always block screen touch
+                ((= ?target "SCREEN")
+                  (blocked :reason not-allowed
+                           :message "The screen is off-limits."))
                 (true (default))))))
 
         (object PLAYER :location TERMINAL-ROOM)
@@ -951,21 +877,22 @@ class TestRoomBehaviors:
           :location TERMINAL-ROOM
           :behaviors (
             :click (fn () (cond (true (success :message "You click the screen."))))))
+        (object LAMP
+          :location TERMINAL-ROOM
+          :behaviors (
+            :examine (fn () (cond (true (success :message "A lamp."))))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        # Click screen when not helping - allowed
-        result = runtime.do("SCREEN", "click")
-        assert result.outcome == "success"
-
-        # Set helping flag
-        runtime.set_global("helping", True)
-
-        # Click screen when helping - blocked
+        # Click screen - blocked by before-action
         result = runtime.do("SCREEN", "click")
         assert result.outcome == "blocked"
-        assert result.reason == "hacker-busy"
+        assert result.reason == "not-allowed"
+
+        # Examine lamp - allowed
+        result = runtime.do("LAMP", "examine")
+        assert result.outcome == "success"
 
     def test_room_without_before_action(self):
         """Rooms without :before-action behavior work normally."""
@@ -1020,8 +947,6 @@ class TestRoomBehaviors:
     def test_room_on_enter_triggered(self):
         """Room :on-enter is called when player enters."""
         source = """
-        (globals :entered-from nil)
-
         (room LOBBY
           :description "A lobby"
           :exits ((north :to GARDEN)))
@@ -1031,8 +956,7 @@ class TestRoomBehaviors:
           :exits ((south :to LOBBY))
           :behaviors (
             :on-enter (fn (?from-room)
-              `((set entered-from ,?from-room)
-                (success :welcome true :from ,?from-room)))))
+              (success :welcome true :from ?from-room))))
 
         (object PLAYER :location LOBBY)
         """
@@ -1043,11 +967,9 @@ class TestRoomBehaviors:
         result = runtime.do("_movement", "go", "north")
         assert result.outcome == "success"
         assert runtime.get_player_location() == "GARDEN"
-        # Check on-enter was triggered
+        # Check on-enter was triggered and received the from-room
         assert ("welcome", True) in result.context
         assert ("from", "LOBBY") in result.context
-        # Check effect was applied
-        assert runtime.state.globals.get("entered-from") == "LOBBY"
 
     def test_room_on_enter_with_different_origins(self):
         """Room :on-enter can distinguish between different origin rooms."""
@@ -1158,7 +1080,6 @@ class TestGeneralizedFn:
     def test_behavior_with_let_binding(self):
         """Behavior body can use (let ...)."""
         source = """
-        (globals :base-price 100)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object ITEM :location LOBBY
@@ -1434,7 +1355,6 @@ class TestEffectListSyntax:
         source = """
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :flags (PERSON))
-        (globals (score 0))
         (object @treasure :location LOBBY :flags (TAKEABLE)
           :behaviors (
             :take (fn ()
@@ -1446,8 +1366,11 @@ class TestEffectListSyntax:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
+        # score starts at 0 (built-in default)
+        assert runtime.get_global("score") == 0
+
         result = runtime.do("@treasure", "take")
         assert result.outcome == "success"
         assert runtime.state.objects["@treasure"].location == "@player"
         assert "TAKEN" in runtime.state.objects["@treasure"].flags
-        assert runtime.state.globals["score"] == 10
+        assert runtime.get_global("score") == 10

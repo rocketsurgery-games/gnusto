@@ -298,63 +298,6 @@ class TestExampleFile:
         assert world.victory is not None
 
 
-
-class TestGlobals:
-    """Test globals parsing."""
-
-    def test_globals_simple(self):
-        """Parse globals with integer and boolean values."""
-        source = """
-        (globals
-          :lair-cnt 0
-          :hacker-help 0
-          :hacker-trade false)
-        """
-        world = parse_grue(source)
-
-        assert "lair-cnt" in world.globals
-        assert world.globals["lair-cnt"] == 0
-        assert world.globals["hacker-help"] == 0
-        assert world.globals["hacker-trade"] is False
-
-    def test_globals_various_types(self):
-        """Parse globals with various value types."""
-        source = """
-        (globals
-          :counter 42
-          :active true
-          :name "test-world"
-          :negative -10)
-        """
-        world = parse_grue(source)
-
-        assert world.globals["counter"] == 42
-        assert world.globals["active"] is True
-        assert world.globals["name"] == "test-world"
-        assert world.globals["negative"] == -10
-
-    def test_globals_with_world(self):
-        """Parse globals alongside world definition."""
-        source = """
-        (world :name "Test")
-        (globals :score 100 :lives 3)
-        (room LOBBY :description "A lobby")
-        """
-        world = parse_grue(source)
-
-        assert world.name == "Test"
-        assert world.globals["score"] == 100
-        assert world.globals["lives"] == 3
-        assert "LOBBY" in world.rooms
-
-    def test_globals_empty(self):
-        """Parse empty globals form."""
-        source = "(globals)"
-        world = parse_grue(source)
-        # Should not error, just have no custom globals
-        assert len(world.globals) == 0
-
-
 class TestErrors:
     """Test error handling."""
 

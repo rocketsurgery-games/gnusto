@@ -3,16 +3,6 @@
 ; The maintenance man and his floor waxer patrol the Infinite Corridor
 
 ; ============================================================
-; GLOBALS
-; ============================================================
-
-(globals
-  :cord-severed false      ; Whether the power cord has been cut
-  :wax-west false          ; Direction waxer is moving (false=east, true=west)
-  :seen-mm-slip false      ; Whether player has seen maintenance man slip
-  :maint-attack-count 0)   ; Attack counter for maintenance man
-
-; ============================================================
 ; FLOOR WAXER - The vehicle
 ; ============================================================
 
@@ -20,6 +10,7 @@
   :location @inf-2
   :description "floor waxer"
   :flags (VEHBIT SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
+  :properties (:going-west false :patrol-started false)  ; going-west: Direction waxer is moving
 
   :behaviors (
     :describe (fn ()
@@ -36,13 +27,13 @@
                (str ", and in fact there is a maintenance man riding it")
                "")
              ". It actually looks sort of like a small bulldozer. "
-             (if cord-severed
+             (if (:severed @power-cord)
                "Its power cord has been severed."
                "A thick power cord leads from here to a wall socket somewhere to the west."))))
 
     :listen (fn ()
       (cond
-        (cord-severed
+        ((:severed @power-cord)
           (success :message "It's silent now."))
         (true
           (success :message
@@ -55,13 +46,13 @@
       (cond
         ((= (loc @maintenance-man) ?self)
           (cond
-            (cord-severed
+            ((:severed @power-cord)
               (blocked :reason attacked
                 :message "The maintenance man catches you with a surprisingly strong punch as you try to board the waxer. You are sent sprawling."))
             (true
               (blocked :reason occupied
                 :message "There's someone in there already."))))
-        (cord-severed
+        ((:severed @power-cord)
           (blocked :reason disabled
             :message "The power cord is severed. It's not going anywhere."))
         (true
@@ -76,11 +67,12 @@
   :location @floor-waxer
   :description "maintenance man"
   :flags (PERSON)
+  :properties (:slip-seen false :attack-count 0)  ; slip-seen: player saw him slip; attack-count: attack counter
 
   :behaviors (
     :examine (fn ()
       (cond
-        (cord-severed
+        ((:severed @power-cord)
           (success :message "The maintenance man is very annoyed with you."))
         (true
           (success :message "He looks tired, bored, almost zombie-like."))))
@@ -121,11 +113,12 @@
   :location nil  ; Global - visible from corridor rooms
   :description "power cord"
   :flags (NDESCBIT)
+  :properties (:severed false)  ; Whether the power cord has been cut
 
   :behaviors (
     :examine (fn ()
       (cond
-        (cord-severed
+        ((:severed @power-cord)
           (success :message "The thick power cord terminates in a severed stump."))
         (true
           (let ((?waxer-loc (loc @floor-waxer)))
@@ -142,14 +135,14 @@
 
     :cut (fn ()
       (cond
-        (cord-severed
+        ((:severed @power-cord)
           (blocked :reason already-done
             :message "You've already sliced it once! Trying to make salami?"))
         ((not (held? @axe))
           (blocked :reason no-tool
             :message "You'd need something sharp and heavy to cut that."))
         (true
-          '((set cord-severed true)
+          '((set @power-cord :severed true)
             (dequeue waxer-moves)
             (queue maint-attack 2)
             (success :message "The axe crashes against the floor, and the power cord severs! The whine of the floor waxer slows, and the maintenance man jerks to alertness.")))))))
@@ -321,7 +314,7 @@
               (= (loc @maintenance-man) @floor-waxer))
           (cond
             ; Cord severed - maintenance man descends
-            (cord-severed
+            ((:severed @power-cord)
               (cond
                 ; Floor wax present - can pass
                 ((= (loc @floor-wax) (loc @maintenance-man))
@@ -336,7 +329,7 @@
                 :message "In a deft maneuver, the maintenance man steers the floor waxer into your path, blocking your advance."))))
 
         ; Cord severed, maintenance man loose and chasing
-        ((and cord-severed
+        ((and (:severed @power-cord)
               (= (loc @maintenance-man) ?from)
               (has-flag @maintenance-man PERSON)
               (not (= (loc @floor-wax) ?from)))
@@ -374,9 +367,9 @@
     (let ((?loc (loc @floor-waxer)))
       ; Compute new direction - changes at corridor ends
       (let ((?new-west (cond
-                         ((and wax-west (= ?loc @inf-1)) false)
-                         ((and (not wax-west) (= ?loc @inf-5)) true)
-                         (true wax-west))))
+                         ((and (:going-west @floor-waxer) (= ?loc @inf-1)) false)
+                         ((and (not (:going-west @floor-waxer)) (= ?loc @inf-5)) true)
+                         (true (:going-west @floor-waxer)))))
         ; Compute next location using new direction
         (let ((?next-loc (waxer-next-loc ?loc ?new-west)))
           ; Generate message
@@ -391,7 +384,7 @@
                            (if ?new-west "west" "east")
                            "."))
                     (true nil))))
-            `((set wax-west ,?new-west)
+            `((set @floor-waxer :going-west ,?new-west)
               (move @floor-waxer ,?next-loc)
               (queue waxer-moves 5)
               (success :context ,(if ?msg `((description ,?msg)) nil))))))))
@@ -418,26 +411,26 @@
           `((queue maint-dissolves 4)
             (dequeue maint-attack)
             (success :context ((description
-              ,(if seen-mm-slip
+              ,(if (:slip-seen @maintenance-man)
                  "The maintenance man continues slipping, falling, standing, and so on. He reminds you of a badly made windup toy."
                  "The maintenance man slips on the floor wax!"))))))
 
         ; If in same room as player with wax, slip
         ((and (= ?mm-loc ?player-loc) (= (loc @floor-wax) ?player-loc))
-          '((set seen-mm-slip true)
+          '((set @maintenance-man :slip-seen true)
             (queue maint-dissolves 4)
             (dequeue maint-attack)
             (success :context ((description "But he slips on the floor wax! He begins to flail about, barely able to stand.")))))
 
         ; If in same room, attack
         ((= ?mm-loc ?player-loc)
-          (let ((?new-count (+ maint-attack-count 1)))
+          (let ((?new-count (+ (:attack-count @maintenance-man) 1)))
             (if (>= ?new-count 3)
-              `((set maint-attack-count ,?new-count)
+              `((set @maintenance-man :attack-count ,?new-count)
                 (blocked :reason death
                   :context ((death true)
                             (description "The maintenance man grabs you by the throat and lifts you off the ground with one hand. The hand feels very cold. Just as you expire, you realize you have never seen him blink."))))
-              `((set maint-attack-count ,?new-count)
+              `((set @maintenance-man :attack-count ,?new-count)
                 (queue maint-attack)
                 (success :context ((description "The maintenance man stares with maniacal intensity at your throat.")))))))
 

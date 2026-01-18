@@ -132,9 +132,7 @@
 ; === Freezing Event ===
 ; When outside in the blizzard, player gradually freezes to death.
 ; Each stage fires after 4 turns, death after stage 5.
-
-(globals
-  :freeze-count 0)
+; The :freeze-count property is on @player in lurkinghorror.grue.
 
 (event freezing
   (def messages
@@ -149,18 +147,19 @@
       ; Only freeze if player is outside
       ((not (has-flag (loc @player) OUTSIDE))
         '((dequeue freezing)
-          (set freeze-count 0)
+          (set @player :freeze-count 0)
           (success)))
       ; Death after 5 stages
-      ((>= freeze-count 5)
+      ((>= (:freeze-count @player) 5)
         (blocked :reason death
                  :context ((death true)
                            (description "You are suffused with a warm, blissful numbness. It is marred only by the knowledge that before you wake again, you will die."))))
       ; Advance freezing
       (true
-        '((inc freeze-count)
-          (queue freezing 4)
-          (success :context ((description (nth messages freeze-count))))))))
+        (let ((?new-count (+ (:freeze-count @player) 1)))
+          `((set @player :freeze-count ,?new-count)
+            (queue freezing 4)
+            (success :context ((description ,(nth messages (:freeze-count @player))))))))))
 
 ; === Office Door ===
 ; Offices are always inaccessible - this is just flavor.

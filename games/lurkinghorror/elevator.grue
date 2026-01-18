@@ -2,20 +2,14 @@
 ; The CS building elevator serves 4 floors: basement (0), first (1), second (2), third (3).
 ; The elevator has a complex state machine handling movement, door opening/closing, and call buttons.
 
-; === Elevator State Globals ===
-(globals
-  ; elevator-loc: 0=basement, 1=first floor, 2=second floor, 3=third floor
-  :elevator-loc 1
-  ; elevator-direction: 1=going up, -1=going down
-  :elevator-direction 1
-  ; elevator-stopped: true if elevator is stopped, false if moving
-  :elevator-stopped true
-
-  ; Button states - separate lists for interior (go) and exterior (call up/down) buttons
-  ; Each is a list of 4 booleans for floors 0-3
-  :elevator-go-buttons (false false false false)       ; Interior floor buttons
-  :elevator-up-buttons (false false false false)       ; Exterior up arrows
-  :elevator-down-buttons (false false false false))    ; Exterior down arrows
+; === Elevator State ===
+; All elevator state is stored as properties on @cs-elevator-room:
+;   :floor 1          - current floor (0=basement, 1-3=floors)
+;   :direction 1      - direction (1=up, -1=down)
+;   :stopped true     - whether elevator is stopped
+;   :go-buttons       - list of 4 booleans for interior floor buttons
+;   :up-buttons       - list of 4 booleans for exterior up call buttons
+;   :down-buttons     - list of 4 booleans for exterior down call buttons
 
 (def floor-names '("basement" "first floor" "second floor" "third floor"))
 
@@ -30,16 +24,16 @@
 
 (defn elevator-at-floor? (?floor)
   "Returns true if elevator is at the given floor"
-  (= elevator-loc ?floor))
+  (= (:floor @cs-elevator-room) ?floor))
 
 (defn elevator-here? ()
   "Returns true if elevator is at the current room's floor"
   (let ((?floor (prop (loc @player) floor)))
-    (and ?floor elevator-stopped (= ?floor elevator-loc))))
+    (and ?floor (:stopped @cs-elevator-room) (= ?floor (:floor @cs-elevator-room)))))
 
 (defn door-at-elevator ()
   "Returns the elevator door at the elevator's current location"
-  (nth floor-doors elevator-loc))
+  (nth floor-doors (:floor @cs-elevator-room)))
 
 (defn this-floor-door ()
   "Returns the elevator door at the player's current floor"
@@ -53,23 +47,23 @@
 
 ; Button getters
 (defn go-button-pressed? (?floor)
-  (nth elevator-go-buttons ?floor))
+  (nth (:go-buttons @cs-elevator-room) ?floor))
 
 (defn up-button-pressed? (?floor)
-  (nth elevator-up-buttons ?floor))
+  (nth (:up-buttons @cs-elevator-room) ?floor))
 
 (defn down-button-pressed? (?floor)
-  (nth elevator-down-buttons ?floor))
+  (nth (:down-buttons @cs-elevator-room) ?floor))
 
 ; Button setters - update the list at a specific index
 (defn set-go-button! (?floor ?val)
-  (set! elevator-go-buttons (list-set elevator-go-buttons ?floor ?val)))
+  (set-prop! @cs-elevator-room go-buttons (list-set (:go-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn set-up-button! (?floor ?val)
-  (set! elevator-up-buttons (list-set elevator-up-buttons ?floor ?val)))
+  (set-prop! @cs-elevator-room up-buttons (list-set (:up-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn set-down-button! (?floor ?val)
-  (set! elevator-down-buttons (list-set elevator-down-buttons ?floor ?val)))
+  (set-prop! @cs-elevator-room down-buttons (list-set (:down-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn clear-all-buttons-at! (?floor)
   "Clear all button presses for a floor"
@@ -85,48 +79,54 @@
 
 (defn elevator-called? ()
   "Returns true if elevator is called from any floor other than current"
-  (some (fn (?f) (and (any-button-pressed? ?f) (not (= elevator-loc ?f))))
+  (some (fn (?f) (and (any-button-pressed? ?f) (not (= (:floor @cs-elevator-room) ?f))))
         (range 4)))
 
 (defn should-stop-at? (?floor)
   "Check if elevator should stop at a floor based on button state and direction"
   (or (go-button-pressed? ?floor)
-      (and (> elevator-direction 0) (up-button-pressed? ?floor))
-      (and (< elevator-direction 0) (down-button-pressed? ?floor))))
+      (and (> (:direction @cs-elevator-room) 0) (up-button-pressed? ?floor))
+      (and (< (:direction @cs-elevator-room) 0) (down-button-pressed? ?floor))))
 
-(defn pick-elevator-direction ()
+(defn pick-direction ()
   "Determine which direction elevator should go based on pending calls"
   (cond
     ; At basement - can only go up
-    ((= elevator-loc 0)
-      (set! elevator-direction 1))
+    ((= (:floor @cs-elevator-room) 0)
+      (set-prop! @cs-elevator-room direction 1))
     ; At top floor - can only go down
-    ((= elevator-loc 3)
-      (set! elevator-direction -1))
+    ((= (:floor @cs-elevator-room) 3)
+      (set-prop! @cs-elevator-room direction -1))
     ; In middle - check if there are calls in current direction
     (true
       (cond
         ; Going down, check if we should reverse
-        ((= elevator-direction -1)
+        ((= (:direction @cs-elevator-room) -1)
           (cond
-            ((and (= elevator-loc 1) (not (any-button-pressed? 0)))
-              (set! elevator-direction 1))
-            ((and (= elevator-loc 2) (not (any-button-pressed? 0)) (not (any-button-pressed? 1)))
-              (set! elevator-direction 1))))
+            ((and (= (:floor @cs-elevator-room) 1) (not (any-button-pressed? 0)))
+              (set-prop! @cs-elevator-room direction 1))
+            ((and (= (:floor @cs-elevator-room) 2) (not (any-button-pressed? 0)) (not (any-button-pressed? 1)))
+              (set-prop! @cs-elevator-room direction 1))))
         ; Going up, check if we should reverse
-        ((= elevator-direction 1)
+        ((= (:direction @cs-elevator-room) 1)
           (cond
-            ((and (= elevator-loc 2) (not (any-button-pressed? 3)))
-              (set! elevator-direction -1))
-            ((and (= elevator-loc 1) (not (any-button-pressed? 2)) (not (any-button-pressed? 3)))
-              (set! elevator-direction -1))))))))
+            ((and (= (:floor @cs-elevator-room) 2) (not (any-button-pressed? 3)))
+              (set-prop! @cs-elevator-room direction -1))
+            ((and (= (:floor @cs-elevator-room) 1) (not (any-button-pressed? 2)) (not (any-button-pressed? 3)))
+              (set-prop! @cs-elevator-room direction -1))))))))
 
 ; === Elevator Room ===
 
 (room @cs-elevator-room
   :description "Elevator"
   :flags (ONBIT)
-  :properties (:in-elevator true)
+  :properties (:in-elevator true
+               :floor 1                                   ; Current floor (0-3)
+               :direction 1                               ; Direction (1=up, -1=down)
+               :stopped true                              ; Whether stopped
+               :go-buttons (false false false false)      ; Interior floor buttons
+               :up-buttons (false false false false)      ; Exterior up buttons
+               :down-buttons (false false false false))   ; Exterior down buttons
   :exits
     ((north :to @cs-elevator-room :via @elevator-exit)
      (out :to @cs-elevator-room :via @elevator-exit))
@@ -144,11 +144,11 @@
   :behaviors (
     :through (fn ()
       (cond
-        ((not elevator-stopped)
+        ((not (:stopped @cs-elevator-room))
           (blocked :reason elevator-moving :message "The elevator is still moving."))
         ((not (has-flag @elevator-door OPENBIT))
           (blocked :reason door-closed :message "The elevator doors are closed."))
-        (true (redirect :to (nth floor-rooms elevator-loc)))))))
+        (true (redirect :to (nth floor-rooms (:floor @cs-elevator-room))))))))
 
 ; === Interior Elevator Objects ===
 
@@ -177,7 +177,7 @@
       (success :message "It's a white button labeled \"OPEN\"."))
     :push (fn ()
       (cond
-        ((not elevator-stopped)
+        ((not (:stopped @cs-elevator-room))
           (success :message "The elevator is still moving. Nothing happens."))
         ((has-flag @elevator-door OPENBIT)
           '((queue elevator-door-closes 2)
@@ -197,7 +197,7 @@
     :examine (fn ()
       (success :message "It's a white button labeled \"CLOSE\"."))
     :push (fn () (cond
-      ((not elevator-stopped)
+      ((not (:stopped @cs-elevator-room))
         (success :message "The elevator is moving, the door is closed."))
       ((not (has-flag @elevator-door OPENBIT))
         (success :message "The door is already closed."))
@@ -216,14 +216,14 @@
 (defn floor-button-push (?button)
   (let ((?floor (prop ?button floor)))
     (cond
-      ((= elevator-loc ?floor)
+      ((= (:floor @cs-elevator-room) ?floor)
         (success :message "The button doesn't light."))
       ((go-button-pressed? ?floor)
         (success :message "That button is already glowing."))
       (true
-        (let ((?new-buttons (list-set elevator-go-buttons ?floor true)))
-          (pick-elevator-direction)  ; Sets elevator-direction
-          `((set elevator-go-buttons ,?new-buttons)
+        (let ((?new-buttons (list-set (:go-buttons @cs-elevator-room) ?floor true)))
+          (pick-direction)  ; Sets (:direction @cs-elevator-room)
+          `((set @cs-elevator-room :go-buttons ,?new-buttons)
             (queue elevator-moves 1)
             (success :message ,(str "The button for the " (nth floor-names ?floor) " begins to glow."))))))))
 
@@ -328,15 +328,15 @@
             (blocked :reason no-floor :message "There's no elevator here."))
           ((up-button-pressed? ?floor)
             (success :message "That button is already glowing."))
-          ((and elevator-stopped (= ?floor elevator-loc))
+          ((and (:stopped @cs-elevator-room) (= ?floor (:floor @cs-elevator-room)))
             ; Elevator is here - just open the doors
             '((queue elevator-door-opens 1)
               (success :message "You push the up-arrow.")))
           (true
             ; Call the elevator
-            (let ((?new-buttons (list-set elevator-up-buttons ?floor true)))
-              (pick-elevator-direction)
-              `((set elevator-up-buttons ,?new-buttons)
+            (let ((?new-buttons (list-set (:up-buttons @cs-elevator-room) ?floor true)))
+              (pick-direction)
+              `((set @cs-elevator-room :up-buttons ,?new-buttons)
                 (queue elevator-moves 1)
                 (success :message "The up-arrow begins to glow.")))))))))
 
@@ -358,15 +358,15 @@
             (blocked :reason no-floor :message "There's no elevator here."))
           ((down-button-pressed? ?floor)
             (success :message "That button is already glowing."))
-          ((and elevator-stopped (= ?floor elevator-loc))
+          ((and (:stopped @cs-elevator-room) (= ?floor (:floor @cs-elevator-room)))
             ; Elevator is here - just open the doors
             '((queue elevator-door-opens 1)
               (success :message "You push the down-arrow.")))
           (true
             ; Call the elevator
-            (let ((?new-buttons (list-set elevator-down-buttons ?floor true)))
-              (pick-elevator-direction)
-              `((set elevator-down-buttons ,?new-buttons)
+            (let ((?new-buttons (list-set (:down-buttons @cs-elevator-room) ?floor true)))
+              (pick-direction)
+              `((set @cs-elevator-room :down-buttons ,?new-buttons)
                 (queue elevator-moves 1)
                 (success :message "The down-arrow begins to glow.")))))))))
 
@@ -490,39 +490,39 @@
         '((queue elevator-moves 1) (success)))
 
       ; Starting to move from stopped
-      (elevator-stopped
+      ((:stopped @cs-elevator-room)
         (cond
           ((not (elevator-called?))
             ; Nothing to do
             (success))
           (true
             ; Start moving - pick direction first (side effect)
-            (pick-elevator-direction)
-            `((set elevator-stopped false)
+            (pick-direction)
+            `((set @cs-elevator-room :stopped false)
               (queue elevator-moves 1)
               (success :context ((description ,(if (here? @cs-elevator-room)
-                                                   (str "The elevator begins to move " (if (> elevator-direction 0) "upward" "downward") ".")
+                                                   (str "The elevator begins to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
                                                    (if (prop (loc @player) floor) "You hear the elevator begin moving." nil)))))))))
 
       ; Elevator is moving
       (true
-        (let ((?new-loc (+ elevator-loc elevator-direction))
-              (?new-go-buttons (list-set elevator-go-buttons (+ elevator-loc elevator-direction) false))
-              (?new-up-buttons (list-set elevator-up-buttons (+ elevator-loc elevator-direction) false))
-              (?new-down-buttons (list-set elevator-down-buttons (+ elevator-loc elevator-direction) false)))
+        (let ((?new-loc (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)))
+              (?new-go-buttons (list-set (:go-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false))
+              (?new-up-buttons (list-set (:up-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false))
+              (?new-down-buttons (list-set (:down-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false)))
           ; Pick direction based on updated state (side effect for now)
-          (pick-elevator-direction)
+          (pick-direction)
 
           ; Check if we should stop at this floor
           (cond
             ((should-stop-at? ?new-loc)
               ; Stop at this floor, clear button states
               (let ((?was-go (go-button-pressed? ?new-loc)))
-                `((set elevator-loc ,?new-loc)
-                  (set elevator-go-buttons ,?new-go-buttons)
-                  (set elevator-up-buttons ,?new-up-buttons)
-                  (set elevator-down-buttons ,?new-down-buttons)
-                  (set elevator-stopped true)
+                `((set @cs-elevator-room :floor ,?new-loc)
+                  (set @cs-elevator-room :go-buttons ,?new-go-buttons)
+                  (set @cs-elevator-room :up-buttons ,?new-up-buttons)
+                  (set @cs-elevator-room :down-buttons ,?new-down-buttons)
+                  (set @cs-elevator-room :stopped true)
                   (queue elevator-door-opens 1)
                   (success :context ((description ,(if (here? @cs-elevator-room)
                                                        (str "The elevator slows and comes to a stop."
@@ -534,9 +534,9 @@
                                                          nil))))))))
             (true
               ; Keep moving
-              `((set elevator-loc ,?new-loc)
+              `((set @cs-elevator-room :floor ,?new-loc)
                 (queue elevator-moves 1)
                 (success :context ((description ,(if (here? @cs-elevator-room)
-                                                     (str "The elevator continues to move " (if (> elevator-direction 0) "upward" "downward") ".")
+                                                     (str "The elevator continues to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
                                                      nil)))))))))))
 

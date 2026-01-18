@@ -16,16 +16,6 @@
 ;   - @axe: To cut power line (from maintenance-man)
 ;   - @smooth-stone: Final weapon against the Frob (from yuggoth)
 
-; === State Globals ===
-
-(globals
-  :lair-flag nil              ; Currently visited lair room (for hand pointing)
-  :slime-cnt 0                ; Counter for slime progression on player
-  :nitrogen-cnt 0             ; Counter for nitrogen uses on curtain
-  :hv-cnt 0                   ; Counter for axe hits on power line
-  :lair-cnt 0                 ; Counter for hacker sequence in inner-lair
-  :end-cnt 0)                 ; Counter for final frob encounter
-
 ; === Lair Maze Rooms ===
 ; Each room has a :point property indicating the "correct" direction.
 ; The hand (with ring) will point this direction to guide the player.
@@ -44,7 +34,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-2
   :description "Wet Tunnel"
@@ -60,7 +50,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-3
   :description "Wet Tunnel"
@@ -76,7 +66,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-4
   :description "Wet Tunnel"
@@ -93,7 +83,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-5
   :description "Wet Tunnel"
@@ -110,7 +100,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-6
   :description "Wet Tunnel"
@@ -126,7 +116,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-7
   :description "Wet Tunnel"
@@ -143,7 +133,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-8
   :description "Wet Tunnel"
@@ -158,7 +148,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-9
   :description "Wet Tunnel"
@@ -174,7 +164,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-10
   :description "Wet Tunnel"
@@ -189,7 +179,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 (room @lair-11
   :description "Wet Tunnel"
@@ -204,7 +194,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set lair-flag nil) (clear-flag ?self TOUCHBIT) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (clear-flag ?self TOUCHBIT) (success)))))
 
 ; Shared description function for lair maze rooms
 (defn lair-describe ()
@@ -336,6 +326,7 @@
   :location @outer-lair
   :description "slime curtain"
   :flags (NDESCBIT)
+  :properties (:slime-count 0 :nitrogen-count 0)  ; slime progression on player, nitrogen pours
 
   :behaviors (
     :examine (fn ()
@@ -347,8 +338,8 @@
         ((and (held? @gloves) (has-flag @gloves WEARBIT))
           (success :message "The curtain is very slick and wet. Some of it sticks to your gloves."))
         ((in? @crawling-slime @player)
-          (let ((?new-cnt (+ slime-cnt 1)))
-            `((set slime-cnt ,?new-cnt)
+          (let ((?new-cnt (+ (:slime-count @slime-curtain) 1)))
+            `((set @slime-curtain :slime-count ,?new-cnt)
               (success :message "More slime flows onto you."))))
         (true
           '((move @crawling-slime @player)
@@ -369,15 +360,15 @@
     :pour (fn (?liquid)
       (cond
         ((= ?liquid @nitrogen)
-          (let ((?new-cnt (+ nitrogen-cnt 1)))
+          (let ((?new-cnt (+ (:nitrogen-count @slime-curtain) 1)))
             (cond
               ((< ?new-cnt 3)
                 ; Partial freeze - nitrogen is NOT consumed, can pour again
-                `((set nitrogen-cnt ,?new-cnt)
+                `((set @slime-curtain :nitrogen-count ,?new-cnt)
                   (success :message "The liquid splashes onto the curtain, and a cold mist fills the room. The slime begins to freeze. Patches of it shatter and fall, but the rest of the slime oozes into the ruined spots, and the curtain appears unharmed.")))
               (true
                 ; Final pour - nitrogen IS consumed, curtain destroyed
-                `((set nitrogen-cnt ,?new-cnt)
+                `((set @slime-curtain :nitrogen-count ,?new-cnt)
                   (move @nitrogen nil)
                   (dequeue nitrogen-evaporates)
                   (move @slime-curtain nil)
@@ -401,7 +392,7 @@
         ((in? ?self @player)
           (success :context
             ((description (str "There is slime crawling up your arm. It has reached your "
-                              (nth slime-parts slime-cnt) ".")))))
+                              (nth slime-parts (:slime-count @slime-curtain)) ".")))))
         (true (success))))
 
     :examine (fn ()
@@ -425,7 +416,7 @@
 ; Slime attack event - progresses slime up player's arm
 (event slime-attack
   :on-turn
-    (let ((?new-cnt (+ slime-cnt 1)))
+    (let ((?new-cnt (+ (:slime-count @slime-curtain) 1)))
       (cond
         ((not (in? @crawling-slime @player))
           '((dequeue slime-attack)
@@ -436,7 +427,7 @@
                      :context ((death true)
                                (description "The slime engulfs your nose! You cough, choke, and begin to suffocate! You fall to the floor, splashing in the water. You either suffocate or drown. After you're dead, it makes no difference.")))))
         (true
-          `((set slime-cnt ,?new-cnt)
+          `((set @slime-curtain :slime-count ,?new-cnt)
             (success :context
               ((description ,(str "The slime is creeping slowly up your arm! It's reached your "
                                   (nth slime-parts ?new-cnt) ".")))))))))
@@ -761,6 +752,7 @@
   :location nil  ; Found by searching pool in inner-lair
   :description "power line"
   :flags (TAKEBIT WEAPONBIT)
+  :properties (:cut-count 0)  ; Counter for axe hits when cutting
 
   :behaviors (
     :examine (fn ()
@@ -816,19 +808,19 @@
         ((not (has-flag ?self POWERBIT))
           (blocked :reason underwater :message "You splash around in the water, to no avail. You can't see the line."))
         ((= ?tool @axe)
-          (let ((?new-cnt (+ hv-cnt 1)))
+          (let ((?new-cnt (+ (:cut-count @high-voltage) 1)))
             (cond
               ((> ?new-cnt 2)
-                `((set hv-cnt ,?new-cnt)
+                `((set @high-voltage :cut-count ,?new-cnt)
                   (set-flag ?self RMUNGBIT)
                   (move ?self ,(loc @player))
                   (queue line-in-water 2)
                   (success :message "The line parts! The two ends begin to sink towards the water as they straighten out.")))
               ((= ?new-cnt 2)
-                `((set hv-cnt ,?new-cnt)
+                `((set @high-voltage :cut-count ,?new-cnt)
                   (success :message "Your blow cuts through more insulation and into the conductors.")))
               (true
-                `((set hv-cnt ,?new-cnt)
+                `((set @high-voltage :cut-count ,?new-cnt)
                   (success :message "You strike the line with the axe, making a deep gash in the insulation."))))))
         ((= ?tool @bolt-cutters)
           (blocked :reason too-thick :message "The jaws of the bolt cutter won't open far enough to fit around the line."))
@@ -913,15 +905,15 @@
       ((and (held? @mummified-hand)
             (has-flag @mummified-hand PERSON)
             (in? @ring @mummified-hand)
-            (not (= (loc @player) lair-flag)))
+            (not (= (loc @player) (:last-pointed-room @mummified-hand))))
         (let ((?point (get-prop (loc @player) :point))
               (?player-loc (loc @player)))
           (cond
             (?point
-              `((set lair-flag ,?player-loc)
+              `((set @mummified-hand :last-pointed-room ,?player-loc)
                 (success :context ((description ,(str "The hand points its mutilated ring finger " ?point " and grips your shoulder tightly."))))))
             (true
-              `((set lair-flag ,?player-loc)
+              `((set @mummified-hand :last-pointed-room ,?player-loc)
                 (success))))))
       (true (success))))
 
@@ -946,41 +938,41 @@
   :on-turn
     (cond
       ((in? @hacker @inner-lair)
-        (let ((?stage (+ lair-cnt 1)))
+        (let ((?stage (+ (:lair-cnt @hacker) 1)))
           (cond
             ((= ?stage 1)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (success :context
                   ((description "The hacker stares at the thing in the cave. \"I got very suspicious about your problems with the net. I began to trace some coax, found some repeaters and bridges that weren't on the layout charts, and started following them. Anyway, here I am. That thing there, whatever it is, and those wires, are interfaced to the whole campus net. And that means it's tied into all the nets, commercial, government, even military, potentially.\"")))))
             ((= ?stage 2)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (success :context
                   ((description "\"I guess I better do something. It could be a serious compromise of system integrity if this thing isn't dealt with.\" He peers at the mass, as if evaluating it. He then reaches into a pocket and pulls out a small pair of wire strippers.")))))
             ((= ?stage 3)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (set-flag @hacker INVISIBLE)
                 (set-flag @hacker RMUNGBIT)
                 (success :context
                   ((description "The hacker advances on the mass, apparently planning to cut some of the wires leading into it. As he approaches it, the sound stops completely, and the wires begin a frantic, looping, twining dance. The mass begins to flow towards the hacker almost as quickly as he walks toward it. They reach each other and begin to merge together. He screams; a long, ululating cry that echoes through the cavern. Then he is engulfed.")))))
             ((or (= ?stage 4) (= ?stage 5))
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (success :context
                   ((description "The mass is bulging, vibrating, and rippling.")))))
             ((= ?stage 6)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (success :context
                   ((description "The mass is bulging, vibrating, and rippling. A huge tear is forming near where the hacker was absorbed.")))))
             ((= ?stage 7)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (clear-flag @hacker INVISIBLE)
                 (success :context
                   ((description "The hacker pulls himself out of the side of the mass. As he does, you think you can see many pairs of eyes appear briefly in the semitransparent mass, watching curiously. Wires and tentacles trail from his body, and tiny, almost rat-like creatures cling to his body everywhere, crawling about like ants. He walks slowly, jerkily towards you. \"Be one!\" he says, haltingly but fervently.")))))
             ((= ?stage 8)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (success :context
                   ((description "The hacker grabs for you. \"Join us! Serve the master!\" he croaks. Some of the creatures leap onto you, biting at exposed skin.")))))
             ((>= ?stage 9)
-              `((set lair-cnt ,?stage)
+              `((set @hacker :lair-cnt ,?stage)
                 (blocked :reason death
                   :context ((death true)
                             (description "The hacker is surprisingly strong. He drags you toward the thing in the corner, exhorting you to join it, and at last, forcibly, you do. You are not the first, or the last.")))))
@@ -1000,6 +992,7 @@
   :location nil  ; Appears when mass is electrocuted
   :description "thing"
   :flags (NDESCBIT PERSON)
+  :properties (:count 0)  ; Counter for final encounter stages
 
   :behaviors (
     :examine (fn ()
@@ -1010,10 +1003,10 @@
         ((= ?weapon @smooth-stone)
           ; Throwing the stone at the frob
           (cond
-            ((= end-cnt 1)
+            ((= (:count @frob) 1)
               '((move @smooth-stone nil)
                 (success :message "The stone hurtles through the air and is swallowed by the black nothing at its center. The creature howls in pain!")))
-            ((= end-cnt 2)
+            ((= (:count @frob) 2)
               `((move @frob nil)
                 (move @smooth-stone ,(loc @player))
                 (clear-flag @smooth-stone TOUCHBIT)
@@ -1044,10 +1037,10 @@
 
 (event frob-appears
   :on-turn
-    (let ((?stage (+ end-cnt 1)))
+    (let ((?stage (+ (:count @frob) 1)))
       (cond
         ((= ?stage 1)
-          `((set end-cnt ,?stage)
+          `((set @frob :count ,?stage)
             (move @hacker nil)
             (move @mass nil)
             (set-flag @output-cable RMUNGBIT)
@@ -1058,7 +1051,7 @@
                                    "\n\nThe smooth stone vibrates. It starts to feel warm."
                                    "")))))))
         ((= ?stage 2)
-          `((set end-cnt ,?stage)
+          `((set @frob :count ,?stage)
             (success :context
               ((description ,(str "The thing tenses, preparing to leap. Its mouth opens, revealing not the glistening interior, but a dead-black outline like a hole into nothingness."
                                  (if (held? @smooth-stone)
@@ -1067,7 +1060,7 @@
         ((= ?stage 3)
           (cond
             ((in? @frob (loc @player))
-              `((set end-cnt ,?stage)
+              `((set @frob :count ,?stage)
                 (blocked :reason death
                          :context ((death true)
                                    (description ,(str "The creature leaps, a mountain falling on you, and the darkness swallows you, never to brighten again."
@@ -1075,7 +1068,7 @@
                                                        "\n\nThe smooth stone, all that's left where you were standing, drops quietly into the pool."
                                                        "")))))))
             (true
-              `((set end-cnt ,?stage)
+              `((set @frob :count ,?stage)
                 (success)))))
         (true (success)))))
 

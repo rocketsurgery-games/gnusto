@@ -79,21 +79,21 @@
 )
 
 (test-group "freezing event"
-  :setup ((move! @player @smith-st) (set! freeze-count 0) (queue! freezing))
+  :setup ((move! @player @smith-st) (set-prop! @player freeze-count 0) (queue! freezing))
 
   (test "freezing advances when outside"
     (wait)
     (assert (outcome? success))
-    (assert (> freeze-count 0)))
+    (assert (> (:freeze-count @player) 0)))
 
   (test "freezing dequeues when player goes inside then events process"
-    :setup ((move! @player @smith-st) (set! freeze-count 2) (queue! freezing 0))
+    :setup ((move! @player @smith-st) (set-prop! @player freeze-count 2) (queue! freezing 0))
     (go :direction south)
     (assert (loc? @player @comp-center)))
 
   (test "freezing event dequeues when player is inside"
-    :setup ((move! @player @comp-center) (set! freeze-count 2) (queue! freezing 0))
+    :setup ((move! @player @comp-center) (set-prop! @player freeze-count 2) (queue! freezing 0))
     (wait)
-    (assert (= freeze-count 0))
+    (assert (= (:freeze-count @player) 0))
     (assert (not (queued? freezing))))
 )

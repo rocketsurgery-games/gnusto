@@ -23,7 +23,7 @@
     (assert (outcome? success)))
 
   (test "when possessed - responds with Meld"
-    :setup ((set! lair-cnt 7))
+    :setup ((set-prop! @hacker lair-cnt 7))
     (do @hacker :ask-about @keys)
     (assert (outcome? success)))
 )

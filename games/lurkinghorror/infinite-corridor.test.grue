@@ -115,16 +115,16 @@
 )
 
 (test-group "great court door warning"
-  :setup ((move! @player @inf-3) (set! door-warning false))
+  :setup ((move! @player @inf-3) (set-prop! @great-court-exit-barrier warned false))
 
   (test "first exit attempt warns"
     (go :direction south)
     (assert (outcome? blocked))
     (assert (reason? warning))
-    (assert (global? door-warning true)))
+    (assert (prop? @great-court-exit-barrier warned true)))
 
   (test "second exit attempt succeeds"
-    :setup ((set! door-warning true))
+    :setup ((set-prop! @great-court-exit-barrier warned true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @great-court)))

@@ -17,6 +17,9 @@ Clojure-style object properties:
 
 See epic frotzlm-krs for implementation tasks.
 
+## "Global" objects
+
+`(room :globals (@obj) ... )` feels like kind of a hack. It's used to make objects visible from multiple rooms, but the object still has to have a `:location nil`, which seems... weird?
 
 ## Flag/bit cleanup
 Are these really different from boolean props? Or was it just an optimization in grue? They're used for lots of "built-in" behaviors; is there a cleaner way to accomplish this?

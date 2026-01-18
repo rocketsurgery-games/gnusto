@@ -22,7 +22,7 @@
     (assert (player-at? @inf-5)))
 
   (test "alchemy-dept connects to alchemy-lab when door open"
-    :setup ((move! @player @alchemy-dept) (move! @professor nil) (set! prof-dead true))
+    :setup ((move! @player @alchemy-dept) (move! @professor nil) (set-prop! @professor dead true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab)))
@@ -66,7 +66,7 @@
 )
 
 (test "knock on door"
-  :setup ((move! @player @chemistry-bldg) (move! @professor @alchemy-dept) (set! prof-dead false) (set! left-alchemy false))
+  :setup ((move! @player @chemistry-bldg) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor visited false))
   (do @alchemy-door :knock)
   (assert (outcome? success))
   (assert (queued? answer-door))
@@ -81,40 +81,40 @@
 (test-group "professor interactions"
 
   (test "can examine professor"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false))
     (do @professor :examine)
     (assert (outcome? success)))
 
   (test "professor blocks lab entry without note"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-seen-note false))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
     (go :direction south)
     (assert (outcome? blocked))
     (assert (reason? professor-blocks)))
 
   (test "showing note to professor sets flag"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (move! @note @player) (set! prof-dead false) (set! prof-seen-note false))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (move! @note @player) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
     (do @professor :show @note)
     (assert (outcome? success))
-    (assert (global? prof-seen-note true))
-    (assert (global? prof-mad true)))
+    (assert (prop? @professor seen-note true))
+    (assert (prop? @professor mad true)))
 
   (test "professor allows lab entry after seeing note"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-seen-note true))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor seen-note true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab))
     (assert (loc? @professor @alchemy-lab)))
 
   (test "can ask professor about lovecraft computer"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false))
     (do @professor :ask @lovecraft)
     (assert (outcome? success)))
 
   (test "attacking professor makes him mad"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set! prof-dead false) (set! prof-mad false))
+    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor mad false))
     (do @professor :attack nil)
     (assert (outcome? success))
-    (assert (global? prof-mad true)))
+    (assert (prop? @professor mad true)))
 )
 
 (test-group "sign-up sheet"
@@ -134,47 +134,47 @@
 (test-group "lab bench and trapdoor"
 
   (test "can examine lab bench"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! prof-dead true))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @professor dead true))
     (do @lab-bench :examine)
     (assert (outcome? success)))
 
   (test "can look under lab bench"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved false))
     (do @lab-bench :look-under)
     (assert (outcome? success)))
 
   (test "moving bench reveals trapdoor"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved false))
     (do @lab-bench :move)
     (assert (outcome? success))
-    (assert (global? lab-bench-moved true)))
+    (assert (prop? @lab-bench moved true)))
 
   (test "can't go down without moving bench"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved false))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved false))
     (go :direction down)
     (assert (outcome? blocked))
     (assert (reason? no-way-down)))
 
   (test "can't go down with closed trapdoor"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (clear-flag! @alchemy-trap-door OPENBIT))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved true) (clear-flag! @alchemy-trap-door OPENBIT))
     (go :direction down)
     (assert (outcome? blocked))
     (assert (reason? trapdoor-closed)))
 
   (test "can open trapdoor after moving bench"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (clear-flag! @alchemy-trap-door OPENBIT))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved true) (clear-flag! @alchemy-trap-door OPENBIT))
     (do @alchemy-trap-door :open)
     (assert (outcome? success))
     (assert (has-flag? @alchemy-trap-door OPENBIT)))
 
   (test "can go down through open trapdoor"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! lab-bench-moved true) (set-flag! @alchemy-trap-door OPENBIT))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @lab-bench moved true) (set-flag! @alchemy-trap-door OPENBIT))
     (go :direction down)
     (assert (outcome? success))
     (assert (player-at? @under-alchemy-lab)))
 
   (test "can go up through open trapdoor"
-    :setup ((move! @player @under-alchemy-lab) (set! lab-bench-moved true) (set-flag! @alchemy-trap-door OPENBIT))
+    :setup ((move! @player @under-alchemy-lab) (set-prop! @lab-bench moved true) (set-flag! @alchemy-trap-door OPENBIT))
     (go :direction up)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab)))
@@ -218,31 +218,31 @@
     (assert (outcome? success)))
 
   (test "can enter pentagram"
-    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! tied-up 0))
+    :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @professor ritual-stage 0))
     (do @pentagram :enter)
     (assert (outcome? success))
     (assert (loc? @player @pentagram)))
 
   (test "can exit pentagram when not tied up"
-    :setup ((move! @player @pentagram) (set! tied-up 0))
+    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 0))
     (do @pentagram :exit)
     (assert (outcome? success))
     (assert (loc? @player @alchemy-lab)))
 
   (test "can't exit pentagram when tied up without scuffing"
-    :setup ((move! @player @pentagram) (set! tied-up 3) (clear-flag! @pentagram RMUNGBIT))
+    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 3) (clear-flag! @pentagram RMUNGBIT))
     (do @pentagram :exit)
     (assert (outcome? blocked))
     (assert (reason? magical-barrier)))
 
   (test "can scuff pentagram with knife"
-    :setup ((move! @player @pentagram) (move! @knife @player) (set! tied-up 3) (clear-flag! @pentagram RMUNGBIT))
+    :setup ((move! @player @pentagram) (move! @knife @player) (set-prop! @professor ritual-stage 3) (clear-flag! @pentagram RMUNGBIT))
     (do @pentagram :rub @knife)
     (assert (outcome? success))
     (assert (has-flag? @pentagram RMUNGBIT)))
 
   (test "can exit pentagram after scuffing"
-    :setup ((move! @player @pentagram) (set! tied-up 3) (set-flag! @pentagram RMUNGBIT))
+    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 3) (set-flag! @pentagram RMUNGBIT))
     (do @pentagram :exit)
     (assert (outcome? success))
     (assert (loc? @player @alchemy-lab)))
@@ -310,18 +310,18 @@
 )
 
 (test "dip hand in vat"
-  :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set! prof-dead true) (move! @mummified-hand @player) (clear-flag! @mummified-hand PERSON) (set! animation-count 0))
+  :setup ((move! @player @alchemy-lab) (set-flag! @alchemy-lab ONBIT) (set-prop! @professor dead true) (move! @mummified-hand @player) (clear-flag! @mummified-hand PERSON) (set-prop! @mummified-hand animation-count 0))
   (do @vat :put @mummified-hand)
   (assert (outcome? success))
   (assert (loc? @mummified-hand @vat))
   (assert (queued? animate-hand))
   (wait)
   (assert (outcome? success))
-  (assert (global? animation-count 1))
+  (assert (prop? @mummified-hand animation-count 1))
   (assert (queued? animate-hand))
   (wait)
   (assert (outcome? success))
-  (assert (global? animation-count 2))
+  (assert (prop? @mummified-hand animation-count 2))
   (assert (queued? animate-hand))
   (wait)
   (assert (outcome? success))
@@ -421,16 +421,16 @@
 )
 
 (test-group "professor ritual event"
-  :setup ((set! prof-dead false)
+  :setup ((set-prop! @professor dead false)
           (move! @professor @alchemy-lab)
           (move! @ring @professor)
-          (set! tied-up 7)
+          (set-prop! @professor ritual-stage 7)
           (queue! professor-ritual))
 
   (test "escape survival moves ring to alchemy-lab"
     :setup ((move! @player @under-alchemy-lab))  ; Escaped through trapdoor
     (wait)
-    (assert prof-dead)
+    (assert (:dead @professor))
     (assert (loc? @professor nil))
     (assert (loc? @ring @alchemy-lab)))  ; Ring drops to floor
 

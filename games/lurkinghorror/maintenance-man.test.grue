@@ -18,7 +18,7 @@
 )
 
 (test-group "waxer blocking"
-  :setup ((move! @player @inf-2) (move! @floor-waxer @inf-2) (move! @maintenance-man @floor-waxer) (set! cord-severed false))
+  :setup ((move! @player @inf-2) (move! @floor-waxer @inf-2) (move! @maintenance-man @floor-waxer) (set-prop! @power-cord severed false))
 
   (test "waxer blocks east passage when present"
     (go :direction east)
@@ -32,7 +32,7 @@
 )
 
 (test-group "power cord"
-  :setup ((move! @player @inf-1) (move! @axe @player) (set! cord-severed false))
+  :setup ((move! @player @inf-1) (move! @axe @player) (set-prop! @power-cord severed false))
 
   (test "can examine cord"
     (do @power-cord :examine)
@@ -52,7 +52,7 @@
   (test "can cut cord with axe"
     (do @power-cord :cut)
     (assert (outcome? success))
-    (assert (global? cord-severed true)))
+    (assert (prop? @power-cord severed true)))
 )
 
 (test-group "plastic container"
@@ -144,7 +144,7 @@
 )
 
 (test-group "maintenance man combat"
-  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-3) (move! @maintenance-man @inf-3) (set! cord-severed true) (move! @axe @player))
+  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-3) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (move! @axe @player))
 
   (test "cannot attack with hands"
     :setup ((move! @axe @inf-1))
@@ -159,7 +159,7 @@
 )
 
 (test-group "loose maintenance man blocking"
-  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-5) (move! @maintenance-man @inf-3) (set! cord-severed true) (set-flag! @maintenance-man PERSON))
+  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-5) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (set-flag! @maintenance-man PERSON))
 
   (test "loose maintenance man blocks passage"
     (go :direction east)

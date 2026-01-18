@@ -28,7 +28,7 @@
   (assert (loc? @crowbar @temporary-basement)))
 
 (test "cannot go east from dead-storage initially - junk blocks"
-  :setup ((move! @player @dead-storage) (set! junk-moved 0))
+  :setup ((move! @player @dead-storage) (set-prop! @junk moved 0))
   (go :direction east)
   (assert (outcome? blocked))
   (assert (reason? junk-blocking)))
@@ -45,19 +45,19 @@
   (assert (loc? @forklift @aero-basement)))
 
 (test "forklift must be turned on to move junk"
-  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (clear-flag! @forklift POWER) (set! junk-moved 0))
+  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (clear-flag! @forklift POWER) (set-prop! @junk moved 0))
   (do @forklift :use @junk)
   (assert (outcome? blocked))
   (assert (reason? not-running)))
 
 (test "forklift can move junk when running"
-  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (set-flag! @forklift POWER) (set! junk-moved 0))
+  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (set-flag! @forklift POWER) (set-prop! @junk moved 0))
   (do @forklift :use @junk)
   (assert (outcome? success))
-  (assert (global? junk-moved 1)))
+  (assert (prop? @junk moved 1)))
 
 (test "can reach storage-room after clearing junk"
-  :setup ((move! @player @dead-storage) (set! junk-moved 4))
+  :setup ((move! @player @dead-storage) (set-prop! @junk moved 4))
   (go :direction east)
   (assert (outcome? success))
   (assert (player-at? @storage-room)))
@@ -128,7 +128,7 @@
   (assert (in? @player @forklift)))
 
 (test "forklift full puzzle from start"
-  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (clear-flag! @forklift POWER) (set! junk-moved 0))
+  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (clear-flag! @forklift POWER) (set-prop! @junk moved 0))
   ; Enter forklift
   (do @forklift :enter)
   (assert (in? @player @forklift))
@@ -147,4 +147,4 @@
   (do @forklift :use @junk)
   (do @forklift :use @junk)
   (do @forklift :use @junk)
-  (assert (> junk-moved junk-moves-needed)))
+  (assert (> (:moved @junk) junk-moves-needed)))

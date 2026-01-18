@@ -148,7 +148,7 @@
   :setup ((move! @forklift @dead-storage)  ; Pre-position forklift at dead-storage
           (move! @player @forklift)         ; Player starts on forklift
           (set-flag! @forklift POWER)       ; Forklift already running
-          (set! junk-moved 0))              ; Reset junk counter
+          (set-prop! @junk moved 0))              ; Reset junk counter
 
   ; Verify initial state
   (assert (in? @player @forklift))
@@ -159,7 +159,7 @@
   (do @forklift :use @junk)
   (do @forklift :use @junk)
   (do @forklift :use @junk)
-  (assert (> junk-moved junk-moves-needed)))
+  (assert (> (:moved @junk) junk-moves-needed)))
 
 ; Open manhole in storage-room
 (test "walkthrough-phase3-manhole"
@@ -187,7 +187,7 @@
   :setup ((move! @player @inf-1)
           (move! @floor-waxer @inf-2)
           (move! @maintenance-man @floor-waxer)
-          (set! waxer-patrol-started true))
+          (set-prop! @floor-waxer patrol-started true))
 
   ; Get floor wax container
   (run walkthrough/get-floor-wax)
@@ -202,11 +202,11 @@
   :setup ((move! @player @inf-3)
           (move! @floor-waxer @inf-3)
           (move! @axe @player)
-          (set! cord-severed false))
+          (set-prop! @power-cord severed false))
 
   ; Cut the power cord to disable waxer
   (do @power-cord :cut)
-  (assert cord-severed))
+  (assert (prop? @power-cord severed true)))
 
 ; =============================================================================
 ; PHASE 5: ALCHEMY LAB
@@ -215,8 +215,8 @@
 ; Test knocking on door gets professor to answer
 (test "walkthrough-phase5-knock-door"
   :setup ((move! @player @chemistry-bldg)
-          (set! prof-dead false)
-          (set! left-alchemy false))
+          (set-prop! @professor dead false)
+          (set-prop! @professor visited false))
 
   ; Knock and wait for answer
   (do @alchemy-door :knock)
@@ -232,19 +232,19 @@
   :setup ((move! @player @alchemy-dept)
           (move! @professor @alchemy-dept)
           (move! @note @player)
-          (set! prof-seen-note false)
-          (set! prof-mad false))
+          (set-prop! @professor seen-note false)
+          (set-prop! @professor mad false))
 
   ; Show note to professor
   (do @professor :give @note)
-  (assert prof-seen-note))
+  (assert (:seen-note @professor)))
 
 ; Test entering lab - professor escorts us
 (test "walkthrough-phase5-enter-lab"
   :setup ((move! @player @alchemy-dept)
           (move! @professor @alchemy-dept)
-          (set! prof-seen-note true)
-          (set! tied-up 0))
+          (set-prop! @professor seen-note true)
+          (set-prop! @professor ritual-stage 0))
 
   ; Enter lab - professor escorts and triggers ritual
   (do @movement :go south)
@@ -256,8 +256,8 @@
   :setup ((move! @player @pentagram)  ; Trapped in pentagram
           (move! @professor @alchemy-lab)
           (move! @knife @player)
-          (set! tied-up 3)  ; Ritual in progress
-          (set! lab-bench-moved false)
+          (set-prop! @professor ritual-stage 3)  ; Ritual in progress
+          (set-prop! @lab-bench moved false)
           (clear-flag! @pentagram RMUNGBIT)
           (clear-flag! @alchemy-trap-door OPENBIT))
 
@@ -271,7 +271,7 @@
 
   ; Move lab bench to reveal trapdoor
   (do @lab-bench :move)
-  (assert lab-bench-moved)
+  (assert (:moved @lab-bench))
 
   ; Open trapdoor and escape
   (do @alchemy-trap-door :open)
@@ -286,18 +286,18 @@
 ; where it runs. This test verifies the final state can be set directly.
 (test "walkthrough-phase5-ritual-complete"
   :setup ((move! @player @under-alchemy-lab)
-          (set! prof-dead true)  ; Simulate ritual completion
-          (set! tied-up 0))
+          (set-prop! @professor dead true)  ; Simulate ritual completion
+          (set-prop! @professor ritual-stage 0))
 
   ; Professor should be dead after ritual
-  (assert prof-dead)
+  (assert (:dead @professor))
   (assert (loc? @player @under-alchemy-lab)))
 
 ; Test getting ring after professor dies
 (test "walkthrough-phase5-get-ring"
   :setup ((move! @player @under-alchemy-lab)
-          (set! prof-dead true)
-          (set! lab-bench-moved true)
+          (set-prop! @professor dead true)
+          (set-prop! @lab-bench moved true)
           (set-flag! @alchemy-trap-door OPENBIT)
           (move! @ring @alchemy-lab))  ; Ring left behind
 
@@ -316,7 +316,7 @@
           (move! @vat @lab-bench)
           (move! @elixir @vat)
           (clear-flag! @mummified-hand PERSON)
-          (set! animation-count 0))
+          (set-prop! @mummified-hand animation-count 0))
 
   ; Dip hand in vat (put INTO vat)
   (do @vat :put @mummified-hand)
@@ -418,7 +418,7 @@
   :setup ((move! @player @outer-lair)
           (move! @slime-curtain @outer-lair)
           (move! @nitrogen @player)
-          (set! nitrogen-cnt 2))  ; Already poured 2 times
+          (set-prop! @slime-curtain nitrogen-count 2))  ; Already poured 2 times
 
   ; Final pour destroys curtain
   (do @slime-curtain :pour @nitrogen)
@@ -468,7 +468,7 @@
           (set-flag! @high-voltage POWERBIT)  ; Pulled out of water
           (clear-flag! @high-voltage RMUNGBIT)
           (move! @axe @player)
-          (set! hv-cnt 0))
+          (set-prop! @high-voltage cut-count 0))
 
   ; Cut power line 3 times with axe
   (do @high-voltage :cut @axe)
@@ -487,7 +487,7 @@
           (set-flag! @high-voltage RMUNGBIT)
           (set-flag! @output-cable RMUNGBIT)
           (move! @frob @inner-lair)
-          (set! end-cnt 1))  ; Frob has appeared
+          (set-prop! @frob count 1))  ; Frob has appeared
 
   ; Verify power line is in socket and frob is present
   (assert (in? @high-voltage @input-socket))
@@ -498,7 +498,7 @@
   :setup ((move! @player @inner-lair)
           (move! @frob @inner-lair)
           (move! @smooth-stone @player)
-          (set! end-cnt 2))  ; Stone is glowing hot
+          (set-prop! @frob count 2))  ; Stone is glowing hot
 
   ; Throw stone at frob
   (do @frob :attack @smooth-stone)
@@ -688,7 +688,7 @@
   (do @forklift :use @junk)
   (do @forklift :use @junk)
   (do @forklift :use @junk)
-  (assert (> junk-moved junk-moves-needed))
+  (assert (> (:moved @junk) junk-moves-needed))
 
   ; Exit forklift and proceed to storage-room
   (do @forklift :exit)
@@ -760,7 +760,7 @@
   ; === Disable floor waxer ===
   ; Cut the power cord - this causes maintenance man to descend and chase
   (do @power-cord :cut)
-  (assert cord-severed)
+  (assert (prop? @power-cord severed true))
 
   ; Pour floor wax to make maintenance man slip and dissolve
   (assert (held? @plastic-container))
@@ -838,14 +838,14 @@
   ; Go to roof and climb to dome
   (go :direction west)       ; brown-top-floor -> brown-roof
   (assert (held? @smooth-stone))  ; Need stone to trigger flier
-  (assert (= flier-count 0))      ; Flier encounter not started yet
+  (assert (prop? @flier count 0))  ; Flier encounter not started yet
   (go :direction up)         ; brown-roof -> inside-dome (triggers flier if have smooth-stone)
   (assert (loc? @player @inside-dome))
   (assert (queued? flier-approach))  ; Flier event should be queued
 
   ; Wait for flier to appear on roof (stage 1)
   (wait)
-  (assert (= flier-count 1))
+  (assert (prop? @flier count 1))
   (assert (in? @flier @brown-roof))
 
   ; Search tub to find mummified hand - flier advances to stage 2
@@ -881,8 +881,8 @@
   (assert (loc? @player @chemistry-bldg))
 
   ; Verify alchemy state is correct (default values)
-  (assert (not prof-dead))
-  (assert (not left-alchemy))
+  (assert (not (:dead @professor)))
+  (assert (not (:visited @professor)))
 
   ; Knock and wait for professor to answer
   (do @alchemy-door :knock)
@@ -892,15 +892,15 @@
 
   ; Have note from Great Dome detour
   (assert (held? @note))
-  (assert (not prof-seen-note))
-  (assert (not prof-mad))
+  (assert (not (:seen-note @professor)))
+  (assert (not (:mad @professor)))
 
   ; Show note to professor
   (do @professor :give @note)
-  (assert prof-seen-note)
+  (assert (:seen-note @professor))
 
   ; Enter lab - professor escorts and triggers ritual
-  (assert (= tied-up 0))
+  (assert (= (:ritual-stage @professor) 0))
   (go :direction south)
   (assert (loc? @player @alchemy-lab))
   (assert (queued? professor-ritual))
@@ -909,16 +909,16 @@
   ; Stage 1: Player moved to pentagram
   (wait)
   (assert (loc? @player @pentagram))
-  (assert (= tied-up 1))
+  (assert (= (:ritual-stage @professor) 1))
 
-  ; Wait until tied-up >= 3 (we can cut the pentagram at this point)
-  (until (>= tied-up 3)
+  ; Wait until ritual-stage >= 3 (we can cut the pentagram at this point)
+  (until (>= (:ritual-stage @professor) 3)
     (wait))
-  (assert (>= tied-up 3))
+  (assert (>= (:ritual-stage @professor) 3))
 
   ; At this point the ritual is in progress and we can escape
   ; Verify escape state is correct
-  (assert (not lab-bench-moved))
+  (assert (not (:moved @lab-bench)))
   (assert (no-flag? @pentagram RMUNGBIT))
   (assert (no-flag? @alchemy-trap-door OPENBIT))
 
@@ -938,10 +938,10 @@
 
   ; Wait for ritual to complete (stage 8) - professor dies, ring appears
   ; The professor-ritual event handles this automatically when player escapes
-  (until prof-dead
+  (until (:dead @professor)
     (wait))
-  (assert prof-dead)
-  (assert (= tied-up 0))
+  (assert (:dead @professor))
+  (assert (= (:ritual-stage @professor) 0))
   (assert (loc? @ring @alchemy-lab))
   (assert (not (queued? professor-ritual)))
 
@@ -958,7 +958,7 @@
   ; Hand was obtained from inside-dome during brown building detour
   (assert (held? @mummified-hand))
   (assert (no-flag? @mummified-hand PERSON))  ; Not animated yet
-  (assert (= animation-count 0))
+  (assert (= (:animation-count @mummified-hand) 0))
   ; Verify vat and elixir are in their proper locations
   (assert (in? @vat @lab-bench))
   (assert (in? @elixir @vat))
@@ -1062,7 +1062,7 @@
   (assert (has-flag? @boots WEARBIT))
   (assert (has-flag? @gloves WEARBIT))  ; Already wearing gloves from great-dome climb
   (assert (in? @nitrogen @flask))  ; Have nitrogen from chem lab
-  (assert (= nitrogen-cnt 0))
+  (assert (prop? @slime-curtain nitrogen-count 0))
 
   ; Go down to lair-1
   (go :direction down)
@@ -1103,7 +1103,7 @@
   (assert (has-flag? @high-voltage POWERBIT))
 
   ; Cut power line with axe (3 hits)
-  (assert (= hv-cnt 0))
+  (assert (prop? @high-voltage cut-count 0))
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
   (do @high-voltage :cut @axe)
@@ -1127,9 +1127,9 @@
   ; Frob appears - two stages before we can throw stone
   (wait)  ; stage 1 - frob appears, stone vibrates
   (assert (in? @frob @inner-lair))
-  (assert (= end-cnt 1))
+  (assert (prop? @frob count 1))
   (wait)  ; stage 2 - stone glowing hot
-  (assert (= end-cnt 2))
+  (assert (prop? @frob count 2))
 
   ; Throw smooth-stone at frob for VICTORY!
   (do @frob :attack @smooth-stone)

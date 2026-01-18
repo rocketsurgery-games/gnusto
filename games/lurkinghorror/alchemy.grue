@@ -13,18 +13,6 @@
 ;   - Survive the ritual by escaping through trapdoor
 ;   - Dip mummified hand in vat to animate it
 
-; === State Globals ===
-
-(globals
-  :prof-seen-note false   ; Has player shown suicide note to professor?
-  :prof-mad false         ; Is professor angry/suspicious?
-  :prof-dead false        ; Has professor been killed by the entity?
-  :tied-up 0              ; Ritual stage counter (0 = not started, 1-8 = stages)
-  :left-alchemy false     ; Has player left alchemy dept at least once?
-  :lab-bench-moved false  ; Has lab bench been moved to reveal trapdoor?
-  :remembered-student false  ; Has player remembered the student's death?
-  :animation-count 0)     ; Hand animation stage counter
-
 ; === Main Rooms ===
 
 (room @chemistry-bldg
@@ -47,8 +35,8 @@
     :on-enter (fn (?from-room)
       (cond
         ; Coming from alchemy-dept - door closes and locks behind
-        ((and (= ?from-room @alchemy-dept) (not prof-dead))
-          '((set left-alchemy true)
+        ((and (= ?from-room @alchemy-dept) (not (:dead @professor)))
+          '((set @professor :visited true)
             (set-flag @alchemy-door LOCKED)
             (clear-flag @alchemy-door OPENBIT)
             (success :message "The door closes behind you.")))
@@ -75,7 +63,7 @@
     :on-enter (fn (?from-room)
       (cond
         ; Coming from chemistry bldg - door unlocks for exit
-        ((and (= ?from-room @chemistry-bldg) (not prof-dead))
+        ((and (= ?from-room @chemistry-bldg) (not (:dead @professor)))
           '((clear-flag @alchemy-door LOCKED)
             (clear-flag @alchemy-door OPENBIT)
             (success)))
@@ -93,10 +81,10 @@
     :describe (fn ()
       (success :context
         ((description
-          (str (if (not prof-dead)
+          (str (if (not (:dead @professor))
                  "The lab is an ultramodern, fully equipped chemistry lab. Unfortunately, or perhaps fortunately, you aren't a chemistry major, so the equipment might as well be magical."
                  "The lab is a shambles. It looks like something red and sticky has been spread over the walls, ceiling, and floor. Much of the equipment, particularly that near the center of the room, has been destroyed.")
-               (if lab-bench-moved
+               (if (:moved @lab-bench)
                  (str " There is " (if (has-flag @alchemy-trap-door OPENBIT) "an open " "a closed ") "metal plate in the floor.")
                  ""))))))
 
@@ -105,8 +93,8 @@
       (cond
         ; Professor is here, ritual hasn't started, professor not dead
         ((and (in? @professor @alchemy-lab)
-              (= tied-up 0)
-              (not prof-dead))
+              (= (:ritual-stage @professor) 0)
+              (not (:dead @professor)))
           '((queue professor-ritual)
             (success)))
         (true (success))))
@@ -117,7 +105,7 @@
         ; Block messing with vat during ritual
         ((and (in? @professor (loc @player))
               (or (= ?target "@vat") (= ?target "@elixir"))
-              (< tied-up 3))
+              (< (:ritual-stage @professor) 3))
           (blocked :reason professor-prevents
                    :message "The professor, none too gently, prevents you. \"Plenty of time for that later,\" he cautions you."))
         (true (default))))))
@@ -149,7 +137,7 @@
     :through (fn ()
       (cond
         ; Can't enter if professor present and hasn't seen note
-        ((and (in? @professor @alchemy-dept) (not prof-seen-note))
+        ((and (in? @professor @alchemy-dept) (not (:seen-note @professor)))
           (blocked :reason professor-blocks
                    :message "The professor stops you, not too gently. \"Sorry,\" he says, although he doesn't sound too sorry. \"There are very delicate experiments going on in the lab. You might hurt something.\" All you can see before he guides you away from the archway is a great deal of odd apparatus and equipment."))
         ; Professor escorts you in if he's seen the note
@@ -168,10 +156,10 @@
     :through (fn ()
       (cond
         ; Can't leave during ritual
-        ((and (> tied-up 0) (not (has-flag @pentagram RMUNGBIT)))
+        ((and (> (:ritual-stage @professor) 0) (not (has-flag @pentagram RMUNGBIT)))
           (blocked :reason trapped-in-pentagram
                    :message "You find it very hard to move. Your feet reach the chalk line and then seem to meet resistance, though there is nothing there but the chalk."))
-        ((> tied-up 0)
+        ((> (:ritual-stage @professor) 0)
           (blocked :reason magical-barrier
                    :message "You find the archway barred by a force you can't push through."))
         (true (success))))))
@@ -184,7 +172,7 @@
   :behaviors (
     :through (fn ()
       (cond
-        ((not lab-bench-moved)
+        ((not (:moved @lab-bench))
           (blocked :reason no-way-down :message "There is no obvious way down from here."))
         ((not (has-flag @alchemy-trap-door OPENBIT))
           (blocked :reason trapdoor-closed :message "The trapdoor bars your way."))
@@ -220,7 +208,7 @@
                "\"Department of Alchemy\" painted on it.")
              (if (and (= (loc @player) @chemistry-bldg)
                       (has-flag @alchemy-dept ONBIT)
-                      (not prof-dead))
+                      (not (:dead @professor)))
                " There is a light on inside."
                ""))))
 
@@ -230,7 +218,7 @@
           (success :message "You are inside it already."))
         ((not (has-flag @alchemy-dept ONBIT))
           (success :message "It's dark inside."))
-        ((not prof-dead)
+        ((not (:dead @professor))
           (success :message "Every so often, you see a shadow move across the window."))
         (true
           (success :message "You don't see anything in particular, other than that the light is on inside."))))
@@ -328,16 +316,17 @@
   :description "sign-up sheet"
   :fdesc "Taped to the wall to the right of the archway is a sign-up sheet."
   :flags (TAKEBIT TRYTAKEBIT READBIT)
+  :properties (:remembered false)
 
   :behaviors (
     :examine (fn ()
       `((set-flag ?self RMUNGBIT)
-        ,@(if (not (or (has-flag @note RMUNGBIT) remembered-student))
+        ,@(if (not (or (has-flag @note RMUNGBIT) (:remembered @signup)))
               '((queue remember-student 4))
               '())
         (success :message
           ,(str "This appears to be a sign-up sheet for the lab. Strangely, although few daytime segments are used, almost all of the nighttime ones are. Most seem to have been taken by two different people, the professor and another, presumably one of his graduate students."
-               (if (or (has-flag @note RMUNGBIT) remembered-student)
+               (if (or (has-flag @note RMUNGBIT) (:remembered @signup))
                  " With a start, you realize that the author of the suicide note was the heavy user of the lab."
                  " The name of the graduate student is oddly familiar.")))))
 
@@ -436,7 +425,7 @@
       (cond
         ((= (loc @player) @alchemy-lab)
           (cond
-            ((not lab-bench-moved)
+            ((not (:moved @lab-bench))
               (blocked :reason blocked-by-bench :message "It lifts a few inches, but then hits the lab bench and goes no further."))
             ((has-flag ?self OPENBIT)
               (blocked :reason already-open :message "It's already open."))
@@ -445,7 +434,7 @@
                 (success :message "It swings open easily.")))))
         (true  ; From under-alchemy-lab
           (cond
-            ((not lab-bench-moved)
+            ((not (:moved @lab-bench))
               (blocked :reason blocked-by-something :message "It lifts a few inches, but then hits something and goes no further."))
             ((has-flag ?self OPENBIT)
               (blocked :reason already-open :message "It's already open."))
@@ -505,7 +494,7 @@
   :location @alchemy-lab
   :description "lab bench"
   :flags (SURFACEBIT OPENBIT CONTBIT SEARCHBIT)
-  :properties (:capacity 200)
+  :properties (:capacity 200 :moved false)
 
   :behaviors (
     :examine (fn ()
@@ -514,15 +503,15 @@
 
     :look-under (fn ()
       (cond
-        ((not lab-bench-moved)
+        ((not (:moved @lab-bench))
           (success :message "You can see a metal plate beneath the bench. Only part of it is visible."))
         (true
           (success :message "Nothing but concrete floor there."))))
 
     :move (fn ()
       (cond
-        ((not lab-bench-moved)
-          '((set lab-bench-moved true)
+        ((not (:moved @lab-bench))
+          '((set @lab-bench :moved true)
             (success :message "It's heavy, but it moves, revealing a hinged metal trapdoor beneath.")))
         (true
           (success :message "It rolls a little."))))
@@ -555,7 +544,7 @@
 
     :exit (fn ()
       (cond
-        ((not (> tied-up 0))
+        ((not (> (:ritual-stage @professor) 0))
           '((move @player @alchemy-lab)
             (success :message "You get out of the pentagram, being careful not to further scuff the chalk.")))
         ((not (has-flag ?self RMUNGBIT))
@@ -761,23 +750,23 @@
   :location @alchemy-dept
   :description "professor"
   :flags (PERSON OPENBIT CONTBIT SEARCHBIT)
-  :properties (:value 5)
+  :properties (:value 5 :seen-note false :mad false :dead false :ritual-stage 0 :visited false)
 
   :behaviors (
     :describe (fn ()
       (cond
-        (prof-dead
+        ((:dead @professor)
           (success :context ((description nil))))  ; Don't describe dead professor
         (true
           (success :context
             ((description
               (str "The professor is "
-                   (if (> tied-up 2) "performing a strange ritual " "")
+                   (if (> (:ritual-stage @professor) 2) "performing a strange ritual " "")
                    "here.")))))))
 
     :examine (fn ()
       (cond
-        (prof-dead
+        ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
         (true
           (success :message
@@ -789,18 +778,18 @@
     ; Ask professor about things
     :ask (fn (?topic)
       (cond
-        (prof-dead
+        ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
-        ((> tied-up 2)
+        ((> (:ritual-stage @professor) 2)
           (blocked :reason busy :message "The professor is intently following his ritual and won't be distracted."))
         ((= ?topic @odd-paper)
-          '((set prof-mad true)
+          '((set @professor :mad true)
             (success :message "\"I don't like your insinuations.\"")))
         ((= ?topic @ring)
           (success :message "\"Just a trinket.\""))
         ((= ?topic @lab-global)
           (cond
-            (prof-seen-note
+            ((:seen-note @professor)
               '((move @professor @alchemy-lab)
                 (set-flag @alchemy-lab ONBIT)
                 (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather unctuous tone. \"Come right in!\" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.")))
@@ -813,7 +802,7 @@
           (success :message "\"I don't know anything about them. Tech is high-pressure. Some people can't take it.\""))
         ((= ?topic @note)
           (cond
-            (prof-seen-note
+            ((:seen-note @professor)
               (success :message "\"Obviously a nut case. He knew he was going to flunk out, and this is clearly an attempt to put the blame somewhere else.\""))
             (true
               (success :message "\"What note is that?\" he asks, nervously."))))
@@ -823,7 +812,7 @@
           (success :message "\"The machines in our department have names like that. Lovecraft wrote some stories about alchemy. We've got Paracelsus, Dunsany, and a couple of others, too.\""))
         (true
           (cond
-            ((> tied-up 0)
+            ((> (:ritual-stage @professor) 0)
               (blocked :reason no-response :message "There is no response."))
             (true
               (success :message "The professor looks at you in much the way a cat looks at a mouse."))))))
@@ -834,17 +823,17 @@
     ; Give/show things to professor
     :give (fn (?obj)
       (cond
-        (prof-dead
+        ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
-        ((> tied-up 2)
+        ((> (:ritual-stage @professor) 2)
           (blocked :reason busy :message "The professor is nervously following his ritual."))
         ((or (= ?obj @smooth-stone) (= ?obj @mummified-hand) (= ?obj @knife))
-          '((set prof-mad true)
+          '((set @professor :mad true)
             (move ?obj @professor)
             (success :message "\"Very interesting! I'll take that!\"")))
         ((= ?obj @note)
-          '((set prof-seen-note true)
-            (set prof-mad true)
+          '((set @professor :seen-note true)
+            (set @professor :mad true)
             (move ?obj @professor)
             (success :message "He reads it carefully. \"What drivel! This just confirms my suspicions. He had clearly gone over the edge. Drug use, drinking, insanity. It's only too bad that I didn't realize what was happening. I might have helped him.\"")))
         (true
@@ -856,20 +845,20 @@
     ; Attack professor
     :attack (fn (?weapon)
       (cond
-        (prof-dead
+        ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
-        ((> tied-up 6)
+        ((> (:ritual-stage @professor) 6)
           (blocked :reason mist-protects :message "The mist protects him, almost possessively."))
-        ((> tied-up 2)
+        ((> (:ritual-stage @professor) 2)
           (blocked :reason in-pentagram :message "The professor, in his pentagram, is invulnerable."))
         (true
           (cond
             ((and ?weapon (has-flag ?weapon WEAPONBIT))
-              `((set prof-mad true)
+              `((set @professor :mad true)
                 (move ?weapon @professor)
                 (success :message ,(str "With contemptuous ease, the professor prevents you. \"I'll take this,\" he says. \"Just for safekeeping.\" He makes the " (desc ?weapon) " disappear."))))
             (true
-              '((set prof-mad true)
+              '((set @professor :mad true)
                 (success :message "With contemptuous ease, the professor prevents you.")))))))
 
     :kick (fn ()
@@ -882,7 +871,7 @@
     :search (fn ()
       (cond
         ((in? @ring ?self)
-          '((set prof-mad true)
+          '((set @professor :mad true)
             (success :message "He thrusts his hand into his pocket.")))
         (true
           (success :message "\"You'll get it. All in good time.\""))))
@@ -911,7 +900,7 @@
   :location @chemistry-bldg
   :on-turn
     (cond
-      (prof-dead
+      ((:dead @professor)
         '((dequeue answer-door)
           (success :message "There is no sign of life behind the door.")))
       (true
@@ -921,7 +910,7 @@
           (dequeue answer-door)
           (success :message
             ,(str "The door opens partway, revealing a professorial man in a white lab coat. He smiles. "
-                 (if (not left-alchemy)
+                 (if (not (:visited @professor))
                    "\"Good evening! I don't get many visitors this late. You're not one of my students, are you?\""
                    "\"Back for another visit, are you?\"")
                  " He ushers you into the room without waiting for an answer, closing the door behind you."))))))
@@ -938,23 +927,23 @@
         `((queue professor-watches)
           (success :message
             ,(str "The professor "
-                 (if (and prof-mad prof-seen-note)
+                 (if (and (:mad @professor) (:seen-note @professor))
                    "gazes at you with a distinctly predatory air."
-                   (if prof-mad
+                   (if (:mad @professor)
                      "gazes at you with malign intent."
                      "gazes at you in a bored and distracted way."))))))))
 
 ; Remember student event - triggered by reading sign-up sheet
 (event remember-student
   :on-turn
-    '((set remembered-student true)
+    '((set @signup :remembered true)
       (dequeue remember-student)
       (success :message "Suddenly, you remember why the graduate student's name was familiar. He was a missing student, until his body was found smashed and broken at the base of the tallest building on campus.")))
 
 ; Animate hand event - hand comes to life in vat
 (event animate-hand
   :on-turn
-    (let ((?new-count (+ animation-count 1)))
+    (let ((?new-count (+ (:animation-count @mummified-hand) 1)))
       (cond
         ((not (in? @mummified-hand @vat))
           '((dequeue animate-hand)
@@ -963,12 +952,12 @@
           ; Already animated, just trying to escape
           '((queue animate-hand)
             (success :message "The hand is trying to crawl out of the vat. The fingers flex and grab at the slippery sides, but in vain.")))
-        ((= animation-count 0)
-          `((set animation-count ,?new-count)
+        ((= (:animation-count @mummified-hand) 0)
+          `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
             (success :message "The hand bobs to the surface. It's odd, but it looked like one of the fingers moved.")))
-        ((= animation-count 1)
-          `((set animation-count ,?new-count)
+        ((= (:animation-count @mummified-hand) 1)
+          `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
             (success :message "The hand splashes to the surface. The fingers are moving!")))
         (true
@@ -992,7 +981,7 @@
   ; No :location filter - event handles location checks internally
   ; to allow running in alchemy-lab, under-alchemy-lab, or brick-tunnel
   :on-turn
-    (let ((?next-tied-up (+ tied-up 1)))
+    (let ((?next-stage (+ (:ritual-stage @professor) 1)))
       (cond
         ; Not in the lab or tunnels - dequeue
         ; Note: player may be in @pentagram which is inside @alchemy-lab
@@ -1003,33 +992,33 @@
           '((dequeue professor-ritual)
             (success)))
         ; Stage 1 - trap player in pentagram
-        ((= tied-up 0)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 0)
+          `((set @professor :ritual-stage ,?next-stage)
             (move @player @pentagram)
             (queue professor-ritual)
             (success :stage 1 :message ,stage1)))
-        ((= tied-up 1)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 1)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 2 :message ,stage2)))
-        ((= tied-up 2)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 2)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 3 :message ,stage3)))
-        ((= tied-up 3)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 3)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 4
                      :message ,(str stage4
                                     (if (has-flag @pentagram RMUNGBIT)
                                       ", the professor having difficulty with the almost unpronounceable words"
                                       "")))))
-        ((= tied-up 4)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 4)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 5 :message ,stage5)))
-        ((= tied-up 5)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 5)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 6
                      :message ,(str stage6 " The professor "
@@ -1040,8 +1029,8 @@
                                        "gestures in your direction, an overtone of terror in his voice.")
                                       (true
                                        "chants more rapidly, producing strange guttural sounds, scarcely human."))))))
-        ((= tied-up 6)
-          `((set tied-up ,?next-tied-up)
+        ((= (:ritual-stage @professor) 6)
+          `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 7
                      :message ,(str stage7
@@ -1053,7 +1042,7 @@
                                       (true
                                        " The professor's brow drips with sweat."))))))
         ; Stage 8 - death or escape
-        ((= tied-up 7)
+        ((= (:ritual-stage @professor) 7)
           (cond
             ; Player still in lab = death
             ((or (in? @player @pentagram) (= (loc @player) @alchemy-lab))
@@ -1062,8 +1051,8 @@
                          :context ((death true) (description stage8-death)))))
             ; Player escaped = survive
             (true
-              `((set tied-up 0)
-                (set prof-dead true)
+              `((set @professor :ritual-stage 0)
+                (set @professor :dead true)
                 (move @ring @alchemy-lab)  ; Professor's ring drops to floor
                 (move @professor nil)
                 (clear-flag @alchemy-lab TOUCHBIT)

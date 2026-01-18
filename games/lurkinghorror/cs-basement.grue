@@ -11,11 +11,6 @@
 ;   - Use forklift to clear junk in dead-storage (3 moves required)
 ;   - Use crowbar to pry open manhole cover in storage-room
 
-; === State Globals ===
-
-(globals
-  :junk-moved 0)           ; Counter: need > 3 to clear path through junk
-
 (def junk-moves-needed 3)  ; Constant: moves required to clear junk path
 
 ; === Stub Rooms (connected areas not in scope) ===
@@ -72,7 +67,7 @@
       (success :context
         ((description
           (str "This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets"
-               (if (> junk-moved junk-moves-needed)
+               (if (> (:moved @junk) junk-moves-needed)
                  ". A narrow path winds eastward through the junk."
                  "; you can't even see the east wall."))))))))
 
@@ -101,9 +96,9 @@
   :behaviors (
     :through (fn ()
       (cond
-        ((> junk-moved junk-moves-needed)
+        ((> (:moved @junk) junk-moves-needed)
           (success))
-        ((> junk-moved 0)
+        ((> (:moved @junk) 0)
           (blocked :reason junk-blocking
                    :message "There is still no path all the way through the junk, but you can now tell for sure that there's a room to the east."))
         (true
@@ -116,6 +111,7 @@
   :location nil  ; Global object, present via room :globals
   :description "junk"
   :flags (NDESCBIT)
+  :properties (:moved 0)  ; Counter: need > junk-moves-needed to clear path
 
   :behaviors (
     :examine (fn ()
@@ -187,16 +183,16 @@
           (blocked :reason wrong-target :message (str "The forklift is ineffective in manipulating " ?target ".")))
         ((not (= (loc ?self) @dead-storage))
           (blocked :reason wrong-place :message "There's nothing on pallets here, hence the forklift is useless."))
-        ((= junk-moved 0)
-          '((set junk-moved 1)
+        ((= (:moved @junk) 0)
+          '((set @junk :moved 1)
             (success :message "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage.")))
-        ((> junk-moved junk-moves-needed)
+        ((> (:moved @junk) junk-moves-needed)
           (success :message "I suppose you're planning to clear the entire room? You've made a nice path to the next room already."))
-        ((= (+ junk-moved 1) (+ junk-moves-needed 1))
-          '((set junk-moved (+ junk-moved 1))
+        ((= (+ (:moved @junk) 1) (+ junk-moves-needed 1))
+          '((set @junk :moved (+ (:moved @junk) 1))
             (success :message "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one.")))
         (true
-          '((set junk-moved (+ junk-moved 1))
+          '((set @junk :moved (+ (:moved @junk) 1))
             (success :message "You continue moving junk, becoming more proficient with the forklift.")))))))
 
 ; === Manhole System ===
@@ -378,9 +374,6 @@
 ; The flask is a dewar containing liquid nitrogen, used to freeze the curtain
 ; in the lair or pour on other objects.
 
-(globals
-  :nitrogen-cnt 5)  ; Countdown timer for nitrogen evaporation
-
 (object @flask
   :location @temporary-lab
   :description "metal flask"
@@ -439,6 +432,7 @@
   :location @flask
   :description "cold liquid"
   :flags (TAKEBIT WEAPONBIT)
+  :properties (:countdown 5)  ; Countdown timer for nitrogen evaporation
 
   :behaviors (
     :examine (fn ()
@@ -489,21 +483,21 @@
       ((not (in? @nitrogen @flask))
         '((dequeue nitrogen-evaporates)
           (success)))
-      ((<= nitrogen-cnt 1)
+      ((<= (:countdown @nitrogen) 1)
         ; Last charge - nitrogen exhausted
-        '((set nitrogen-cnt 0)
+        '((set @nitrogen :countdown 0)
           (move @nitrogen nil)
           (dequeue nitrogen-evaporates)
           (queue mist-dissipates 2)
           (success)))
       ((= (loc @flask) (loc @player))
         ; Still has nitrogen and player can see
-        '((dec nitrogen-cnt)
+        `((set @nitrogen :countdown ,(- (:countdown @nitrogen) 1))
           (queue nitrogen-evaporates 3)
           (success :message "Cold white mist continues to boil out of the flask.")))
       (true
         ; Still has nitrogen but player can't see
-        '((dec nitrogen-cnt)
+        `((set @nitrogen :countdown ,(- (:countdown @nitrogen) 1))
           (queue nitrogen-evaporates 3)
           (success)))))
 

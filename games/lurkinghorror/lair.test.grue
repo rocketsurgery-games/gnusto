@@ -31,14 +31,14 @@
     (assert (outcome? success)))
 
   (test "nitrogen partial freeze keeps nitrogen"
-    :setup ((move! @nitrogen @flask) (set! nitrogen-cnt 0))
+    :setup ((move! @nitrogen @flask) (set-prop! @slime-curtain nitrogen-count 0))
     (do @slime-curtain :pour @nitrogen)
     (assert (outcome? success))
     (assert (in? @slime-curtain @outer-lair))  ; Curtain still there
     (assert (in? @nitrogen @flask)))            ; Nitrogen NOT consumed
 
   (test "nitrogen destroys curtain on third pour"
-    :setup ((move! @nitrogen @flask) (set! nitrogen-cnt 2))
+    :setup ((move! @nitrogen @flask) (set-prop! @slime-curtain nitrogen-count 2))
     (do @slime-curtain :pour @nitrogen)
     (assert (outcome? success))
     (assert (loc? @slime-curtain nil))    ; Curtain destroyed
@@ -129,7 +129,7 @@
     (assert (reason? too-thick)))
 
   (test "axe cuts line after 3 hits"
-    :setup ((set-flag! @high-voltage POWERBIT) (move! @high-voltage @player) (move! @axe @player) (set! hv-cnt 2))
+    :setup ((set-flag! @high-voltage POWERBIT) (move! @high-voltage @player) (move! @axe @player) (set-prop! @high-voltage cut-count 2))
     (do @high-voltage :cut @axe)
     (assert (outcome? success))
     (assert (has-flag? @high-voltage RMUNGBIT)))
@@ -156,7 +156,7 @@
 )
 
 (test-group "frob battle"
-  :setup ((move! @player @inner-lair) (move! @frob @inner-lair) (move! @smooth-stone @player) (set! end-cnt 2))
+  :setup ((move! @player @inner-lair) (move! @frob @inner-lair) (move! @smooth-stone @player) (set-prop! @frob count 2))
 
   (test "throwing stone at frob wins"
     (do @frob :attack @smooth-stone)
@@ -165,7 +165,7 @@
     (assert (loc? @frob nil)))
 
   (test "first stone hit at stage 1"
-    :setup ((set! end-cnt 1))
+    :setup ((set-prop! @frob count 1))
     (do @frob :attack @smooth-stone)
     (assert (outcome? success))
     (assert (loc? @smooth-stone nil)))
