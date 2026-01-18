@@ -468,7 +468,9 @@ def print_result(result: Any) -> bool:
         print(f"\nObjects:")
         for name, obj_state in sorted(rt.state.objects.items()):
             if name not in rt.state.rooms:
-                flags_str = ", ".join(sorted(obj_state.flags)) if obj_state.flags else "(none)"
+                # Extract flags (boolean True properties)
+                flags = sorted(k for k, v in obj_state.properties.items() if v is True)
+                flags_str = ", ".join(flags) if flags else "(none)"
                 print(f"  {name}: loc={obj_state.location}, flags=[{flags_str}]")
         return True
 

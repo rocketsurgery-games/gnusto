@@ -63,9 +63,11 @@ class StateSnapshot:
         """Capture current state from runtime."""
         objects = {}
         for name, obj in runtime.state.objects.items():
+            # Extract flags (boolean True properties) from properties
+            flags = frozenset(k for k, v in obj.properties.items() if v is True)
             objects[name] = (
                 obj.location,
-                frozenset(obj.flags),
+                flags,
                 dict(obj.properties),
             )
         return cls(
@@ -164,15 +166,16 @@ class GrueTestHarness:
         return None
 
     def has_flag(self, obj: str, flag: str) -> bool:
-        """Check if object has flag."""
+        """Check if object has flag (stored as boolean property)."""
         if obj in self.runtime.state.objects:
-            return flag in self.runtime.state.objects[obj].flags
+            return bool(self.runtime.state.objects[obj].properties.get(flag, False))
         return False
 
     def get_flags(self, obj: str) -> set[str]:
-        """Get all flags on object."""
+        """Get all flags (boolean True properties) on object."""
         if obj in self.runtime.state.objects:
-            return set(self.runtime.state.objects[obj].flags)
+            props = self.runtime.state.objects[obj].properties
+            return {k for k, v in props.items() if v is True}
         return set()
 
     def get_property(self, obj: str, prop: str) -> Any:
@@ -201,14 +204,14 @@ class GrueTestHarness:
             self.runtime.state.objects[obj].location = location
 
     def set_flag(self, obj: str, flag: str) -> None:
-        """Set flag on object."""
+        """Set flag on object (stored as boolean property)."""
         if obj in self.runtime.state.objects:
-            self.runtime.state.objects[obj].flags.add(flag)
+            self.runtime.state.objects[obj].properties[flag] = True
 
     def clear_flag(self, obj: str, flag: str) -> None:
-        """Clear flag from object."""
+        """Clear flag from object (stored as boolean property)."""
         if obj in self.runtime.state.objects:
-            self.runtime.state.objects[obj].flags.discard(flag)
+            self.runtime.state.objects[obj].properties[flag] = False
 
     def set_property(self, obj: str, prop: str, value: Any) -> None:
         """Set property on object."""

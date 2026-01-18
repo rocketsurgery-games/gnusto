@@ -634,7 +634,7 @@ class TestRunner:
                     flag = flag.name
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
-                elif flag not in runtime.state.objects[obj].flags:
+                elif not runtime.state.objects[obj].properties.get(flag):
                     failures.append(f"Object '{obj}' missing flag '{flag}'")
 
             elif name == "no-flag?":
@@ -649,7 +649,7 @@ class TestRunner:
                     flag = flag.name
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
-                elif flag in runtime.state.objects[obj].flags:
+                elif runtime.state.objects[obj].properties.get(flag):
                     failures.append(f"Object '{obj}' has unexpected flag '{flag}'")
 
             elif name == "loc?":
@@ -745,7 +745,7 @@ class TestRunner:
                     flag = flag.name
                 if obj not in runtime.state.objects:
                     failures.append(f"Unknown object: {obj}")
-                elif flag in runtime.state.objects[obj].flags:
+                elif runtime.state.objects[obj].properties.get(flag):
                     failures.append(f"Object '{obj}' has unexpected flag '{flag}'")
 
             elif name == "death?":

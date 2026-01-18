@@ -31,10 +31,13 @@ from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 
 @dataclass
 class ObjectState:
-    """Runtime state for an object."""
+    """Runtime state for an object.
+
+    Flags are stored as boolean properties (e.g., OPENBIT -> properties["OPENBIT"] = True).
+    This unifies the data model - everything is a property.
+    """
     name: str
     location: str | None
-    flags: set[str]
     properties: dict[str, Any]
 
 
@@ -165,23 +168,29 @@ class GrueRuntime:
         """Initialize game state from world definition."""
         state = GameState()
 
-        # Initialize rooms (as objects with flags)
+        # Initialize rooms (flags become boolean properties)
         for room_name, room in self.world.rooms.items():
             state.rooms.add(room_name)
+            props = dict(room.properties)
+            # Convert flags to boolean properties
+            for flag in room.flags:
+                props[flag] = True
             state.objects[room_name] = ObjectState(
                 name=room_name,
                 location=None,  # Rooms don't have locations
-                flags=set(room.flags),
-                properties=dict(room.properties),
+                properties=props,
             )
 
-        # Initialize objects
+        # Initialize objects (flags become boolean properties)
         for name, obj in self.world.objects.items():
+            props = dict(obj.properties)
+            # Convert flags to boolean properties
+            for flag in obj.flags:
+                props[flag] = True
             state.objects[name] = ObjectState(
                 name=name,
                 location=obj.location,
-                flags=set(obj.flags),
-                properties=dict(obj.properties),
+                properties=props,
             )
 
         # Initialize built-in globals
@@ -202,7 +211,7 @@ class GrueRuntime:
 
         # Fallback: find by PERSON flag (for backwards compatibility)
         for name, obj in self.state.objects.items():
-            if "PERSON" in obj.flags and name not in self.state.rooms:
+            if obj.properties.get("PERSON") and name not in self.state.rooms:
                 return name
         return "PLAYER"  # Last resort fallback  # Fallback
 
@@ -218,9 +227,10 @@ class GrueRuntime:
     # -------------------------------------------------------------------------
 
     def get_object_flag(self, obj: str, flag: str) -> bool:
+        """Check if object has flag (stored as boolean property)."""
         if obj not in self.state.objects:
             return False
-        return flag in self.state.objects[obj].flags
+        return bool(self.state.objects[obj].properties.get(flag, False))
 
     def get_object_location(self, obj: str) -> str | None:
         if obj == self.player_name:
@@ -264,9 +274,12 @@ class GrueRuntime:
         return False
 
     def get_object_flags(self, obj: str) -> set[str]:
+        """Get all flags (boolean True properties) on object."""
         if obj not in self.state.objects:
             return set()
-        return self.state.objects[obj].flags
+        # Return set of property names that are True (flags)
+        props = self.state.objects[obj].properties
+        return {k for k, v in props.items() if v is True}
 
     def get_global(self, name: str) -> Any:
         # Check bindings first (for ?self, ?actor, ?with, ?on, etc.)
@@ -348,9 +361,9 @@ class GrueRuntime:
             return None
         # Check if player's location has VEHBIT
         obj_state = self.state.objects.get(player_loc)
-        if obj_state and "VEHBIT" in obj_state.flags:
+        if obj_state and obj_state.properties.get("VEHBIT"):
             # SURFACEBIT means "on", otherwise "in"
-            prep = "on" if "SURFACEBIT" in obj_state.flags else "in"
+            prep = "on" if obj_state.properties.get("SURFACEBIT") else "in"
             return (player_loc, prep)
         return None
 
@@ -364,7 +377,7 @@ class GrueRuntime:
             name for name, obj in self.state.objects.items()
             if obj.location == self.player_name
             and name != self.player_name
-            and "INVISIBLE" not in obj.flags
+            and not obj.properties.get("INVISIBLE")
         ]
 
     def is_visible(self, obj: str) -> bool:
@@ -392,7 +405,7 @@ class GrueRuntime:
             return True
 
         # Check INVISIBLE flag (only for non-global objects)
-        if "INVISIBLE" in obj_state.flags:
+        if obj_state.properties.get("INVISIBLE"):
             return False
 
         if loc is None:
@@ -416,13 +429,13 @@ class GrueRuntime:
         if loc in self.state.objects:
             container = self.state.objects[loc]
             # Surface objects (SURFACEBIT) make contents always visible
-            if "SURFACEBIT" in container.flags and self.is_visible(loc):
+            if container.properties.get("SURFACEBIT") and self.is_visible(loc):
                 return True
             # Transparent containers (TRANSBIT) make contents visible even when closed
-            if "TRANSBIT" in container.flags and self.is_visible(loc):
+            if container.properties.get("TRANSBIT") and self.is_visible(loc):
                 return True
             # Container objects require OPENBIT to see contents
-            if "OPENBIT" in container.flags and self.is_visible(loc):
+            if container.properties.get("OPENBIT") and self.is_visible(loc):
                 return True
         return False
 
@@ -455,12 +468,14 @@ class GrueRuntime:
         return None
 
     def set_object_flag(self, obj: str, flag: str) -> None:
+        """Set flag on object (stored as boolean property)."""
         if obj in self.state.objects:
-            self.state.objects[obj].flags.add(flag)
+            self.state.objects[obj].properties[flag] = True
 
     def clear_object_flag(self, obj: str, flag: str) -> None:
+        """Clear flag from object (stored as boolean property)."""
         if obj in self.state.objects:
-            self.state.objects[obj].flags.discard(flag)
+            self.state.objects[obj].properties[flag] = False
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
         if obj in self.state.objects:
@@ -645,7 +660,7 @@ class GrueRuntime:
                 continue
             if for_description:
                 obj_state = self.state.objects[name]
-                if "NDESCBIT" in obj_state.flags:
+                if obj_state.properties.get("NDESCBIT"):
                     continue
             result.append(name)
         return result

@@ -153,13 +153,13 @@ class TestBehaviorExecution:
         runtime = GrueRuntime(world)
 
         # Door starts locked
-        assert "LOCKED" in runtime.state.objects["DOOR"].flags
+        assert runtime.state.objects["DOOR"].properties.get("LOCKED")
 
         result = runtime.do("DOOR", "unlock")
         assert result.outcome == "success"
 
         # Now unlocked
-        assert "LOCKED" not in runtime.state.objects["DOOR"].flags
+        assert not runtime.state.objects["DOOR"].properties.get("LOCKED")
 
     def test_behavior_with_context(self):
         """Behavior returns context hints."""
@@ -1252,11 +1252,11 @@ class TestEffectListSyntax:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        assert not runtime.state.objects["@lamp"].flags
+        assert not runtime.state.objects["@lamp"].properties.get("LIT")
 
         result = runtime.do("@lamp", "turn-on")
         assert result.outcome == "success"
-        assert "LIT" in runtime.state.objects["@lamp"].flags
+        assert runtime.state.objects["@lamp"].properties.get("LIT")
 
     def test_conditional_effects(self):
         """Behaviors can use conditionals to decide which effects to return."""
@@ -1277,7 +1277,7 @@ class TestEffectListSyntax:
         # First open succeeds
         result = runtime.do("@box", "open")
         assert result.outcome == "success"
-        assert "OPENBIT" in runtime.state.objects["@box"].flags
+        assert runtime.state.objects["@box"].properties.get("OPENBIT")
 
         # Second open is blocked
         result = runtime.do("@box", "open")
@@ -1310,7 +1310,7 @@ class TestEffectListSyntax:
         result = runtime.do("@button", "push")
         # After redirect, the mechanism should be activated
         assert result.outcome == "success"
-        assert "ACTIVE" in runtime.state.objects["@mechanism"].flags
+        assert runtime.state.objects["@mechanism"].properties.get("ACTIVE")
 
     def test_default_terminator(self):
         """Effect list can fall through to default behavior."""
@@ -1372,5 +1372,5 @@ class TestEffectListSyntax:
         result = runtime.do("@treasure", "take")
         assert result.outcome == "success"
         assert runtime.state.objects["@treasure"].location == "@player"
-        assert "TAKEN" in runtime.state.objects["@treasure"].flags
+        assert runtime.state.objects["@treasure"].properties.get("TAKEN")
         assert runtime.get_global("score") == 10
