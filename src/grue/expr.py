@@ -865,8 +865,10 @@ class ExprEvaluator:
             # Collections/quantifiers
             "some": self._eval_some,
             "every?": self._eval_every,
-            "inventory": self._eval_inventory,
             "contents": self._eval_contents,
+            "visible": self._eval_visible_objects,
+            "exits": self._eval_exits,
+            "room-description": self._eval_room_description,
 
             # Exit queries (for movement)
             "exit?": self._eval_exit_exists,
@@ -1333,18 +1335,34 @@ class ExprEvaluator:
 
     # === Collections/quantifiers ===
 
-    def _eval_inventory(self, form: SList, env: Optional[Environment] = None) -> list[str]:
-        """(inventory PLAYER) - get player's inventory"""
-        if len(form) != 2:
-            raise EvalError(f"'inventory' expects 1 argument, got {len(form) - 1}")
-        return self.state.get_inventory()
-
     def _eval_contents(self, form: SList, env: Optional[Environment] = None) -> list[str]:
         """(contents CONTAINER) - get contents of container"""
         if len(form) != 2:
             raise EvalError(f"'contents' expects 1 argument, got {len(form) - 1}")
         container = self.eval(form[1], env)
         return self.state.get_contents(container)
+
+    def _eval_visible_objects(self, form: SList, env: Optional[Environment] = None) -> list[str]:
+        """(visible) - get objects visible from current location"""
+        if len(form) != 1:
+            raise EvalError(f"'visible' expects 0 arguments, got {len(form) - 1}")
+        return self.state.get_visible_objects()
+
+    def _eval_exits(self, form: SList, env: Optional[Environment] = None) -> dict[str, str]:
+        """(exits) - get available exits from current room as direction->destination map"""
+        if len(form) != 1:
+            raise EvalError(f"'exits' expects 0 arguments, got {len(form) - 1}")
+        return self.state.get_exits()
+
+    def _eval_room_description(self, form: SList, env: Optional[Environment] = None) -> str:
+        """(room-description) or (room-description ROOM) - get room description"""
+        if len(form) == 1:
+            return self.state.get_room_description()
+        elif len(form) == 2:
+            room = self.eval(form[1], env)
+            return self.state.get_room_description(room)
+        else:
+            raise EvalError(f"'room-description' expects 0-1 arguments, got {len(form) - 1}")
 
     # === Exit queries (for movement) ===
 

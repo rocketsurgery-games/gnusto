@@ -249,7 +249,7 @@ class TestQuantifiers:
     def test_inventory(self):
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        inv = evaluator.eval(parse("(inventory PLAYER)"))
+        inv = evaluator.eval(parse("(inventory)"))
         assert "FLASHLIGHT" in inv
         assert "KEY" in inv
 
@@ -263,25 +263,25 @@ class TestQuantifiers:
     def test_some_true(self):
         state = MockWorldState()
         # Some item in inventory has light property - returns truthy value
-        expr = "(some (fn (?obj) (:light ?obj)) (inventory PLAYER))"
+        expr = "(some (fn (?obj) (:light ?obj)) (inventory))"
         assert eval_predicate(expr, state) is True
 
     def test_some_false(self):
         state = MockWorldState()
         # No item in inventory has person property - returns nil
-        expr = "(some (fn (?obj) (:person ?obj)) (inventory PLAYER))"
+        expr = "(some (fn (?obj) (:person ?obj)) (inventory))"
         assert eval_predicate(expr, state) is False
 
     def test_every_true(self):
         state = MockWorldState()
         # All items in inventory have TAKEBIT
-        expr = "(every? (fn (?obj) (:takeable ?obj)) (inventory PLAYER))"
+        expr = "(every? (fn (?obj) (:takeable ?obj)) (inventory))"
         assert eval_predicate(expr, state) is True
 
     def test_every_false(self):
         state = MockWorldState()
         # Not all items in inventory have light property (KEY doesn't)
-        expr = "(every? (fn (?obj) (:light ?obj)) (inventory PLAYER))"
+        expr = "(every? (fn (?obj) (:light ?obj)) (inventory))"
         assert eval_predicate(expr, state) is False
 
 
@@ -453,7 +453,7 @@ class TestRealWorldScenarios:
           (some (fn (?obj)
                   (and (:light ?obj)
                        (:on ?obj)))
-                (inventory PLAYER)))
+                (inventory)))
         """
         # Room is dark but flashlight is on
         assert eval_predicate(light_check, state) is True

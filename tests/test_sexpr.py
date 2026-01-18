@@ -193,7 +193,7 @@ class TestRealWorldExamples:
         assert expr[0] == Symbol("when")
 
     def test_quantifier(self):
-        expr = parse('(some (fn (?obj) (:lightbit ?obj)) (inventory PLAYER))')
+        expr = parse('(some (fn (?obj) (:lightbit ?obj)) (inventory))')
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("some")
 

@@ -27,18 +27,18 @@ Examples:
 
 Queries (return values):
     (loc OBJ)                             - Object location
-    (has-flag OBJ FLAG)                   - Check flag
-    (prop OBJ PROP)                       - Get property
-    (flags OBJ)                           - Get all flags
+    (:prop OBJ)                           - Get property (keyword-as-function)
     (visible? OBJ)                        - Is object visible
     (held? OBJ)                           - Is object held
     (here? OBJ)                           - Is object here
+    (contents CONTAINER)                  - Get contents of container
+    (visible)                             - Get visible objects
+    (exits)                               - Get exits as map
+    (room-description)                    - Get current room description
 
 Effects (modify state directly):
     (move! OBJ DEST)                      - Move object
-    (set-flag! OBJ FLAG)                  - Set flag
-    (clear-flag! OBJ FLAG)                - Clear flag
-    (set-prop! OBJ PROP VAL)              - Set property
+    (set OBJ :prop VAL)                   - Set property
 
 Usage:
     grue-repl game.grue
@@ -258,10 +258,10 @@ class ReplEvaluator:
     def _make_location_result(self) -> LocationResult:
         """Create a LocationResult from current state."""
         room = self.runtime.get_player_room()  # Use room, not immediate location
-        desc = self.runtime.get_room_description()
-        inv_set = set(self.runtime.get_inventory())
-        visible = [obj for obj in self.runtime.get_visible_objects() if obj not in inv_set]
-        exits = self.runtime.get_exits()
+        desc = self._base_eval.eval(parse("(room-description)"))
+        inv_set = set(self._base_eval.eval(parse("(inventory)")))
+        visible = [obj for obj in self._base_eval.eval(parse("(visible)")) if obj not in inv_set]
+        exits = self._base_eval.eval(parse("(exits)"))
         vehicle = self.runtime.get_player_vehicle()
         return LocationResult(room=room, description=desc, visible=visible, exits=exits, vehicle=vehicle)
 
@@ -277,10 +277,10 @@ class ReplEvaluator:
         return self._make_location_result()
 
     def _cmd_inventory(self, expr: SList) -> InventoryResult:
-        return InventoryResult(items=self.runtime.get_inventory())
+        return InventoryResult(items=self._base_eval.eval(parse("(inventory)")))
 
     def _cmd_exits(self, expr: SList) -> ExitsResult:
-        return ExitsResult(exits=self.runtime.get_exits())
+        return ExitsResult(exits=self._base_eval.eval(parse("(exits)")))
 
     def _cmd_state(self, expr: SList) -> StateResult:
         return StateResult(runtime=self.runtime)

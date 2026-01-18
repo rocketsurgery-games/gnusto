@@ -54,6 +54,10 @@
 (defn empty? (?coll)
   (or (nil? ?coll) (= (count ?coll) 0)))
 
+; (inventory) - get player's inventory (excludes invisible items)
+(defn inventory ()
+  (filter (fn (?x) (not (:invisible ?x))) (contents (player))))
+
 ; ============================================================
 ; DEFAULT BEHAVIORS
 ; ============================================================
