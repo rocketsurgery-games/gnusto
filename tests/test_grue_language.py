@@ -253,7 +253,7 @@ class TestWorldLevelDefn:
     def test_defn_in_world_file(self):
         """Functions defined at world level should be available at runtime."""
         world = parse_grue("""
-            (world :name "test")
+            (world :name "test" :player PLAYER)
 
             (defn always-42 () 42)
 
@@ -273,7 +273,7 @@ class TestWorldLevelDefn:
     def test_defn_with_params_in_world(self):
         """World-level defn should support parameters."""
         world = parse_grue("""
-            (world :name "test")
+            (world :name "test" :player PLAYER)
 
             (defn is-equal? (a b) (= a b))
 
@@ -289,7 +289,7 @@ class TestWorldLevelDefn:
     def test_multiple_defns_in_world(self):
         """Multiple functions can be defined at world level."""
         world = parse_grue("""
-            (world :name "test")
+            (world :name "test" :player PLAYER)
 
             (defn first-fn () 1)
             (defn second-fn () 2)
@@ -309,7 +309,7 @@ class TestWorldLevelDefn:
     def test_defn_can_call_other_defn(self):
         """World-level functions can call each other."""
         world = parse_grue("""
-            (world :name "test")
+            (world :name "test" :player PLAYER)
 
             (defn inner () 42)
             (defn outer () (inner))

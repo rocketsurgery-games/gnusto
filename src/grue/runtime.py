@@ -75,11 +75,18 @@ class GrueRuntime:
 
     def __init__(self, world: GrueWorld):
         self.world = world
+        self._validate_world()
         self.state = self._init_state()
         self.bindings: dict[str, Any] = {}  # Current action bindings (?with, ?on, self, etc.)
-        self.player_name = self._find_player_name()  # Detect player entity
-        self._init_player_properties()  # Initialize score/moves on player
+        self.player_name = self.world.player
         self._functions = self._init_functions()  # User-defined functions from world.functions
+
+    def _validate_world(self) -> None:
+        """Validate world definition has required structure."""
+        if not self.world.player:
+            raise ValueError("World must define a player via (world ... :player @name)")
+        if self.world.player not in self.world.objects:
+            raise ValueError(f"Player '{self.world.player}' not found in world objects")
 
     def _init_functions(self) -> dict[str, GrueFn]:
         """Initialize user-defined functions from world definition."""
@@ -195,30 +202,6 @@ class GrueRuntime:
 
         return state
 
-    def _find_player_name(self) -> str:
-        """Find the player entity.
-
-        Uses explicit :player declaration from world if present,
-        otherwise falls back to finding object with PERSON flag.
-        """
-        # Prefer explicit declaration
-        if self.world.player:
-            return self.world.player
-
-        # Fallback: find by PERSON flag or person property (for backwards compatibility)
-        for name, obj in self.state.objects.items():
-            props = obj.properties
-            if (props.get("PERSON") or props.get("person")) and name not in self.state.rooms:
-                return name
-        return "PLAYER"  # Last resort fallback
-
-    def _init_player_properties(self) -> None:
-        """Initialize score/moves as player properties."""
-        if self.player_name in self.state.objects:
-            props = self.state.objects[self.player_name].properties
-            props.setdefault("score", 0)
-            props.setdefault("moves", 0)
-
     def _increment_moves(self) -> None:
         """Increment the moves counter on the player."""
         if self.player_name in self.state.objects:
@@ -230,8 +213,6 @@ class GrueRuntime:
         self.state = self._init_state()
         self.bindings = {}
         self._functions = self._init_functions()
-        self.player_name = self._find_player_name()
-        self._init_player_properties()
 
     # -------------------------------------------------------------------------
     # MutableWorldState interface - used by ExprEvaluator and EffectExecutor

@@ -17,6 +17,7 @@ class TestBasicRuntime:
     def test_init_state(self):
         """Runtime initializes state from world definition."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby" :properties (:lit true))
         (object PLAYER :location LOBBY :properties (:person true))
         (object KEY :location LOBBY :properties (:takeable true))
@@ -31,6 +32,7 @@ class TestBasicRuntime:
     def test_room_description(self):
         """Can get room descriptions."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "The main lobby")
         (object PLAYER :location LOBBY)
         """
@@ -43,6 +45,7 @@ class TestBasicRuntime:
     def test_exits(self):
         """Can get available exits."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :exits ((north :to HALLWAY) (east :to GARDEN)))
@@ -64,6 +67,7 @@ class TestSimpleMovement:
     def test_go_direction(self):
         """Can move through simple exits."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby" :exits ((north :to HALLWAY)))
         (room HALLWAY :description "A hallway")
         (object PLAYER :location LOBBY)
@@ -80,6 +84,7 @@ class TestSimpleMovement:
     def test_go_invalid_direction(self):
         """Cannot go in invalid direction."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
@@ -97,6 +102,7 @@ class TestBehaviorExecution:
     def test_simple_success_behavior(self):
         """Simple always-succeeds behavior."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR
@@ -116,6 +122,7 @@ class TestBehaviorExecution:
     def test_conditional_behavior(self):
         """Behavior with conditions."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR
@@ -138,6 +145,7 @@ class TestBehaviorExecution:
     def test_behavior_with_effects(self):
         """Behavior that modifies state."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR
@@ -164,6 +172,7 @@ class TestBehaviorExecution:
     def test_behavior_with_context(self):
         """Behavior returns context hints."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR
@@ -183,6 +192,7 @@ class TestBehaviorExecution:
     def test_no_behavior_for_verb(self):
         """Object without behavior for verb."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object ROCK :location LOBBY)
@@ -201,6 +211,7 @@ class TestMovementViaDoors:
     def test_door_with_through_behavior(self):
         """Exit via door triggers through behavior and completes movement."""
         source = """
+        (world :player PLAYER)
         (room OUTSIDE
           :description "Outside"
           :exits ((in :to LOBBY :via DOOR)))
@@ -230,6 +241,7 @@ class TestVictoryDefeat:
     def test_victory_condition(self):
         """Victory condition check."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (room ENDROOM :description "The end")
         (object PLAYER :location LOBBY)
@@ -247,6 +259,7 @@ class TestVictoryDefeat:
     def test_defeat_condition(self):
         """Defeat condition check."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby" :properties (:lit true))
         (room DARKNESS :description "Darkness")
         (object PLAYER :location LOBBY)
@@ -309,6 +322,7 @@ class TestInventoryManagement:
     def test_visible_objects(self):
         """Objects in room are visible."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object KEY :location LOBBY :properties (:takeable true))
@@ -326,6 +340,7 @@ class TestInventoryManagement:
     def test_inventory(self):
         """Objects with PLAYER location are inventory."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object KEY :location PLAYER :properties (:takeable true))
@@ -345,9 +360,10 @@ class TestReset:
     def test_reset_state(self):
         """Reset restores initial state."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (room GARDEN :description "A garden")
-        (object PLAYER :location LOBBY)
+        (object PLAYER :location LOBBY :properties (:score 0 :moves 0))
         (object KEY :location LOBBY :properties (:takeable true))
         """
         world = parse_grue(source)
@@ -375,6 +391,7 @@ class TestEventQueue:
     def test_queue_basic(self):
         """Can queue and check events."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
@@ -395,6 +412,7 @@ class TestEventQueue:
     def test_queue_with_countdown(self):
         """Can queue events with countdown."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
@@ -408,6 +426,7 @@ class TestEventQueue:
     def test_queue_in_behavior(self):
         """Behaviors can use queue! and queued? predicates."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object BUTTON
@@ -438,6 +457,7 @@ class TestEventQueue:
     def test_queue_blocks_action(self):
         """Queued events can block actions."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object PC
@@ -469,6 +489,7 @@ class TestEventQueue:
     def test_reset_clears_queues(self):
         """Reset clears all queued events."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
@@ -492,6 +513,7 @@ class TestRedirectFollowing:
     def test_simple_redirect(self):
         """Redirect is followed automatically."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object CHAIR :location LOBBY :properties (:furniture true)
@@ -518,6 +540,7 @@ class TestRedirectFollowing:
     def test_redirect_chain(self):
         """Multiple redirects are followed."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
@@ -540,6 +563,7 @@ class TestRedirectFollowing:
     def test_redirect_to_blocked(self):
         """Redirect to blocked action returns blocked."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR :location LOBBY :properties (:locked true)
@@ -563,6 +587,7 @@ class TestRedirectFollowing:
     def test_redirect_loop_detection(self):
         """Redirect loops are detected and return error."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
@@ -582,6 +607,7 @@ class TestRedirectFollowing:
     def test_redirect_preserves_context(self):
         """Context from redirect is preserved."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
@@ -609,6 +635,7 @@ class TestDefaultGlobals:
     def test_default_globals_initialized(self):
         """Default globals (score, moves) are initialized to 0."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         """
@@ -622,6 +649,7 @@ class TestDefaultGlobals:
     def test_properties_in_behavior_conditions(self):
         """Object properties can be checked in behavior conditions."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object THING :location LOBBY
@@ -644,6 +672,7 @@ class TestDefaultGlobals:
     def test_properties_modified_by_effects(self):
         """Object properties can be modified by set effects."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object BUTTON :location LOBBY
@@ -670,6 +699,7 @@ class TestEventSystem:
     def test_event_fires_when_queued(self):
         """Events fire when queued and processed."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
@@ -692,6 +722,7 @@ class TestEventSystem:
     def test_event_location_constraint(self):
         """Events with location only fire when player is there."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (room GARDEN :description "A garden")
         (object PLAYER :location GARDEN)
@@ -724,6 +755,7 @@ class TestEventSystem:
         - countdown=3 fires on the third call, etc.
         """
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
@@ -754,6 +786,7 @@ class TestEventSystem:
     def test_event_staged_logic(self):
         """Events can dequeue themselves after completing their sequence."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
@@ -780,6 +813,7 @@ class TestEventSystem:
     def test_event_dequeues_self(self):
         """Events can dequeue themselves."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
@@ -808,6 +842,7 @@ class TestRoomBehaviors:
     def test_room_before_action_blocks(self):
         """Room :before-action can block an action."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :behaviors (
@@ -835,6 +870,7 @@ class TestRoomBehaviors:
     def test_room_before_action_allows(self):
         """Room :before-action with (default) allows action to proceed."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :behaviors (
@@ -861,6 +897,7 @@ class TestRoomBehaviors:
     def test_room_before_action_blocks_certain_targets(self):
         """Room :before-action can block certain targets."""
         source = """
+        (world :player PLAYER)
         (room TERMINAL-ROOM
           :description "Terminal room"
           :behaviors (
@@ -897,6 +934,7 @@ class TestRoomBehaviors:
     def test_room_without_before_action(self):
         """Rooms without :before-action behavior work normally."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object LAMP
@@ -913,6 +951,7 @@ class TestRoomBehaviors:
     def test_room_before_action_receives_args(self):
         """Room :before-action receives action arguments."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :behaviors (
@@ -947,6 +986,7 @@ class TestRoomBehaviors:
     def test_room_on_enter_triggered(self):
         """Room :on-enter is called when player enters."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :exits ((north :to GARDEN)))
@@ -974,6 +1014,7 @@ class TestRoomBehaviors:
     def test_room_on_enter_with_different_origins(self):
         """Room :on-enter can distinguish between different origin rooms."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :exits ((north :to GARDEN)))
@@ -1014,6 +1055,7 @@ class TestRoomBehaviors:
     def test_room_without_on_enter(self):
         """Rooms without :on-enter work normally."""
         source = """
+        (world :player PLAYER)
         (room LOBBY
           :description "A lobby"
           :exits ((north :to GARDEN)))
@@ -1039,6 +1081,7 @@ class TestGeneralizedFn:
     def test_behavior_with_if_instead_of_cond(self):
         """Behavior body can use (if ...) instead of (cond ...)."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object DOOR :location LOBBY :properties (:locked true)
@@ -1064,6 +1107,7 @@ class TestGeneralizedFn:
     def test_behavior_with_direct_success(self):
         """Behavior body can be just (success ...)."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object LAMP :location LOBBY
@@ -1080,6 +1124,7 @@ class TestGeneralizedFn:
     def test_behavior_with_let_binding(self):
         """Behavior body can use (let ...)."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object ITEM :location LOBBY
@@ -1101,6 +1146,7 @@ class TestGeneralizedFn:
     def test_behavior_with_nested_if(self):
         """Behavior body can have nested (if ...)."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object BOX :location LOBBY :properties (:locked true :sealed true)
@@ -1134,6 +1180,7 @@ class TestGeneralizedFn:
     def test_fn_with_parameters_and_if(self):
         """Behavior fn can have parameters and use (if ...)."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
         (object NPC :location LOBBY
@@ -1157,6 +1204,7 @@ class TestGeneralizedFn:
     def test_mixed_cond_and_if_in_same_world(self):
         """Different behaviors can use cond or if interchangeably."""
         source = """
+        (world :player PLAYER)
         (room LOBBY :description "A lobby")
         (object PLAYER :location LOBBY)
 
@@ -1199,6 +1247,7 @@ class TestEffectListSyntax:
     def test_success_with_move_effect(self):
         """Behavior returns effect list with move and success."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @key :location LOBBY :properties (:takeable true)
@@ -1223,6 +1272,7 @@ class TestEffectListSyntax:
     def test_blocked_with_reason(self):
         """Behavior returns blocked with reason."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @door :location LOBBY
@@ -1241,6 +1291,7 @@ class TestEffectListSyntax:
     def test_set_flag_effect(self):
         """Effect list can set flags."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @lamp :location LOBBY
@@ -1261,6 +1312,7 @@ class TestEffectListSyntax:
     def test_conditional_effects(self):
         """Behaviors can use conditionals to decide which effects to return."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @box :location LOBBY :properties (:openable true)
@@ -1291,6 +1343,7 @@ class TestEffectListSyntax:
         and the caller (do method) follows the redirect.
         """
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @button :location LOBBY
@@ -1315,6 +1368,7 @@ class TestEffectListSyntax:
     def test_default_terminator(self):
         """Effect list can fall through to default behavior."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @generic-item :location LOBBY :properties (:takeable true)
@@ -1334,6 +1388,7 @@ class TestEffectListSyntax:
     def test_effects_applied_tracking(self):
         """Effect list tracks which effects were applied."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @widget :location LOBBY
@@ -1353,6 +1408,7 @@ class TestEffectListSyntax:
     def test_multiple_mutations_in_effect_list(self):
         """Effect list can have multiple mutations before terminator."""
         source = """
+        (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
         (object @treasure :location LOBBY :properties (:takeable true)
