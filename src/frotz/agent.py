@@ -20,7 +20,7 @@ from rich.text import Text
 
 from grue.parser import load_grue
 from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
-from grue.runtime import GrueRuntime
+from grue.runtime import ActionResult, GrueRuntime
 from grue.sexpr import Keyword, SList, Symbol, to_string
 
 from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
@@ -391,7 +391,20 @@ class GameSession:
             result_str = self._format_result_debug(result)
             _debug_log("Grue Output", result_str, style="green")
 
-        return self._format_action_result(result)
+        # Process turn-based events after action (like repl does)
+        event_results = self.runtime.process_events()
+        if self.debug and event_results:
+            for event_result in event_results:
+                _debug_log("Event Fired", self._format_result_debug(event_result), style="cyan")
+
+        # Combine action result with any event descriptions
+        parts = [self._format_action_result(result)]
+        for event_result in event_results:
+            event_text = self._format_action_result(event_result)
+            if event_text and event_text != "Done.":
+                parts.append(event_text)
+
+        return " ".join(parts)
 
     def _format_result_debug(self, result: Any) -> str:
         """Format a result for debug display."""
@@ -406,6 +419,13 @@ class GameSession:
             return f"ActionBlocked(reason={result.reason!r}, message={result.message!r})"
         elif isinstance(result, ActionError):
             return f"ActionError(message={result.message!r})"
+        elif isinstance(result, ActionResult):
+            parts = [f"ActionResult(outcome={result.outcome!r}"]
+            if result.context:
+                parts.append(f"  context={result.context!r}")
+            if result.effects_applied:
+                parts.append(f"  effects={result.effects_applied!r}")
+            return "\n".join(parts) + ")"
         else:
             return repr(result)
 
@@ -449,6 +469,13 @@ class GameSession:
             return f"Blocked: {result.message}"
         elif isinstance(result, ActionError):
             return f"Error: {result.message}"
+        elif isinstance(result, ActionResult):
+            # Runtime ActionResult (from events)
+            parts = []
+            for key, value in result.context:
+                if key in ("description", "message"):
+                    parts.append(str(value))
+            return " ".join(parts) if parts else ""
         else:
             return str(result)
 
