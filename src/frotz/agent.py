@@ -400,7 +400,7 @@ class GameSession:
         initial_room = initial_state.room
 
         if self.debug:
-            _debug_log("Game State (structured)", self._format_state_debug(initial_state), style="cyan")
+            _debug_log("LLM Context (game state)", self._format_state_debug(initial_state), style="cyan")
 
         # Build fresh messages: history + current state + command
         working_messages = self._build_messages(initial_state, user_input)
@@ -467,7 +467,7 @@ class GameSession:
             # Get updated game state for next iteration
             state = self.get_state()
             if self.debug:
-                _debug_log("Updated Game State", self._format_state_debug(state), style="cyan")
+                _debug_log("LLM Context (updated state)", self._format_state_debug(state), style="cyan")
 
             # Add fresh state update for next iteration (ephemeral)
             state_context = state.to_context_string()
@@ -626,31 +626,8 @@ class GameSession:
             return repr(result)
 
     def _format_state_debug(self, state: GameState) -> str:
-        """Format game state for debug display."""
-        lines = [
-            f"room: {state.room!r}",
-            f"room_description: {state.room_description[:80]!r}..."
-            if len(state.room_description) > 80
-            else f"room_description: {state.room_description!r}",
-            f"exits: {state.exits!r}",
-            f"vehicle: {state.vehicle!r}",
-            "",
-            "visible_objects:",
-        ]
-        for obj in state.visible_objects:
-            lines.append(f"  - {obj.id}: {obj.description!r}")
-            lines.append(f"    behaviors: {obj.behaviors}")
-        if not state.visible_objects:
-            lines.append("  (none)")
-
-        lines.append("")
-        lines.append("inventory:")
-        for obj in state.inventory:
-            lines.append(f"  - {obj.id}: {obj.description!r}")
-        if not state.inventory:
-            lines.append("  (empty)")
-
-        return "\n".join(lines)
+        """Format game state for debug display - shows exactly what LLM sees."""
+        return state.to_context_string()
 
     def _format_action_result(self, result: Any) -> str:
         """Format an action result for display."""
@@ -691,7 +668,7 @@ def play_game(game_path: str, debug: bool = False) -> None:
     # Show initial state
     initial_state = session.get_state()
     if debug:
-        _debug_log("Game State (structured)", session._format_state_debug(initial_state), style="cyan")
+        _debug_log("LLM Context (game state)", session._format_state_debug(initial_state), style="cyan")
     render_game_state(initial_state, debug=debug)
 
     console.print("[dim]Type your commands in natural language. Type 'quit' to exit.[/]\n")
