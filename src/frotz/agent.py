@@ -14,7 +14,6 @@ from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
@@ -407,7 +406,8 @@ def play_game(game_path: str, debug: bool = False) -> None:
 
     while True:
         try:
-            user_input = Prompt.ask("[bold green]>[/]")
+            console.print("[bold green]>[/] ", end="")
+            user_input = input()
         except (EOFError, KeyboardInterrupt):
             console.print("\n[bold]Goodbye![/]")
             break
