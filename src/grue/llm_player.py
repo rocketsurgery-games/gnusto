@@ -1,0 +1,311 @@
+"""
+LLM-driven game player for GRUE.
+
+This module provides an LLM-powered interface for playing GRUE games.
+The LLM interprets natural language input and translates it to game actions.
+"""
+
+import sys
+from dataclasses import dataclass, field
+from typing import Any
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.markdown import Markdown
+from rich.prompt import Prompt
+from rich.text import Text
+from rich import box
+
+from .llm import (
+    LLMClient,
+    LLMConfig,
+    ToolCall,
+    get_game_tools,
+    get_game_state,
+    GameState,
+)
+from .parser import load_grue
+from .runtime import GrueRuntime
+from .repl import ReplEvaluator, ActionDone, ActionBlocked, ActionError
+from .sexpr import Symbol, Keyword, SList
+
+
+console = Console()
+
+
+SYSTEM_PROMPT = """\
+You are a game master for an interactive fiction game. Your role is to:
+
+1. Interpret the player's natural language commands
+2. Translate them into game actions using the available tools
+3. Describe the results in an engaging, atmospheric way
+
+When the player gives a command:
+- Use the do_action tool for interactions with objects (examine, take, open, etc.)
+- Use the move tool for navigation (go north, enter building, etc.)
+- Use the wait tool when the player wants to wait or pass time
+
+Always use the object IDs exactly as shown in the game state (e.g., @door, @key).
+Match the player's intent to the available actions on visible objects.
+
+If the player's command is unclear or impossible, explain why and suggest alternatives.
+"""
+
+
+def render_game_state(state: GameState) -> None:
+    """Render game state using rich panels and tables."""
+    # Room panel
+    room_content = Text()
+    if state.vehicle:
+        room_content.append(f"(You are {state.vehicle[1]} the {state.vehicle[0]})\n\n", style="italic dim")
+    room_content.append(state.room_description)
+
+    console.print(Panel(
+        room_content,
+        title=f"[bold cyan]{state.room}[/]",
+        border_style="cyan",
+        box=box.ROUNDED,
+    ))
+
+    # Create a table for objects and exits side by side
+    layout_table = Table.grid(expand=True)
+    layout_table.add_column(ratio=1)
+    layout_table.add_column(ratio=1)
+
+    # Visible objects
+    if state.visible_objects:
+        obj_table = Table(title="Visible Objects", box=box.SIMPLE, show_header=True)
+        obj_table.add_column("Object", style="green")
+        obj_table.add_column("Actions", style="dim")
+        for obj in state.visible_objects:
+            actions = ", ".join(obj.behaviors[:5])  # Limit to 5 for display
+            if len(obj.behaviors) > 5:
+                actions += "..."
+            obj_table.add_row(f"{obj.id}", actions)
+    else:
+        obj_table = Text("No objects visible", style="dim italic")
+
+    # Exits
+    if state.exits:
+        exit_table = Table(title="Exits", box=box.SIMPLE, show_header=True)
+        exit_table.add_column("Direction", style="yellow")
+        exit_table.add_column("Destination", style="dim")
+        for direction, dest in state.exits.items():
+            exit_table.add_row(direction, dest)
+    else:
+        exit_table = Text("No exits", style="dim italic")
+
+    layout_table.add_row(obj_table, exit_table)
+    console.print(layout_table)
+
+    # Inventory (compact)
+    if state.inventory:
+        inv_items = ", ".join(f"[magenta]{obj.id}[/]" for obj in state.inventory)
+        console.print(f"[bold]Inventory:[/] {inv_items}")
+    else:
+        console.print("[bold]Inventory:[/] [dim italic]empty[/]")
+
+    console.print()
+
+
+def render_response(response_text: str, action_results: list[str]) -> None:
+    """Render LLM response and action results."""
+    if response_text:
+        console.print(Panel(
+            Markdown(response_text),
+            border_style="blue",
+            box=box.ROUNDED,
+        ))
+
+    for result in action_results:
+        if "Blocked:" in result:
+            console.print(f"[yellow]{result}[/]")
+        elif "Error:" in result:
+            console.print(f"[red]{result}[/]")
+        else:
+            console.print(f"[green]{result}[/]")
+
+
+@dataclass
+class GameSession:
+    """An LLM-driven game session."""
+
+    runtime: GrueRuntime
+    evaluator: ReplEvaluator
+    llm: LLMClient
+    messages: list[dict[str, Any]] = field(default_factory=list)
+
+    @classmethod
+    def from_game_file(
+        cls,
+        game_path: str,
+        llm_config: LLMConfig | None = None,
+    ) -> "GameSession":
+        """Create a new game session from a game file."""
+        world = load_grue(game_path)
+        runtime = GrueRuntime(world)
+        evaluator = ReplEvaluator(runtime)
+        llm = LLMClient(llm_config)
+
+        session = cls(
+            runtime=runtime,
+            evaluator=evaluator,
+            llm=llm,
+        )
+        session._init_messages()
+        return session
+
+    def _init_messages(self) -> None:
+        """Initialize conversation with system prompt."""
+        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    def get_state(self) -> GameState:
+        """Get current game state."""
+        return get_game_state(self.runtime)
+
+    def get_state_context(self) -> str:
+        """Get current game state as context string for LLM."""
+        return self.get_state().to_context_string()
+
+    def process_input(self, user_input: str) -> tuple[str, list[str]]:
+        """
+        Process natural language input and return response.
+
+        Args:
+            user_input: Natural language command from player
+
+        Returns:
+            Tuple of (response text, action results list)
+        """
+        # Build message with current game state
+        state_context = self.get_state_context()
+        full_input = f"{state_context}\n\n---\n\nPlayer command: {user_input}"
+
+        self.messages.append({"role": "user", "content": full_input})
+
+        # Get LLM response with tools
+        response = self.llm.chat(
+            messages=self.messages,
+            tools=get_game_tools(),
+            tool_choice="auto",
+        )
+
+        # Process tool calls
+        results = []
+        if response.tool_calls:
+            for tool_call in response.tool_calls:
+                result = self._execute_tool(tool_call)
+                results.append(result)
+
+        response_text = response.content or ""
+
+        # Add assistant message to history
+        final_content = response_text
+        if results:
+            final_content += "\n" + "\n".join(f"[{r}]" for r in results)
+        self.messages.append({"role": "assistant", "content": final_content})
+
+        return response_text, results
+
+    def _execute_tool(self, tool_call: ToolCall) -> str:
+        """Execute a tool call and return result string."""
+        name = tool_call.name
+        args = tool_call.arguments
+
+        if name == "do_action":
+            return self._do_action(
+                target=args.get("target", ""),
+                verb=args.get("verb", ""),
+                action_args=args.get("args", []),
+            )
+        elif name == "move":
+            return self._move(args.get("direction", ""))
+        elif name == "wait":
+            return self._wait()
+        else:
+            return f"Unknown tool: {name}"
+
+    def _do_action(self, target: str, verb: str, action_args: list[str]) -> str:
+        """Execute a do action."""
+        # Build S-expression: (do @target :verb arg1 arg2 ...)
+        items = [Symbol("do"), Symbol(target), Keyword(verb)]
+        for arg in action_args:
+            items.append(Symbol(arg))
+
+        expr = SList(items)
+        result = self.evaluator.eval(expr)
+        return self._format_action_result(result)
+
+    def _move(self, direction: str) -> str:
+        """Execute a move action."""
+        expr = SList([Symbol("go"), Symbol(direction)])
+        result = self.evaluator.eval(expr)
+        return self._format_action_result(result)
+
+    def _wait(self) -> str:
+        """Execute a wait action."""
+        expr = SList([Symbol("wait")])
+        result = self.evaluator.eval(expr)
+        return self._format_action_result(result)
+
+    def _format_action_result(self, result: Any) -> str:
+        """Format an action result for display."""
+        if isinstance(result, ActionDone):
+            parts = [result.message] if result.message else []
+            for key, value in result.context:
+                if key == "description":
+                    parts.append(str(value))
+            return " ".join(parts) if parts else "Done."
+        elif isinstance(result, ActionBlocked):
+            return f"Blocked: {result.message}"
+        elif isinstance(result, ActionError):
+            return f"Error: {result.message}"
+        else:
+            return str(result)
+
+
+def play_game(game_path: str) -> None:
+    """Run an interactive game session with rich terminal UI."""
+    console.print(f"[bold]Loading game:[/] {game_path}")
+    session = GameSession.from_game_file(game_path)
+
+    console.print()
+    console.rule("[bold cyan]Game Start[/]")
+    console.print()
+
+    # Show initial state
+    render_game_state(session.get_state())
+
+    console.print("[dim]Type your commands in natural language. Type 'quit' to exit.[/]\n")
+
+    while True:
+        try:
+            user_input = Prompt.ask("[bold green]>[/]")
+        except (EOFError, KeyboardInterrupt):
+            console.print("\n[bold]Goodbye![/]")
+            break
+
+        if not user_input.strip():
+            continue
+
+        if user_input.strip().lower() in ("quit", "exit", "q"):
+            console.print("[bold]Goodbye![/]")
+            break
+
+        console.print()
+
+        with console.status("[bold blue]Thinking...[/]"):
+            response_text, results = session.process_input(user_input.strip())
+
+        render_response(response_text, results)
+        console.print()
+        render_game_state(session.get_state())
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        console.print("[red]Usage:[/] python -m grue.llm_player <game.grue>")
+        sys.exit(1)
+
+    play_game(sys.argv[1])

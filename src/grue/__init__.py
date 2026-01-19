@@ -78,6 +78,25 @@ from .test import (
     run_tests_from_string,
 )
 
+from .llm import (
+    LLMClient,
+    LLMConfig,
+    LLMResponse,
+    ToolCall,
+    GAME_TOOLS,
+    get_game_tools,
+    GameState,
+    ObjectInfo,
+    get_game_state,
+)
+
+from .llm_player import (
+    GameSession,
+    play_game,
+    render_game_state,
+    render_response,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -133,4 +152,19 @@ __all__ = [
     "TestSuiteResult",
     "run_tests",
     "run_tests_from_string",
+    # LLM integration
+    "LLMClient",
+    "LLMConfig",
+    "LLMResponse",
+    "ToolCall",
+    "GAME_TOOLS",
+    "get_game_tools",
+    "GameState",
+    "ObjectInfo",
+    "get_game_state",
+    # LLM Player
+    "GameSession",
+    "play_game",
+    "render_game_state",
+    "render_response",
 ]
