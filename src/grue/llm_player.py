@@ -195,7 +195,12 @@ class GameSession:
             Tuple of (response text, action results list)
         """
         # Build message with current game state
-        state_context = self.get_state_context()
+        state = self.get_state()
+
+        if self.debug:
+            _debug_log("Game State (structured)", self._format_state_debug(state), style="cyan")
+
+        state_context = state.to_context_string()
         full_input = f"{state_context}\n\n---\n\nPlayer command: {user_input}"
 
         self.messages.append({"role": "user", "content": full_input})
@@ -299,6 +304,31 @@ class GameSession:
             return f"ActionError(message={result.message!r})"
         else:
             return repr(result)
+
+    def _format_state_debug(self, state: GameState) -> str:
+        """Format game state for debug display."""
+        lines = [
+            f"room: {state.room!r}",
+            f"room_description: {state.room_description[:80]!r}..." if len(state.room_description) > 80 else f"room_description: {state.room_description!r}",
+            f"exits: {state.exits!r}",
+            f"vehicle: {state.vehicle!r}",
+            "",
+            "visible_objects:",
+        ]
+        for obj in state.visible_objects:
+            lines.append(f"  - {obj.id}: {obj.description!r}")
+            lines.append(f"    behaviors: {obj.behaviors}")
+        if not state.visible_objects:
+            lines.append("  (none)")
+
+        lines.append("")
+        lines.append("inventory:")
+        for obj in state.inventory:
+            lines.append(f"  - {obj.id}: {obj.description!r}")
+        if not state.inventory:
+            lines.append("  (empty)")
+
+        return "\n".join(lines)
 
     def _format_action_result(self, result: Any) -> str:
         """Format an action result for display."""
