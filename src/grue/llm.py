@@ -279,27 +279,43 @@ def get_game_state(runtime: Any) -> GameState:
     )
 
 
+def _format_behavior(verb: str, params: list[str]) -> str:
+    """Format a behavior with its parameters for LLM context.
+
+    Examples:
+        give, [item] -> "give <item>"
+        take, [] -> "take"
+        unlock, [key] -> "unlock <key>"
+    """
+    if params:
+        param_str = " ".join(f"<{p}>" for p in params)
+        return f"{verb} {param_str}"
+    return verb
+
+
 def _get_object_info(runtime: Any, obj_name: str) -> ObjectInfo:
     """Get object info including available behaviors."""
     desc = runtime.get_object_description(obj_name)
 
     # Get behaviors from world definition
-    behaviors = []
+    # Track verb -> formatted string (with params)
+    behavior_map: dict[str, str] = {}
     if obj_name in runtime.world.objects:
         obj_def = runtime.world.objects[obj_name]
         for b in obj_def.behaviors:
             # Skip internal behaviors (on-enter, describe, etc.)
             if not b.verb.startswith("on-") and b.verb not in ("describe", "through"):
-                behaviors.append(b.verb)
+                behavior_map[b.verb] = _format_behavior(b.verb, b.params)
 
     # Also check defaults for common behaviors
     # Objects can respond to default behaviors even without explicit definition
     for verb in runtime.world.defaults:
-        if verb not in behaviors:
-            behaviors.append(verb)
+        if verb not in behavior_map:
+            # Defaults have no params (they operate on just the object)
+            behavior_map[verb] = verb
 
     return ObjectInfo(
         id=obj_name,
         description=desc,
-        behaviors=sorted(set(behaviors)),
+        behaviors=sorted(behavior_map.values()),
     )
