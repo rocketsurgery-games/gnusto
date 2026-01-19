@@ -305,7 +305,8 @@ def play_game(game_path: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        console.print("[red]Usage:[/] python -m grue.llm_player <game.grue>")
+        console.print("[red]Usage:[/] python -m grue.llm_player <game_directory>")
+        console.print("[dim]Example: python -m grue.llm_player games/lurkinghorror/[/]")
         sys.exit(1)
 
     play_game(sys.argv[1])

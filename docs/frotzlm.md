@@ -1,6 +1,4 @@
-# Language model implementation
-
-The core innovation in FrotzVM is the use of a language model to parse and interpret user input; and to adapt world state to user-visible descriptions. The idea's pretty simple: there's a logical world model that maintains the state of all the world's rooms, objects, actors, and their varied relationships to one another. It interprets actions, enforces constraints, and provides structured responses and world state information that the LM interprets on behalf of the player.
+The core innovation in FrotzLM is the use of a language model to parse and interpret user input; and to adapt world state to user-visible descriptions. The idea's pretty simple: there's a logical world model that maintains the state of all the world's rooms, objects, actors, and their varied relationships to one another. It interprets actions, enforces constraints, and provides structured responses and world state information that the LM interprets on behalf of the player.
 
 
     ┌──────────────────────────────────────────────────────────────────────┐
@@ -22,7 +20,7 @@ The core innovation in FrotzVM is the use of a language model to parse and inter
     │                                                                      │
     └──────────────────────────────────────────────────────────────────────┘
 
-## The world model
+# The world model
 
 Is implemented in a Lisp-family language called Grue, that we designed for the express purpose of porting old Infocom
 Z-Machine games written in ZIL. It uses largely the same set of built-in concepts as ZIL did -- rooms, objects,
@@ -85,9 +83,37 @@ The goal is for the language model to have all the information it needs to commu
 in the world. And to have sufficient information to generate text, images, and audio, and to interpret the player's
 requests (whatever form they take), adapting it to the internal structures of the world model.
 
-## The language model
+# The language model
 
+The LM's job is to make sense of the world model for the player, describe it using the tools at its disposal (e.g.,
+text, images, sounds, etc), and help the player take actions. In its simplest manifestation, this could be nothing
+more than a replacement for the text parser and generator in the original Infocom games. But it can be much more than
+this.
 
+In the original Infocom games, wrestling with the text parser and identifying possible actions could be
+extraordinarily frustrating. This was an unavoidable consequence of using hand-written text parsers on the simple
+micros of the era. But a modern language model is capable of parsing arbitrary input and matching the user's intentions to the world state, and available actions. This should dramatically reduce the frustration of wrestling with the parser, figuring out exactly which terminology the implementor expected, and so forth.
+
+## Text generation
+
+These games were also famous for repetitive text, especially for anything outside of the game's happy path. E.g., "I don't know what to do with that." A language model, with the right guidance, can allow the player to explore and try many things not manually built into the game design, creating a depth of exploration and experience far beyond traditional interactive fiction.
+
+## Hints
+
+The downside of being able to generate an unbounded amount of expository text, is that the player has no way of
+knowing whether or not they're "on the beaten path". To balance this, we can leverage the language model's
+interpretation and reasoning capabilities to gently guide the player in the right direction. 
+
+## Notes & Bookkeeping
+
+While there's a certain nostalgia for the hand-written maps and notes needed to solve these games in their heyday,
+it's also very labor intensive (and often frustrating) for players. The language model can help players by generating
+contextual notes and maps automatically. Rather than simply exposing a fixed set of pre-canned "notes", as is still
+common even in modern games, we can leverage the LM to create notes and maps that precisely reflect the player's
+experience. And because the LM can see "behind the curtain", it can do so in such a way that they gently guide the
+player in the right direction.
+
+## Conversations
 
 
 # Open questions
