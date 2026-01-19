@@ -21,9 +21,19 @@ class ObjectInfo:
     """Information about a game object for agent context."""
 
     id: str
-    description: str
+    description: str  # Short name like "pc", "chair"
+    fdesc: str = ""  # First/look description for room listings
     behaviors: list[str] = field(default_factory=list)  # Available verbs
     properties: dict[str, Any] = field(default_factory=dict)  # Visible properties
+    contents: list["ObjectInfo"] = field(default_factory=list)  # Nested objects
+
+
+@dataclass
+class RoomInfo:
+    """Information about a room for display."""
+
+    id: str
+    description: str  # Short description/name
 
 
 @dataclass
@@ -34,7 +44,8 @@ class GameState:
     room_description: str
     visible_objects: list[ObjectInfo]
     inventory: list[ObjectInfo]
-    exits: dict[str, str]
+    exits: dict[str, str]  # direction -> destination (for agent)
+    nearby_rooms: list[RoomInfo] = field(default_factory=list)  # Unique adjacent rooms (for player)
     vehicle: tuple[str, str] | None = None  # (vehicle_name, preposition) if in vehicle
 
     def to_context_string(self) -> str:
@@ -60,9 +71,7 @@ class GameState:
         # Visible objects
         if self.visible_objects:
             lines.append("**Visible objects:**")
-            for obj in self.visible_objects:
-                behaviors_str = ", ".join(obj.behaviors) if obj.behaviors else "none"
-                lines.append(f"- {obj.id}: {obj.description} [actions: {behaviors_str}]")
+            self._render_objects(self.visible_objects, lines, indent=0)
         else:
             lines.append("**Visible objects:** none")
         lines.append("")
@@ -70,12 +79,22 @@ class GameState:
         # Inventory
         if self.inventory:
             lines.append("**Inventory:**")
-            for obj in self.inventory:
-                lines.append(f"- {obj.id}: {obj.description}")
+            self._render_objects(self.inventory, lines, indent=0)
         else:
             lines.append("**Inventory:** empty")
 
         return "\n".join(lines)
+
+    def _render_objects(
+        self, objects: list["ObjectInfo"], lines: list[str], indent: int
+    ) -> None:
+        """Render objects with nested contents."""
+        prefix = "  " * indent
+        for obj in objects:
+            behaviors_str = ", ".join(obj.behaviors) if obj.behaviors else "none"
+            lines.append(f"{prefix}- {obj.id}: {obj.description} [actions: {behaviors_str}]")
+            if obj.contents:
+                self._render_objects(obj.contents, lines, indent + 1)
 
 
 def get_game_state(runtime: "GrueRuntime") -> GameState:
@@ -92,18 +111,43 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
     room_desc = runtime.get_room_description()
     exits = runtime.get_exits()
     vehicle = runtime.get_player_vehicle()
+    player = runtime.get_player_name()
+    player_loc = runtime.get_player_location()
 
-    # Get visible objects with their behaviors
-    visible_names = runtime.get_visible_objects()
+    # Get all visible object names as a set for efficient lookup
+    visible_set = set(runtime.get_visible_objects())
+    inventory_set = set(runtime.get_inventory())
+
+    # Build tree of visible objects (excluding inventory)
+    # Top-level: objects directly in room or player's vehicle
+    top_level_locs = {room}
+    if player_loc and player_loc != room:
+        top_level_locs.add(player_loc)  # Player's vehicle
+
     visible_objects = []
-    for name in visible_names:
-        if name not in runtime.get_inventory():
-            obj_info = _get_object_info(runtime, name)
+    for name in visible_set:
+        if name in inventory_set:
+            continue
+        obj_state = runtime.state.objects.get(name)
+        if obj_state and obj_state.location in top_level_locs:
+            obj_info = _get_object_info_with_contents(runtime, name, visible_set)
             visible_objects.append(obj_info)
 
-    # Get inventory items
-    inv_names = runtime.get_inventory()
-    inventory = [_get_object_info(runtime, name) for name in inv_names]
+    # Build tree of inventory items
+    inventory = []
+    for name in inventory_set:
+        obj_info = _get_object_info_with_contents(runtime, name, visible_set)
+        inventory.append(obj_info)
+
+    # Build unique nearby rooms list for player display
+    nearby_rooms = []
+    seen_rooms: set[str] = set()
+    for dest in exits.values():
+        if dest not in seen_rooms:
+            seen_rooms.add(dest)
+            room_def = runtime.world.rooms.get(dest)
+            if room_def:
+                nearby_rooms.append(RoomInfo(id=dest, description=room_def.description))
 
     return GameState(
         room=room,
@@ -111,6 +155,7 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
         visible_objects=visible_objects,
         inventory=inventory,
         exits=exits,
+        nearby_rooms=nearby_rooms,
         vehicle=vehicle,
     )
 
@@ -129,9 +174,18 @@ def _format_behavior(verb: str, params: list[str]) -> str:
     return verb
 
 
-def _get_object_info(runtime: "GrueRuntime", obj_name: str) -> ObjectInfo:
-    """Get object info including available behaviors."""
+def _get_object_info_with_contents(
+    runtime: "GrueRuntime", obj_name: str, visible_set: set[str]
+) -> ObjectInfo:
+    """Get object info including available behaviors and nested contents."""
     desc = runtime.get_object_description(obj_name)
+
+    # Get fdesc/ldesc for natural room listings
+    fdesc = ""
+    obj_def = runtime.world.objects.get(obj_name)
+    if obj_def:
+        # Prefer fdesc if available, otherwise ldesc
+        fdesc = obj_def.fdesc or obj_def.ldesc or ""
 
     # Get behaviors from world definition
     # Track verb -> formatted string (with params)
@@ -150,8 +204,19 @@ def _get_object_info(runtime: "GrueRuntime", obj_name: str) -> ObjectInfo:
             # Defaults have no params (they operate on just the object)
             behavior_map[verb] = verb
 
+    # Recursively get visible contents (including nodesc objects in containers)
+    # Container contents should be shown even if they have nodesc - that flag
+    # is about room listings, not about whether the agent can see/interact with them
+    contents = []
+    for name, obj_state in runtime.state.objects.items():
+        if obj_state.location == obj_name and runtime.is_visible(name):
+            child_info = _get_object_info_with_contents(runtime, name, visible_set)
+            contents.append(child_info)
+
     return ObjectInfo(
         id=obj_name,
         description=desc,
+        fdesc=fdesc,
         behaviors=sorted(behavior_map.values()),
+        contents=contents,
     )

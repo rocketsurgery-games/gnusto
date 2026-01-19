@@ -11,6 +11,6 @@ Architecture:
 """
 
 from .agent import GameSession, play_game
-from .state import GameState, ObjectInfo
+from .state import GameState, ObjectInfo, RoomInfo
 
-__all__ = ["GameSession", "play_game", "GameState", "ObjectInfo"]
+__all__ = ["GameSession", "play_game", "GameState", "ObjectInfo", "RoomInfo"]

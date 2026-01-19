@@ -49,15 +49,25 @@ If the player's command is unclear or impossible, explain why and suggest altern
 """
 
 
-def render_game_state(state: GameState) -> None:
-    """Render game state using rich panels and tables."""
-    # Room panel
+def render_game_state(state: GameState, debug: bool = False) -> None:
+    """Render game state using rich panels and tables.
+
+    Args:
+        state: Current game state
+        debug: If True, show technical details (IDs, actions, directions)
+    """
+    # Room panel - build description with object fdesc listings
     room_content = Text()
     if state.vehicle:
         room_content.append(
             f"(You are {state.vehicle[1]} the {state.vehicle[0]})\n\n", style="italic dim"
         )
     room_content.append(state.room_description)
+
+    # Add object descriptions (fdesc) to room description
+    for obj in state.visible_objects:
+        if obj.fdesc:
+            room_content.append(f"\n{obj.fdesc}")
 
     console.print(
         Panel(
@@ -68,43 +78,57 @@ def render_game_state(state: GameState) -> None:
         )
     )
 
-    # Create a table for objects and exits side by side
-    layout_table = Table.grid(expand=True)
-    layout_table.add_column(ratio=1)
-    layout_table.add_column(ratio=1)
+    if debug:
+        # Debug mode: show technical details (IDs, actions, directions)
+        layout_table = Table.grid(expand=True)
+        layout_table.add_column(ratio=1)
+        layout_table.add_column(ratio=1)
 
-    # Visible objects
-    if state.visible_objects:
-        obj_table = Table(title="Visible Objects", box=box.SIMPLE, show_header=True)
-        obj_table.add_column("Object", style="green")
-        obj_table.add_column("Actions", style="dim")
-        for obj in state.visible_objects:
-            actions = ", ".join(obj.behaviors[:5])  # Limit to 5 for display
-            if len(obj.behaviors) > 5:
-                actions += "..."
-            obj_table.add_row(f"{obj.id}", actions)
+        # Visible objects with IDs and actions
+        if state.visible_objects:
+            obj_table = Table(title="Visible Objects", box=box.SIMPLE, show_header=True)
+            obj_table.add_column("Object", style="green")
+            obj_table.add_column("Actions", style="dim")
+            for obj in state.visible_objects:
+                actions = ", ".join(obj.behaviors[:5])
+                if len(obj.behaviors) > 5:
+                    actions += "..."
+                obj_table.add_row(f"{obj.id}", actions)
+        else:
+            obj_table = Text("No objects visible", style="dim italic")
+
+        # Exits with directions
+        if state.exits:
+            exit_table = Table(title="Exits", box=box.SIMPLE, show_header=True)
+            exit_table.add_column("Direction", style="yellow")
+            exit_table.add_column("Destination", style="dim")
+            for direction, dest in state.exits.items():
+                exit_table.add_row(direction, dest)
+        else:
+            exit_table = Text("No exits", style="dim italic")
+
+        layout_table.add_row(obj_table, exit_table)
+        console.print(layout_table)
+
+        # Inventory with IDs
+        if state.inventory:
+            inv_items = ", ".join(f"[magenta]{obj.id}[/]" for obj in state.inventory)
+            console.print(f"[bold]Inventory:[/] {inv_items}")
+        else:
+            console.print("[bold]Inventory:[/] [dim italic]empty[/]")
     else:
-        obj_table = Text("No objects visible", style="dim italic")
+        # Normal mode: natural display without implementation details
+        # Nearby rooms
+        if state.nearby_rooms:
+            nearby = ", ".join(r.description for r in state.nearby_rooms)
+            console.print(f"[bold]Nearby:[/] {nearby}")
 
-    # Exits
-    if state.exits:
-        exit_table = Table(title="Exits", box=box.SIMPLE, show_header=True)
-        exit_table.add_column("Direction", style="yellow")
-        exit_table.add_column("Destination", style="dim")
-        for direction, dest in state.exits.items():
-            exit_table.add_row(direction, dest)
-    else:
-        exit_table = Text("No exits", style="dim italic")
-
-    layout_table.add_row(obj_table, exit_table)
-    console.print(layout_table)
-
-    # Inventory (compact)
-    if state.inventory:
-        inv_items = ", ".join(f"[magenta]{obj.id}[/]" for obj in state.inventory)
-        console.print(f"[bold]Inventory:[/] {inv_items}")
-    else:
-        console.print("[bold]Inventory:[/] [dim italic]empty[/]")
+        # Inventory with descriptions
+        if state.inventory:
+            inv_items = ", ".join(f"[magenta]{obj.description}[/]" for obj in state.inventory)
+            console.print(f"[bold]Inventory:[/] {inv_items}")
+        else:
+            console.print("[bold]Inventory:[/] [dim italic]empty[/]")
 
     console.print()
 
@@ -340,7 +364,8 @@ class GameSession:
         if isinstance(result, ActionDone):
             parts = [result.message] if result.message else []
             for key, value in result.context:
-                if key == "description":
+                # Extract user-facing context values
+                if key in ("description", "message"):
                     parts.append(str(value))
             return " ".join(parts) if parts else "Done."
         elif isinstance(result, ActionBlocked):
@@ -367,7 +392,7 @@ def play_game(game_path: str, debug: bool = False) -> None:
     initial_state = session.get_state()
     if debug:
         _debug_log("Game State (structured)", session._format_state_debug(initial_state), style="cyan")
-    render_game_state(initial_state)
+    render_game_state(initial_state, debug=debug)
 
     console.print("[dim]Type your commands in natural language. Type 'quit' to exit.[/]\n")
 
@@ -396,4 +421,4 @@ def play_game(game_path: str, debug: bool = False) -> None:
 
         render_response(response_text, results)
         console.print()
-        render_game_state(session.get_state())
+        render_game_state(session.get_state(), debug=debug)
