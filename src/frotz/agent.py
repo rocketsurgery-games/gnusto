@@ -233,11 +233,20 @@ class GameSession:
         self.messages.append({"role": "user", "content": full_input})
 
         # Get agent response with tools
-        response = self.llm.chat(
-            messages=self.messages,
-            tools=get_game_tools(),
-            tool_choice="auto",
-        )
+        try:
+            response = self.llm.chat(
+                messages=self.messages,
+                tools=get_game_tools(),
+                tool_choice="auto",
+            )
+        except Exception as e:
+            # Remove the message we just added so player can retry
+            self.messages.pop()
+            error_msg = str(e)
+            # Truncate long error messages
+            if len(error_msg) > 200:
+                error_msg = error_msg[:200] + "..."
+            return f"[LLM error: {error_msg}. Please try again.]", []
 
         # Process tool calls
         results = []

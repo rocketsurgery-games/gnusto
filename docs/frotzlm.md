@@ -106,3 +106,7 @@ What do we _really_ want from effects like `(success :context (description "..."
 
 This is best addressed when we start bolting on the agent adapter for real. This will give us a much clearer idea of what we need to solve real needs.
 
+Related: Look at @help-key:click for an example of very repetitive success messages. While we could simplify this
+a good bit with some string manipulation, it also provides an opportunity to think through what we want the interactions
+from grue -> agent to look like, so we can achieve our goals more flexibly.
+
