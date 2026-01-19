@@ -48,6 +48,20 @@ If the player's command is unclear or impossible, explain why and suggest altern
 """
 
 
+def _add_objects_to_table(
+    table: Table, objects: list[ObjectInfo], indent: int = 0
+) -> None:
+    """Add objects and their nested contents to a Rich table."""
+    prefix = "  " * indent
+    for obj in objects:
+        actions = ", ".join(obj.behaviors[:5])
+        if len(obj.behaviors) > 5:
+            actions += "..."
+        table.add_row(f"{prefix}{obj.id}", actions)
+        if obj.contents:
+            _add_objects_to_table(table, obj.contents, indent + 1)
+
+
 def render_game_state(state: GameState, debug: bool = False) -> None:
     """Render game state using rich panels and tables.
 
@@ -83,16 +97,12 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
         layout_table.add_column(ratio=1)
         layout_table.add_column(ratio=1)
 
-        # Visible objects with IDs and actions
+        # Visible objects with IDs and actions (including nested contents)
         if state.visible_objects:
             obj_table = Table(title="Visible Objects", box=box.SIMPLE, show_header=True)
             obj_table.add_column("Object", style="green")
             obj_table.add_column("Actions", style="dim")
-            for obj in state.visible_objects:
-                actions = ", ".join(obj.behaviors[:5])
-                if len(obj.behaviors) > 5:
-                    actions += "..."
-                obj_table.add_row(f"{obj.id}", actions)
+            _add_objects_to_table(obj_table, state.visible_objects, indent=0)
         else:
             obj_table = Text("No objects visible", style="dim italic")
 
