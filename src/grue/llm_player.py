@@ -359,7 +359,10 @@ def play_game(game_path: str, debug: bool = False) -> None:
     console.print()
 
     # Show initial state
-    render_game_state(session.get_state())
+    initial_state = session.get_state()
+    if debug:
+        _debug_log("Game State (structured)", session._format_state_debug(initial_state), style="cyan")
+    render_game_state(initial_state)
 
     console.print("[dim]Type your commands in natural language. Type 'quit' to exit.[/]\n")
 
