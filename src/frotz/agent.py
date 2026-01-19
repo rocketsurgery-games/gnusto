@@ -23,7 +23,7 @@ from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
 from grue.runtime import GrueRuntime
 from grue.sexpr import Keyword, SList, Symbol, to_string
 
-from .llm import LLMClient, LLMConfig, ToolCall, get_game_tools
+from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
 from .state import GameState, ObjectInfo, get_game_state
 
 console = Console()
@@ -210,17 +210,21 @@ class GameSession:
         """Get current game state as context string for agent."""
         return self.get_state().to_context_string()
 
-    def process_input(self, user_input: str) -> tuple[str, list[str]]:
+    def process_input(self, user_input: str, max_iterations: int = 10) -> tuple[str, list[str]]:
         """
         Process natural language input and return response.
 
+        Uses an agentic loop: executes tool calls, feeds results back to the LLM,
+        and repeats until the LLM responds without tool calls or max iterations.
+
         Args:
             user_input: Natural language command from player
+            max_iterations: Maximum number of LLM calls (default 10)
 
         Returns:
             Tuple of (response text, action results list)
         """
-        # Build message with current game state
+        # Build initial message with current game state
         state = self.get_state()
 
         if self.debug:
@@ -230,26 +234,43 @@ class GameSession:
         full_input = f"{state_context}\n\n---\n\nPlayer command: {user_input}"
 
         self.messages.append({"role": "user", "content": full_input})
+        messages_added = 1  # Track how many messages we add for cleanup on error
 
-        # Get agent response with tools
-        try:
-            response = self.llm.chat(
-                messages=self.messages,
-                tools=get_game_tools(),
-                tool_choice="auto",
-            )
-        except Exception as e:
-            # Remove the message we just added so player can retry
-            self.messages.pop()
-            error_msg = str(e)
-            # Truncate long error messages
-            if len(error_msg) > 200:
-                error_msg = error_msg[:200] + "..."
-            return f"[LLM error: {error_msg}. Please try again.]", []
+        all_results: list[str] = []
+        final_response_text = ""
+        iteration = 0
 
-        # Process tool calls
-        results = []
-        if response.tool_calls:
+        while iteration < max_iterations:
+            iteration += 1
+
+            if self.debug and iteration > 1:
+                _debug_log(f"Agentic Loop Iteration {iteration}", "", style="blue")
+
+            # Get agent response with tools
+            try:
+                response = self.llm.chat(
+                    messages=self.messages,
+                    tools=get_game_tools(),
+                    tool_choice="auto",
+                )
+            except Exception as e:
+                # Remove messages we added so player can retry
+                for _ in range(messages_added):
+                    self.messages.pop()
+                error_msg = str(e)
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "..."
+                return f"[LLM error: {error_msg}. Please try again.]", []
+
+            # If no tool calls, we're done - LLM is just responding
+            if not response.tool_calls:
+                final_response_text = response.content or ""
+                # Add final assistant message to history
+                self.messages.append({"role": "assistant", "content": final_response_text})
+                break
+
+            # Process tool calls
+            iteration_results: list[tuple[str, str]] = []  # (tool_call_id, result)
             for tool_call in response.tool_calls:
                 if self.debug:
                     args_str = json.dumps(tool_call.arguments, indent=2)
@@ -259,17 +280,61 @@ class GameSession:
                         style="magenta",
                     )
                 result = self._execute_tool(tool_call)
-                results.append(result)
+                iteration_results.append((tool_call.id, result))
+                all_results.append(result)
 
-        response_text = response.content or ""
+                if self.debug:
+                    _debug_log("Tool Result", result, style="green")
 
-        # Add assistant message to history
-        final_content = response_text
-        if results:
-            final_content += "\n" + "\n".join(f"[{r}]" for r in results)
-        self.messages.append({"role": "assistant", "content": final_content})
+            # Add assistant message with tool calls to history
+            assistant_msg = self._build_assistant_tool_message(response)
+            self.messages.append(assistant_msg)
+            messages_added += 1
 
-        return response_text, results
+            # Add tool result messages
+            for tool_call_id, result in iteration_results:
+                tool_msg = {"role": "tool", "tool_call_id": tool_call_id, "content": result}
+                self.messages.append(tool_msg)
+                messages_added += 1
+
+            # Get updated game state for next iteration
+            state = self.get_state()
+            if self.debug:
+                _debug_log("Updated Game State", self._format_state_debug(state), style="cyan")
+
+            # Add state update as user context for next iteration
+            state_context = state.to_context_string()
+            state_update = f"[Game state after actions:]\n{state_context}"
+            self.messages.append({"role": "user", "content": state_update})
+            messages_added += 1
+
+        else:
+            # Hit max iterations
+            if self.debug:
+                _debug_log("Max Iterations", f"Stopped after {max_iterations} iterations", style="red")
+            final_response_text = response.content or ""
+            self.messages.append({"role": "assistant", "content": final_response_text})
+
+        return final_response_text, all_results
+
+    def _build_assistant_tool_message(self, response: "LLMResponse") -> dict[str, Any]:
+        """Build an assistant message with tool calls for the conversation history."""
+        msg: dict[str, Any] = {"role": "assistant"}
+        if response.content:
+            msg["content"] = response.content
+        if response.tool_calls:
+            msg["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.name,
+                        "arguments": json.dumps(tc.arguments),
+                    },
+                }
+                for tc in response.tool_calls
+            ]
+        return msg
 
     def _execute_tool(self, tool_call: ToolCall) -> str:
         """Execute a tool call and return result string."""
