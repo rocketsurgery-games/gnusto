@@ -5,6 +5,8 @@ This module provides an LLM-powered interface for playing GRUE games.
 The LLM interprets natural language input and translates it to game actions.
 """
 
+import argparse
+import json
 import sys
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,6 +17,7 @@ from rich.table import Table
 from rich.markdown import Markdown
 from rich.prompt import Prompt
 from rich.text import Text
+from rich.syntax import Syntax
 from rich import box
 
 from .llm import (
@@ -28,7 +31,7 @@ from .llm import (
 from .parser import load_grue
 from .runtime import GrueRuntime
 from .repl import ReplEvaluator, ActionDone, ActionBlocked, ActionError
-from .sexpr import Symbol, Keyword, SList
+from .sexpr import Symbol, Keyword, SList, to_string
 
 
 console = Console()
@@ -127,6 +130,16 @@ def render_response(response_text: str, action_results: list[str]) -> None:
             console.print(f"[green]{result}[/]")
 
 
+def _debug_log(title: str, content: str, style: str = "dim") -> None:
+    """Print debug information in a styled panel."""
+    console.print(Panel(
+        Syntax(content, "lisp", theme="monokai", word_wrap=True) if content.startswith("(") else Text(content),
+        title=f"[bold {style}]{title}[/]",
+        border_style=style,
+        box=box.SIMPLE,
+    ))
+
+
 @dataclass
 class GameSession:
     """An LLM-driven game session."""
@@ -135,12 +148,14 @@ class GameSession:
     evaluator: ReplEvaluator
     llm: LLMClient
     messages: list[dict[str, Any]] = field(default_factory=list)
+    debug: bool = False
 
     @classmethod
     def from_game_file(
         cls,
         game_path: str,
         llm_config: LLMConfig | None = None,
+        debug: bool = False,
     ) -> "GameSession":
         """Create a new game session from a game file."""
         world = load_grue(game_path)
@@ -152,6 +167,7 @@ class GameSession:
             runtime=runtime,
             evaluator=evaluator,
             llm=llm,
+            debug=debug,
         )
         session._init_messages()
         return session
@@ -195,6 +211,13 @@ class GameSession:
         results = []
         if response.tool_calls:
             for tool_call in response.tool_calls:
+                if self.debug:
+                    args_str = json.dumps(tool_call.arguments, indent=2)
+                    _debug_log(
+                        f"LLM Tool Call: {tool_call.name}",
+                        args_str,
+                        style="magenta",
+                    )
                 result = self._execute_tool(tool_call)
                 results.append(result)
 
@@ -234,20 +257,48 @@ class GameSession:
             items.append(Symbol(arg))
 
         expr = SList(items)
-        result = self.evaluator.eval(expr)
-        return self._format_action_result(result)
+        return self._eval_and_format(expr)
 
     def _move(self, direction: str) -> str:
         """Execute a move action."""
         expr = SList([Symbol("go"), Symbol(direction)])
-        result = self.evaluator.eval(expr)
-        return self._format_action_result(result)
+        return self._eval_and_format(expr)
 
     def _wait(self) -> str:
         """Execute a wait action."""
         expr = SList([Symbol("wait")])
+        return self._eval_and_format(expr)
+
+    def _eval_and_format(self, expr: SList) -> str:
+        """Evaluate expression and format result, with optional debug output."""
+        expr_str = to_string(expr)
+
+        if self.debug:
+            _debug_log("Grue Input", expr_str, style="yellow")
+
         result = self.evaluator.eval(expr)
+
+        if self.debug:
+            result_str = self._format_result_debug(result)
+            _debug_log("Grue Output", result_str, style="green")
+
         return self._format_action_result(result)
+
+    def _format_result_debug(self, result: Any) -> str:
+        """Format a result for debug display."""
+        if isinstance(result, ActionDone):
+            parts = [f"ActionDone(message={result.message!r}"]
+            if result.context:
+                parts.append(f"  context={result.context!r}")
+            if result.effects:
+                parts.append(f"  effects={result.effects!r}")
+            return "\n".join(parts) + ")"
+        elif isinstance(result, ActionBlocked):
+            return f"ActionBlocked(reason={result.reason!r}, message={result.message!r})"
+        elif isinstance(result, ActionError):
+            return f"ActionError(message={result.message!r})"
+        else:
+            return repr(result)
 
     def _format_action_result(self, result: Any) -> str:
         """Format an action result for display."""
@@ -265,10 +316,13 @@ class GameSession:
             return str(result)
 
 
-def play_game(game_path: str) -> None:
+def play_game(game_path: str, debug: bool = False) -> None:
     """Run an interactive game session with rich terminal UI."""
     console.print(f"[bold]Loading game:[/] {game_path}")
-    session = GameSession.from_game_file(game_path)
+    if debug:
+        console.print("[dim yellow]Debug mode enabled[/]")
+
+    session = GameSession.from_game_file(game_path, debug=debug)
 
     console.print()
     console.rule("[bold cyan]Game Start[/]")
@@ -295,18 +349,38 @@ def play_game(game_path: str) -> None:
 
         console.print()
 
-        with console.status("[bold blue]Thinking...[/]"):
+        if debug:
+            # Don't use status spinner in debug mode - it interferes with output
             response_text, results = session.process_input(user_input.strip())
+        else:
+            with console.status("[bold blue]Thinking...[/]"):
+                response_text, results = session.process_input(user_input.strip())
 
         render_response(response_text, results)
         console.print()
         render_game_state(session.get_state())
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        console.print("[red]Usage:[/] python -m grue.llm_player <game_directory>")
-        console.print("[dim]Example: python -m grue.llm_player games/lurkinghorror/[/]")
-        sys.exit(1)
+def main() -> None:
+    """Main entry point with argument parsing."""
+    parser = argparse.ArgumentParser(
+        description="Play a GRUE game with LLM-powered natural language interface",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Example: python -m grue.llm_player games/lurkinghorror/ --debug",
+    )
+    parser.add_argument(
+        "game_path",
+        help="Path to game directory containing .grue files",
+    )
+    parser.add_argument(
+        "--debug", "-d",
+        action="store_true",
+        help="Enable debug mode to show LLM tool calls and Grue I/O",
+    )
 
-    play_game(sys.argv[1])
+    args = parser.parse_args()
+    play_game(args.game_path, debug=args.debug)
+
+
+if __name__ == "__main__":
+    main()
