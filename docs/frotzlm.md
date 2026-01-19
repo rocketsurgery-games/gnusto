@@ -2,22 +2,22 @@ The core innovation in FrotzLM is the use of a language model to parse and inter
 
 
     ┌──────────────────────────────────────────────────────────────────────┐
-    │                                                                      │
-    │           written/spoken commands                                    │
-    │           structured interactions                                    │
-    │                 ┌────────┐                                           │
-    │              ┌─►│ Input  ├──┐                                        │
-    │  ┌────────┐  │  └────────┘  │  ┌────────┐   actions    ┌─────────┐   │
-    │  │        ├──┘              └─►│        ├─────────────►│         │   │
-    │  │  User  │                    │ Agent  │              │  World  │   │
-    │  │        │◄─┐              ┌──┤        │◄─────────────┤         │   │
-    │  └────────┘  │  ┌────────┐  │  └────────┘  world state └─────────┘   │
-    │              └──┤ Output │◄─┘               updates                  │
-    │                 └────────┘                                           │
-    │              text descriptions                                       │
-    │              structured data                                         │
-    │              images & sounds                                         │
-    │                                                                      │
+
+           written/spoken commands
+           structured interactions
+                 ┌────────┐
+              ┌─►│ Input  ├──┐
+  ┌────────┐  │  └────────┘  │  ┌────────┐   actions    ┌─────────┐
+  │        ├──┘              └─►│        ├─────────────►│
+  │  User  │ Agent  │  World  │
+  │◄─┐              ┌──┤◄─────────────┤
+  └────────┘  │  ┌────────┐  │  └────────┘  world state └─────────┘
+              └──┤ Output │◄─┘               updates
+                 └────────┘
+              text descriptions
+              structured data
+              images & sounds
+
     └──────────────────────────────────────────────────────────────────────┘
 
 # The world model
@@ -98,6 +98,8 @@ While there's a certain nostalgia for the hand-written maps and notes needed to 
 
 ## Conversations
 
+TODO
+
 
 # Open questions
 
@@ -107,6 +109,38 @@ What do we _really_ want from effects like `(success :context (description "..."
 This is best addressed when we start bolting on the agent adapter for real. This will give us a much clearer idea of what we need to solve real needs.
 
 Related: Look at @help-key:click for an example of very repetitive success messages. While we could simplify this
-a good bit with some string manipulation, it also provides an opportunity to think through what we want the interactions
-from grue -> agent to look like, so we can achieve our goals more flexibly.
+a good bit with some string manipulation, it also provides an opportunity to think through what we want the interactions from grue -> agent to look like, so we can achieve our goals more flexibly.
+
+## "Helpful" agents
+We sometimes get fascinating, unsolicited responses from the agent, like so:
+
+```
+user > (do @yak-window :click)                                                                     
+
+grue > You click the box for your paper, and the box grows reassuringly until it fills most of     
+the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The   
+title is the same, but after that, there is something different, very different.            
+
+agent >
+Oh no! Something very strange has happened to your classics paper. The editor has opened
+it, but the content is completely different from what you wrote - only the title remains
+the same. This is quite alarming, especially with the paper due tomorrow!
+
+You can see that your paper (@odd-paper) is now displayed, and there's also a @more-box
+available. The fact that it's now called "odd-paper" in the system suggests something
+unusual has definitely occurred.
+
+You might want to examine the paper to see exactly what's wrong with it, or check the more │
+box to see if there are additional options. There's also a hacker in the room who might
+know something about what happened to your file.
+
+What would you like to do? You could:
+
+ • Examine the odd paper to see what's actually written there
+ • Click the more box to see what options are available
+ • Ask the hacker about what might have happened
+ • Try to figure out how to restore your original paper
+```
+
+This is fascinating, but also a bit more helpful than we actually want it to be!
 

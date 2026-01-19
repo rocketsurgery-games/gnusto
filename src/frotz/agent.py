@@ -48,26 +48,15 @@ If the player's command is unclear or impossible, explain why and suggest altern
 """
 
 
-def _add_objects_to_table(
-    table: Table, objects: list[ObjectInfo], indent: int = 0
-) -> None:
-    """Add objects and their nested contents to a Rich table."""
-    prefix = "  " * indent
-    for obj in objects:
-        actions = ", ".join(obj.behaviors[:5])
-        if len(obj.behaviors) > 5:
-            actions += "..."
-        table.add_row(f"{prefix}{obj.id}", actions)
-        if obj.contents:
-            _add_objects_to_table(table, obj.contents, indent + 1)
-
-
 def render_game_state(state: GameState, debug: bool = False) -> None:
-    """Render game state using rich panels and tables.
+    """Render game state using rich panels for player display.
+
+    In debug mode, technical details (exits, object IDs, actions) are shown
+    separately in the LLM Context panel, so this just shows player-facing info.
 
     Args:
         state: Current game state
-        debug: If True, show technical details (IDs, actions, directions)
+        debug: If True, use IDs instead of descriptions (context shown separately)
     """
     # Room panel - build description with object fdesc listings
     room_content = Text()
@@ -91,53 +80,20 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
         )
     )
 
-    if debug:
-        # Debug mode: show technical details (IDs, actions, directions)
-        layout_table = Table.grid(expand=True)
-        layout_table.add_column(ratio=1)
-        layout_table.add_column(ratio=1)
+    # Nearby rooms
+    if state.nearby_rooms:
+        nearby = ", ".join(r.description for r in state.nearby_rooms)
+        console.print(f"[bold]Nearby:[/] {nearby}")
 
-        # Visible objects with IDs and actions (including nested contents)
-        if state.visible_objects:
-            obj_table = Table(title="Visible Objects", box=box.SIMPLE, show_header=True)
-            obj_table.add_column("Object", style="green")
-            obj_table.add_column("Actions", style="dim")
-            _add_objects_to_table(obj_table, state.visible_objects, indent=0)
-        else:
-            obj_table = Text("No objects visible", style="dim italic")
-
-        # Exits with directions
-        if state.exits:
-            exit_table = Table(title="Exits", box=box.SIMPLE, show_header=True)
-            exit_table.add_column("Direction", style="yellow")
-            exit_table.add_column("Destination", style="dim")
-            for direction, dest in state.exits.items():
-                exit_table.add_row(direction, dest)
-        else:
-            exit_table = Text("No exits", style="dim italic")
-
-        layout_table.add_row(obj_table, exit_table)
-        console.print(layout_table)
-
-        # Inventory with IDs
-        if state.inventory:
+    # Inventory - use IDs in debug mode, descriptions otherwise
+    if state.inventory:
+        if debug:
             inv_items = ", ".join(f"[magenta]{obj.id}[/]" for obj in state.inventory)
-            console.print(f"[bold]Inventory:[/] {inv_items}")
         else:
-            console.print("[bold]Inventory:[/] [dim italic]empty[/]")
-    else:
-        # Normal mode: natural display without implementation details
-        # Nearby rooms
-        if state.nearby_rooms:
-            nearby = ", ".join(r.description for r in state.nearby_rooms)
-            console.print(f"[bold]Nearby:[/] {nearby}")
-
-        # Inventory with descriptions
-        if state.inventory:
             inv_items = ", ".join(f"[magenta]{obj.description}[/]" for obj in state.inventory)
-            console.print(f"[bold]Inventory:[/] {inv_items}")
-        else:
-            console.print("[bold]Inventory:[/] [dim italic]empty[/]")
+        console.print(f"[bold]Inventory:[/] {inv_items}")
+    else:
+        console.print("[bold]Inventory:[/] [dim italic]empty[/]")
 
     console.print()
 
