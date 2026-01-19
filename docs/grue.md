@@ -265,6 +265,45 @@ Visibility rules:
 - Objects in closed containers are not visible
 - Objects in open containers are visible if the container is visible
 
+### Vehicles
+
+Vehicles are objects the player can be "in" or "on" for movement purposes.
+The `:vehicle` property marks an object as a vehicle. When the player is in
+a vehicle, movement behavior depends on whether the vehicle is also furniture:
+
+**Portable vehicles** (`:vehicle true`, no `:furniture`):
+- Boats, carts, etc.
+- When the player moves, the vehicle moves with them
+- The vehicle's location becomes the destination room
+
+**Furniture vehicles** (`:vehicle true` AND `:furniture true`):
+- Chairs, beds, etc.
+- The player automatically exits before moving
+- The furniture stays in its original location
+- A message indicates the auto-exit: "First, you arise from the chair."
+
+```scheme
+; Portable vehicle (moves with player)
+(object @rowboat
+  :properties (:vehicle true :takeable false)
+  :location @lake-shore)
+
+; Furniture vehicle (player exits before moving)
+(object @chair
+  :properties (:vehicle true :furniture true :takeable true)
+  :location @terminal-room)
+```
+
+**Vehicle containment semantics:**
+- Player "in" vehicle: `(loc @player)` returns the vehicle, not the room
+- Use `(get-player-room)` to get the actual room when player is in a vehicle
+- Objects in the same room as the vehicle are visible to the player
+- The player can interact with room objects while in a vehicle
+
+**Vehicle preposition:**
+- `:surface true` → player is "on" the vehicle (e.g., "on the raft")
+- No `:surface` → player is "in" the vehicle (e.g., "in the boat")
+
 ### Behaviors
 
 Behaviors define how objects respond to actions. They are evaluated when

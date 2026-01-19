@@ -1060,8 +1060,11 @@ class GrueRuntime:
     def _do_go(self, direction: str, actor: str | None = None) -> ActionResult:
         """Handle movement.
 
-        If the actor is in a vehicle (VEHBIT), the vehicle moves instead of the actor.
-        The actor stays in/on the vehicle during the move.
+        Vehicle handling:
+        - Portable vehicles (boats, etc.): vehicle moves with actor inside
+        - Furniture vehicles (chairs, etc.): actor auto-exits first, then walks
+
+        The :furniture property distinguishes stationary vehicles from portable ones.
         """
         if actor is None:
             actor = self.player_name
@@ -1069,17 +1072,38 @@ class GrueRuntime:
         # Check if actor is in a vehicle
         vehicle_info = self.get_player_vehicle() if actor == self.player_name else None
         in_vehicle = vehicle_info is not None
+        auto_exit_message = None  # Track if we auto-exited furniture
 
         if in_vehicle:
             vehicle_name = vehicle_info[0]
             vehicle_obj = self.state.objects.get(vehicle_name)
-            # Vehicle's location is where exits are checked from
-            from_room = vehicle_obj.location if vehicle_obj else None
-            if not from_room:
+            if not vehicle_obj:
                 return ActionResult(
                     outcome="error",
-                    error=f"Vehicle {vehicle_name} has no location"
+                    error=f"Vehicle {vehicle_name} not found"
                 )
+
+            # Check if this is furniture (stationary vehicle)
+            # Furniture requires the actor to exit before walking
+            if vehicle_obj.properties.get("furniture"):
+                # Auto-exit: move actor to vehicle's location
+                vehicle_room = vehicle_obj.location
+                self.state.objects[actor].location = vehicle_room
+                # Get description for message
+                vehicle_def = self.world.objects.get(vehicle_name)
+                vehicle_desc = vehicle_def.description if vehicle_def else vehicle_name
+                auto_exit_message = f"First, you arise from the {vehicle_desc}."
+                # Now actor is no longer in a vehicle
+                in_vehicle = False
+                from_room = vehicle_room
+            else:
+                # Portable vehicle - will move with actor
+                from_room = vehicle_obj.location
+                if not from_room:
+                    return ActionResult(
+                        outcome="error",
+                        error=f"Vehicle {vehicle_name} has no location"
+                    )
         else:
             # Capture current location before move (for :on-enter)
             from_room = self.state.objects[actor].location
@@ -1124,9 +1148,13 @@ class GrueRuntime:
                 return result  # Pass through errors
             else:
                 # Door approved - continue to movement below
-                context = result.context
+                context = list(result.context) if result.context else []
         else:
             context = []
+
+        # Add auto-exit message if we exited furniture
+        if auto_exit_message:
+            context = [("auto_exit", auto_exit_message)] + context
 
         # Move the appropriate entity
         if in_vehicle:

@@ -67,3 +67,22 @@
     (do @pc :turn-on)
     (assert (outcome? success)))
 )
+
+(test-group "furniture auto-exit on walk"
+  ; Furniture vehicles (like chairs) should auto-exit when walking
+  ; This prevents the furniture from moving with the player
+
+  (test "walking while in chair auto-exits first"
+    :setup ((move! @player @chair))
+    (go :direction south)
+    (assert (outcome? success))
+    (assert (player-at? @cs-2nd))       ; Player moved
+    (assert (loc? @chair @terminal-room)) ; Chair stayed behind
+    (assert (context? auto_exit "First, you arise from the chair.")))
+
+  (test "chair remains in original room after walking"
+    :setup ((move! @player @chair))
+    (go :direction out)
+    (assert (outcome? success))
+    (assert (loc? @chair @terminal-room)))
+)
