@@ -166,6 +166,28 @@ def _debug_log(title: str, content: str, style: str = "dim") -> None:
     )
 
 
+def estimate_tokens(text: str) -> int:
+    """
+    Estimate token count for text.
+
+    Uses a simple heuristic: ~4 characters per token on average for English.
+    This is a rough estimate - for precise counting, use tiktoken.
+    """
+    return len(text) // 4 + 1
+
+
+def estimate_message_tokens(message: dict[str, Any]) -> int:
+    """Estimate tokens for a single message dict."""
+    tokens = 4  # Message overhead (role, structure)
+    content = message.get("content", "")
+    if content:
+        tokens += estimate_tokens(content)
+    # Tool calls add overhead
+    if "tool_calls" in message:
+        tokens += len(message["tool_calls"]) * 20  # Rough estimate per tool call
+    return tokens
+
+
 @dataclass
 class TurnRecord:
     """Compact record of a player turn for history."""
@@ -179,6 +201,14 @@ class TurnRecord:
         """Generate a one-line summary of this turn."""
         actions_str = ", ".join(self.actions) if self.actions else "no actions"
         return f"[{self.room}] {self.player_command} → {actions_str}"
+
+    def estimate_tokens(self) -> int:
+        """Estimate token count for this turn when rendered to messages."""
+        # User message: "[Previous turn in {room}]\nPlayer: {command}"
+        user_tokens = estimate_tokens(f"[Previous turn in {self.room}]\nPlayer: {self.player_command}")
+        # Assistant message: narrative
+        assistant_tokens = estimate_tokens(self.narrative)
+        return user_tokens + assistant_tokens + 8  # +8 for message overhead
 
 
 @dataclass
@@ -213,31 +243,61 @@ class GameSession:
         )
         return session
 
+    # Tiered history settings
+    recent_turns_full: int = 5  # Last N turns get full narrative
+    medium_turns_brief: int = 15  # Next N turns get brief narrative
+
     def _build_messages(self, current_state: GameState, player_command: str) -> list[dict[str, Any]]:
         """
         Build fresh message list for LLM from history + current state.
 
         Structure:
         1. System prompt
-        2. Recent turn history (as user/assistant pairs)
+        2. Turn history (tiered detail level)
         3. Current game state + player command
+
+        History tiers:
+        - Recent (last 5): Full narrative
+        - Medium (5-20): First sentence of narrative
+        - Old (20+): One-line summary only
         """
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
 
-        # Add recent turn history
-        for turn in self.turn_history[-self.max_history_turns:]:
-            # User message: summary of what happened
-            messages.append({
-                "role": "user",
-                "content": f"[Previous turn in {turn.room}]\nPlayer: {turn.player_command}"
-            })
-            # Assistant response
-            messages.append({
-                "role": "assistant",
-                "content": turn.narrative
-            })
+        # Get turns to include (with position for tiering)
+        turns_to_include = self.turn_history[-self.max_history_turns:]
+        num_turns = len(turns_to_include)
+
+        for i, turn in enumerate(turns_to_include):
+            # Calculate how "old" this turn is (0 = most recent)
+            age = num_turns - 1 - i
+
+            if age < self.recent_turns_full:
+                # Recent: full detail
+                user_content = f"[Previous turn in {turn.room}]\nPlayer: {turn.player_command}"
+                assistant_content = turn.narrative
+            elif age < self.recent_turns_full + self.medium_turns_brief:
+                # Medium: abbreviated narrative
+                user_content = f"[Turn in {turn.room}] {turn.player_command}"
+                # Take first sentence or first 100 chars
+                narrative = turn.narrative
+                if ". " in narrative:
+                    assistant_content = narrative[:narrative.index(". ") + 1]
+                elif len(narrative) > 100:
+                    assistant_content = narrative[:100] + "..."
+                else:
+                    assistant_content = narrative
+            else:
+                # Old: summary only (single message, no assistant response)
+                messages.append({
+                    "role": "user",
+                    "content": f"[Earlier: {turn.to_summary()}]"
+                })
+                continue
+
+            messages.append({"role": "user", "content": user_content})
+            messages.append({"role": "assistant", "content": assistant_content})
 
         # Current turn: fresh state + player command
         state_context = current_state.to_context_string()
@@ -251,6 +311,56 @@ class GameSession:
     def get_state(self) -> GameState:
         """Get current game state."""
         return get_game_state(self.runtime)
+
+    def estimate_context_tokens(self) -> dict[str, int]:
+        """
+        Estimate current context token usage.
+
+        Returns dict with breakdown by tier:
+        - system_prompt: Tokens in system prompt
+        - history_recent: Full-detail recent turns
+        - history_medium: Abbreviated medium turns
+        - history_old: Summary-only old turns
+        - state_estimate: Estimated tokens for typical game state
+        - total: Sum of all components
+        """
+        system_tokens = estimate_tokens(SYSTEM_PROMPT)
+
+        turns = self.turn_history[-self.max_history_turns:]
+        num_turns = len(turns)
+
+        recent_tokens = 0
+        medium_tokens = 0
+        old_tokens = 0
+
+        for i, turn in enumerate(turns):
+            age = num_turns - 1 - i
+
+            if age < self.recent_turns_full:
+                # Full tokens
+                recent_tokens += turn.estimate_tokens()
+            elif age < self.recent_turns_full + self.medium_turns_brief:
+                # Abbreviated: ~half tokens
+                medium_tokens += turn.estimate_tokens() // 2
+            else:
+                # Summary only: ~20 tokens
+                old_tokens += 20
+
+        # Estimate typical game state size (varies by room)
+        state_estimate = 500  # Rough average
+
+        history_total = recent_tokens + medium_tokens + old_tokens
+
+        return {
+            "system_prompt": system_tokens,
+            "history_recent": recent_tokens,
+            "history_medium": medium_tokens,
+            "history_old": old_tokens,
+            "history_total": history_total,
+            "history_turns": num_turns,
+            "state_estimate": state_estimate,
+            "total": system_tokens + history_total + state_estimate,
+        }
 
     def get_state_context(self) -> str:
         """Get current game state as context string for agent."""
