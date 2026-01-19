@@ -342,10 +342,14 @@ class GameSession:
         args = tool_call.arguments
 
         if name == "do_action":
+            # Normalize args to list - LLM sometimes returns string instead of array
+            action_args = args.get("args", [])
+            if isinstance(action_args, str):
+                action_args = [action_args]
             return self._do_action(
                 target=args.get("target", ""),
                 verb=args.get("verb", ""),
-                action_args=args.get("args", []),
+                action_args=action_args,
             )
         elif name == "move":
             return self._move(args.get("direction", ""))
