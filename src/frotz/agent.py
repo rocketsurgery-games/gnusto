@@ -1,38 +1,31 @@
 """
-LLM-driven game player for GRUE.
+Agent-driven game player for Frotz.
 
-This module provides an LLM-powered interface for playing GRUE games.
-The LLM interprets natural language input and translates it to game actions.
+This module provides the agent that plays GRUE games. It interprets natural
+language input, translates it to game actions via tool calling, and renders
+results with a rich terminal UI.
 """
 
-import argparse
 import json
-import sys
 from dataclasses import dataclass, field
 from typing import Any
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.markdown import Markdown
-from rich.prompt import Prompt
-from rich.text import Text
-from rich.syntax import Syntax
 from rich import box
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.syntax import Syntax
+from rich.table import Table
+from rich.text import Text
 
-from .llm import (
-    LLMClient,
-    LLMConfig,
-    ToolCall,
-    get_game_tools,
-    get_game_state,
-    GameState,
-)
-from .parser import load_grue
-from .runtime import GrueRuntime
-from .repl import ReplEvaluator, ActionDone, ActionBlocked, ActionError
-from .sexpr import Symbol, Keyword, SList, to_string
+from grue.parser import load_grue
+from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
+from grue.runtime import GrueRuntime
+from grue.sexpr import Keyword, SList, Symbol, to_string
 
+from .llm import LLMClient, LLMConfig, ToolCall, get_game_tools
+from .state import GameState, ObjectInfo, get_game_state
 
 console = Console()
 
@@ -61,15 +54,19 @@ def render_game_state(state: GameState) -> None:
     # Room panel
     room_content = Text()
     if state.vehicle:
-        room_content.append(f"(You are {state.vehicle[1]} the {state.vehicle[0]})\n\n", style="italic dim")
+        room_content.append(
+            f"(You are {state.vehicle[1]} the {state.vehicle[0]})\n\n", style="italic dim"
+        )
     room_content.append(state.room_description)
 
-    console.print(Panel(
-        room_content,
-        title=f"[bold cyan]{state.room}[/]",
-        border_style="cyan",
-        box=box.ROUNDED,
-    ))
+    console.print(
+        Panel(
+            room_content,
+            title=f"[bold cyan]{state.room}[/]",
+            border_style="cyan",
+            box=box.ROUNDED,
+        )
+    )
 
     # Create a table for objects and exits side by side
     layout_table = Table.grid(expand=True)
@@ -113,13 +110,15 @@ def render_game_state(state: GameState) -> None:
 
 
 def render_response(response_text: str, action_results: list[str]) -> None:
-    """Render LLM response and action results."""
+    """Render agent response and action results."""
     if response_text:
-        console.print(Panel(
-            Markdown(response_text),
-            border_style="blue",
-            box=box.ROUNDED,
-        ))
+        console.print(
+            Panel(
+                Markdown(response_text),
+                border_style="blue",
+                box=box.ROUNDED,
+            )
+        )
 
     for result in action_results:
         if "Blocked:" in result:
@@ -132,17 +131,21 @@ def render_response(response_text: str, action_results: list[str]) -> None:
 
 def _debug_log(title: str, content: str, style: str = "dim") -> None:
     """Print debug information in a styled panel."""
-    console.print(Panel(
-        Syntax(content, "lisp", theme="monokai", word_wrap=True) if content.startswith("(") else Text(content),
-        title=f"[bold {style}]{title}[/]",
-        border_style=style,
-        box=box.SIMPLE,
-    ))
+    console.print(
+        Panel(
+            Syntax(content, "lisp", theme="monokai", word_wrap=True)
+            if content.startswith("(")
+            else Text(content),
+            title=f"[bold {style}]{title}[/]",
+            border_style=style,
+            box=box.SIMPLE,
+        )
+    )
 
 
 @dataclass
 class GameSession:
-    """An LLM-driven game session."""
+    """An agent-driven game session."""
 
     runtime: GrueRuntime
     evaluator: ReplEvaluator
@@ -181,7 +184,7 @@ class GameSession:
         return get_game_state(self.runtime)
 
     def get_state_context(self) -> str:
-        """Get current game state as context string for LLM."""
+        """Get current game state as context string for agent."""
         return self.get_state().to_context_string()
 
     def process_input(self, user_input: str) -> tuple[str, list[str]]:
@@ -205,7 +208,7 @@ class GameSession:
 
         self.messages.append({"role": "user", "content": full_input})
 
-        # Get LLM response with tools
+        # Get agent response with tools
         response = self.llm.chat(
             messages=self.messages,
             tools=get_game_tools(),
@@ -219,7 +222,7 @@ class GameSession:
                 if self.debug:
                     args_str = json.dumps(tool_call.arguments, indent=2)
                     _debug_log(
-                        f"LLM Tool Call: {tool_call.name}",
+                        f"Agent Tool Call: {tool_call.name}",
                         args_str,
                         style="magenta",
                     )
@@ -309,7 +312,9 @@ class GameSession:
         """Format game state for debug display."""
         lines = [
             f"room: {state.room!r}",
-            f"room_description: {state.room_description[:80]!r}..." if len(state.room_description) > 80 else f"room_description: {state.room_description!r}",
+            f"room_description: {state.room_description[:80]!r}..."
+            if len(state.room_description) > 80
+            else f"room_description: {state.room_description!r}",
             f"exits: {state.exits!r}",
             f"vehicle: {state.vehicle!r}",
             "",
@@ -392,28 +397,3 @@ def play_game(game_path: str, debug: bool = False) -> None:
         render_response(response_text, results)
         console.print()
         render_game_state(session.get_state())
-
-
-def main() -> None:
-    """Main entry point with argument parsing."""
-    parser = argparse.ArgumentParser(
-        description="Play a GRUE game with LLM-powered natural language interface",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Example: python -m grue.llm_player games/lurkinghorror/ --debug",
-    )
-    parser.add_argument(
-        "game_path",
-        help="Path to game directory containing .grue files",
-    )
-    parser.add_argument(
-        "--debug", "-d",
-        action="store_true",
-        help="Enable debug mode to show LLM tool calls and Grue I/O",
-    )
-
-    args = parser.parse_args()
-    play_game(args.game_path, debug=args.debug)
-
-
-if __name__ == "__main__":
-    main()
