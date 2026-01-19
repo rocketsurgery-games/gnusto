@@ -56,6 +56,37 @@ from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
 from .expr import ExprEvaluator, EffectExecutor, EvalError
 
 
+def _extract_blocked_message(
+    reason: str | None,
+    context: list[tuple[str, Any]] | None,
+) -> str:
+    """Extract or generate a message for a blocked action.
+
+    Looks for a 'message' key in context, otherwise generates
+    a human-readable message from the reason code.
+    """
+    # Check context for explicit message
+    if context:
+        for key, value in context:
+            if key == "message":
+                return str(value)
+
+    # Generate default message from reason
+    reason = reason or "unknown"
+    default_messages = {
+        "not-here": "You can't see any such thing.",
+        "no-behavior": "You can't do that.",
+        "no-exit": "You can't go that way.",
+        "not-held": "You're not holding that.",
+        "not-open": "It's not open.",
+        "already-open": "It's already open.",
+        "already-closed": "It's already closed.",
+        "locked": "It's locked.",
+        "not-takeable": "You can't take that.",
+    }
+    return default_messages.get(reason, f"Blocked: {reason}")
+
+
 # === REPL Result Types ===
 # These types know how to display themselves in the REPL
 
@@ -119,6 +150,7 @@ class ActionDone:
 class ActionBlocked:
     """Result of a blocked action."""
     reason: str
+    message: str
     context: list[tuple[str, Any]]
     redirects: list[SExpr]
 
@@ -313,9 +345,11 @@ class ReplEvaluator:
                     location=self._make_location_result(),
                 )
             elif result.outcome == "blocked":
+                ctx = list(result.context) if result.context else []
                 return ActionBlocked(
                     reason=result.reason or "unknown",
-                    context=list(result.context) if result.context else [],
+                    message=_extract_blocked_message(result.reason, ctx),
+                    context=ctx,
                     redirects=list(result.redirects) if result.redirects else [],
                 )
             else:
@@ -363,9 +397,11 @@ class ReplEvaluator:
                     redirects=list(result.redirects) if result.redirects else [],
                 )
             elif result.outcome == "blocked":
+                ctx = list(result.context) if result.context else []
                 return ActionBlocked(
                     reason=result.reason or "unknown",
-                    context=list(result.context) if result.context else [],
+                    message=_extract_blocked_message(result.reason, ctx),
+                    context=ctx,
                     redirects=list(result.redirects) if result.redirects else [],
                 )
             elif result.outcome == "default":
