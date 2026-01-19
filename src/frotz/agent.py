@@ -167,14 +167,30 @@ def _debug_log(title: str, content: str, style: str = "dim") -> None:
 
 
 @dataclass
+class TurnRecord:
+    """Compact record of a player turn for history."""
+
+    room: str
+    player_command: str
+    actions: list[str]  # e.g., ["took @carton", "moved north"]
+    narrative: str  # LLM's final response
+
+    def to_summary(self) -> str:
+        """Generate a one-line summary of this turn."""
+        actions_str = ", ".join(self.actions) if self.actions else "no actions"
+        return f"[{self.room}] {self.player_command} → {actions_str}"
+
+
+@dataclass
 class GameSession:
     """An agent-driven game session."""
 
     runtime: GrueRuntime
     evaluator: ReplEvaluator
     llm: LLMClient
-    messages: list[dict[str, Any]] = field(default_factory=list)
+    turn_history: list[TurnRecord] = field(default_factory=list)
     debug: bool = False
+    max_history_turns: int = 20  # Keep last N turns in full detail
 
     @classmethod
     def from_game_file(
@@ -195,12 +211,42 @@ class GameSession:
             llm=llm,
             debug=debug,
         )
-        session._init_messages()
         return session
 
-    def _init_messages(self) -> None:
-        """Initialize conversation with system prompt."""
-        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    def _build_messages(self, current_state: GameState, player_command: str) -> list[dict[str, Any]]:
+        """
+        Build fresh message list for LLM from history + current state.
+
+        Structure:
+        1. System prompt
+        2. Recent turn history (as user/assistant pairs)
+        3. Current game state + player command
+        """
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ]
+
+        # Add recent turn history
+        for turn in self.turn_history[-self.max_history_turns:]:
+            # User message: summary of what happened
+            messages.append({
+                "role": "user",
+                "content": f"[Previous turn in {turn.room}]\nPlayer: {turn.player_command}"
+            })
+            # Assistant response
+            messages.append({
+                "role": "assistant",
+                "content": turn.narrative
+            })
+
+        # Current turn: fresh state + player command
+        state_context = current_state.to_context_string()
+        messages.append({
+            "role": "user",
+            "content": f"{state_context}\n\n---\n\nPlayer command: {player_command}"
+        })
+
+        return messages
 
     def get_state(self) -> GameState:
         """Get current game state."""
@@ -217,6 +263,11 @@ class GameSession:
         Uses an agentic loop: executes tool calls, feeds results back to the LLM,
         and repeats until the LLM responds without tool calls or max iterations.
 
+        Context management:
+        - Fresh game state is injected at each LLM call (not persisted)
+        - Only compact TurnRecords are kept in history
+        - Working messages during the loop are ephemeral
+
         Args:
             user_input: Natural language command from player
             max_iterations: Maximum number of LLM calls (default 10)
@@ -224,19 +275,18 @@ class GameSession:
         Returns:
             Tuple of (response text, action results list)
         """
-        # Build initial message with current game state
-        state = self.get_state()
+        # Get initial state and build base messages from history
+        initial_state = self.get_state()
+        initial_room = initial_state.room
 
         if self.debug:
-            _debug_log("Game State (structured)", self._format_state_debug(state), style="cyan")
+            _debug_log("Game State (structured)", self._format_state_debug(initial_state), style="cyan")
 
-        state_context = state.to_context_string()
-        full_input = f"{state_context}\n\n---\n\nPlayer command: {user_input}"
-
-        self.messages.append({"role": "user", "content": full_input})
-        messages_added = 1  # Track how many messages we add for cleanup on error
+        # Build fresh messages: history + current state + command
+        working_messages = self._build_messages(initial_state, user_input)
 
         all_results: list[str] = []
+        all_actions: list[str] = []  # Track actions for TurnRecord
         final_response_text = ""
         iteration = 0
 
@@ -249,14 +299,11 @@ class GameSession:
             # Get agent response with tools
             try:
                 response = self.llm.chat(
-                    messages=self.messages,
+                    messages=working_messages,
                     tools=get_game_tools(),
                     tool_choice="auto",
                 )
             except Exception as e:
-                # Remove messages we added so player can retry
-                for _ in range(messages_added):
-                    self.messages.pop()
                 error_msg = str(e)
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
@@ -265,8 +312,6 @@ class GameSession:
             # If no tool calls, we're done - LLM is just responding
             if not response.tool_calls:
                 final_response_text = response.content or ""
-                # Add final assistant message to history
-                self.messages.append({"role": "assistant", "content": final_response_text})
                 break
 
             # Process tool calls
@@ -283,39 +328,70 @@ class GameSession:
                 iteration_results.append((tool_call.id, result))
                 all_results.append(result)
 
+                # Track action for history
+                action_summary = self._summarize_tool_call(tool_call)
+                all_actions.append(action_summary)
+
                 if self.debug:
                     _debug_log("Tool Result", result, style="green")
 
-            # Add assistant message with tool calls to history
+            # Add assistant message with tool calls to working messages
             assistant_msg = self._build_assistant_tool_message(response)
-            self.messages.append(assistant_msg)
-            messages_added += 1
+            working_messages.append(assistant_msg)
 
             # Add tool result messages
             for tool_call_id, result in iteration_results:
                 tool_msg = {"role": "tool", "tool_call_id": tool_call_id, "content": result}
-                self.messages.append(tool_msg)
-                messages_added += 1
+                working_messages.append(tool_msg)
 
             # Get updated game state for next iteration
             state = self.get_state()
             if self.debug:
                 _debug_log("Updated Game State", self._format_state_debug(state), style="cyan")
 
-            # Add state update as user context for next iteration
+            # Add fresh state update for next iteration (ephemeral)
             state_context = state.to_context_string()
             state_update = f"[Game state after actions:]\n{state_context}"
-            self.messages.append({"role": "user", "content": state_update})
-            messages_added += 1
+            working_messages.append({"role": "user", "content": state_update})
 
         else:
             # Hit max iterations
             if self.debug:
                 _debug_log("Max Iterations", f"Stopped after {max_iterations} iterations", style="red")
             final_response_text = response.content or ""
-            self.messages.append({"role": "assistant", "content": final_response_text})
+
+        # Record this turn in history (compact form)
+        turn_record = TurnRecord(
+            room=initial_room,
+            player_command=user_input,
+            actions=all_actions,
+            narrative=final_response_text,
+        )
+        self.turn_history.append(turn_record)
+
+        if self.debug:
+            _debug_log("Turn Record", turn_record.to_summary(), style="blue")
 
         return final_response_text, all_results
+
+    def _summarize_tool_call(self, tool_call: ToolCall) -> str:
+        """Generate a compact summary of a tool call for history."""
+        name = tool_call.name
+        args = tool_call.arguments
+
+        if name == "do_action":
+            target = args.get("target", "?")
+            verb = args.get("verb", "?")
+            action_args = args.get("args", [])
+            if action_args:
+                return f"{verb} {target} with {', '.join(str(a) for a in action_args)}"
+            return f"{verb} {target}"
+        elif name == "move":
+            return f"go {args.get('direction', '?')}"
+        elif name == "wait":
+            return "wait"
+        else:
+            return f"{name}(...)"
 
     def _build_assistant_tool_message(self, response: "LLMResponse") -> dict[str, Any]:
         """Build an assistant message with tool calls for the conversation history."""
