@@ -468,8 +468,8 @@
           (redirect :action (do ?self :attack @smooth-stone)))
         (true
           ; Flier dodges other thrown items
-          '((move ?item (loc @player))
-            (success :message (str "The creature darts to the side, dodging the " (desc ?item) "."))))))))
+          `((move ?item (loc @player))
+            (success :message ,(str "The creature darts to the side, dodging the " (desc ?item) "."))))))))
 
 ; === Flier Approach Event ===
 ; Multi-stage creature approach. Each turn advances the counter.

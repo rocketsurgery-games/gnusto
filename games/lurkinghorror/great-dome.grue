@@ -245,17 +245,17 @@
         ((:rmung ?self)
           (blocked :reason already-removed :message "You've already removed it."))
         (true
-          '((set ?self :rmung true)
+          `((set ?self :rmung true)
             (set ?self :touched true)
             (move @secret-hole @on-dome)
             (take ?self)
             (success :message
-              (str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
-                   (if (not (:touched @note))
-                     "There is a piece of paper in the hole."
-                     (if (in? @note @secret-hole)
-                       "There is a piece of paper in the hole."
-                       "The hole is empty."))))))))
+              ,(str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
+                    (if (not (:touched @note))
+                      "There is a piece of paper in the hole."
+                      (if (in? @note @secret-hole)
+                        "There is a piece of paper in the hole."
+                        "The hole is empty."))))))))
 
     :put (fn (?container)
       (cond
@@ -281,8 +281,8 @@
       (redirect :action (do ?self :read)))
 
     :read (fn ()
-      '((set ?self :rmung true)
-        (if (not (held? ?self)) (take ?self))
+      `((set ?self :rmung true)
+        ,@(if (not (held? ?self)) '((take ?self)) '())
         (success :message "You unroll the piece of paper and read the shaky handwriting:
 
 \"I can no longer face what I've been doing. I can't sleep, I start at the slightest noise, and even dulling my senses with alcohol or drugs is no longer enough. I refuse to participate in what he is doing any more. Either he is insane, or I am insane, or (and this is what I fear most) the universe itself is insane. I have only one final warning: I am the only suicide, but I will not be the final death.\"

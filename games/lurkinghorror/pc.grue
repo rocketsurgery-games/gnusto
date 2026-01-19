@@ -90,9 +90,9 @@
         ((:powered ?self)
           (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
         (true
-          '((set ?self :powered true)
+          `((set ?self :powered true)
             (success :context ((booting true))
-                     :message (str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum."))))))
+                     :message ,(str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum."))))))
 
     ; TURN-OFF (LAMP-OFF) - Power down computer and reset login state
     :turn-off (fn ()
@@ -182,12 +182,12 @@
           (blocked :reason not-powered :message "It would help if you turned on the computer first."))
         ((or (= ?value "xyzzy") (= ?value "872325412"))
           ; Valid login ID (xyzzy or the actual ID 872325412)
-          '((set @pc :username "xyzzy")
-            (success :message (str "The computer responds \"" password-please))))
+          `((set @pc :username "xyzzy")
+            (success :message ,(str "The computer responds \"" password-please))))
         (true
           ; Wrong login - accept but will fail at password stage
-          '((set @pc :username true)
-            (success :message (str "The computer responds \"" password-please))))))
+          `((set @pc :username true)
+            (success :message ,(str "The computer responds \"" password-please))))))
 
     ; PASSWORD - Second step of login flow
     ; Only "uhlersoth" or "plugh" work, and only if username was "xyzzy" (valid login)
@@ -205,9 +205,9 @@
             (success :message "The computer responds \"Good evening. You're here awfully late.\" It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads \"Classics Paper,\" some particularly ominous words next to it say \"DUE TOMORROW!\" and more reassuringly, a menu box next to that reads \"Edit Classics Paper.\"")))
         (true
           ; Invalid password or wrong login - reset and fail
-          '((set @pc :username false)
+          `((set @pc :username false)
             (set @pc :logged-in false)
-            (success :message (str "The computer responds \"INVALID LOGIN\" and then " login-please))))))))
+            (success :message ,(str "The computer responds \"INVALID LOGIN\" and then " login-please))))))))
 
 ; === PC Physical Components ===
 ; These are physical parts of the PC that can be interacted with.

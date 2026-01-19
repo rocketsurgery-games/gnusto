@@ -63,10 +63,10 @@
            (success :message "Taken.")))))
 
     :eat (fn ()
-      '((move ?self nil)
+      `((move ?self nil)
         (success
-          :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
-            ". You immediately want to drink something to wash it down."))))
+          :message ,(str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
+                         ". You immediately want to drink something to wash it down."))))
 
     :taste (fn ()
       (success :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self) ".")))))

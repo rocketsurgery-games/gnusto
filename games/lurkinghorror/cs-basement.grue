@@ -438,13 +438,13 @@
       (success :message "The liquid has no smell."))
 
     :pour (fn (?target)
-      '((move @nitrogen nil)
+      `((move @nitrogen nil)
         (dequeue nitrogen-evaporates)
         (queue mist-dissipates 2)
         (success :message
-          (str "The freezing liquid pours out"
-               (if ?target (str " onto the " (desc ?target)) "")
-               ", boiling into cold mist almost immediately."))))))
+          ,(str "The freezing liquid pours out"
+                (if ?target (str " onto the " (desc ?target)) "")
+                ", boiling into cold mist almost immediately."))))))
 
 (object @mist
   :location nil  ; Created when flask is opened

@@ -498,8 +498,8 @@
     :give (fn (?item)
       (cond
         ((:food ?item)
-          '((move ?item nil)
-            (success :message (str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))))
+          `((move ?item nil)
+            (success :message ,(str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))))
         (true
           (blocked :reason not-interested :message "The rats aren't interested in that."))))))
 

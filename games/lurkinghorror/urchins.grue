@@ -168,16 +168,16 @@
         ((or (not ?tool) (= ?tool nil))
           (blocked :reason need-tool :message "You'll need something to cut with."))
         ((= ?tool @bolt-cutters)
-          '((set @urchins :freed true)
+          `((set @urchins :freed true)
             (set @urchins :invisible false)
             (move @urchins @large-chamber)
             (move @urchin-wire nil)
             (success
-              :message (str "You strain and push the two handles of the bolt cutter together with all your strength. At first it looks like nothing will happen, but then, with a loud click, the jaws cut the wire!\n\nThe wire, as though under tension, rapidly begins to curl up, disappearing down the tunnel and away. "
-                            (if (in? @urchins @slots)
-                              "Urchins burst forth from the slots. "
-                              "")
-                            "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you."))))
+              :message ,(str "You strain and push the two handles of the bolt cutter together with all your strength. At first it looks like nothing will happen, but then, with a loud click, the jaws cut the wire!\n\nThe wire, as though under tension, rapidly begins to curl up, disappearing down the tunnel and away. "
+                             (if (in? @urchins @slots)
+                               "Urchins burst forth from the slots. "
+                               "")
+                             "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you."))))
         ((or (:weapon ?tool) (:tool ?tool))
           (success :message "That drives the wire into the mud, but doesn't cut it."))
         (true
