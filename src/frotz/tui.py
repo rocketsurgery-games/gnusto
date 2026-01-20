@@ -149,13 +149,16 @@ class FrotzApp(App):
             yield Static(id="room-header")
             yield Static(id="room-description")
         # Narrative panel - RichLog handles its own scrolling
-        yield RichLog(id="narrative", wrap=True, highlight=False, markup=True, can_focus=False)
+        yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
         yield Input(placeholder="What do you do?")
 
     def on_mount(self) -> None:
         """Initialize game session on mount."""
         self.session = GameSession.from_game_file(self.game_path, debug=self.start_debug)
         self.title = f"Frotz LM - {self.game_path}"
+
+        # Disable focus on narrative panel (input always gets focus)
+        self.query_one("#narrative", RichLog).can_focus = False
 
         # Show intro text if available
         if self.session.runtime.world.intro:
