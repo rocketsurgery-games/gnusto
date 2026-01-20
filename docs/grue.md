@@ -66,7 +66,7 @@ and generates narrative from outcomes. This separation allows:
 @entity         ; entities (objects, rooms) - @ prefix, lowercase
 ?binding        ; context bindings - ? prefix
 :keyword        ; keywords (self-evaluating, Clojure-style)
-"string"        ; string literals
+"string"        ; string literals (see String Syntax below)
 42              ; numbers
 true false      ; booleans
 
@@ -86,6 +86,39 @@ true false      ; booleans
 
 ; Result/response maps
 (outcome :status blocked :reason locked)
+```
+
+### String Syntax
+
+Strings are designed for interactive fiction prose. **Newlines and surrounding whitespace
+are collapsed to a single space**, allowing descriptions to be formatted nicely in source
+without affecting output:
+
+```scheme
+; This multi-line string in source...
+(object @hallway
+  :description "A long corridor stretches before you, its walls lined
+                with flickering fluorescent lights. The floor is scuffed
+                from decades of foot traffic.")
+
+; ...becomes this single-line output:
+; "A long corridor stretches before you, its walls lined with flickering
+;  fluorescent lights. The floor is scuffed from decades of foot traffic."
+```
+
+This follows ZIL convention where source formatting is for readability, not output.
+
+**Escape sequences:**
+| Sequence | Result |
+|----------|--------|
+| `\n` | Actual newline in output |
+| `\t` | Tab character |
+| `\\` | Literal backslash |
+| `\"` | Literal quote |
+
+```scheme
+; Use \n for actual newlines in output
+:description "Line one.\n\nLine three (with blank line between)."
 ```
 
 ### Predicates (Pure Functions → Boolean)

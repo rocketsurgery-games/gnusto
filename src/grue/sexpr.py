@@ -7,9 +7,14 @@ Grammar (EBNF):
     atom       ::= symbol | keyword
     symbol     ::= [@a-zA-Z_][@a-zA-Z0-9_!?-]*
     keyword    ::= ':' symbol
-    string     ::= '"' [^"]* '"'
+    string     ::= '"' char* '"'
     number     ::= '-'? [0-9]+
     comment    ::= ';' [^\\n]* '\\n'
+
+String semantics (ZIL-style for IF prose):
+    - Newlines and surrounding whitespace collapse to single space
+    - Use \\n for actual newlines in output
+    - Use \\t for tabs, \\\\ for backslash, \\" for quote
 
 Examples:
     (has-flag obj TAKEBIT)
@@ -146,7 +151,12 @@ class Tokenizer:
                 break
 
     def read_string(self) -> str:
-        """Read a double-quoted string."""
+        """Read a double-quoted string.
+
+        ZIL-style: newlines and surrounding whitespace are collapsed to a single space.
+        This allows prose to be formatted nicely in source without affecting output.
+        Use explicit \\n for actual newlines.
+        """
         self.advance()  # consume opening quote
         result = []
         while self.peek() and self.peek() != '"':
@@ -164,6 +174,17 @@ class Tokenizer:
                     result.append('"')
                 else:
                     result.append(next_ch)
+            elif ch == "\n":
+                # Collapse newline and surrounding whitespace to single space
+                # First, trim any trailing whitespace we just added
+                while result and result[-1] in " \t":
+                    result.pop()
+                # Skip any leading whitespace on the next line
+                while self.peek() in " \t":
+                    self.advance()
+                # Add single space (unless at start of string or next char is closing quote)
+                if result and self.peek() != '"':
+                    result.append(" ")
             else:
                 result.append(ch)
         if not self.peek():
