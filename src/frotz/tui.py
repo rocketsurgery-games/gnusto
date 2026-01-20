@@ -74,11 +74,11 @@ class FrotzApp(App):
     ENABLE_COMMAND_PALETTE = False
 
     CSS = """
-    /* Room panel: fixed height, no scrolling */
+    /* Room panel: fixed height, bottom border only */
     #room-panel {
         height: auto;
-        border: solid cyan;
-        padding: 1;
+        border-bottom: solid grey;
+        padding: 0 1;
     }
 
     #room-header {
@@ -90,18 +90,18 @@ class FrotzApp(App):
     #room-description {
     }
 
-    /* Narrative panel: fills remaining space, scrollable */
+    /* Narrative panel: fills remaining space, bottom border only */
     #narrative {
         height: 1fr;
-        border: solid grey;
-        padding: 1 2 1 1;  /* Extra padding on right for scrollbar breathing room */
-        margin-top: 1;
-        overflow-x: hidden;  /* No horizontal scrolling */
+        border-bottom: solid grey;
+        padding: 0 1;
+        overflow-x: hidden;
     }
 
+    /* Input at bottom, no extra margins */
     Input {
         dock: bottom;
-        margin: 1 0;
+        margin: 0;
     }
     """
 
