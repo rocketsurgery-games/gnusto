@@ -13,7 +13,7 @@ Designed to work well at any terminal size (80x24 and up).
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Static, RichLog
 
@@ -74,9 +74,9 @@ class FrotzApp(App):
     ENABLE_COMMAND_PALETTE = False
 
     CSS = """
-    #game-container {
-        width: 100%;
-        height: 1fr;
+    /* Room panel: fixed height, no scrolling */
+    #room-panel {
+        height: auto;
         border: solid cyan;
         padding: 1;
     }
@@ -88,14 +88,18 @@ class FrotzApp(App):
     }
 
     #room-description {
-        margin-bottom: 1;
+    }
+
+    /* Narrative panel: fills remaining space, scrollable */
+    #narrative-container {
+        height: 1fr;
+        border: solid grey;
+        padding: 1;
+        margin-top: 1;
     }
 
     #narrative {
-        border-top: dashed grey;
-        padding-top: 1;
-        height: auto;
-        min-height: 5;
+        height: 100%;
     }
 
     Input {
@@ -118,9 +122,12 @@ class FrotzApp(App):
         self.session: GameSession | None = None
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(id="game-container"):
+        # Room panel - auto-height, non-scrolling
+        with Vertical(id="room-panel"):
             yield Static(id="room-header")
             yield Static(id="room-description")
+        # Narrative panel - scrollable, fills remaining space
+        with VerticalScroll(id="narrative-container"):
             yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
         yield Input(placeholder="What do you do?")
 
