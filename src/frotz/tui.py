@@ -228,19 +228,23 @@ class FrotzApp(App):
         if not self.session:
             return
 
-        response_text, results = self.session.process_input(command)
+        # Stream action results as they happen
+        def on_action(result: str) -> None:
+            self.call_from_thread(self._stream_action, result)
 
-        # Update UI from main thread
-        self.call_from_thread(self._show_response, response_text, results)
+        response_text, results = self.session.process_input(command, on_action=on_action)
 
-    def _show_response(self, response_text: str, results: list[str]) -> None:
-        """Show response in narrative panel."""
+        # Show final response (results already streamed)
+        self.call_from_thread(self._show_response, response_text)
+
+    def _stream_action(self, result: str) -> None:
+        """Stream an action result to the narrative panel."""
         narrative = self.query_one("#narrative", RichLog)
+        narrative.write(f"[dim]{result}[/]")
 
-        # Show action results
-        for result in results:
-            if result and result != "Done.":
-                narrative.write(f"[dim]{result}[/]")
+    def _show_response(self, response_text: str) -> None:
+        """Show final response in narrative panel (action results already streamed)."""
+        narrative = self.query_one("#narrative", RichLog)
 
         # Show narrative response
         if response_text:
