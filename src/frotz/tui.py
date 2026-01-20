@@ -15,7 +15,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Input, Static, RichLog
+from textual.widgets import Input, Static, RichLog
 
 from .agent import GameSession
 from .state import get_game_state
@@ -59,9 +59,8 @@ class DebugScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="debug-container"):
-            yield Static("LLM Context", id="debug-header")
+            yield Static("LLM Context (press d or escape to return)", id="debug-header")
             yield Static(self.context, id="debug-content")
-        yield Footer()
 
     def action_quit_app(self) -> None:
         """Quit the application."""
@@ -70,6 +69,9 @@ class DebugScreen(ModalScreen):
 
 class FrotzApp(App):
     """Frotz LM TUI application."""
+
+    # Disable default Textual chrome
+    ENABLE_COMMAND_PALETTE = False
 
     CSS = """
     #game-container {
@@ -100,15 +102,12 @@ class FrotzApp(App):
         dock: bottom;
         margin: 1 0;
     }
-
-    Footer {
-        dock: bottom;
-    }
     """
 
+    # Bindings hidden from display (no footer)
     BINDINGS = [
-        Binding("d", "show_debug", "Debug"),
-        Binding("q", "quit", "Quit"),
+        Binding("d", "show_debug", "Debug", show=False),
+        Binding("q", "quit", "Quit", show=False),
         Binding("escape", "focus_input", "Input", show=False),
     ]
 
@@ -119,13 +118,11 @@ class FrotzApp(App):
         self.session: GameSession | None = None
 
     def compose(self) -> ComposeResult:
-        yield Header()
         with VerticalScroll(id="game-container"):
             yield Static(id="room-header")
             yield Static(id="room-description")
-            yield RichLog(id="narrative", wrap=True, highlight=True, markup=True)
+            yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
         yield Input(placeholder="What do you do?")
-        yield Footer()
 
     def on_mount(self) -> None:
         """Initialize game session on mount."""
