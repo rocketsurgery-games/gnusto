@@ -288,6 +288,7 @@ class FrotzApp(App):
                             room=turn_data.get("room", ""),
                             player_command=turn_data.get("command", ""),
                             actions=turn_data.get("actions", []),
+                            results=turn_data.get("results", []),
                             narrative=turn_data.get("narrative", ""),
                         )
                         self.session.turn_history.append(turn)

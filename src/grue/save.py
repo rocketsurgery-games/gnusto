@@ -146,8 +146,9 @@ def save_game(
             room = turn.room
             command = _escape_string(turn.player_command)
             actions = " ".join(f'"{_escape_string(a)}"' for a in turn.actions)
+            results = " ".join(f'"{_escape_string(r)}"' for r in turn.results)
             narrative = _escape_string(turn.narrative)
-            lines.append(f'    (:room {room} :command "{command}" :actions ({actions}) :narrative "{narrative}")')
+            lines.append(f'    (:room {room} :command "{command}" :actions ({actions}) :results ({results}) :narrative "{narrative}")')
         lines.append("  )")
 
     lines.append(")")

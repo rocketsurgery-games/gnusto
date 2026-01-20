@@ -123,21 +123,32 @@ class TurnRecord:
 
     room: str
     player_command: str
-    actions: list[str]  # e.g., ["took @carton", "moved north"]
+    actions: list[str]  # e.g., ["examine @carton", "go south"]
+    results: list[str]  # e.g., ["Opened.", "Blocked: locked"]
     narrative: str  # LLM's final response
 
     def to_summary(self) -> str:
-        """Generate a one-line summary of this turn."""
+        """Generate a multi-line summary of this turn with results."""
+        lines = []
+        # Header: room and command
         actions_str = ", ".join(self.actions) if self.actions else "no actions"
-        return f"[{self.room}] {self.player_command} → {actions_str}"
+        lines.append(f"[{self.room}] {self.player_command} → {actions_str}")
+        # Results (indented, one per action where available)
+        for i, action in enumerate(self.actions):
+            result = self.results[i] if i < len(self.results) else ""
+            if result and result != "Done.":
+                lines.append(f"  → {result}")
+        return "\n".join(lines)
 
     def estimate_tokens(self) -> int:
         """Estimate token count for this turn when rendered to messages."""
         # User message: "[Previous turn in {room}]\nPlayer: {command}"
         user_tokens = estimate_tokens(f"[Previous turn in {self.room}]\nPlayer: {self.player_command}")
+        # Results add to context
+        results_tokens = sum(estimate_tokens(r) for r in self.results if r and r != "Done.")
         # Assistant message: narrative
         assistant_tokens = estimate_tokens(self.narrative)
-        return user_tokens + assistant_tokens + 8  # +8 for message overhead
+        return user_tokens + results_tokens + assistant_tokens + 8  # +8 for message overhead
 
 
 @dataclass
@@ -203,13 +214,26 @@ class GameSession:
             age = num_turns - 1 - i
 
             if age < self.recent_turns_full:
-                # Recent: full detail
-                user_content = f"[Previous turn in {turn.room}]\nPlayer: {turn.player_command}"
+                # Recent: full detail with results
+                user_lines = [f"[Previous turn in {turn.room}]", f"Player: {turn.player_command}"]
+                # Include action results (skip "Done." noise)
+                for j, action in enumerate(turn.actions):
+                    result = turn.results[j] if j < len(turn.results) else ""
+                    if result and result != "Done.":
+                        user_lines.append(f"  {action}: {result}")
+                    else:
+                        user_lines.append(f"  {action}")
+                user_content = "\n".join(user_lines)
                 assistant_content = turn.narrative
             elif age < self.recent_turns_full + self.medium_turns_brief:
-                # Medium: abbreviated narrative
-                user_content = f"[Turn in {turn.room}] {turn.player_command}"
-                # Take first sentence or first 100 chars
+                # Medium: abbreviated - command with results, brief narrative
+                user_lines = [f"[Turn in {turn.room}] {turn.player_command}"]
+                for j, action in enumerate(turn.actions):
+                    result = turn.results[j] if j < len(turn.results) else ""
+                    if result and result != "Done.":
+                        user_lines.append(f"  → {result}")
+                user_content = "\n".join(user_lines)
+                # Take first sentence or first 100 chars of narrative
                 narrative = turn.narrative
                 if ". " in narrative:
                     assistant_content = narrative[:narrative.index(". ") + 1]
@@ -330,8 +354,9 @@ class GameSession:
         # Build fresh messages: history + current state + command
         working_messages = self._build_messages(initial_state, user_input)
 
-        all_results: list[str] = []
-        all_actions: list[str] = []  # Track actions for TurnRecord
+        all_results: list[str] = []  # Results returned to caller
+        all_actions: list[str] = []  # Action summaries for TurnRecord
+        all_action_results: list[str] = []  # Results paired with actions for TurnRecord
         final_response_text = ""
         iteration = 0
 
@@ -383,9 +408,10 @@ class GameSession:
                 if on_action and result and result != "Done.":
                     on_action(result)
 
-                # Track action for history
+                # Track action and result for history
                 action_summary = self._summarize_tool_call(tool_call)
                 all_actions.append(action_summary)
+                all_action_results.append(result)
 
                 if self.debug:
                     _debug_log("Tool Result", result, style="green")
@@ -420,6 +446,7 @@ class GameSession:
             room=initial_room,
             player_command=user_input,
             actions=all_actions,
+            results=all_action_results,
             narrative=final_response_text,
         )
         self.turn_history.append(turn_record)
@@ -723,6 +750,7 @@ Slash Commands:
                     room=turn_data.get("room", ""),
                     player_command=turn_data.get("command", ""),
                     actions=turn_data.get("actions", []),
+                    results=turn_data.get("results", []),
                     narrative=turn_data.get("narrative", ""),
                 )
                 session.turn_history.append(turn)
