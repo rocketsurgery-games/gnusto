@@ -552,6 +552,41 @@ class GameSession:
         """Format game state for debug display - shows exactly what LLM sees."""
         return state.to_context_string()
 
+    def format_debug_context(self) -> str:
+        """Format full LLM context for debug display (history + current state)."""
+        lines = []
+
+        # Turn history summary
+        lines.append("## Turn History")
+        if not self.turn_history:
+            lines.append("(no turns yet)")
+        else:
+            num_turns = len(self.turn_history)
+            turns_shown = min(num_turns, self.max_history_turns)
+            lines.append(f"({num_turns} turns, showing last {turns_shown})")
+            lines.append("")
+
+            # Show turns with tier indicators
+            turns_to_show = self.turn_history[-self.max_history_turns:]
+            for i, turn in enumerate(turns_to_show):
+                age = len(turns_to_show) - 1 - i
+                if age < self.recent_turns_full:
+                    tier = "FULL"
+                elif age < self.recent_turns_full + self.medium_turns_brief:
+                    tier = "BRIEF"
+                else:
+                    tier = "SUMMARY"
+
+                lines.append(f"[{tier}] {turn.to_summary()}")
+        lines.append("")
+
+        # Current state
+        lines.append("## Current Game State")
+        state = self.get_state()
+        lines.append(state.to_context_string())
+
+        return "\n".join(lines)
+
     def _format_action_result(self, result: Any) -> str:
         """Format an action result for display."""
         if isinstance(result, ActionDone):
@@ -600,8 +635,7 @@ Slash Commands:
         return True
 
     elif cmd in ("state", "s"):
-        state = session.get_state()
-        print(state.to_context_string())
+        print(session.format_debug_context())
         return True
 
     elif cmd == "eval":

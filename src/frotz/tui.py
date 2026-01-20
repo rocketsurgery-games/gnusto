@@ -172,10 +172,9 @@ class FrotzApp(App):
         self.query_one("#room-description", Static).update("\n".join(desc_lines))
 
     def action_show_debug(self) -> None:
-        """Show debug screen with LLM context."""
+        """Show debug screen with full LLM context (history + state)."""
         if self.session:
-            state = get_game_state(self.session.runtime)
-            context = state.to_context_string()
+            context = self.session.format_debug_context()
             self.push_screen(DebugScreen(context))
 
     def action_focus_input(self) -> None:
