@@ -8,7 +8,8 @@
 
 (room @aero-lobby
   :description "Aero Lobby"
-  :ldesc "This is the lobby of the Aeronautical Engineering Building. Stairs lead down and a corridor heads south towards the main building."
+  :ldesc "This is the lobby of the Aeronautical Engineering Building. Stairs lead down and a corridor heads south
+          towards the main building."
   :properties (:lit true)
   :exits ((south :to @inf-1)
           (down :to @aero-stairs)))
@@ -23,7 +24,8 @@
 
 (room @sub-basement
   :description "Subbasement"
-  :ldesc "This is the subbasement of the Aeronautical Engineering Building. A stairway leads up. A narrow crack in the northwest corner of the room opens into a larger space."
+  :ldesc "This is the subbasement of the Aeronautical Engineering Building. A stairway leads up. A narrow crack in the
+          northwest corner of the room opens into a larger space."
   :properties (:lit true)
   :exits ((up :to @aero-stairs)
           (nw :to @tomb :via @tomb-squeeze-barrier)))
@@ -40,7 +42,10 @@
     :describe (fn ()
       (success :context
         ((description
-          (str "This is a tiny, narrow, ill-fitting room. It appears to have been a left over space from the joining of two preexisting buildings. It is roughly coffin shaped. The walls are covered by decades of overlaid graffiti, but there is one which is painted in huge fluorescent letters that were apparently impossible for later artists to completely deface. On the floor is a rusty access hatch"
+          (str "This is a tiny, narrow, ill-fitting room. It appears to have been a left over space from the joining of
+                two preexisting buildings. It is roughly coffin shaped. The walls are covered by decades of overlaid
+                graffiti, but there is one which is painted in huge fluorescent letters that were apparently impossible for
+                later artists to completely deface. On the floor is a rusty access hatch"
                (cond
                  ((= (:attached-to @padlock) @access-hatch) " locked with a huge padlock")
                  ((:open @access-hatch) " which is open")
@@ -101,12 +106,14 @@
 (object @padlock
   :location @access-hatch
   :description "padlock"
-  :properties (:nodesc true :takeable true :trytake true :locked true :openable true :attached-to @access-hatch)  ; Track what padlock is attached to (nil = not attached)
+  :properties (:nodesc true :takeable true :trytake true :locked true :openable true
+    :attached-to @access-hatch)  ; Track what padlock is attached to (nil = not attached)
 
   :behaviors (
     :examine (fn ()
       (success :message
-        (str "The padlock has been spray painted many times by graffiti artists. It's currently fluorescent purple. In spite of the many coats of paint, the lock manages to be rusty and, in fact, almost slimy-looking. The padlock is "
+        (str "The padlock has been spray painted many times by graffiti artists. It's currently fluorescent purple. In
+              spite of the many coats of paint, the lock manages to be rusty and, in fact, almost slimy-looking. The padlock is "
              (if (:locked ?self)
                (str "locked"
                     (if (= (:attached-to @padlock) @access-hatch)
@@ -143,6 +150,6 @@
           '((set ?self :locked false)
             (set @padlock :attached-to nil)
             (move ?self (loc @player))
-            (success :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls to the floor.")))))))
+            (success :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls
+                               to the floor.")))))))
 
-; Note: @bolt-cutters is now defined in urchins.grue (obtained from individual urchin)
