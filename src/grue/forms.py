@@ -188,6 +188,7 @@ class GrueWorld:
     """
     name: str = ""
     description: str = ""
+    intro: str = ""  # Introductory text shown at game start
     player: str = ""  # Entity name of the player (e.g., "@player")
     rooms: dict[str, GrueRoom] = field(default_factory=dict)
     objects: dict[str, GrueObject] = field(default_factory=dict)
@@ -530,13 +531,15 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
 
 @form("world")
 def _parse_world(expr: SList, world: GrueWorld) -> None:
-    """Parse (world :name "..." :description "..." :player @entity)."""
+    """Parse (world :name "..." :description "..." :intro "..." :player @entity)."""
     kwargs = parse_kwargs(list(expr.items[1:]))
 
     if "name" in kwargs:
         world.name = expect_string(kwargs["name"], "world name")
     if "description" in kwargs:
         world.description = expect_string(kwargs["description"], "world description")
+    if "intro" in kwargs:
+        world.intro = expect_string(kwargs["intro"], "world intro")
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
 

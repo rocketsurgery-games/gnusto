@@ -1,6 +1,7 @@
 (world
   :name "The Lurking Horror"
   :description "Conversion of Infocom's _The Lurking Horror_ to FrotzLM / Grue"
+  :intro "You've waited until the last minute again. This time it's the end of the term, so all the TechNet terminals in the dorm are occupied. So, off you go to the old Comp Center. Too bad it's the worst storm of the winter (Murphy's Law, right?), and you practically froze to death slogging over here from the dorm. Not to mention jumping at every shadow, what with all the recent disappearances. Time to find a free machine, get to work, and write that twenty page paper."
   :player @player)
 
 (object @player

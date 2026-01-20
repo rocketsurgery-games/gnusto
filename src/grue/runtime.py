@@ -610,11 +610,43 @@ class GrueRuntime:
         return room.description
 
     def get_object_description(self, obj_name: str) -> str:
-        """Get an object's description."""
+        """Get an object's short description (name)."""
         obj = self.world.objects.get(obj_name)
         if obj:
             return obj.description
         return ""
+
+    def get_object_fdesc(self, obj_name: str) -> str:
+        """Get an object's first/look description for room listings.
+
+        Checks for :describe behavior first (for dynamic descriptions),
+        then falls back to fdesc, then ldesc.
+        """
+        obj = self.world.objects.get(obj_name)
+        if not obj:
+            return ""
+
+        # Check for :describe behavior (dynamic description)
+        describe_behavior = None
+        for b in obj.behaviors:
+            if b.verb == "describe":
+                describe_behavior = b
+                break
+
+        if describe_behavior is not None:
+            # Evaluate the :describe behavior
+            bindings = {"self": obj_name}
+            entity_scope = self._build_entity_scope(obj.nested_forms)
+            result = self._evaluate_behavior(describe_behavior, bindings, entity_scope)
+
+            # Extract description from context
+            if result.context:
+                for key, value in result.context:
+                    if key == "description":
+                        return str(value)
+
+        # Fall back to static description
+        return obj.fdesc or obj.ldesc or ""
 
     def get_visible_objects(self, for_description: bool = True) -> list[str]:
         """Get objects visible to the player.

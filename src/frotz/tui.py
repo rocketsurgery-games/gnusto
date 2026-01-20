@@ -132,6 +132,12 @@ class FrotzApp(App):
         self.session = GameSession.from_game_file(self.game_path, debug=self.start_debug)
         self.title = f"Frotz LM - {self.game_path}"
 
+        # Show intro text if available
+        if self.session.runtime.world.intro:
+            narrative = self.query_one("#narrative", RichLog)
+            narrative.write(self.session.runtime.world.intro)
+            narrative.write("")
+
         self._update_display()
         self.query_one(Input).focus()
 

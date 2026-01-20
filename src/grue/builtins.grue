@@ -19,9 +19,14 @@
 (defn held? (?obj)
   (= (loc ?obj) (player)))
 
-; (here? OBJ) - is OBJ in the same room as the player?
-(defn here? (?obj)
-  (= (loc ?obj) (loc (player))))
+; (here? ARG) - polymorphic location check:
+;   If ARG is a room: is the player in that room?
+;   If ARG is an object: is the object in the same room as the player?
+; This matches ZIL's HERE? which can take either rooms or objects.
+(defn here? (?arg)
+  (if (room? ?arg)
+    (= (loc (player)) ?arg)
+    (= (loc ?arg) (loc (player)))))
 
 ; (in? OBJ CONTAINER) - is OBJ directly inside CONTAINER?
 (defn in? (?obj ?container)

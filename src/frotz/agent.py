@@ -686,6 +686,11 @@ def play_game(game_path: str, debug: bool = False) -> None:
     print("Game Start")
     print("=" * 40)
 
+    # Show intro text if available
+    if session.runtime.world.intro:
+        print()
+        print(session.runtime.world.intro)
+
     # Show initial state
     initial_state = session.get_state()
     if debug:

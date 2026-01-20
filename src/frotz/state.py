@@ -193,12 +193,8 @@ def _get_object_info_with_contents(
     """Get object info including available behaviors and nested contents."""
     desc = runtime.get_object_description(obj_name)
 
-    # Get fdesc/ldesc for natural room listings
-    fdesc = ""
-    obj_def = runtime.world.objects.get(obj_name)
-    if obj_def:
-        # Prefer fdesc if available, otherwise ldesc
-        fdesc = obj_def.fdesc or obj_def.ldesc or ""
+    # Get fdesc for natural room listings (evaluates dynamic :describe behavior)
+    fdesc = runtime.get_object_fdesc(obj_name)
 
     # Get behaviors from world definition
     # Track verb -> formatted string (with params)
