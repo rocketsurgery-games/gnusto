@@ -85,10 +85,10 @@
 
   :location @terminal-room
   :on-turn (condp = (:help-stage @hacker)
-    0 '((set @hacker :help-stage 1) (success :stage 1 :description stage1-desc))
-    1 '((set @hacker :help-stage 2) (success :stage 2 :description stage2-desc))
-    2 '((set @hacker :help-stage 3) (success :stage 3 :description stage3-desc))
-    '((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description stage4-desc))))
+    0 `((set @hacker :help-stage 1) (success :stage 1 :description ,stage1-desc))
+    1 `((set @hacker :help-stage 2) (success :stage 2 :description ,stage2-desc))
+    2 `((set @hacker :help-stage 3) (success :stage 3 :description ,stage3-desc))
+    `((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description ,stage4-desc))))
 
 ; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
