@@ -46,7 +46,8 @@
           (blocked :reason possessed
                    :compelled true
                    :forced-target @more-box
-                   :message "Instead, you find your finger moving towards the MORE box, and you touch it. The screen feels oddly cold."))
+                   :message "Instead, you find your finger moving towards the MORE box, and you touch it. The screen
+                            feels oddly cold."))
 
         ; Default - allow action to proceed
         (true (default))))))
@@ -78,9 +79,17 @@
 ; I-HACKER-HELPS: Multi-stage cutscene when hacker helps with PC
 ; Queued by :help behavior, advances each turn player is in terminal-room
 (event hacker-helps
-  (def stage1-desc "The hacker wanders over, trying to look nonchalant. \"Losing, huh?\" he asks wittily. He glances at your terminal, which displays a pattern of snow and unusual characters. He appears somewhat excited.")
-  (def stage2-desc "The hacker, mumbling under his breath, begins a flurry of activity. First the screen returns to something nearly normal, then windows begin popping up like toadstools after a rain.")
-  (def stage3-desc "The hacker types furiously. After a while he says, \"Chomping file system. Your directory has gone seriously west. I fixed it.\" He checks the screen. \"It was mixed up on the file server with some files from the Department of Alchemy.\" He grunts. \"People's names for their nodes are getting weird. This one is called 'Lovecraft.'\" He pauses. \"Your paper is gone, though. Sorry. Maybe they could help you down there.\"")
+  (def stage1-desc "The hacker wanders over, trying to look nonchalant. \"Losing, huh?\" he asks wittily. He glances at
+    your terminal, which displays a pattern of snow and unusual characters. He appears somewhat excited.")
+
+  (def stage2-desc "The hacker, mumbling under his breath, begins a flurry of activity. First the screen returns to
+    something nearly normal, then windows begin popping up like toadstools after a rain.")
+
+  (def stage3-desc "The hacker types furiously. After a while he says, \"Chomping file system. Your directory has gone
+    seriously west. I fixed it.\" He checks the screen. \"It was mixed up on the file server with some files from the
+    Department of Alchemy.\" He grunts. \"People's names for their nodes are getting weird. This one is called
+    'Lovecraft.'\" He pauses. \"Your paper is gone, though. Sorry. Maybe they could help you down there.\"")
+
   (def stage4-desc "The hacker wanders back to his terminal and returns to his hacking.")
 
   :location @terminal-room
@@ -93,22 +102,40 @@
 ; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
 (event food-hint
+  (def hint1 "I could stand a little snack, though.")
+  (def hint2 "I don't know where I can get something to eat, what with all the snow.")
+  (def hint3 "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving.")
+  (def hint4 "Why don't you see if you can cons up some food? Then I might be able to do something for you.")
+
   :location @terminal-room
   :on-turn (condp = (:food-hint @hacker)
-    1 '((set @hacker :food-hint 2) (queue food-hint 2) (success :context ((hint "I could stand a little snack, though."))))
-    2 '((set @hacker :food-hint 3) (queue food-hint 2) (success :context ((hint "I don't know where I can get something to eat, what with all the snow."))))
-    3 '((set @hacker :food-hint 4) (queue food-hint 2) (success :context ((hint "I'd hate to leave, with the machines so empty. On the other hand, I'm seriously starving."))))
-    4 '((set @hacker :food-hint 0) (dequeue food-hint) (success :context ((hint "Why don't you see if you can cons up some food? Then I might be able to do something for you."))))
+    1 '((set @hacker :food-hint 2) (queue food-hint 2) (success :context ((hint hint1))))
+    2 '((set @hacker :food-hint 3) (queue food-hint 2) (success :context ((hint hint2))))
+    3 '((set @hacker :food-hint 4) (queue food-hint 2) (success :context ((hint hint3))))
+    4 '((set @hacker :food-hint 0) (dequeue food-hint) (success :context ((hint hint4))))
     '((dequeue food-hint) (success))))
 
 ; I-COMPULSION: Possession event - player is compelled to read the odd paper
 ; Triggered by reading @odd-paper. Advances through 4 pages of disturbing content,
 ; then teleports player to @yuggoth (nightmare realm). Player cannot resist.
 (event compulsion
-  (def page1-desc "The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort of \"Olde English\" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English.")
-  (def page2-desc "The second page is much like the first, but around the edges, not when you look at it straight, it's almost readable. There is something about a \"summoning,\" or a \"visitor.\"")
-  (def page3-desc "The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing.\n\nThere is a translation, or notes for one, typed between the lines of the poem:\n\n\"He returns, he is called back (?)\nThe loyal ones (acolytes?) make a sacrifice\nThose who survive will meet him (be absorbed? eaten?)\nThey will live, yet die\nForever will be (is?) nothing to them (to him?)\n\n\"His place (lair? burrow?) must be prepared\nHis food (offerings?) must be prepared\nCall him forth (invite him?) with great power\nOnly an acceptable (tasteful?) sacrifice will call him forth\nHe will be grateful (satiated?)\"\n\nThe rest is even more fragmentary.")
-  (def page4-desc "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?")
+  (def page1-desc "The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort
+    of \"Olde English\" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate
+    pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English.")
+
+  (def page2-desc "The second page is much like the first, but around the edges, not when you look at it straight, it's
+    almost readable. There is something about a \"summoning,\" or a \"visitor.\"")
+
+  (def page3-desc "The third page is in the same script as the first, but laid out like a poem. There are woodcut
+    illustrations which are queasily disturbing.\n\nThere is a translation, or notes for one, typed between the lines of
+    the poem:\n\n\"He returns, he is called back (?)\nThe loyal ones (acolytes?) make a sacrifice\nThose who survive
+    will meet him (be absorbed? eaten?)\nThey will live, yet die\nForever will be (is?) nothing to them (to
+    him?)\n\n\"His place (lair? burrow?) must be prepared\nHis food (offerings?) must be prepared\nCall him forth
+    (invite him?) with great power\nOnly an acceptable (tasteful?) sacrifice will call him forth\nHe will be grateful
+    (satiated?)\"\n\nThe rest is even more fragmentary.")
+
+  (def page4-desc "The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and
+    repelled at the same time, you wonder: is that a mouth, and what is in it?")
 
   :location @terminal-room
   :on-turn (condp = (:comp-cnt @hacker)
