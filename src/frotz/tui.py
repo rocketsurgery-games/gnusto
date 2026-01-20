@@ -49,7 +49,7 @@ class DebugScreen(ModalScreen):
     }
 
     #debug-content {
-        color: $text-muted;
+        color: grey;  /* Explicit color, not Textual design token */
     }
     """
 
