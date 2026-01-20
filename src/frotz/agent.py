@@ -9,12 +9,12 @@ results. The default mode uses plain text for automation compatibility.
 import json
 import sys
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from grue.parser import load_grue
 from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
 from grue.runtime import ActionResult, GrueRuntime
-from grue.sexpr import Keyword, SList, Symbol, to_string
+from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
 from .state import GameState, ObjectInfo, get_game_state
@@ -70,18 +70,6 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
         else:
             inv_items = ", ".join(obj.description for obj in state.inventory)
         print(f"Carrying: {inv_items}")
-    print()
-
-
-def render_response(response_text: str, action_results: list[str]) -> None:
-    """Render agent response and action results as plain text."""
-    for result in action_results:
-        if result and result != "Done.":
-            print(result)
-
-    if response_text:
-        print()
-        print(response_text)
     print()
 
 
@@ -292,7 +280,12 @@ class GameSession:
         """Get current game state as context string for agent."""
         return self.get_state().to_context_string()
 
-    def process_input(self, user_input: str, max_iterations: int = 10) -> tuple[str, list[str]]:
+    def process_input(
+        self,
+        user_input: str,
+        max_iterations: int = 10,
+        on_action: "Callable[[str], None] | None" = None,
+    ) -> tuple[str, list[str]]:
         """
         Process natural language input and return response.
 
@@ -307,6 +300,7 @@ class GameSession:
         Args:
             user_input: Natural language command from player
             max_iterations: Maximum number of LLM calls (default 10)
+            on_action: Optional callback for streaming action results
 
         Returns:
             Tuple of (response text, action results list)
@@ -363,6 +357,10 @@ class GameSession:
                 result = self._execute_tool(tool_call)
                 iteration_results.append((tool_call.id, result))
                 all_results.append(result)
+
+                # Stream result if callback provided
+                if on_action and result and result != "Done.":
+                    on_action(result)
 
                 # Track action for history
                 action_summary = self._summarize_tool_call(tool_call)
@@ -602,7 +600,8 @@ Slash Commands:
             print("Usage: /eval <grue-expression>")
             return True
         try:
-            result = session.evaluator.eval_string(arg)
+            expr = parse(arg)
+            result = session.evaluator.eval(expr)
             print(f"=> {result}")
         except Exception as e:
             print(f"Error: {e}")
@@ -676,12 +675,19 @@ def play_game(game_path: str, debug: bool = False) -> None:
             print("Goodbye!")
             break
 
-        # Process game command
-        response_text, results = session.process_input(user_input)
+        # Process game command with streaming output
+        def on_action(result: str) -> None:
+            print(f"  {result}")
+
+        response_text, results = session.process_input(user_input, on_action=on_action)
 
         if session.debug:
             state = session.get_state()
             _debug_log("LLM Context", session._format_state_debug(state))
 
-        render_response(response_text, results)
+        # Only show response (results already streamed)
+        if response_text:
+            print()
+            print(response_text)
+        print()
         render_game_state(session.get_state(), debug=session.debug)
