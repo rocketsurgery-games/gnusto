@@ -68,7 +68,7 @@ class DebugScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="debug-container"):
-            yield Static("LLM Context (F3 or Escape to return)", id="debug-header")
+            yield Static("LLM Context (ESC to return)", id="debug-header")
             yield Static(self.context, id="debug-content")
 
     def action_quit_app(self) -> None:
@@ -103,19 +103,9 @@ class FrotzApp(App):
     #narrative {
         height: 1fr;
         border-bottom: solid grey;
-        padding: 0 1 0 1;
+        padding: 0 1;
         overflow-x: hidden;
-        scrollbar-size-vertical: 1;
-        scrollbar-gutter: stable;
-    }
-
-    #narrative:focus {
-        /* No visible focus indicator */
-    }
-
-    /* Hide scrollbar - use keyboard navigation instead */
-    RichLog > .scrollbar--vertical {
-        display: none;
+        scrollbar-visibility: hidden;
     }
 
     /* Input at bottom - minimal styling, no border */
@@ -159,7 +149,7 @@ class FrotzApp(App):
             yield Static(id="room-header")
             yield Static(id="room-description")
         # Narrative panel - RichLog handles its own scrolling
-        yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
+        yield RichLog(id="narrative", wrap=True, highlight=False, markup=True, can_focus=False)
         yield Input(placeholder="What do you do?")
 
     def on_mount(self) -> None:
