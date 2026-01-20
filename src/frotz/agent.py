@@ -368,11 +368,17 @@ class GameSession:
                         args_str,
                         style="magenta",
                     )
+
+                # Stream action description before executing
+                if on_action:
+                    action_desc = self._describe_action(tool_call)
+                    on_action(action_desc)
+
                 result = self._execute_tool(tool_call)
                 iteration_results.append((tool_call.id, result))
                 all_results.append(result)
 
-                # Stream result if callback provided
+                # Stream result if callback provided (skip generic "Done.")
                 if on_action and result and result != "Done.":
                     on_action(result)
 
@@ -440,6 +446,32 @@ class GameSession:
             return "wait"
         else:
             return f"{name}(...)"
+
+    def _describe_action(self, tool_call: ToolCall) -> str:
+        """Generate a natural language description of what the agent is doing."""
+        name = tool_call.name
+        args = tool_call.arguments
+
+        if name == "do_action":
+            target = args.get("target", "?")
+            verb = args.get("verb", "?")
+            action_args = args.get("args", [])
+            # Convert verb to present participle
+            if verb.endswith("e"):
+                verb_ing = verb[:-1] + "ing"
+            else:
+                verb_ing = verb + "ing"
+            verb_ing = verb_ing.capitalize()
+            if action_args:
+                return f"{verb_ing} {target} with {', '.join(str(a) for a in action_args)}..."
+            return f"{verb_ing} {target}..."
+        elif name == "move":
+            direction = args.get("direction", "?")
+            return f"Going {direction}..."
+        elif name == "wait":
+            return "Waiting..."
+        else:
+            return f"{name}..."
 
     def _build_assistant_tool_message(self, response: "LLMResponse") -> dict[str, Any]:
         """Build an assistant message with tool calls for the conversation history."""
