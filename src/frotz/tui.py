@@ -26,7 +26,7 @@ class DebugScreen(ModalScreen):
 
     BINDINGS = [
         Binding("escape", "dismiss", "Back"),
-        Binding("d", "dismiss", "Back"),
+        Binding("ctrl+d", "dismiss", "Back"),
         Binding("q", "quit_app", "Quit"),
     ]
 
@@ -107,7 +107,7 @@ class FrotzApp(App):
 
     # Bindings hidden from display (no footer)
     BINDINGS = [
-        Binding("d", "show_debug", "Debug", show=False),
+        Binding("ctrl+d", "show_debug", "Debug", show=False),
         Binding("q", "quit", "Quit", show=False),
         Binding("escape", "focus_input", "Input", show=False),
     ]
@@ -145,9 +145,9 @@ class FrotzApp(App):
         # Update room header
         header = self.query_one("#room-header", Static)
         if state.vehicle:
-            header.update(f"{state.room} ({state.vehicle[1]} {state.vehicle[0]})")
+            header.update(f"{state.room_name} ({state.vehicle[1]} {state.vehicle[0]})")
         else:
-            header.update(state.room)
+            header.update(state.room_name)
 
         # Update room description
         desc_lines = [state.room_description]

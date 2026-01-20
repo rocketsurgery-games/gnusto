@@ -47,7 +47,7 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
         debug: If True, use IDs instead of descriptions
     """
     # Room header
-    print(f"\n=== {state.room} ===")
+    print(f"\n=== {state.room_name} ===")
     if state.vehicle:
         print(f"(You are {state.vehicle[1]} the {state.vehicle[0]})")
     print()

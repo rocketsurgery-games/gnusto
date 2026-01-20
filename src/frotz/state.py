@@ -40,7 +40,8 @@ class RoomInfo:
 class GameState:
     """Current game state for agent context."""
 
-    room: str
+    room: str  # Room ID like @terminal-room
+    room_name: str  # Human-readable name like "Terminal Room"
     room_description: str
     visible_objects: list[ObjectInfo]
     inventory: list[ObjectInfo]
@@ -108,6 +109,8 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
         GameState with current room, objects, inventory, exits
     """
     room = runtime.get_player_room()
+    room_def = runtime.world.rooms.get(room)
+    room_name = room_def.description if room_def else room
     room_desc = runtime.get_room_description()
     exits = runtime.get_exits()
     vehicle = runtime.get_player_vehicle()
@@ -160,6 +163,7 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
 
     return GameState(
         room=room,
+        room_name=room_name,
         room_description=room_desc,
         visible_objects=visible_objects,
         inventory=inventory,
