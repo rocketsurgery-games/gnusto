@@ -91,15 +91,12 @@ class FrotzApp(App):
     }
 
     /* Narrative panel: fills remaining space, scrollable */
-    #narrative-container {
+    #narrative {
         height: 1fr;
         border: solid grey;
         padding: 1;
         margin-top: 1;
-    }
-
-    #narrative {
-        height: 100%;
+        overflow-x: hidden;  /* No horizontal scrolling */
     }
 
     Input {
@@ -126,9 +123,8 @@ class FrotzApp(App):
         with Vertical(id="room-panel"):
             yield Static(id="room-header")
             yield Static(id="room-description")
-        # Narrative panel - scrollable, fills remaining space
-        with VerticalScroll(id="narrative-container"):
-            yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
+        # Narrative panel - RichLog handles its own scrolling
+        yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
         yield Input(placeholder="What do you do?")
 
     def on_mount(self) -> None:
