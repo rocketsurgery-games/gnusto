@@ -201,6 +201,34 @@ def _parse_keyword_list(items: list[SExpr]) -> dict[str, Any]:
     return result
 
 
+def _parse_keyword_list_from_python(items: list[Any]) -> dict[str, Any]:
+    """Parse a keyword argument list that's already been converted to Python values.
+
+    Handles lists like: [':location', '@tunnel', ':properties', {...}]
+    where keywords are strings starting with ':'.
+    """
+    result = {}
+    i = 0
+    while i < len(items):
+        item = items[i]
+        # Check for keyword (Keyword object or string starting with ':')
+        if isinstance(item, Keyword):
+            key = item.name
+        elif isinstance(item, str) and item.startswith(":"):
+            key = item[1:]
+        else:
+            i += 1
+            continue
+
+        if i + 1 < len(items):
+            result[key] = items[i + 1]
+            i += 2
+        else:
+            result[key] = None
+            i += 1
+    return result
+
+
 def parse_save_file(path: Path) -> SaveData:
     """Parse a save file into SaveData."""
     content = path.read_text()
@@ -216,11 +244,13 @@ def parse_save_file(path: Path) -> SaveData:
     data = _parse_keyword_list(expr.items[1:])
 
     # Extract objects
+    # Note: _parse_value already converted SList to Python list
     objects = {}
     for obj_expr in data.get("objects", []):
-        if isinstance(obj_expr, SList) and obj_expr.items:
-            name = _parse_value(obj_expr.items[0])
-            obj_data = _parse_keyword_list(obj_expr.items[1:])
+        if isinstance(obj_expr, list) and obj_expr:
+            name = obj_expr[0]
+            # Parse remaining items as keyword list
+            obj_data = _parse_keyword_list_from_python(obj_expr[1:])
             objects[name] = {
                 "location": obj_data.get("location"),
                 "properties": obj_data.get("properties", {}),
@@ -229,9 +259,9 @@ def parse_save_file(path: Path) -> SaveData:
     # Extract queues
     queues = {}
     for queue_expr in data.get("queues", []):
-        if isinstance(queue_expr, SList) and len(queue_expr.items) >= 2:
-            event = _parse_value(queue_expr.items[0])
-            countdown = _parse_value(queue_expr.items[1])
+        if isinstance(queue_expr, list) and len(queue_expr) >= 2:
+            event = queue_expr[0]
+            countdown = queue_expr[1]
             queues[event] = countdown
 
     # Extract history
@@ -239,9 +269,6 @@ def parse_save_file(path: Path) -> SaveData:
     for turn_expr in data.get("history", []):
         if isinstance(turn_expr, dict):
             history.append(turn_expr)
-        elif isinstance(turn_expr, SList):
-            turn_data = _parse_keyword_list(turn_expr.items)
-            history.append(turn_data)
 
     return SaveData(
         version=data.get("version", 1),
