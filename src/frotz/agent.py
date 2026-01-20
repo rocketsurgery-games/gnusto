@@ -14,6 +14,7 @@ from typing import Any, Callable
 from grue.parser import load_grue
 from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
 from grue.runtime import ActionResult, GrueRuntime
+from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
@@ -658,6 +659,9 @@ def _handle_slash_command(session: "GameSession", command: str) -> bool:
         print("""
 Slash Commands:
   /help, /h, /?     Show this help
+  /save [slot]      Save game (default slot: "default")
+  /load [slot]      Load game
+  /saves            List available saves
   /debug, /d        Toggle debug mode (show LLM context)
   /state, /s        Show current game state (LLM context format)
   /eval <expr>      Evaluate a Grue expression
@@ -695,6 +699,49 @@ Slash Commands:
                 print(f"{i}. [{turn.room}] {turn.player_command}")
                 if turn.actions:
                     print(f"   Actions: {', '.join(turn.actions)}")
+        return True
+
+    elif cmd == "save":
+        slot = arg or "default"
+        try:
+            path = save_game(session.runtime, slot, session.turn_history)
+            print(f"Game saved to {path}")
+        except Exception as e:
+            print(f"Error saving: {e}")
+        return True
+
+    elif cmd == "load":
+        slot = arg or "default"
+        try:
+            history_data, warnings = load_game(session.runtime, slot)
+            for w in warnings:
+                print(f"Warning: {w}")
+            # Restore turn history
+            session.turn_history.clear()
+            for turn_data in history_data:
+                turn = TurnRecord(
+                    room=turn_data.get("room", ""),
+                    player_command=turn_data.get("command", ""),
+                    actions=turn_data.get("actions", []),
+                    narrative=turn_data.get("narrative", ""),
+                )
+                session.turn_history.append(turn)
+            print(f"Game loaded ({len(session.turn_history)} turns of history)")
+        except FileNotFoundError:
+            print(f"No save found for slot '{slot}'")
+        except Exception as e:
+            print(f"Error loading: {e}")
+        return True
+
+    elif cmd == "saves":
+        game_name = session.runtime.world.name or "unknown"
+        saves = list_saves(game_name)
+        if not saves:
+            print("No saves found.")
+        else:
+            print("Available saves:")
+            for slot, timestamp, path in saves:
+                print(f"  {slot}: {timestamp}")
         return True
 
     elif cmd in ("quit", "q"):

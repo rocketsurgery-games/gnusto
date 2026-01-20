@@ -22,7 +22,9 @@ from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Static, RichLog
 
-from .agent import GameSession
+from grue.save import save_game, load_game, list_saves
+
+from .agent import GameSession, TurnRecord
 from .state import get_game_state
 
 
@@ -260,9 +262,51 @@ class FrotzApp(App):
         narrative = self.query_one("#narrative", RichLog)
         parts = command[1:].split(maxsplit=1)
         cmd = parts[0].lower() if parts else ""
+        arg = parts[1] if len(parts) > 1 else ""
 
         if cmd in ("help", "h", "?"):
-            narrative.write("[dim]Commands: /help, /debug (F3), /quit | Scroll: Up/Down, PgUp/PgDn[/]")
+            narrative.write("[dim]Commands: /save, /load, /saves, /debug (F3), /quit | Scroll: Up/Down, PgUp/PgDn[/]")
+        elif cmd == "save":
+            slot = arg or "default"
+            if self.session:
+                try:
+                    path = save_game(self.session.runtime, slot, self.session.turn_history)
+                    narrative.write(f"[dim]Game saved to {path}[/]")
+                except Exception as e:
+                    narrative.write(f"[red]Error saving: {e}[/]")
+        elif cmd == "load":
+            slot = arg or "default"
+            if self.session:
+                try:
+                    history_data, warnings = load_game(self.session.runtime, slot)
+                    for w in warnings:
+                        narrative.write(f"[yellow]Warning: {w}[/]")
+                    # Restore turn history
+                    self.session.turn_history.clear()
+                    for turn_data in history_data:
+                        turn = TurnRecord(
+                            room=turn_data.get("room", ""),
+                            player_command=turn_data.get("command", ""),
+                            actions=turn_data.get("actions", []),
+                            narrative=turn_data.get("narrative", ""),
+                        )
+                        self.session.turn_history.append(turn)
+                    narrative.write(f"[dim]Game loaded ({len(self.session.turn_history)} turns of history)[/]")
+                    self._update_display()
+                except FileNotFoundError:
+                    narrative.write(f"[red]No save found for slot '{slot}'[/]")
+                except Exception as e:
+                    narrative.write(f"[red]Error loading: {e}[/]")
+        elif cmd == "saves":
+            if self.session:
+                game_name = self.session.runtime.world.name or "unknown"
+                saves = list_saves(game_name)
+                if not saves:
+                    narrative.write("[dim]No saves found.[/]")
+                else:
+                    narrative.write("[dim]Available saves:[/]")
+                    for slot, timestamp, _ in saves:
+                        narrative.write(f"[dim]  {slot}: {timestamp}[/]")
         elif cmd in ("debug", "d"):
             self.action_show_debug()
         elif cmd in ("quit", "q"):
