@@ -37,6 +37,16 @@ class RoomInfo:
 
 
 @dataclass
+class ExitInfo:
+    """Information about an exit for agent context."""
+
+    direction: str
+    destination_id: str  # Room ID like @smith-st
+    destination_name: str  # Human-readable like "Smith Street"
+    via: str | None = None  # Description of door/barrier, e.g., "elevator doors"
+
+
+@dataclass
 class GameState:
     """Current game state for agent context."""
 
@@ -45,7 +55,7 @@ class GameState:
     room_description: str
     visible_objects: list[ObjectInfo]
     inventory: list[ObjectInfo]
-    exits: dict[str, str]  # direction -> destination (for agent)
+    exits: list[ExitInfo]  # Rich exit information for agent
     nearby_rooms: list[RoomInfo] = field(default_factory=list)  # Unique adjacent rooms (for player)
     vehicle: tuple[str, str] | None = None  # (vehicle_name, preposition) if in vehicle
 
@@ -63,8 +73,13 @@ class GameState:
 
         # Exits
         if self.exits:
-            exits_str = ", ".join(f"{d} -> {dest}" for d, dest in self.exits.items())
-            lines.append(f"**Exits:** {exits_str}")
+            exit_parts = []
+            for exit in self.exits:
+                if exit.via:
+                    exit_parts.append(f"{exit.direction} -> {exit.destination_name} (via {exit.via})")
+                else:
+                    exit_parts.append(f"{exit.direction} -> {exit.destination_name}")
+            lines.append(f"**Exits:** {', '.join(exit_parts)}")
         else:
             lines.append("**Exits:** none")
         lines.append("")
@@ -112,7 +127,6 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
     room_def = runtime.world.rooms.get(room)
     room_name = room_def.description if room_def else room
     room_desc = runtime.get_room_description()
-    exits = runtime.get_exits()
     vehicle = runtime.get_player_vehicle()
     player = runtime.get_player_name()
     player_loc = runtime.get_player_location()
@@ -151,15 +165,36 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
         obj_info = _get_object_info_with_contents(runtime, name, visible_set)
         inventory.append(obj_info)
 
-    # Build unique nearby rooms list for player display
+    # Build rich exit information
+    exits = []
     nearby_rooms = []
     seen_rooms: set[str] = set()
-    for dest in exits.values():
-        if dest not in seen_rooms:
-            seen_rooms.add(dest)
-            room_def = runtime.world.rooms.get(dest)
-            if room_def:
-                nearby_rooms.append(RoomInfo(id=dest, description=room_def.description))
+
+    if room_def:
+        for exit in room_def.exits:
+            # Get destination room info
+            dest_room_def = runtime.world.rooms.get(exit.to)
+            dest_name = dest_room_def.description if dest_room_def else exit.to
+
+            # Get via object description if present
+            via_desc = None
+            if exit.via:
+                via_obj = runtime.world.objects.get(exit.via)
+                if via_obj:
+                    via_desc = via_obj.description
+
+            exits.append(ExitInfo(
+                direction=exit.direction,
+                destination_id=exit.to,
+                destination_name=dest_name,
+                via=via_desc,
+            ))
+
+            # Build unique nearby rooms list for player display
+            if exit.to not in seen_rooms:
+                seen_rooms.add(exit.to)
+                if dest_room_def:
+                    nearby_rooms.append(RoomInfo(id=exit.to, description=dest_room_def.description))
 
     return GameState(
         room=room,
