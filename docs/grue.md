@@ -690,11 +690,12 @@ GRUE has three categories of constructs, each with different evaluation semantic
 Declarative forms define the static structure of the game world. They are processed
 at parse time to build the `GrueWorld` datastructure and are not evaluated at runtime.
 
-#### `(world :name "..." :description "..." :player @entity)`
+#### `(world :name "..." :description "..." :player @entity :intro "...")`
 Game metadata and player declaration.
 - `:name` - Game title (optional)
 - `:description` - Game description (optional)
 - `:player` - Entity name of the player object (**required**)
+- `:intro` - Introductory text displayed at game start (optional)
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:
@@ -1432,9 +1433,6 @@ Setup can use any standard effect: `move!`, `set`, `set-prop!`, `queue!`, etc.
 
 4. **Complex conditionals** - ZIL has `PER` routines that do arbitrary computation.
    Can all such cases be expressed declaratively, or do we need an escape hatch?
-
-5. **Save/restore semantics** - How does save/restore interact with the
-   immutable state model? (Likely trivial - just serialize state)
 
 ## File Format
 
