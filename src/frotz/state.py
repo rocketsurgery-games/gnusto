@@ -115,21 +115,30 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
     player_loc = runtime.get_player_location()
 
     # Get all visible object names as a set for efficient lookup
-    visible_set = set(runtime.get_visible_objects())
+    # Use for_description=False to include nodesc objects - they're interactable
+    # even if not listed in prose descriptions (e.g., call buttons mentioned in ldesc)
+    visible_set = set(runtime.get_visible_objects(for_description=False))
     inventory_set = set(runtime.get_inventory())
 
     # Build tree of visible objects (excluding inventory)
-    # Top-level: objects directly in room or player's vehicle
+    # Top-level: objects directly in room, player's vehicle, or room's :visible list
     top_level_locs = {room}
     if player_loc and player_loc != room:
         top_level_locs.add(player_loc)  # Player's vehicle
+
+    # Get room's :visible list (objects explicitly made visible, e.g., call buttons)
+    room_def = runtime.world.rooms.get(room)
+    room_visible = set(room_def.visible) if room_def else set()
 
     visible_objects = []
     for name in visible_set:
         if name in inventory_set:
             continue
         obj_state = runtime.state.objects.get(name)
-        if obj_state and obj_state.location in top_level_locs:
+        if not obj_state:
+            continue
+        # Include if: in room/vehicle, OR explicitly in room's :visible list
+        if obj_state.location in top_level_locs or name in room_visible:
             obj_info = _get_object_info_with_contents(runtime, name, visible_set)
             visible_objects.append(obj_info)
 
