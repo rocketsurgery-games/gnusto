@@ -52,16 +52,25 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
         print(f"(You are {state.vehicle[1]} the {state.vehicle[0]})")
     print()
 
-    # Room description with object listings
+    # Room description
     print(state.room_description)
-    for obj in state.visible_objects:
-        if obj.fdesc:
+
+    # Object listings (visually separated from room description)
+    objects_with_fdesc = [obj for obj in state.visible_objects if obj.fdesc]
+    if objects_with_fdesc:
+        print()
+        for obj in objects_with_fdesc:
             print(obj.fdesc)
 
-    # Exits
-    if state.exits:
-        exits_str = ", ".join(f"{d} -> {dest}" for d, dest in state.exits.items())
-        print(f"\nExits: {exits_str}")
+    # Exits - use nearby_rooms for player-friendly display, exits for debug
+    if debug:
+        if state.exits:
+            exits_str = ", ".join(f"{d} -> {dest}" for d, dest in state.exits.items())
+            print(f"\nExits: {exits_str}")
+    else:
+        if state.nearby_rooms:
+            nearby_str = ", ".join(r.description for r in state.nearby_rooms)
+            print(f"\nNearby: {nearby_str}")
 
     # Inventory
     if state.inventory:

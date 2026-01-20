@@ -149,18 +149,22 @@ class FrotzApp(App):
         else:
             header.update(state.room)
 
-        # Update room description with objects
+        # Update room description
         desc_lines = [state.room_description]
-        for obj in state.visible_objects:
-            if obj.fdesc:
+
+        # Object listings (visually separated)
+        objects_with_fdesc = [obj for obj in state.visible_objects if obj.fdesc]
+        if objects_with_fdesc:
+            desc_lines.append("")  # Blank line separator
+            for obj in objects_with_fdesc:
                 desc_lines.append(obj.fdesc)
 
-        # Add exits
-        if state.exits:
-            exits_str = ", ".join(f"{d} → {dest}" for d, dest in state.exits.items())
-            desc_lines.append(f"\n[dim]Exits: {exits_str}[/]")
+        # Nearby rooms (player-friendly, deduplicated)
+        if state.nearby_rooms:
+            nearby_str = ", ".join(r.description for r in state.nearby_rooms)
+            desc_lines.append(f"\n[dim]Nearby: {nearby_str}[/]")
 
-        # Add inventory
+        # Inventory
         if state.inventory:
             inv_str = ", ".join(obj.description for obj in state.inventory)
             desc_lines.append(f"[dim]Carrying: {inv_str}[/]")
