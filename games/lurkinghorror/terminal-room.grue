@@ -112,12 +112,12 @@
 
   :location @terminal-room
   :on-turn (condp = (:comp-cnt @hacker)
-    0 '((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (success :page 1 :description page1-desc))
-    1 '((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (success :page 2 :description page2-desc))
-    2 '((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (success :page 3 :description page3-desc))
-    3 '((set @hacker :comp-cnt 4) (dequeue compulsion)
+    0 `((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (success :page 1 :description ,page1-desc))
+    1 `((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (success :page 2 :description ,page2-desc))
+    2 `((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (success :page 3 :description ,page3-desc))
+    3 `((set @hacker :comp-cnt 4) (dequeue compulsion)
         (move @more-box nil) (move @menu-box @pc)
         (move @player @yuggoth)
-        (success :page 4 :description page4-desc :transition "You faint, and when you awaken..."))
+        (success :page 4 :description ,page4-desc :transition "You faint, and when you awaken..."))
     '((dequeue compulsion) (success))))
 
