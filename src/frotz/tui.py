@@ -2,10 +2,15 @@
 Textual-based TUI for Frotz LM.
 
 A fullscreen terminal interface with:
-- Single main game view (room description, narrative log)
-- Input: natural language command entry
-- Debug screen: LLM context (press 'd' to view, escape to return)
-- Keyboard shortcuts for common actions
+- Room panel: current location and visible objects
+- Narrative panel: scrollable conversation history
+- Input: natural language command entry (always focused)
+- Debug screen: LLM context (Ctrl+D to toggle)
+
+Keyboard shortcuts:
+- Ctrl+D: Toggle debug screen
+- Ctrl+U/N: Scroll up/down
+- Ctrl+B/F: Page up/down
 
 Designed to work well at any terminal size (80x24 and up).
 """
@@ -38,18 +43,19 @@ class DebugScreen(ModalScreen):
     #debug-container {
         width: 100%;
         height: 100%;
-        border: solid yellow;
         padding: 1;
     }
 
     #debug-header {
         text-style: bold;
-        color: yellow;
+        color: grey;
+        border-bottom: solid grey;
+        padding-bottom: 1;
         margin-bottom: 1;
     }
 
     #debug-content {
-        color: grey;  /* Explicit color, not Textual design token */
+        color: grey;
     }
     """
 
@@ -59,7 +65,7 @@ class DebugScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="debug-container"):
-            yield Static("LLM Context (press d or escape to return)", id="debug-header")
+            yield Static("LLM Context (Ctrl+D or Escape to return)", id="debug-header")
             yield Static(self.context, id="debug-content")
 
     def action_quit_app(self) -> None:
@@ -98,18 +104,27 @@ class FrotzApp(App):
         overflow-x: hidden;
     }
 
-    /* Input at bottom, no extra margins */
+    /* Input at bottom - minimal styling, no border */
     Input {
         dock: bottom;
         margin: 0;
+        border: none;
+        padding: 0 1;
+    }
+
+    /* Remove focus highlight from input */
+    Input:focus {
+        border: none;
     }
     """
 
-    # Bindings hidden from display (no footer)
+    # Bindings with priority=True to work even when input is focused
     BINDINGS = [
-        Binding("ctrl+d", "show_debug", "Debug", show=False),
-        Binding("q", "quit", "Quit", show=False),
-        Binding("escape", "focus_input", "Input", show=False),
+        Binding("ctrl+d", "show_debug", "Debug", show=False, priority=True),
+        Binding("ctrl+u", "scroll_up", "Scroll Up", show=False, priority=True),
+        Binding("ctrl+n", "scroll_down", "Scroll Down", show=False, priority=True),
+        Binding("ctrl+b", "page_up", "Page Up", show=False, priority=True),
+        Binding("ctrl+f", "page_down", "Page Down", show=False, priority=True),
     ]
 
     def __init__(self, game_path: str, debug: bool = False):
@@ -183,9 +198,21 @@ class FrotzApp(App):
             context = self.session.format_debug_context()
             self.push_screen(DebugScreen(context))
 
-    def action_focus_input(self) -> None:
-        """Focus the input field."""
-        self.query_one(Input).focus()
+    def action_scroll_up(self) -> None:
+        """Scroll narrative up a few lines."""
+        self.query_one("#narrative", RichLog).scroll_up(animate=False)
+
+    def action_scroll_down(self) -> None:
+        """Scroll narrative down a few lines."""
+        self.query_one("#narrative", RichLog).scroll_down(animate=False)
+
+    def action_page_up(self) -> None:
+        """Scroll narrative up a page."""
+        self.query_one("#narrative", RichLog).scroll_page_up(animate=False)
+
+    def action_page_down(self) -> None:
+        """Scroll narrative down a page."""
+        self.query_one("#narrative", RichLog).scroll_page_down(animate=False)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle player command submission."""
@@ -219,7 +246,7 @@ class FrotzApp(App):
         cmd = parts[0].lower() if parts else ""
 
         if cmd in ("help", "h", "?"):
-            narrative.write("[dim]Commands: /help, /debug (or press d), /quit[/]")
+            narrative.write("[dim]Commands: /help, /debug (Ctrl+D), /quit | Scroll: Ctrl+U/N, Ctrl+B/F[/]")
         elif cmd in ("debug", "d"):
             self.action_show_debug()
         elif cmd in ("quit", "q"):
