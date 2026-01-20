@@ -5,12 +5,12 @@ A fullscreen terminal interface with:
 - Room panel: current location and visible objects
 - Narrative panel: scrollable conversation history
 - Input: natural language command entry (always focused)
-- Debug screen: LLM context (Ctrl+D to toggle)
+- Debug screen: LLM context (F3 to toggle)
 
 Keyboard shortcuts:
-- Ctrl+D: Toggle debug screen
-- Ctrl+U/N: Scroll up/down
-- Ctrl+B/F: Page up/down
+- F3: Toggle debug screen
+- Up/Down, Ctrl+U/D: Scroll line by line
+- PgUp/PgDn, Ctrl+B/F: Scroll by page
 
 Designed to work well at any terminal size (80x24 and up).
 """
@@ -31,7 +31,7 @@ class DebugScreen(ModalScreen):
 
     BINDINGS = [
         Binding("escape", "dismiss", "Back"),
-        Binding("ctrl+d", "dismiss", "Back"),
+        Binding("f3", "dismiss", "Back"),
         Binding("q", "quit_app", "Quit"),
     ]
 
@@ -68,7 +68,7 @@ class DebugScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="debug-container"):
-            yield Static("LLM Context (Ctrl+D or Escape to return)", id="debug-header")
+            yield Static("LLM Context (F3 or Escape to return)", id="debug-header")
             yield Static(self.context, id="debug-content")
 
     def action_quit_app(self) -> None:
@@ -106,8 +106,16 @@ class FrotzApp(App):
         padding: 0 1 0 1;
         overflow-x: hidden;
         scrollbar-size-vertical: 1;
-        scrollbar-color: #333333;
-        scrollbar-background: transparent;
+        scrollbar-gutter: stable;
+    }
+
+    #narrative:focus {
+        /* No visible focus indicator */
+    }
+
+    /* Hide scrollbar - use keyboard navigation instead */
+    RichLog > .scrollbar--vertical {
+        display: none;
     }
 
     /* Input at bottom - minimal styling, no border */
@@ -126,9 +134,15 @@ class FrotzApp(App):
 
     # Bindings with priority=True to work even when input is focused
     BINDINGS = [
-        Binding("ctrl+d", "show_debug", "Debug", show=False, priority=True),
+        Binding("f3", "show_debug", "Debug", show=False, priority=True),
+        # Arrow keys and page keys for scrolling
+        Binding("up", "scroll_up", "Scroll Up", show=False, priority=True),
+        Binding("down", "scroll_down", "Scroll Down", show=False, priority=True),
+        Binding("pageup", "page_up", "Page Up", show=False, priority=True),
+        Binding("pagedown", "page_down", "Page Down", show=False, priority=True),
+        # Emacs-style alternatives
         Binding("ctrl+u", "scroll_up", "Scroll Up", show=False, priority=True),
-        Binding("ctrl+n", "scroll_down", "Scroll Down", show=False, priority=True),
+        Binding("ctrl+d", "scroll_down", "Scroll Down", show=False, priority=True),
         Binding("ctrl+b", "page_up", "Page Up", show=False, priority=True),
         Binding("ctrl+f", "page_down", "Page Down", show=False, priority=True),
     ]
@@ -200,6 +214,9 @@ class FrotzApp(App):
 
     def action_show_debug(self) -> None:
         """Show debug screen with full LLM context (history + state)."""
+        # Don't stack debug screens
+        if isinstance(self.screen, DebugScreen):
+            return
         if self.session:
             context = self.session.format_debug_context()
             self.push_screen(DebugScreen(context))
@@ -252,7 +269,7 @@ class FrotzApp(App):
         cmd = parts[0].lower() if parts else ""
 
         if cmd in ("help", "h", "?"):
-            narrative.write("[dim]Commands: /help, /debug (Ctrl+D), /quit | Scroll: Ctrl+U/N, Ctrl+B/F[/]")
+            narrative.write("[dim]Commands: /help, /debug (F3), /quit | Scroll: Up/Down, PgUp/PgDn[/]")
         elif cmd in ("debug", "d"):
             self.action_show_debug()
         elif cmd in ("quit", "q"):
