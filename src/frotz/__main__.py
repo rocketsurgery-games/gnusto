@@ -1,7 +1,7 @@
 """
 Entry point for running Frotz as a module.
 
-Usage: python -m frotz <game_path> [--debug]
+Usage: python -m frotz <game_path> [--debug] [--tui]
 """
 
 import argparse
@@ -14,7 +14,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Play a GRUE game with an LLM-powered natural language agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Example: python -m frotz games/lurkinghorror/ --debug",
+        epilog="Example: python -m frotz games/lurkinghorror/ --debug --tui",
     )
     parser.add_argument(
         "game_path",
@@ -26,9 +26,20 @@ def main() -> None:
         action="store_true",
         help="Enable debug mode to show agent tool calls and Grue I/O",
     )
+    parser.add_argument(
+        "--tui",
+        "-t",
+        action="store_true",
+        help="Use fullscreen Textual TUI instead of simple REPL",
+    )
 
     args = parser.parse_args()
-    play_game(args.game_path, debug=args.debug)
+
+    if args.tui:
+        from .tui import run_tui
+        run_tui(args.game_path, debug=args.debug)
+    else:
+        play_game(args.game_path, debug=args.debug)
 
 
 if __name__ == "__main__":
