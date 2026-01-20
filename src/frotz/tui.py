@@ -44,6 +44,9 @@ class DebugScreen(ModalScreen):
         width: 100%;
         height: 100%;
         padding: 1;
+        scrollbar-size-vertical: 1;
+        scrollbar-color: #333333;
+        scrollbar-background: transparent;
     }
 
     #debug-header {
@@ -100,8 +103,11 @@ class FrotzApp(App):
     #narrative {
         height: 1fr;
         border-bottom: solid grey;
-        padding: 0 1;
+        padding: 0 1 0 1;
         overflow-x: hidden;
+        scrollbar-size-vertical: 1;
+        scrollbar-color: #333333;
+        scrollbar-background: transparent;
     }
 
     /* Input at bottom - minimal styling, no border */
