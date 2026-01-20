@@ -3,10 +3,6 @@
 ## Visible objects
 `(room :visible (@obj) ... )` declares objects visible from multiple rooms even when their `:location` is elsewhere or `nil`. Useful for doors (visible from both sides), spanning objects (cables, pipes), and abstract scenery.
 
-## Multiline strings
-It could make strings a lot more readable if we made multi-line string literals that require explicit
-carriage-returns.
-
 ## Dynamic instantiation
 Dare we broach the idea of dynamically-allocated objects and perhaps rooms? The current structure is really nice in that you can refer to any @object or @room with a single symbol. OTOH, it's somewhat limiting if you want to create new objects at runtime, rather than just shuffling them in and out of rooms / containers / nil.
 

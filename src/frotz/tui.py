@@ -99,15 +99,18 @@ class FrotzApp(App):
     }
 
     #room-description {
+        text-overflow: fold;
     }
 
     /* Narrative panel: fills remaining space, bottom border only */
     #narrative {
         height: 1fr;
+        width: 100%;
         border-bottom: solid grey;
         padding: 0 1;
         overflow-x: hidden;
         scrollbar-visibility: hidden;
+        text-overflow: fold;
     }
 
     /* Input at bottom - minimal styling, no border */
