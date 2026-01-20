@@ -3,20 +3,13 @@ Agent-driven game player for Frotz.
 
 This module provides the agent that plays GRUE games. It interprets natural
 language input, translates it to game actions via tool calling, and renders
-results with a rich terminal UI.
+results. The default mode uses plain text for automation compatibility.
 """
 
 import json
+import sys
 from dataclasses import dataclass, field
 from typing import Any
-
-from rich import box
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.table import Table
-from rich.text import Text
 
 from grue.parser import load_grue
 from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
@@ -25,8 +18,6 @@ from grue.sexpr import Keyword, SList, Symbol, to_string
 
 from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
 from .state import GameState, ObjectInfo, get_game_state
-
-console = Console()
 
 
 SYSTEM_PROMPT = """\
@@ -49,87 +40,56 @@ If the player's command is unclear or impossible, explain why and suggest altern
 
 
 def render_game_state(state: GameState, debug: bool = False) -> None:
-    """Render game state using rich panels for player display.
-
-    In debug mode, technical details (exits, object IDs, actions) are shown
-    separately in the LLM Context panel, so this just shows player-facing info.
+    """Render game state as plain text.
 
     Args:
         state: Current game state
-        debug: If True, use IDs instead of descriptions (context shown separately)
+        debug: If True, use IDs instead of descriptions
     """
-    # Room panel - build description with object fdesc listings
-    room_content = Text()
+    # Room header
+    print(f"\n=== {state.room} ===")
     if state.vehicle:
-        room_content.append(
-            f"(You are {state.vehicle[1]} the {state.vehicle[0]})\n\n", style="italic dim"
-        )
-    room_content.append(state.room_description)
+        print(f"(You are {state.vehicle[1]} the {state.vehicle[0]})")
+    print()
 
-    # Add object descriptions (fdesc) to room description
+    # Room description with object listings
+    print(state.room_description)
     for obj in state.visible_objects:
         if obj.fdesc:
-            room_content.append(f"\n{obj.fdesc}")
+            print(obj.fdesc)
 
-    console.print(
-        Panel(
-            room_content,
-            title=f"[bold cyan]{state.room}[/]",
-            border_style="cyan",
-            box=box.ROUNDED,
-        )
-    )
+    # Exits
+    if state.exits:
+        exits_str = ", ".join(f"{d} -> {dest}" for d, dest in state.exits.items())
+        print(f"\nExits: {exits_str}")
 
-    # Nearby rooms
-    if state.nearby_rooms:
-        nearby = ", ".join(r.description for r in state.nearby_rooms)
-        console.print(f"[bold]Nearby:[/] {nearby}")
-
-    # Inventory - use IDs in debug mode, descriptions otherwise
+    # Inventory
     if state.inventory:
         if debug:
-            inv_items = ", ".join(f"[magenta]{obj.id}[/]" for obj in state.inventory)
+            inv_items = ", ".join(obj.id for obj in state.inventory)
         else:
-            inv_items = ", ".join(f"[magenta]{obj.description}[/]" for obj in state.inventory)
-        console.print(f"[bold]Inventory:[/] {inv_items}")
-    else:
-        console.print("[bold]Inventory:[/] [dim italic]empty[/]")
-
-    console.print()
+            inv_items = ", ".join(obj.description for obj in state.inventory)
+        print(f"Carrying: {inv_items}")
+    print()
 
 
 def render_response(response_text: str, action_results: list[str]) -> None:
-    """Render agent response and action results."""
-    if response_text:
-        console.print(
-            Panel(
-                Markdown(response_text),
-                border_style="blue",
-                box=box.ROUNDED,
-            )
-        )
-
+    """Render agent response and action results as plain text."""
     for result in action_results:
-        if "Blocked:" in result:
-            console.print(f"[yellow]{result}[/]")
-        elif "Error:" in result:
-            console.print(f"[red]{result}[/]")
-        else:
-            console.print(f"[green]{result}[/]")
+        if result and result != "Done.":
+            print(result)
+
+    if response_text:
+        print()
+        print(response_text)
+    print()
 
 
 def _debug_log(title: str, content: str, style: str = "dim") -> None:
-    """Print debug information in a styled panel."""
-    console.print(
-        Panel(
-            Syntax(content, "lisp", theme="monokai", word_wrap=True)
-            if content.startswith("(")
-            else Text(content),
-            title=f"[bold {style}]{title}[/]",
-            border_style=style,
-            box=box.SIMPLE,
-        )
-    )
+    """Print debug information as plain text."""
+    print(f"--- {title} ---")
+    print(content)
+    print()
 
 
 def estimate_tokens(text: str) -> int:
@@ -609,50 +569,119 @@ class GameSession:
             return str(result)
 
 
+def _handle_slash_command(session: "GameSession", command: str) -> bool:
+    """Handle slash commands. Returns True if command was handled."""
+    parts = command[1:].split(maxsplit=1)
+    cmd = parts[0].lower() if parts else ""
+    arg = parts[1] if len(parts) > 1 else ""
+
+    if cmd in ("help", "h", "?"):
+        print("""
+Slash Commands:
+  /help, /h, /?     Show this help
+  /debug, /d        Toggle debug mode (show LLM context)
+  /state, /s        Show current game state (LLM context format)
+  /eval <expr>      Evaluate a Grue expression
+  /history          Show turn history
+  /quit, /q         Exit the game
+""")
+        return True
+
+    elif cmd in ("debug", "d"):
+        session.debug = not session.debug
+        print(f"Debug mode: {'on' if session.debug else 'off'}")
+        return True
+
+    elif cmd in ("state", "s"):
+        state = session.get_state()
+        print(state.to_context_string())
+        return True
+
+    elif cmd == "eval":
+        if not arg:
+            print("Usage: /eval <grue-expression>")
+            return True
+        try:
+            result = session.evaluator.eval_string(arg)
+            print(f"=> {result}")
+        except Exception as e:
+            print(f"Error: {e}")
+        return True
+
+    elif cmd == "history":
+        if not session.turn_history:
+            print("No turns yet.")
+        else:
+            for i, turn in enumerate(session.turn_history, 1):
+                print(f"{i}. [{turn.room}] {turn.player_command}")
+                if turn.actions:
+                    print(f"   Actions: {', '.join(turn.actions)}")
+        return True
+
+    elif cmd in ("quit", "q"):
+        return False  # Signal to quit
+
+    else:
+        print(f"Unknown command: /{cmd}")
+        print("Type /help for available commands.")
+        return True
+
+
 def play_game(game_path: str, debug: bool = False) -> None:
-    """Run an interactive game session with rich terminal UI."""
-    console.print(f"[bold]Loading game:[/] {game_path}")
+    """Run an interactive game session with plain text output.
+
+    Uses slash commands for meta-operations like /debug, /eval, /state.
+    Suitable for terminal automation.
+    """
+    print(f"Loading game: {game_path}")
     if debug:
-        console.print("[dim yellow]Debug mode enabled[/]")
+        print("Debug mode enabled")
 
     session = GameSession.from_game_file(game_path, debug=debug)
 
-    console.print()
-    console.rule("[bold cyan]Game Start[/]")
-    console.print()
+    print()
+    print("=" * 40)
+    print("Game Start")
+    print("=" * 40)
 
     # Show initial state
     initial_state = session.get_state()
     if debug:
-        _debug_log("LLM Context (game state)", session._format_state_debug(initial_state), style="cyan")
+        _debug_log("LLM Context", session._format_state_debug(initial_state))
     render_game_state(initial_state, debug=debug)
 
-    console.print("[dim]Type your commands in natural language. Type 'quit' to exit.[/]\n")
+    print("Type commands in natural language. Use /help for slash commands.\n")
 
     while True:
         try:
-            console.print("[bold green]>[/] ", end="")
+            print("> ", end="", flush=True)
             user_input = input()
         except (EOFError, KeyboardInterrupt):
-            console.print("\n[bold]Goodbye![/]")
+            print("\nGoodbye!")
             break
 
-        if not user_input.strip():
+        user_input = user_input.strip()
+        if not user_input:
             continue
 
-        if user_input.strip().lower() in ("quit", "exit", "q"):
-            console.print("[bold]Goodbye![/]")
+        # Handle slash commands
+        if user_input.startswith("/"):
+            if not _handle_slash_command(session, user_input):
+                print("Goodbye!")
+                break
+            continue
+
+        # Legacy quit commands
+        if user_input.lower() in ("quit", "exit"):
+            print("Goodbye!")
             break
 
-        console.print()
+        # Process game command
+        response_text, results = session.process_input(user_input)
 
-        if debug:
-            # Don't use status spinner in debug mode - it interferes with output
-            response_text, results = session.process_input(user_input.strip())
-        else:
-            with console.status("[bold blue]Thinking...[/]"):
-                response_text, results = session.process_input(user_input.strip())
+        if session.debug:
+            state = session.get_state()
+            _debug_log("LLM Context", session._format_state_debug(state))
 
         render_response(response_text, results)
-        console.print()
-        render_game_state(session.get_state(), debug=debug)
+        render_game_state(session.get_state(), debug=session.debug)
