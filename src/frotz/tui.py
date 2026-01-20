@@ -90,7 +90,7 @@ class FrotzApp(App):
     }
 
     #narrative {
-        border-top: dashed dim;
+        border-top: dashed grey;
         padding-top: 1;
         height: auto;
         min-height: 5;
