@@ -94,7 +94,7 @@ class FrotzApp(App):
     #narrative {
         height: 1fr;
         border: solid grey;
-        padding: 1;
+        padding: 1 2 1 1;  /* Extra padding on right for scrollbar breathing room */
         margin-top: 1;
         overflow-x: hidden;  /* No horizontal scrolling */
     }
