@@ -496,7 +496,7 @@ class GrueRuntime:
         - Location constraint is satisfied (if specified)
         """
         results: list[ActionResult] = []
-        player_loc = self.get_player_location()
+        player_room = self.get_player_room()
 
         # Process each queued event
         # Copy queue keys since events may modify the queue
@@ -506,8 +506,8 @@ class GrueRuntime:
                 # No handler defined for this event
                 continue
 
-            # Check location constraint
-            if event_def.location is not None and event_def.location != player_loc:
+            # Check location constraint (compare against room, not immediate location)
+            if event_def.location is not None and event_def.location != player_room:
                 continue
 
             # Decrement countdown if present and check if ready to fire
