@@ -594,13 +594,26 @@ def print_cluster_report(cluster_graph: ClusterGraph) -> str:
     return "\n".join(lines)
 
 
-def generate_cluster_dot(cluster_graph: ClusterGraph) -> str:
-    """Generate DOT format graph of clusters."""
-    lines = ["digraph clusters {", "  rankdir=LR;", "  node [shape=box];", ""]
+def generate_cluster_dot(cluster_graph: ClusterGraph, rankdir: str = "LR") -> str:
+    """Generate DOT format graph of clusters.
+
+    Args:
+        cluster_graph: The cluster graph to render
+        rankdir: Graph direction - "LR" (left-right) or "TB" (top-bottom)
+    """
+    lines = ["digraph clusters {", f"  rankdir={rankdir};", "  node [shape=box fontsize=10];", ""]
 
     # Nodes
     for sig, cluster in cluster_graph.clusters.items():
-        label = f"{sig}\\n{cluster.description}"
+        # Format description vertically (one constraint per line)
+        desc_parts = cluster.description.split(", ")
+        if desc_parts and desc_parts[0]:
+            desc_vertical = "\\n".join(desc_parts)
+        else:
+            desc_vertical = "(no progress)"
+
+        # Add state count
+        label = f"{sig}\\n{desc_vertical}\\n({cluster.size} states)"
 
         if cluster.is_victory:
             style = 'style=filled fillcolor=green'
