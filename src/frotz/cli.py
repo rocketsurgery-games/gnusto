@@ -26,6 +26,11 @@ def format_section(title: str) -> str:
     return f"\n{'=' * 60}\n{title}\n{'=' * 60}\n"
 
 
+def dot_id(s: str) -> str:
+    """Convert a string to a valid DOT identifier (snake_case)."""
+    return s.replace(":", "_").replace("@", "").replace("-", "_")
+
+
 def generate_dot(world, effects, relevance, result) -> str:
     """Generate DOT graph of puzzle dependencies."""
     lines = [
@@ -41,33 +46,33 @@ def generate_dot(world, effects, relevance, result) -> str:
 
     # Add nodes for relevant state
     for ref in sorted(relevance.relevant, key=str):
-        ref_str = str(ref).replace(":", "_").replace("@", "")
+        ref_id = dot_id(str(ref))
         label = str(ref)
-        lines.append(f'  {ref_str} [label="{label}"];')
+        lines.append(f'  {ref_id} [label="{label}"];')
 
     lines.append("")
     lines.append("  // Dependencies (what must change for victory)")
 
     # Add edges from victory condition refs
     for ref in relevance.victory_refs:
-        ref_str = str(ref).replace(":", "_").replace("@", "")
-        lines.append(f'  {ref_str} -> victory;')
+        ref_id = dot_id(str(ref))
+        lines.append(f'  {ref_id} -> victory;')
 
     lines.append("")
     lines.append("  // Behavior dependencies (what behaviors read/modify)")
 
     # Add edges for behavior dependencies
     for ref in relevance.relevant:
-        ref_str = str(ref).replace(":", "_").replace("@", "")
+        ref_id = dot_id(str(ref))
         # Find what this state depends on (behaviors that modify it read other state)
         modifiers = effects.modifies.get(ref, set())
         for behavior in modifiers:
             # What does this behavior read?
             for read_ref, readers in effects.reads.items():
                 if behavior in readers and read_ref in relevance.relevant:
-                    read_str = str(read_ref).replace(":", "_").replace("@", "")
-                    if read_str != ref_str:  # Avoid self-loops
-                        lines.append(f'  {read_str} -> {ref_str} [label="{behavior.verb}"];')
+                    read_id = dot_id(str(read_ref))
+                    if read_id != ref_id:  # Avoid self-loops
+                        lines.append(f'  {read_id} -> {ref_id} [label="{behavior.verb}"];')
 
     lines.append("")
     lines.append("  // Winning path")
