@@ -1,20 +1,29 @@
-; Simple test game for Frotz analyzer development
-; A minimal puzzle: get the key, unlock the door, escape.
+; Test game for Frotz analyzer development
+; Features:
+; - Main puzzle: get key, unlock door, escape
+; - Deadly trap: touching the orb kills you
+; - Irrelevant objects: book, coin (red herrings)
+; - Multiple rooms with different hazards
 
 (world
   :name "Test Game"
   :player @player
-  :intro "You wake up in a small room. There's a door to the north.")
+  :intro "You wake up in a small cell. There's a door to the north and a pit to the east.")
 
 (victory :when (= (loc @player) @outside))
+
+(defeat death
+  :when (:dead @player)
+  :context ((message "You have died.")))
 
 ; === Rooms ===
 
 (room @cell
   :description "Cell"
-  :ldesc "A small, damp cell with stone walls. A heavy door leads north."
+  :ldesc "A small, damp cell with stone walls. A heavy door leads north. A dark pit opens to the east."
   :properties (:lit true)
-  :exits ((north :to @outside :via @cell-door)))
+  :exits ((north :to @outside :via @cell-door)
+          (east :to @pit)))
 
 (room @outside
   :description "Outside"
@@ -22,12 +31,27 @@
   :properties (:lit true)
   :exits ((south :to @cell)))
 
+(room @pit
+  :description "Pit"
+  :ldesc "A deep pit with something glowing at the bottom."
+  :properties (:lit true)
+  :exits ((west :to @cell)
+          (down :to @pit-bottom)))
+
+(room @pit-bottom
+  :description "Pit Bottom"
+  :ldesc "The bottom of the pit. Sharp rocks surround you. A glowing orb pulses ominously."
+  :properties (:lit true)
+  :exits ((up :to @pit)))
+
 ; === Objects ===
 
 (object @player
   :location @cell
   :description "yourself"
-  :properties (:person true))
+  :properties (:person true :dead false))
+
+; --- Main puzzle objects ---
 
 (object @key
   :location @cell
@@ -90,3 +114,55 @@
         ((not (:open @cell-door))
           (blocked :reason closed :message "The door is closed."))
         (true (success))))))
+
+; --- Deadly trap ---
+
+(object @orb
+  :location @pit-bottom
+  :description "glowing orb"
+  :ldesc "A strange orb pulses with an eerie light."
+  :properties (:touched false)
+  :behaviors (
+    :examine (fn () (success :message "The orb pulses hypnotically. It looks dangerous to touch."))
+    :take (fn ()
+      '((set @player :dead true)
+        (set @orb :touched true)
+        (success :message "As your fingers touch the orb, dark energy surges through you. Everything goes black.")))
+    :touch (fn ()
+      '((set @player :dead true)
+        (set @orb :touched true)
+        (success :message "Dark energy courses through your body. You collapse.")))))
+
+; --- Irrelevant objects (red herrings) ---
+
+(object @book
+  :location @cell
+  :description "dusty book"
+  :ldesc "A dusty book lies in the corner."
+  :properties (:read false)
+  :behaviors (
+    :take (fn () '((move @book @player) (success :message "You pick up the dusty book.")))
+    :read (fn ()
+      '((set @book :read true)
+        (success :message "The book contains ancient recipes. Nothing useful.")))
+    :examine (fn () (success :message "An old cookbook, covered in dust."))))
+
+(object @coin
+  :location @pit
+  :description "silver coin"
+  :ldesc "A silver coin glints on a ledge."
+  :properties (:flipped false)
+  :behaviors (
+    :take (fn () '((move @coin @player) (success :message "You pocket the silver coin.")))
+    :flip (fn ()
+      '((set @coin :flipped (not (:flipped @coin)))
+        (success :message "You flip the coin. It lands heads.")))
+    :examine (fn () (success :message "A silver coin with a strange symbol."))))
+
+(object @rock
+  :location @pit-bottom
+  :description "sharp rock"
+  :ldesc "Sharp rocks litter the ground."
+  :behaviors (
+    :take (fn () '((move @rock @player) (success :message "You pick up a sharp rock.")))
+    :examine (fn () (success :message "A jagged rock. Could be used as a crude weapon."))))
