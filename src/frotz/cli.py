@@ -71,9 +71,12 @@ def generate_state_graph_dot(graph: StateGraph) -> str:
     edge_actions: dict[tuple[int, int], list[str]] = {}
     for edge in graph.edges:
         key = (edge.from_id, edge.to_id)
-        action_str = f"{edge.action.verb}"
+        # Format: "verb target" or "verb target arg1 arg2"
+        action_str = f"{edge.action.verb} {edge.action.target}"
         if edge.action.args:
             action_str += f" {' '.join(edge.action.args)}"
+        # Shorten @-prefixed names
+        action_str = action_str.replace("@", "")
         if key not in edge_actions:
             edge_actions[key] = []
         edge_actions[key].append(action_str)
