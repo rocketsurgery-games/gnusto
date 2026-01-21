@@ -245,6 +245,10 @@ def main(args: list[str] | None = None):
         if not opts.quiet:
             print(f"States explored: {result.states_explored}")
             print(f"Max depth reached: {result.max_depth_reached}")
+            if result.constraint_tree_nodes > 0:
+                print(f"Backward constraint nodes: {result.constraint_tree_nodes}")
+            if result.black_holes_pruned > 0:
+                print(f"Black holes pruned: {result.black_holes_pruned}")
 
         # Convert to legacy format for rest of CLI
         victory_path = result.path if result.found_terminal else None

@@ -3,7 +3,8 @@ Heuristic-guided state space exploration for Grue games.
 
 Replaces exhaustive BFS with:
 1. Greedy best-first search toward terminal states (victory/defeat)
-2. Backward constraint propagation for black hole detection
+2. Backward constraint propagation for subgoal identification
+3. Black hole detection (states where victory becomes unreachable)
 
 Key insight: We only need to find *a* path, not the optimal path.
 This allows aggressive pruning and greedy strategies.
@@ -21,6 +22,13 @@ from grue.sexpr import SList, Symbol, Keyword
 from .effects import StateRef, PropertyRef, LocationRef, QueueRef, EffectAnalysis
 from .relevance import RelevanceAnalysis
 from .explorer import Action, GameState
+from .backward import (
+    Constraint,
+    ConstraintTree,
+    BackwardAnalyzer,
+    build_victory_constraints,
+    _extract_constraints_from_expr,
+)
 
 
 @dataclass
@@ -101,6 +109,7 @@ def compute_relevance_distance(
     This captures "progress toward victory" by looking at:
     1. How many precondition states are in their "enablement" position
     2. Blockers that have been cleared (locked doors unlocked, etc.)
+    3. Items held or moved from initial positions
 
     The intuition: relevant state that has been modified from initial values
     suggests progress is being made.
@@ -110,7 +119,7 @@ def compute_relevance_distance(
     # Count relevant states that are in "good" positions
     # For booleans: unlocked/open/etc are "progress" states
     # For locations: items held by player or in player's room
-    progress_count = 0
+    progress_count = 0.0
     total_relevant = len(relevance.relevant)
 
     for ref in relevance.relevant:
@@ -123,21 +132,28 @@ def compute_relevance_distance(
         if isinstance(ref, PropertyRef):
             # Heuristic: False for "blocking" properties is good
             # (locked=False, closed->open, etc.)
-            # True for "progress" properties
-            if ref.property in ("locked", "lost", "dead"):
+            # True for "progress" properties (open, rmung, broken, freed)
+            if ref.property in ("locked", "lost", "dead", "invisible"):
                 if val is False:
                     progress_count += 1
-            elif ref.property in ("open",):
+            elif ref.property in ("open", "rmung", "broken", "freed", "moved"):
                 if val is True:
                     progress_count += 1
-            # Numeric properties: higher might be progress (lever pulls)
+            # Numeric properties: higher might be progress (counts, stages)
             elif isinstance(val, int) and val > 0:
-                progress_count += 0.5  # Partial credit
+                progress_count += min(1.0, val * 0.25)  # Diminishing returns
+            # Special: count properties are important
+            elif ref.property == "count" and isinstance(val, int):
+                progress_count += min(2.0, val)  # Weighted higher
 
         elif isinstance(ref, LocationRef):
             # Items held by player are progress (usually)
             if val == "@player":
                 progress_count += 1
+            # Items moved from initial location is also progress
+            elif val is None and ref_str in state_dict:
+                # Object was destroyed/consumed - might be progress
+                progress_count += 0.5
 
     # Return inverse of progress (lower = better)
     if total_relevant == 0:
@@ -279,12 +295,15 @@ class SearchResult:
     path: list[Action]
     states_explored: int
     max_depth_reached: int
+    constraint_tree_nodes: int = 0  # Total nodes in backward constraint trees
+    black_holes_pruned: int = 0  # States pruned due to black hole detection
 
 
 class GuidedExplorer:
     """Heuristic-guided state space explorer.
 
     Uses greedy best-first search with distance-to-terminal as heuristic.
+    Incorporates backward constraint trees for subgoal-guided search.
     """
 
     def __init__(
@@ -305,6 +324,11 @@ class GuidedExplorer:
         # Extract terminal conditions
         self.terminals: list[TerminalCondition] = []
         self._extract_terminals()
+
+        # Build backward constraint trees for victory conditions
+        self.constraint_trees: list[ConstraintTree] = []
+        if effects is not None:
+            self.constraint_trees = build_victory_constraints(world, effects, relevance)
 
     def _extract_terminals(self):
         """Extract victory and defeat conditions with their constraints."""
@@ -377,6 +401,10 @@ class GuidedExplorer:
         """Run best-first search toward any of the target terminals."""
         self._runtime.reset()
 
+        # Count constraint tree nodes for reporting
+        constraint_nodes = sum(len(t.all_nodes) for t in self.constraint_trees)
+        black_holes_pruned = 0
+
         initial_state = GameState.from_runtime(self._runtime, self.relevance.relevant)
 
         # Check if already at a terminal
@@ -388,6 +416,7 @@ class GuidedExplorer:
                 path=[],
                 states_explored=1,
                 max_depth_reached=0,
+                constraint_tree_nodes=constraint_nodes,
             )
         if self._runtime.check_defeat():
             return SearchResult(
@@ -397,6 +426,7 @@ class GuidedExplorer:
                 path=[],
                 states_explored=1,
                 max_depth_reached=0,
+                constraint_tree_nodes=constraint_nodes,
             )
 
         # Priority queue: (distance, node)
@@ -450,6 +480,8 @@ class GuidedExplorer:
                             path=node.path + [action],
                             states_explored=states_explored,
                             max_depth_reached=max_depth,
+                            constraint_tree_nodes=constraint_nodes,
+                            black_holes_pruned=black_holes_pruned,
                         )
                     if self._runtime.check_defeat():
                         # Only return defeat if we're searching for it
@@ -461,6 +493,8 @@ class GuidedExplorer:
                                 path=node.path + [action],
                                 states_explored=states_explored,
                                 max_depth_reached=max_depth,
+                                constraint_tree_nodes=constraint_nodes,
+                                black_holes_pruned=black_holes_pruned,
                             )
 
                     new_state = GameState.from_runtime(
@@ -470,6 +504,14 @@ class GuidedExplorer:
                     if new_state not in visited:
                         visited.add(new_state)
                         states_explored += 1
+
+                        # Black hole detection: skip states where victory is unreachable
+                        # Only check for victory searches (not defeat searches)
+                        if any(t.is_victory for t in targets) and self._is_black_hole(new_state):
+                            # This is a dead end - don't add to heap
+                            black_holes_pruned += 1
+                            self._restore_state(saved)
+                            continue
 
                         dist = self._min_distance(new_state, targets)
                         new_path = node.path + [action]
@@ -502,6 +544,8 @@ class GuidedExplorer:
             path=[],
             states_explored=states_explored,
             max_depth_reached=max_depth,
+            constraint_tree_nodes=constraint_nodes,
+            black_holes_pruned=black_holes_pruned,
         )
 
     def _min_distance(self, state: GameState, targets: list[TerminalCondition]) -> float:
@@ -509,7 +553,8 @@ class GuidedExplorer:
 
         Combines:
         1. Direct terminal constraint distance (exact goal match)
-        2. Relevance-based progress heuristic (intermediate progress)
+        2. Subgoal distance from backward constraint trees
+        3. Relevance-based progress heuristic (intermediate progress)
 
         The combined score guides search toward both the goal and
         intermediate states that enable reaching the goal.
@@ -520,16 +565,83 @@ class GuidedExplorer:
         # Direct terminal distance
         terminal_dist = min(t.distance(state) for t in targets)
 
+        # Subgoal distance from backward constraints (for victory targets)
+        subgoal_dist = 0.0
+        if self.constraint_trees and any(t.is_victory for t in targets):
+            subgoal_dist = self._compute_subgoal_distance(state)
+
         # Relevance-based progress (inverse of progress made)
+        progress_dist = 0.0
         if self.effects is not None:
             progress_dist = compute_relevance_distance(
                 state, self.relevance, self.effects
             )
-            # Combine: weight terminal distance more heavily, but use progress
-            # as a tiebreaker when terminal distance is flat
-            return terminal_dist * 2 + progress_dist
-        else:
-            return terminal_dist
+
+        # Combine: terminal distance is primary, subgoals secondary, progress as tiebreaker
+        # Lower weights for subgoal/progress to not overwhelm terminal distance
+        return terminal_dist * 3 + subgoal_dist * 2 + progress_dist
+
+    def _compute_subgoal_distance(self, state: GameState) -> float:
+        """Compute distance based on backward constraint satisfaction.
+
+        Returns a score based on how many unsatisfied subgoals remain.
+        Lower = closer to having all subgoals satisfied.
+
+        For each unsatisfied constraint, we check if the current state
+        is "closer" to satisfying it than the initial state.
+        """
+        if not self.constraint_trees:
+            return 0.0
+
+        state_dict = dict(state.values)
+
+        # Collect unsatisfied leaves across all constraint trees
+        total_unsatisfied = 0
+        total_nodes = 0
+        partial_progress = 0.0
+
+        for tree in self.constraint_trees:
+            unsatisfied = tree.get_unsatisfied_leaves(state_dict)
+            total_unsatisfied += len(unsatisfied)
+            total_nodes += len(tree.all_nodes)
+
+            # Check for partial progress on numeric constraints
+            for constraint in unsatisfied:
+                if constraint.operator in (">=", ">"):
+                    ref_str = str(constraint.ref)
+                    current = state_dict.get(ref_str, 0)
+                    if isinstance(current, (int, float)) and isinstance(constraint.value, (int, float)):
+                        # Give partial credit for progress toward the threshold
+                        if constraint.value > 0:
+                            progress = min(1.0, current / constraint.value)
+                            partial_progress += progress * 0.5  # 50% credit for progress
+
+        if total_nodes == 0:
+            return 0.0
+
+        # Base score: fraction of subgoals unsatisfied
+        base_score = total_unsatisfied / total_nodes
+
+        # Reduce by partial progress
+        return max(0.0, base_score - partial_progress / total_nodes)
+
+    def _is_black_hole(self, state: GameState) -> bool:
+        """Check if this state is a black hole (victory unreachable).
+
+        Uses backward constraint satisfiability to detect states where
+        some required constraint can never be satisfied.
+        """
+        if not self.constraint_trees:
+            return False
+
+        state_dict = dict(state.values)
+
+        # All constraint trees must be satisfiable for victory to be reachable
+        for tree in self.constraint_trees:
+            if not tree.is_satisfiable(state_dict):
+                return True
+
+        return False
 
     def _get_defeat_name(self) -> str:
         """Get the name of the current defeat condition (if any)."""

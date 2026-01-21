@@ -235,12 +235,12 @@ class EffectAnalyzer:
             self._walk_expr(behavior.body)
 
     def _analyze_event(self, event_name: str, event: Any):
-        """Analyze an event's on_turn handler."""
-        if not hasattr(event, 'on_turn') or not event.on_turn:
+        """Analyze an event's body (on_turn handler)."""
+        if not hasattr(event, 'body') or not event.body:
             return
 
         self._current_behavior = BehaviorRef(f"event:{event_name}", "on_turn")
-        self._walk_expr(event.on_turn)
+        self._walk_expr(event.body)
 
     def _walk_expr(self, expr: Any):
         """Recursively walk an expression looking for effects and reads."""

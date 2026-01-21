@@ -58,6 +58,9 @@ class GameState:
                 val = runtime.get_queue_countdown(ref.event)
             else:
                 continue
+            # Convert lists to tuples for hashability
+            if isinstance(val, list):
+                val = tuple(val)
             values.append((str(ref), val))
         return cls(values=tuple(values))
 
