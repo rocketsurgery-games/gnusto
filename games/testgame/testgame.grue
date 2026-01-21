@@ -1,0 +1,92 @@
+; Simple test game for Frotz analyzer development
+; A minimal puzzle: get the key, unlock the door, escape.
+
+(world
+  :name "Test Game"
+  :player @player
+  :intro "You wake up in a small room. There's a door to the north."
+  :victory (= (loc @player) @outside)
+  :defeat false)
+
+; === Rooms ===
+
+(room @cell
+  :description "Cell"
+  :ldesc "A small, damp cell with stone walls. A heavy door leads north."
+  :properties (:lit true)
+  :exits ((north :to @outside :via @cell-door)))
+
+(room @outside
+  :description "Outside"
+  :ldesc "Fresh air! You've escaped!"
+  :properties (:lit true)
+  :exits ((south :to @cell)))
+
+; === Objects ===
+
+(object @player
+  :location @cell
+  :description "yourself"
+  :properties (:person true))
+
+(object @key
+  :location @cell
+  :description "brass key"
+  :ldesc "A small brass key lies on the floor."
+  :behaviors (
+    :take (fn () '((move @key @player) (success :message "You pick up the key.")))
+    :examine (fn () (success :message "A small brass key, tarnished with age."))))
+
+(object @cell-door
+  :location @cell
+  :description "heavy door"
+  :properties (:locked true :open false)
+  :behaviors (
+    :examine (fn ()
+      (if (:locked @cell-door)
+        (success :message "A heavy wooden door, locked tight.")
+        (success :message "A heavy wooden door, now unlocked.")))
+
+    :unlock (fn ()
+      (cond
+        ((not (:locked @cell-door))
+          (success :message "It's already unlocked."))
+        ((not (held? @key))
+          (blocked :reason no-key :message "You don't have anything to unlock it with."))
+        (true
+          '((set @cell-door :locked false)
+            (success :message "You unlock the door with the brass key.")))))
+
+    :lock (fn ()
+      (cond
+        ((:locked @cell-door)
+          (success :message "It's already locked."))
+        ((not (held? @key))
+          (blocked :reason no-key :message "You don't have the key."))
+        (true
+          '((set @cell-door :locked true)
+            (success :message "You lock the door.")))))
+
+    :open (fn ()
+      (cond
+        ((:open @cell-door)
+          (success :message "It's already open."))
+        ((:locked @cell-door)
+          (blocked :reason locked :message "The door is locked."))
+        (true
+          '((set @cell-door :open true)
+            (success :message "You open the door.")))))
+
+    :close (fn ()
+      (if (not (:open @cell-door))
+        (success :message "It's already closed.")
+        '((set @cell-door :open false)
+          (success :message "You close the door."))))
+
+    :through (fn ()
+      (cond
+        ((:locked @cell-door)
+          (blocked :reason locked :message "The door is locked."))
+        ((not (:open @cell-door))
+          (blocked :reason closed :message "The door is closed."))
+        (true (success))))))
