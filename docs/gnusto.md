@@ -1,4 +1,14 @@
-The core innovation in FrotzLM is the use of a language model to parse and interpret user input; and to adapt world state to user-visible descriptions. The idea's pretty simple: there's a logical world model that maintains the state of all the world's rooms, objects, actors, and their varied relationships to one another. It interprets actions, enforces constraints, and provides structured responses and world state information that the agent interprets on behalf of the player.
+# Gnusto
+
+Gnusto is an LLM-powered interactive fiction system. Named after the write-magic-spell
+from Infocom's Enchanter, it uses the Grue language to define game worlds.
+
+The core innovation is the use of a language model to parse and interpret user input;
+and to adapt world state to user-visible descriptions. The idea's pretty simple:
+there's a logical world model that maintains the state of all the world's rooms,
+objects, actors, and their varied relationships to one another. It interprets actions,
+enforces constraints, and provides structured responses and world state information
+that the agent interprets on behalf of the player.
 
 
 ```

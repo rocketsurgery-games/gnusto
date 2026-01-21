@@ -1,5 +1,5 @@
 """
-Agent-driven game player for Frotz.
+Agent-driven game player for Gnusto.
 
 This module provides the agent that plays GRUE games. It interprets natural
 language input, translates it to game actions via tool calling, and renders

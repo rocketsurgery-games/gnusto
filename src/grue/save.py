@@ -34,7 +34,7 @@ class SaveData:
 
 def get_save_dir(game_name: str) -> Path:
     """Get the save directory for a game, creating if needed."""
-    save_dir = Path.home() / ".frotz-lm" / "saves" / game_name
+    save_dir = Path.home() / ".gnusto" / "saves" / game_name
     save_dir.mkdir(parents=True, exist_ok=True)
     return save_dir
 

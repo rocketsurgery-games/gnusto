@@ -1,7 +1,7 @@
 """
-Entry point for running Frotz as a module.
+Entry point for running Gnusto as a module.
 
-Usage: python -m frotz <game_path> [--debug] [--tui]
+Usage: python -m gnusto <game_path> [--debug] [--tui]
 """
 
 import argparse
@@ -12,9 +12,9 @@ from .agent import play_game
 def main() -> None:
     """Main entry point with argument parsing."""
     parser = argparse.ArgumentParser(
-        description="Play a GRUE game with an LLM-powered natural language agent",
+        description="Play a Grue game with an LLM-powered natural language agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Example: python -m frotz games/lurkinghorror/ --debug --tui",
+        epilog="Example: python -m gnusto games/lurkinghorror/ --debug --tui",
     )
     parser.add_argument(
         "game_path",

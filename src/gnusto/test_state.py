@@ -3,7 +3,7 @@
 import pytest
 from src.grue import load_grue
 from src.grue.runtime import GrueRuntime
-from src.frotz.state import get_game_state
+from src.gnusto.state import get_game_state
 
 
 @pytest.fixture

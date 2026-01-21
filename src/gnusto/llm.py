@@ -1,5 +1,5 @@
 """
-LLM integration for Frotz.
+LLM integration for Gnusto.
 
 Provides a thin wrapper around litellm for model-agnostic LLM calls with tool use.
 This module handles the low-level details of communicating with language models,

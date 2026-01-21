@@ -1,5 +1,5 @@
 """
-Textual-based TUI for Frotz LM.
+Textual-based TUI for Gnusto.
 
 A fullscreen terminal interface with:
 - Room panel: current location and visible objects
@@ -78,8 +78,8 @@ class DebugScreen(ModalScreen):
         self.app.exit()
 
 
-class FrotzApp(App):
-    """Frotz LM TUI application."""
+class GnustoApp(App):
+    """Gnusto TUI application."""
 
     # Disable default Textual chrome
     ENABLE_COMMAND_PALETTE = False
@@ -160,7 +160,7 @@ class FrotzApp(App):
     def on_mount(self) -> None:
         """Initialize game session on mount."""
         self.session = GameSession.from_game_file(self.game_path, debug=self.start_debug)
-        self.title = f"Frotz LM - {self.game_path}"
+        self.title = f"Gnusto - {self.game_path}"
 
         # Disable focus on narrative panel (input always gets focus)
         self.query_one("#narrative", RichLog).can_focus = False
@@ -354,5 +354,5 @@ class FrotzApp(App):
 
 def run_tui(game_path: str, debug: bool = False) -> None:
     """Run the Textual TUI."""
-    app = FrotzApp(game_path, debug=debug)
+    app = GnustoApp(game_path, debug=debug)
     app.run()

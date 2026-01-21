@@ -1,5 +1,5 @@
 """
-Game state serialization for the Frotz agent.
+Game state serialization for the Gnusto agent.
 
 Provides structured representations of game state that can be serialized
 for agent context. The agent uses this to understand the current game

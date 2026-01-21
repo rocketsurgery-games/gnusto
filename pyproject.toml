@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "frotz-lm"
+name = "gnusto"
 version = "0.1.0"
-description = "Runtime and language for LM-aided text adventures"
+description = "Gnusto: LLM-powered interactive fiction system using the Grue language"
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.6.0",
@@ -29,6 +29,7 @@ dev = [
 ]
 
 [project.scripts]
+gnusto = "gnusto.__main__:main"
 grue-repl = "grue.repl:main"
 grue-test = "grue.test:main"
 zil-to-grue = "grue.converter:cli_main"
