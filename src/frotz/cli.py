@@ -19,6 +19,7 @@ from grue import load_grue
 from .effects import analyze_effects
 from .relevance import analyze_relevance
 from .explorer import explore_state_space, StateGraph
+from .guided import GuidedExplorer, find_victory_path
 
 
 def format_section(title: str) -> str:
@@ -39,31 +40,56 @@ def generate_state_graph_dot(graph: StateGraph) -> str:
     """Generate DOT graph of the actual state transition graph."""
     lines = [
         "digraph states {",
-        '  rankdir=TB;',
+        '  rankdir=LR;',  # Left-to-right layout
         '  node [shape=box fontsize=10];',
         '  edge [fontsize=9];',
         "",
     ]
 
+    # Collect node categories for rank constraints
+    start_nodes = []
+    victory_nodes = []
+    defeat_nodes = []
+
     # Add nodes
     for node_id, node in graph.nodes.items():
-        label = node.state.short_str()
-        # Escape quotes in label
-        label = label.replace('"', '\\"')
+        # Stack properties vertically, with player.loc at top in bold
+        props = node.state.short_str().split(", ")
+        player_loc = [p for p in props if p.startswith("player.loc=")]
+        other_props = [p for p in props if not p.startswith("player.loc=")]
+
+        # Build HTML label with player.loc in bold at top
+        label_lines = []
+        if player_loc:
+            label_lines.append(f"<b>{player_loc[0]}</b>")
+        label_lines.extend(other_props)
 
         if node.is_victory:
             style = 'style=filled fillcolor=green'
-            label = f"VICTORY\\n{label}"
+            label_lines.insert(0, "<b>VICTORY</b>")
+            victory_nodes.append(f"s{node_id}")
         elif node.is_defeat:
             style = 'style=filled fillcolor=red'
-            label = f"DEFEAT\\n{label}"
+            label_lines.insert(0, "<b>DEFEAT</b>")
+            defeat_nodes.append(f"s{node_id}")
         elif node_id == graph.initial_id:
             style = 'style=filled fillcolor=lightblue'
-            label = f"START\\n{label}"
+            label_lines.insert(0, "<b>START</b>")
+            start_nodes.append(f"s{node_id}")
         else:
             style = ''
 
-        lines.append(f'  s{node_id} [label="{label}" {style}];')
+        # Use HTML label format with <br/> for line breaks
+        html_label = "<br/>".join(label_lines)
+        lines.append(f'  s{node_id} [label=<{html_label}> {style}];')
+
+    # Add rank constraints to position start on left, terminals on right
+    lines.append("")
+    if start_nodes:
+        lines.append(f'  {{ rank=min; {"; ".join(start_nodes)}; }}')
+    if victory_nodes or defeat_nodes:
+        terminals = victory_nodes + defeat_nodes
+        lines.append(f'  {{ rank=max; {"; ".join(terminals)}; }}')
 
     lines.append("")
 
@@ -135,8 +161,38 @@ def main(args: list[str] | None = None):
         action="store_true",
         help="Minimal output (just verdict)",
     )
+    parser.add_argument(
+        "--minimize",
+        action="store_true",
+        help="Apply bisimulation minimization to reduce equivalent states",
+    )
+    parser.add_argument(
+        "--walkthrough",
+        action="store_true",
+        help="Output just the shortest victory path (walkthrough)",
+    )
+    parser.add_argument(
+        "--black-holes",
+        action="store_true",
+        help="Analyze black holes (states from which victory is unreachable)",
+    )
+    parser.add_argument(
+        "--guided",
+        action="store_true",
+        help="Use heuristic-guided search (faster, but may not find optimal path)",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=50,
+        help="Patience for guided search plateau detection (default: 50)",
+    )
 
     opts = parser.parse_args(args)
+
+    # Walkthrough implies quiet
+    if opts.walkthrough:
+        opts.quiet = True
 
     # Load game
     game_path = Path(opts.game_path)
@@ -178,38 +234,123 @@ def main(args: list[str] | None = None):
         return 0
 
     # Phase 3: State exploration
-    if not opts.quiet:
-        print(format_section("Phase 3: State Space Exploration"))
-        print(f"Exploring with max depth {opts.max_depth}...")
+    if opts.guided:
+        # Guided (heuristic) search mode
+        if not opts.quiet:
+            print(format_section("Phase 3: Guided Search"))
+            print(f"Searching with max depth {opts.max_depth}, patience {opts.patience}...")
 
-    graph = explore_state_space(world, relevance, opts.max_depth)
+        result = find_victory_path(world, relevance, effects, opts.max_depth, opts.patience)
 
-    if not opts.quiet:
-        print(graph.summary())
+        if not opts.quiet:
+            print(f"States explored: {result.states_explored}")
+            print(f"Max depth reached: {result.max_depth_reached}")
 
-    # Verdict
-    victory_path = graph.get_victory_path()
-    victory_count = sum(1 for n in graph.nodes.values() if n.is_victory)
-    defeat_count = sum(1 for n in graph.nodes.values() if n.is_defeat)
+        # Convert to legacy format for rest of CLI
+        victory_path = result.path if result.found_terminal else None
+        victory_count = 1 if result.found_terminal else 0
+        defeat_count = 0  # Not tracked in guided mode
+        graph = None  # No full graph in guided mode
+
+    else:
+        # Exhaustive BFS mode
+        if not opts.quiet:
+            print(format_section("Phase 3: State Space Exploration"))
+            print(f"Exploring with max depth {opts.max_depth}...")
+
+        graph = explore_state_space(world, relevance, opts.max_depth)
+
+        if not opts.quiet:
+            print(graph.summary())
+
+        # Bisimulation minimization
+        if opts.minimize:
+            original_states = len(graph.nodes)
+            original_edges = len(graph.edges)
+            graph = graph.minimize()
+            if not opts.quiet:
+                print(f"\nAfter bisimulation minimization:")
+                print(f"  States: {original_states} → {len(graph.nodes)}")
+                print(f"  Transitions: {original_edges} → {len(graph.edges)}")
+
+        # Verdict
+        victory_path = graph.get_victory_path()
+        victory_count = sum(1 for n in graph.nodes.values() if n.is_victory)
+        defeat_count = sum(1 for n in graph.nodes.values() if n.is_defeat)
+
+    # Walkthrough mode: just print the path
+    if opts.walkthrough:
+        if victory_path is None:
+            print("No victory path found.", file=sys.stderr)
+            return 1
+        print(f"# Walkthrough ({len(victory_path)} steps)\n")
+        for i, action in enumerate(victory_path, 1):
+            # Format nicely: "1. unlock cell-door (with key)"
+            target = action.target.replace("@", "")
+            if action.args:
+                args_str = " ".join(a.replace("@", "") for a in action.args)
+                print(f"{i:2}. {action.verb} {target} {args_str}")
+            else:
+                print(f"{i:2}. {action.verb} {target}")
+        return 0
 
     print(format_section("Verdict"))
     if victory_path is not None:
         print(f"✓ WINNABLE - Victory reachable in {len(victory_path)} steps")
-        print(f"  States: {len(graph.nodes)}")
-        print(f"  Transitions: {len(graph.edges)}")
+        if graph is not None:
+            print(f"  States: {len(graph.nodes)}")
+            print(f"  Transitions: {len(graph.edges)}")
         if defeat_count:
             print(f"  Defeat states: {defeat_count}")
     else:
         print("✗ NO VICTORY PATH FOUND")
-        print(f"  States explored: {len(graph.nodes)}")
+        if graph is not None:
+            print(f"  States explored: {len(graph.nodes)}")
         if defeat_count:
             print(f"  Defeat states: {defeat_count}")
 
-    # Generate DOT if requested
+    # Black hole analysis (requires exhaustive search)
+    if opts.black_holes:
+        if graph is None:
+            print("\n⚠ Black hole analysis requires exhaustive search (don't use --guided)")
+        else:
+            black_holes = graph.get_black_holes()
+            clusters = graph.cluster_black_hole_entries()
+
+            print(format_section("Black Hole Analysis"))
+            print(f"Black hole states: {len(black_holes)} (victory unreachable)")
+            print(f"Entry point clusters: {len(clusters)}")
+
+            for i, cluster in enumerate(clusters, 1):
+                print(f"\n--- Failure Mode {i} ({len(cluster['entries'])} entry points) ---")
+
+                # Show what changed (the delta that triggered doom)
+                if cluster['delta']:
+                    print("  What changed:")
+                    for prop, val in sorted(cluster['delta'].items()):
+                        prop_short = prop.replace("@", "").replace(":location", ".loc").replace(":", ".")
+                        if isinstance(val, str):
+                            val_short = val.replace("@", "")
+                        else:
+                            val_short = val
+                        print(f"    {prop_short} → {val_short}")
+
+                # Show the actions that trigger this
+                print(f"  Triggered by: {', '.join(sorted(cluster['actions']))}")
+
+                # Show a sample entry point
+                if cluster['entries']:
+                    edge, from_props, to_props = cluster['entries'][0]
+                    print(f"  Example: {edge.action}")
+
+    # Generate DOT if requested (requires exhaustive search)
     if opts.dot:
-        dot_content = generate_state_graph_dot(graph)
-        Path(opts.dot).write_text(dot_content)
-        print(f"\nState graph written to: {opts.dot}")
+        if graph is None:
+            print("\n⚠ DOT output requires exhaustive search (don't use --guided)")
+        else:
+            dot_content = generate_state_graph_dot(graph)
+            Path(opts.dot).write_text(dot_content)
+            print(f"\nState graph written to: {opts.dot}")
 
     return 0 if victory_path is not None else 1
 

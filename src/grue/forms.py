@@ -610,7 +610,8 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "ldesc" in kwargs:
         obj.ldesc = expect_string(kwargs["ldesc"], "object ldesc")
     if "location" in kwargs:
-        obj.location = expect_symbol(kwargs["location"], "object location")
+        loc = expect_symbol(kwargs["location"], "object location")
+        obj.location = None if loc == "nil" else loc
     if "flags" in kwargs:
         obj.flags = parse_flags(kwargs["flags"])
     if "properties" in kwargs:

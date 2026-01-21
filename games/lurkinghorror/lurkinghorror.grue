@@ -4,10 +4,21 @@
   :intro "You've waited until the last minute again. This time it's the end of the term, so all the TechNet terminals in the dorm are occupied. So, off you go to the old Comp Center. Too bad it's the worst storm of the winter (Murphy's Law, right?), and you practically froze to death slogging over here from the dorm. Not to mention jumping at every shadow, what with all the recent disappearances. Time to find a free machine, get to work, and write that twenty page paper."
   :player @player)
 
+; Victory: Defeat the Frob
+; The frob starts at nil (limbo), appears at @inner-lair when the mass is electrocuted,
+; and goes back to nil when defeated. We check count>=2 to distinguish "defeated" from "not yet appeared".
+(victory :when (and (= (loc @frob) nil) (>= (:count @frob) 2)))
+
+; Defeat: Player dies (marked by :dead property)
+(defeat death
+  :when (:dead @player)
+  :context ((message "You have died.")))
+
 (object @player
   :location @terminal-room
   :properties (
     :person true
+    :dead false
     :freeze-count 0
     :score 0
     :moves 0))

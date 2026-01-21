@@ -6,9 +6,9 @@ state transition graph. Uses only puzzle-relevant state for state identity.
 """
 
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
-import copy
 
 from grue import GrueWorld
 from grue.runtime import GrueRuntime
@@ -90,6 +90,7 @@ class StateNode:
     is_victory: bool = False
     is_defeat: bool = False
     depth: int = 0  # Shortest path from initial state
+    path: list[Action] = field(default_factory=list)  # Actions to reach this state
 
 
 @dataclass
@@ -111,7 +112,8 @@ class StateGraph:
     state_to_id: dict[GameState, int] = field(default_factory=dict)
 
     def add_node(self, state: GameState, is_victory: bool = False,
-                 is_defeat: bool = False, depth: int = 0) -> int:
+                 is_defeat: bool = False, depth: int = 0,
+                 path: list[Action] | None = None) -> int:
         """Add a node, returning its id. Returns existing id if state seen before."""
         if state in self.state_to_id:
             return self.state_to_id[state]
@@ -123,6 +125,7 @@ class StateGraph:
             is_victory=is_victory,
             is_defeat=is_defeat,
             depth=depth,
+            path=path or [],
         )
         self.state_to_id[state] = node_id
         return node_id
@@ -157,6 +160,238 @@ class StateGraph:
                     queue.append((next_id, path + [action]))
 
         return None
+
+    def get_victory_reachable(self) -> set[int]:
+        """Find all states from which victory is reachable (backward reachability)."""
+        victory_ids = {n.id for n in self.nodes.values() if n.is_victory}
+        if not victory_ids:
+            return set()
+
+        # Build reverse adjacency list (who can reach whom)
+        reverse_adj: dict[int, list[int]] = {i: [] for i in self.nodes}
+        for edge in self.edges:
+            reverse_adj[edge.to_id].append(edge.from_id)
+
+        # BFS backwards from victory states
+        reachable = set(victory_ids)
+        queue = deque(victory_ids)
+
+        while queue:
+            node_id = queue.popleft()
+            for prev_id in reverse_adj[node_id]:
+                if prev_id not in reachable:
+                    reachable.add(prev_id)
+                    queue.append(prev_id)
+
+        return reachable
+
+    def get_black_holes(self) -> set[int]:
+        """Find all states from which victory is unreachable (P(doom)=1)."""
+        victory_reachable = self.get_victory_reachable()
+        return set(self.nodes.keys()) - victory_reachable
+
+    def get_black_hole_entries(self) -> list[tuple[StateEdge, dict, dict]]:
+        """
+        Find all entry points into black holes.
+
+        Returns list of (edge, from_state_props, to_state_props) tuples where:
+        - edge crosses from victory-reachable to black hole
+        - from_state_props: dict of property name -> value for the safe state
+        - to_state_props: dict of property name -> value for the doomed state
+        """
+        victory_reachable = self.get_victory_reachable()
+        black_holes = set(self.nodes.keys()) - victory_reachable
+
+        entries = []
+        for edge in self.edges:
+            if edge.from_id in victory_reachable and edge.to_id in black_holes:
+                from_props = dict(self.nodes[edge.from_id].state.values)
+                to_props = dict(self.nodes[edge.to_id].state.values)
+                entries.append((edge, from_props, to_props))
+
+        return entries
+
+    def cluster_black_hole_entries(self) -> list[dict]:
+        """
+        Cluster black hole entry points by what changed when entering doom.
+
+        Returns list of clusters, each containing:
+        - 'delta': dict of properties that changed (prop -> new_value)
+        - 'entries': list of (edge, from_props, to_props) tuples
+        - 'actions': set of action types that lead to this cluster
+        """
+        entries = self.get_black_hole_entries()
+        if not entries:
+            return []
+
+        # For each entry, compute the delta (what changed)
+        # Group by delta to find common "doom triggers"
+        by_delta: dict[tuple, list] = {}
+        for entry in entries:
+            edge, from_props, to_props = entry
+            # Compute delta: properties that changed
+            delta = {}
+            for prop, new_val in to_props.items():
+                old_val = from_props.get(prop)
+                if old_val != new_val:
+                    delta[prop] = new_val
+
+            key = tuple(sorted(delta.items()))
+            if key not in by_delta:
+                by_delta[key] = []
+            by_delta[key].append(entry)
+
+        # Convert to cluster format
+        clusters = []
+        for delta_key, delta_entries in by_delta.items():
+            delta = dict(delta_key)
+            actions = {e[0].action.verb for e in delta_entries}
+            clusters.append({
+                'delta': delta,
+                'entries': delta_entries,
+                'actions': actions,
+            })
+
+        # Sort by number of entries (most common first)
+        result = sorted(clusters, key=lambda c: -len(c['entries']))
+        return result
+
+    def minimize(self) -> "StateGraph":
+        """
+        Return a bisimulation-minimized version of this graph.
+
+        Uses Hopcroft-style partition refinement:
+        1. Initial partition: {Victory}, {Defeat}, {Others}
+        2. Refine by signature: (action, target_partition) pairs
+        3. Stop at fixed point
+
+        Terminal states (victory/defeat) are sinks with no outgoing transitions,
+        so all same-type terminals are bisimilar.
+        """
+        if not self.nodes:
+            return StateGraph()
+
+        # Build adjacency list for outgoing edges
+        edges_from: dict[int, list[StateEdge]] = {i: [] for i in self.nodes}
+        for edge in self.edges:
+            edges_from[edge.from_id].append(edge)
+
+        # Initial partition: victory, defeat, others
+        victory_ids = {n.id for n in self.nodes.values() if n.is_victory}
+        defeat_ids = {n.id for n in self.nodes.values() if n.is_defeat}
+        other_ids = set(self.nodes.keys()) - victory_ids - defeat_ids
+
+        partitions: list[set[int]] = []
+        if victory_ids:
+            partitions.append(victory_ids)
+        if defeat_ids:
+            partitions.append(defeat_ids)
+        if other_ids:
+            partitions.append(other_ids)
+
+        def get_signature(state_id: int) -> frozenset:
+            """Compute signature: set of (action_key, target_partition_idx) pairs."""
+            # Build state -> partition index mapping
+            state_to_part = {}
+            for i, part in enumerate(partitions):
+                for s in part:
+                    state_to_part[s] = i
+
+            sig = set()
+            for edge in edges_from[state_id]:
+                target_part = state_to_part[edge.to_id]
+                action_key = (edge.action.verb, edge.action.target, edge.action.args)
+                sig.add((action_key, target_part))
+            return frozenset(sig)
+
+        # Partition refinement loop
+        changed = True
+        while changed:
+            changed = False
+            new_partitions = []
+
+            for part in partitions:
+                if len(part) <= 1:
+                    new_partitions.append(part)
+                    continue
+
+                # Group by signature
+                sig_groups: dict[frozenset, set[int]] = {}
+                for state_id in part:
+                    sig = get_signature(state_id)
+                    if sig not in sig_groups:
+                        sig_groups[sig] = set()
+                    sig_groups[sig].add(state_id)
+
+                # If partition splits, we made progress
+                if len(sig_groups) > 1:
+                    changed = True
+
+                new_partitions.extend(sig_groups.values())
+
+            partitions = new_partitions
+
+        # Build minimized graph
+        # Pick representative from each partition (prefer initial state if present)
+        part_to_rep: dict[int, int] = {}
+        state_to_part: dict[int, int] = {}
+
+        for i, part in enumerate(partitions):
+            for s in part:
+                state_to_part[s] = i
+            # Prefer initial state as representative
+            if self.initial_id in part:
+                part_to_rep[i] = self.initial_id
+            else:
+                part_to_rep[i] = min(part)  # Deterministic choice
+
+        # Create new graph with representatives only
+        minimized = StateGraph()
+
+        # Map old rep ids to new sequential ids
+        rep_to_new_id: dict[int, int] = {}
+
+        for i, part in enumerate(partitions):
+            rep = part_to_rep[i]
+            old_node = self.nodes[rep]
+
+            # Create merged state label
+            if len(part) > 1:
+                # Merged node - note how many states collapsed
+                merged_state = GameState(values=old_node.state.values)
+            else:
+                merged_state = old_node.state
+
+            new_id = minimized.add_node(
+                merged_state,
+                is_victory=old_node.is_victory,
+                is_defeat=old_node.is_defeat,
+                depth=old_node.depth,
+            )
+            rep_to_new_id[rep] = new_id
+
+            # Track initial state
+            if self.initial_id in part:
+                minimized.initial_id = new_id
+
+        # Add edges (deduplicated by from/to/action)
+        seen_edges: set[tuple[int, int, str, str, tuple]] = set()
+        for edge in self.edges:
+            from_part = state_to_part[edge.from_id]
+            to_part = state_to_part[edge.to_id]
+
+            from_rep = part_to_rep[from_part]
+            to_rep = part_to_rep[to_part]
+
+            new_from = rep_to_new_id[from_rep]
+            new_to = rep_to_new_id[to_rep]
+
+            edge_key = (new_from, new_to, edge.action.verb, edge.action.target, edge.action.args)
+            if edge_key not in seen_edges:
+                seen_edges.add(edge_key)
+                minimized.add_edge(new_from, new_to, edge.action)
+
+        return minimized
 
     def summary(self) -> str:
         """Return a human-readable summary."""
@@ -208,6 +443,7 @@ class StateExplorer:
             is_victory=self._runtime.check_victory(),
             is_defeat=self._runtime.check_defeat(),
             depth=0,
+            path=[],
         )
         graph.initial_id = initial_id
 
@@ -232,8 +468,8 @@ class StateExplorer:
             if node.is_victory or node.is_defeat:
                 continue
 
-            # Restore to this state
-            self._restore_to_state(node.state)
+            # Restore to this state by replaying the path
+            self._replay_path(node.path)
 
             # Enumerate and try all actions
             for action in self._enumerate_actions():
@@ -248,12 +484,16 @@ class StateExplorer:
                         self._runtime, self.relevance.relevant
                     )
 
+                    # Build new path (only for new states)
+                    new_path = node.path + [action] if new_state not in graph.state_to_id else None
+
                     # Add node (or get existing)
                     new_id = graph.add_node(
                         new_state,
                         is_victory=self._runtime.check_victory(),
                         is_defeat=self._runtime.check_defeat(),
                         depth=depth + 1,
+                        path=new_path,
                     )
 
                     # Add edge
@@ -266,6 +506,13 @@ class StateExplorer:
                 self._restore_state(saved)
 
         return graph
+
+    def _replay_path(self, path: list[Action]):
+        """Restore runtime to a state by replaying actions from initial."""
+        self._runtime.reset()
+        for action in path:
+            self._runtime.do(action.target, action.verb, *action.args)
+            self._runtime.process_events()
 
     def _enumerate_actions(self) -> list[Action]:
         """Enumerate all valid actions from current state, including arguments."""
@@ -319,56 +566,15 @@ class StateExplorer:
 
         return actions
 
-    def _restore_to_state(self, target_state: GameState):
-        """Restore runtime to match a target state by BFS search."""
-        # Simple approach: reset and BFS to find the state
-        # (Could be optimized with state snapshots)
-        self._runtime.reset()
-        current = GameState.from_runtime(self._runtime, self.relevance.relevant)
-
-        if current == target_state:
-            return
-
-        # BFS to find path to target state
-        visited = {current}
-        queue = deque([(current, [])])
-
-        while queue:
-            state, path = queue.popleft()
-
-            # Restore to this state
-            self._runtime.reset()
-            for action in path:
-                self._runtime.do(action.target, action.verb, *action.args)
-                self._runtime.process_events()
-
-            # Try all actions
-            for action in self._enumerate_actions():
-                saved = self._save_state()
-                result = self._runtime.do(action.target, action.verb, *action.args)
-
-                if result.outcome == "success":
-                    self._runtime.process_events()
-                    new_state = GameState.from_runtime(self._runtime, self.relevance.relevant)
-
-                    if new_state == target_state:
-                        return  # Found it, runtime is now in target state
-
-                    if new_state not in visited:
-                        visited.add(new_state)
-                        queue.append((new_state, path + [action]))
-
-                self._restore_state(saved)
-
     def _save_state(self) -> dict:
-        """Save runtime state."""
+        """Save runtime state for later restoration."""
         return {
-            "objects": copy.deepcopy(self._runtime.state.objects),
-            "queues": copy.deepcopy(self._runtime.state.queues),
+            "objects": deepcopy(self._runtime.state.objects),
+            "queues": deepcopy(self._runtime.state.queues),
         }
 
     def _restore_state(self, saved: dict):
-        """Restore runtime state."""
+        """Restore runtime state from a saved snapshot."""
         self._runtime.state.objects = saved["objects"]
         self._runtime.state.queues = saved["queues"]
 

@@ -565,7 +565,12 @@ class GrueRuntime:
                 )
 
             # Convert behavior result to ActionResult (same as behaviors)
-            return self._behavior_result_to_action_result(result, evaluator)
+            action_result = self._behavior_result_to_action_result(result, evaluator)
+
+            # Check for death in context
+            self._check_death_context(action_result)
+
+            return action_result
         finally:
             self.bindings = old_bindings
 
@@ -836,6 +841,10 @@ class GrueRuntime:
 
         # Not a redirect - return result with any accumulated redirects
         result.redirects = _redirects
+
+        # Check for death in context and set player:dead automatically
+        self._check_death_context(result)
+
         return result
 
     def _do_single(
@@ -1391,6 +1400,24 @@ class GrueRuntime:
             context=context,
             effects_applied=outcome.effects_applied
         )
+
+    def _check_death_context(self, result: ActionResult):
+        """Check if result context contains (death true) and set player:dead.
+
+        This allows games to signal death via context without explicitly
+        setting the player:dead property in every death case.
+        """
+        if not result.context:
+            return
+
+        for key, value in result.context:
+            # Check for death=true (handles both boolean True and string "True")
+            if key == "death" and value in (True, "True", "true"):
+                # Set player dead property (stored without colon prefix)
+                player = self.player_name
+                if player and player in self.state.objects:
+                    self.state.objects[player].properties["dead"] = True
+                return
 
     def check_victory(self) -> bool:
         """Check if victory condition is met."""
