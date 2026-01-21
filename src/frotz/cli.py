@@ -38,11 +38,16 @@ def generate_dot(world, effects, relevance, result) -> str:
         '  rankdir=BT;',  # Bottom to top (victory at top)
         '  node [shape=box];',
         "",
-        "  // Victory condition",
+        "  // Terminal states",
         '  victory [label="VICTORY" shape=doubleoctagon style=filled fillcolor=green];',
-        "",
-        "  // Puzzle-relevant state",
     ]
+
+    # Add defeat node if there are defeat conditions
+    if relevance.defeat_refs:
+        lines.append('  defeat [label="DEFEAT" shape=doubleoctagon style=filled fillcolor=red];')
+
+    lines.append("")
+    lines.append("  // Puzzle-relevant state")
 
     # Add nodes for relevant state
     for ref in sorted(relevance.relevant, key=str):
@@ -51,12 +56,20 @@ def generate_dot(world, effects, relevance, result) -> str:
         lines.append(f'  {ref_id} [label="{label}"];')
 
     lines.append("")
-    lines.append("  // Dependencies (what must change for victory)")
+    lines.append("  // Victory dependencies")
 
     # Add edges from victory condition refs
     for ref in relevance.victory_refs:
         ref_id = dot_id(str(ref))
         lines.append(f'  {ref_id} -> victory;')
+
+    # Add edges from defeat condition refs
+    if relevance.defeat_refs:
+        lines.append("")
+        lines.append("  // Defeat dependencies")
+        for ref in relevance.defeat_refs:
+            ref_id = dot_id(str(ref))
+            lines.append(f'  {ref_id} -> defeat [color=red];')
 
     lines.append("")
     lines.append("  // Behavior dependencies (what behaviors read/modify)")
