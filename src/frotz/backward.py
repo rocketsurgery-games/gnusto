@@ -289,61 +289,89 @@ class BackwardAnalyzer:
             node.is_constant = True
             return
 
-        # For each modifier, extract preconditions
+        # For each modifier, extract preconditions (may have multiple alternative paths)
         for behavior in modifiers:
-            preconditions = self._extract_preconditions(behavior)
-            achiever = Achiever(behavior=behavior, preconditions=preconditions)
-            node.achievers.append(achiever)
+            precondition_paths = self._extract_preconditions(behavior)
 
-            # Recursively expand preconditions
-            for precond in preconditions:
-                if precond not in tree.all_nodes:
-                    child_node = ConstraintNode(constraint=precond)
-                    tree.all_nodes[precond] = child_node
-                    node.children[precond] = child_node
-                    self._expand_node(child_node, tree, depth + 1, max_depth)
-                else:
-                    # Reuse existing node (DAG, not tree)
-                    node.children[precond] = tree.all_nodes[precond]
+            if not precondition_paths:
+                # No preconditions - single achiever with empty requirements
+                node.achievers.append(Achiever(behavior=behavior, preconditions=[]))
+            else:
+                # Each path is an alternative achiever
+                for path in precondition_paths:
+                    achiever = Achiever(behavior=behavior, preconditions=path)
+                    node.achievers.append(achiever)
 
-    def _extract_preconditions(self, behavior: BehaviorRef) -> list[Constraint]:
+                    # Recursively expand preconditions
+                    for precond in path:
+                        if precond not in tree.all_nodes:
+                            child_node = ConstraintNode(constraint=precond)
+                            tree.all_nodes[precond] = child_node
+                            node.children[precond] = child_node
+                            self._expand_node(child_node, tree, depth + 1, max_depth)
+                        else:
+                            # Reuse existing node (DAG, not tree)
+                            node.children[precond] = tree.all_nodes[precond]
+
+    def _extract_preconditions(self, behavior: BehaviorRef) -> list[list[Constraint]]:
         """Extract preconditions for a behavior by analyzing its body.
 
-        We look for blocking conditions - patterns like:
-          (cond ((condition) (blocked ...)) ...)
-          (if (condition) (blocked ...) ...)
+        Returns list of alternative paths (OR of ANDs).
+        Each path is a list of constraints that must be satisfied together.
 
-        The negation of these conditions gives us what must be true
-        for the behavior to succeed.
+        Uses two strategies:
+        1. Blocking-based: Find conditions leading to (blocked ...) and negate them
+        2. Success-based: Find conditions leading to effects (for OR-conditions)
+
+        The blocking approach works for simple gates (one path to success).
+        The success approach finds alternative paths (OR-conditions).
         """
-        preconditions: list[Constraint] = []
-
         # Special case: runtime:go gets preconditions from door :through behaviors
         if behavior.object == "runtime" and behavior.verb == "go":
-            return self._extract_go_preconditions()
+            preconds = self._extract_go_preconditions()
+            return [preconds] if preconds else []
 
         # Find the behavior body
         body = self._get_behavior_body(behavior)
         if body is None:
-            return preconditions
+            return []
 
-        # Extract blocking conditions from the body
+        # Strategy 1: Extract from blocking conditions
         blocking_conditions = self._extract_blocking_conditions(body)
-
-        # Convert blocking conditions to preconditions
-        # If condition X leads to blocked, then NOT X must be true for success
-        # If (not X) leads to blocked, then X must be true for success
+        blocking_preconds: list[Constraint] = []
         for condition, was_negated in blocking_conditions:
-            # was_negated=True means the blocking check was (not condition)
-            # So for success, we need condition to be TRUE
-            # was_negated=False means the blocking check was (condition)
-            # So for success, we need condition to be FALSE
             must_be_true = was_negated
             constraint = self._condition_to_constraint(condition, must_be_true)
             if constraint is not None:
-                preconditions.append(constraint)
+                blocking_preconds.append(constraint)
 
-        return preconditions
+        # Strategy 2: Extract success paths (for OR-conditions)
+        success_paths = self._extract_success_conditions(body)
+
+        # Combine strategies:
+        # - If we have blocking conditions, they apply to ALL paths
+        # - If we have success paths, each path is an alternative
+        if success_paths:
+            # Each success path is an alternative, combined with blocking preconds
+            result: list[list[Constraint]] = []
+            for path in success_paths:
+                # Combine and deduplicate
+                combined = blocking_preconds + path
+                seen: set[str] = set()
+                deduped: list[Constraint] = []
+                for c in combined:
+                    key = str(c)
+                    if key not in seen:
+                        seen.add(key)
+                        deduped.append(c)
+                result.append(deduped)
+            return result
+        elif blocking_preconds:
+            # Only blocking conditions, single path
+            return [blocking_preconds]
+        else:
+            # No conditions found
+            return []
 
     def _extract_go_preconditions(self) -> list[Constraint]:
         """Extract preconditions for movement from all door :through behaviors.
@@ -418,6 +446,159 @@ class BackwardAnalyzer:
         self._walk_for_blockers(expr, results, [])
         return results
 
+    def _extract_success_conditions(self, expr: Any) -> list[list[Constraint]]:
+        """Extract conditions that lead to effects (set/move).
+
+        Returns list of alternative paths (OR of ANDs).
+        Each path is a list of constraints that must be satisfied together.
+
+        This handles OR-conditions where multiple cond branches can succeed.
+        """
+        paths: list[list[tuple[Any, bool]]] = []
+        self._walk_for_effects(expr, [], paths)
+
+        # Convert condition tuples to constraints
+        result: list[list[Constraint]] = []
+        for path in paths:
+            constraints: list[Constraint] = []
+            for condition, is_negated in path:
+                # For success paths, the condition must be TRUE (not negated for success)
+                must_be_true = not is_negated
+                constraint = self._condition_to_constraint(condition, must_be_true)
+                if constraint is not None:
+                    constraints.append(constraint)
+            if constraints:  # Only add non-empty paths
+                result.append(constraints)
+
+        return result
+
+    def _walk_for_effects(
+        self,
+        expr: Any,
+        condition_stack: list[tuple[Any, bool]],
+        paths: list[list[tuple[Any, bool]]],
+    ):
+        """Walk expression tree looking for effects (set/move) with condition context."""
+        if not isinstance(expr, SList) or not expr.items:
+            return
+
+        items = expr.items
+        head = items[0]
+
+        if not isinstance(head, Symbol):
+            # Could be a keyword-as-function, recurse into children
+            for item in items:
+                self._walk_for_effects(item, condition_stack, paths)
+            return
+
+        name = head.name
+
+        # (set ...) or (move ...) - we found an effect
+        if name in ("set", "move"):
+            # Record this path's conditions
+            if condition_stack:
+                paths.append(list(condition_stack))
+            return
+
+        # (quote (...)) - quoted effect list, check inside
+        if name == "quote" and len(items) >= 2:
+            quoted = items[1]
+            if isinstance(quoted, SList):
+                # Check if this contains effects
+                for item in quoted.items:
+                    if isinstance(item, SList) and item.items:
+                        inner_head = item.items[0]
+                        if isinstance(inner_head, Symbol) and inner_head.name in ("set", "move"):
+                            # Found effect in quoted list
+                            if condition_stack:
+                                paths.append(list(condition_stack))
+                            return
+            return
+
+        # (cond (test1 result1) (test2 result2) ...)
+        if name == "cond":
+            for clause in items[1:]:
+                if isinstance(clause, SList) and len(clause.items) >= 2:
+                    test = clause.items[0]
+                    body = clause.items[1:]
+
+                    # Check for else clause (Symbol 'true' OR Python True)
+                    if self._is_else_clause(test):
+                        # Else clause - process without adding condition
+                        for b in body:
+                            self._walk_for_effects(b, condition_stack, paths)
+                    else:
+                        # Regular clause - decompose condition and add to stack
+                        is_negated = self._is_negated_condition(test)
+                        inner_cond = self._unwrap_negation(test) if is_negated else test
+                        decomposed = self._decompose_condition(inner_cond, is_negated)
+                        new_stack = condition_stack + decomposed
+                        for b in body:
+                            self._walk_for_effects(b, new_stack, paths)
+            return
+
+        # (if test then else?)
+        if name == "if" and len(items) >= 3:
+            test = items[1]
+            then_branch = items[2]
+            else_branch = items[3] if len(items) > 3 else None
+
+            is_negated = self._is_negated_condition(test)
+            inner_cond = self._unwrap_negation(test) if is_negated else test
+
+            # Then branch: decompose condition
+            decomposed = self._decompose_condition(inner_cond, is_negated)
+            then_stack = condition_stack + decomposed
+            self._walk_for_effects(then_branch, then_stack, paths)
+
+            # Else branch: condition is false (flip negation for each part)
+            if else_branch:
+                flipped = [(c, not n) for c, n in decomposed]
+                else_stack = condition_stack + flipped
+                self._walk_for_effects(else_branch, else_stack, paths)
+            return
+
+        # Default: recurse into children
+        for item in items:
+            self._walk_for_effects(item, condition_stack, paths)
+
+    def _is_else_clause(self, test: Any) -> bool:
+        """Check if a cond test is an else clause (literal true)."""
+        # Python True (from parser)
+        if test is True:
+            return True
+        # Symbol 'true'
+        if isinstance(test, Symbol) and test.name == "true":
+            return True
+        return False
+
+    def _decompose_condition(self, test: Any, is_negated: bool) -> list[tuple[Any, bool]]:
+        """Decompose a condition into atomic parts.
+
+        Handles (and A B ...) by returning each part separately.
+        The is_negated flag tracks whether the overall condition was negated.
+
+        Returns list of (condition, is_negated) tuples.
+        """
+        # Check for (and ...)
+        if isinstance(test, SList) and test.items:
+            head = test.items[0]
+            if isinstance(head, Symbol) and head.name == "and":
+                # (and A B ...) - decompose into parts
+                # Each part must be true (if not negated) or false (if negated)
+                parts: list[tuple[Any, bool]] = []
+                for part in test.items[1:]:
+                    # Check if part is itself negated
+                    part_negated = self._is_negated_condition(part)
+                    inner = self._unwrap_negation(part) if part_negated else part
+                    # Combine negations: if outer is negated and inner is negated, result is not negated
+                    final_negated = is_negated != part_negated  # XOR
+                    parts.extend(self._decompose_condition(inner, final_negated))
+                return parts
+
+        # Atomic condition
+        return [(test, is_negated)]
+
     def _walk_for_blockers(
         self,
         expr: Any,
@@ -453,16 +634,17 @@ class BackwardAnalyzer:
                     test = clause.items[0]
                     body = clause.items[1:]
 
-                    # Check if test is a literal 'true' (else clause)
-                    if isinstance(test, Symbol) and test.name == "true":
+                    # Check for else clause (Symbol 'true' OR Python True)
+                    if self._is_else_clause(test):
                         # Else clause - process without adding condition
                         for b in body:
                             self._walk_for_blockers(b, results, condition_stack)
                     else:
-                        # Regular clause - add condition to stack
+                        # Regular clause - decompose condition and add to stack
                         is_negated = self._is_negated_condition(test)
                         inner_cond = self._unwrap_negation(test) if is_negated else test
-                        new_stack = condition_stack + [(inner_cond, is_negated)]
+                        decomposed = self._decompose_condition(inner_cond, is_negated)
+                        new_stack = condition_stack + decomposed
                         for b in body:
                             self._walk_for_blockers(b, results, new_stack)
             return

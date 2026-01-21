@@ -4,6 +4,12 @@
 ; - Deadly trap: touching the orb kills you
 ; - Irrelevant objects: book, coin (red herrings)
 ; - Multiple rooms with different hazards
+;
+; Extended features for clustering/analysis testing:
+; - Alternate solution: lockpick OR key can unlock door
+; - Consumable item: lockpick breaks after one use (irreversible)
+; - Black hole: dropping key in pit makes game unwinnable
+; - Conditional puzzle: safe requires EITHER combination OR crowbar
 
 (world
   :name "Test Game"
@@ -59,7 +65,29 @@
   :ldesc "A small brass key lies on the floor."
   :behaviors (
     :take (fn () '((move @key @player) (success :message "You pick up the key.")))
+    :drop (fn ()
+      (cond
+        ; Dropping in pit-bottom loses the key forever (black hole trigger)
+        ((= (loc @player) @pit-bottom)
+          '((move @key @abyss)
+            (success :message "The key tumbles into a crack between the rocks and disappears forever.")))
+        (true
+          '((move @key (loc @player))
+            (success :message "You drop the key.")))))
     :examine (fn () (success :message "A small brass key, tarnished with age."))))
+
+; Lockpick - alternate solution that breaks after use
+(object @lockpick
+  :location @pit
+  :description "rusty lockpick"
+  :ldesc "A rusty lockpick lies wedged in a crack."
+  :properties (:broken false)
+  :behaviors (
+    :take (fn () '((move @lockpick @player) (success :message "You carefully extract the lockpick.")))
+    :examine (fn ()
+      (if (:broken @lockpick)
+        (success :message "A broken lockpick. Useless now.")
+        (success :message "A rusty but functional lockpick. Looks fragile.")))))
 
 (object @cell-door
   :location @cell
@@ -75,11 +103,17 @@
       (cond
         ((not (:locked @cell-door))
           (success :message "It's already unlocked."))
-        ((not (held? @key))
-          (blocked :reason no-key :message "You don't have anything to unlock it with."))
-        (true
+        ; Can unlock with key (reusable)
+        ((held? @key)
           '((set @cell-door :locked false)
-            (success :message "You unlock the door with the brass key.")))))
+            (success :message "You unlock the door with the brass key.")))
+        ; OR with lockpick (breaks after use - irreversible!)
+        ((and (held? @lockpick) (not (:broken @lockpick)))
+          '((set @cell-door :locked false)
+            (set @lockpick :broken true)
+            (success :message "You pick the lock. The rusty lockpick snaps as the door clicks open.")))
+        (true
+          (blocked :reason no-tool :message "You don't have anything to unlock it with."))))
 
     :lock (fn ()
       (cond
@@ -166,3 +200,80 @@
   :behaviors (
     :take (fn () '((move @rock @player) (success :message "You pick up a sharp rock.")))
     :examine (fn () (success :message "A jagged rock. Could be used as a crude weapon."))))
+
+; === Extended puzzle: Safe with OR-condition ===
+; The safe contains a gem needed for... nothing yet, but demonstrates OR prerequisites
+
+(object @safe
+  :location @cell
+  :description "small safe"
+  :ldesc "A small safe is bolted to the wall."
+  :properties (:open false :damaged false)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:damaged @safe)
+          (success :message "The safe has been pried open. It's damaged beyond repair."))
+        ((:open @safe)
+          (success :message "The safe door hangs open."))
+        (true
+          (success :message "A small wall safe with a combination dial."))))
+
+    ; Open with combination (non-destructive, reversible)
+    :dial (fn (?combo)
+      (cond
+        ((:open @safe)
+          (success :message "The safe is already open."))
+        ((:damaged @safe)
+          (success :message "The safe is broken open. The dial doesn't work anymore."))
+        ((= ?combo "1234")  ; The correct combination
+          '((set @safe :open true)
+            (success :message "Click! The safe swings open.")))
+        (true
+          (success :message "Nothing happens. Wrong combination."))))
+
+    ; Force open with crowbar (destructive, irreversible, but works!)
+    :force (fn ()
+      (cond
+        ((:open @safe)
+          (success :message "The safe is already open."))
+        ((not (held? @crowbar))
+          (blocked :reason no-crowbar :message "You'd need something to pry it with."))
+        (true
+          '((set @safe :open true)
+            (set @safe :damaged true)
+            (success :message "With a loud crack, you pry the safe open. The mechanism is ruined.")))))
+
+    :close (fn ()
+      (cond
+        ((not (:open @safe))
+          (success :message "It's already closed."))
+        ((:damaged @safe)
+          (success :message "The safe is too damaged to close properly."))
+        (true
+          '((set @safe :open false)
+            (success :message "You close the safe.")))))))
+
+(object @crowbar
+  :location @pit
+  :description "rusty crowbar"
+  :ldesc "A rusty crowbar leans against the wall."
+  :behaviors (
+    :take (fn () '((move @crowbar @player) (success :message "You pick up the heavy crowbar.")))
+    :examine (fn () (success :message "A heavy iron crowbar, rusted but sturdy."))))
+
+(object @gem
+  :location @safe
+  :description "sparkling gem"
+  :behaviors (
+    :take (fn ()
+      (if (not (:open @safe))
+        (blocked :reason safe-closed :message "The gem is inside the closed safe.")
+        '((move @gem @player) (success :message "You take the sparkling gem."))))
+    :examine (fn () (success :message "A brilliant gem that catches the light."))))
+
+; === Limbo location for permanently lost items ===
+(room @abyss
+  :description "The Void"
+  :ldesc "Items lost forever end up here."
+  :properties (:lit false))
