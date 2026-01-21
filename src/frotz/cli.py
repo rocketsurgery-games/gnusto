@@ -7,7 +7,7 @@ Usage:
 Examples:
     frotz games/testgame/testgame.grue
     frotz games/lurkinghorror/ --max-depth 50
-    frotz games/testgame/testgame.grue --dot puzzle.dot
+    frotz games/testgame/testgame.grue --dot states.dot
 """
 
 import argparse
@@ -18,7 +18,7 @@ from grue import load_grue
 
 from .effects import analyze_effects
 from .relevance import analyze_relevance
-from .explorer import explore_state_space
+from .explorer import explore_state_space, StateGraph
 
 
 def format_section(title: str) -> str:
@@ -27,82 +27,69 @@ def format_section(title: str) -> str:
 
 
 def dot_id(s: str) -> str:
-    """Convert a string to a valid DOT identifier (snake_case)."""
-    return s.replace(":", "_").replace("@", "").replace("-", "_")
+    """Convert a string to a valid DOT identifier."""
+    # Replace problematic characters
+    result = s.replace("@", "").replace(":", "_").replace("-", "_")
+    result = result.replace(" ", "_").replace(",", "_").replace("=", "_")
+    result = result.replace("!", "not_").replace("{", "").replace("}", "")
+    return result
 
 
-def generate_dot(world, effects, relevance, result) -> str:
-    """Generate DOT graph of puzzle dependencies."""
+def generate_state_graph_dot(graph: StateGraph) -> str:
+    """Generate DOT graph of the actual state transition graph."""
     lines = [
-        "digraph puzzle {",
-        '  rankdir=BT;',  # Bottom to top (victory at top)
-        '  node [shape=box];',
+        "digraph states {",
+        '  rankdir=TB;',
+        '  node [shape=box fontsize=10];',
+        '  edge [fontsize=9];',
         "",
-        "  // Terminal states",
-        '  victory [label="VICTORY" shape=doubleoctagon style=filled fillcolor=green];',
     ]
 
-    # Add defeat node if there are defeat conditions
-    if relevance.defeat_refs:
-        lines.append('  defeat [label="DEFEAT" shape=doubleoctagon style=filled fillcolor=red];')
+    # Add nodes
+    for node_id, node in graph.nodes.items():
+        label = node.state.short_str()
+        # Escape quotes in label
+        label = label.replace('"', '\\"')
+
+        if node.is_victory:
+            style = 'style=filled fillcolor=green'
+            label = f"VICTORY\\n{label}"
+        elif node.is_defeat:
+            style = 'style=filled fillcolor=red'
+            label = f"DEFEAT\\n{label}"
+        elif node_id == graph.initial_id:
+            style = 'style=filled fillcolor=lightblue'
+            label = f"START\\n{label}"
+        else:
+            style = ''
+
+        lines.append(f'  s{node_id} [label="{label}" {style}];')
 
     lines.append("")
-    lines.append("  // Puzzle-relevant state")
 
-    # Add nodes for relevant state
-    for ref in sorted(relevance.relevant, key=str):
-        ref_id = dot_id(str(ref))
-        label = str(ref)
-        lines.append(f'  {ref_id} [label="{label}"];')
+    # Add edges, grouping by (from, to) to combine actions
+    edge_actions: dict[tuple[int, int], list[str]] = {}
+    for edge in graph.edges:
+        key = (edge.from_id, edge.to_id)
+        action_str = f"{edge.action.verb}"
+        if edge.action.args:
+            action_str += f" {' '.join(edge.action.args)}"
+        if key not in edge_actions:
+            edge_actions[key] = []
+        edge_actions[key].append(action_str)
 
-    lines.append("")
-    lines.append("  // Victory dependencies")
+    for (from_id, to_id), actions in edge_actions.items():
+        # Combine multiple actions on same edge
+        label = "\\n".join(actions[:3])  # Limit to 3 to avoid clutter
+        if len(actions) > 3:
+            label += f"\\n+{len(actions) - 3} more"
+        label = label.replace('"', '\\"')
 
-    # Add edges from victory condition refs
-    for ref in relevance.victory_refs:
-        ref_id = dot_id(str(ref))
-        lines.append(f'  {ref_id} -> victory;')
-
-    # Add edges from defeat condition refs
-    if relevance.defeat_refs:
-        lines.append("")
-        lines.append("  // Defeat dependencies")
-        for ref in relevance.defeat_refs:
-            ref_id = dot_id(str(ref))
-            lines.append(f'  {ref_id} -> defeat [color=red];')
-
-    lines.append("")
-    lines.append("  // Behavior dependencies (what behaviors read/modify)")
-
-    # Add edges for behavior dependencies
-    for ref in relevance.relevant:
-        ref_id = dot_id(str(ref))
-        # Find what this state depends on (behaviors that modify it read other state)
-        modifiers = effects.modifies.get(ref, set())
-        for behavior in modifiers:
-            # What does this behavior read?
-            for read_ref, readers in effects.reads.items():
-                if behavior in readers and read_ref in relevance.relevant:
-                    read_id = dot_id(str(read_ref))
-                    if read_id != ref_id:  # Avoid self-loops
-                        lines.append(f'  {read_id} -> {ref_id} [label="{behavior.verb}"];')
-
-    lines.append("")
-    lines.append("  // Winning path")
-
-    if result.victory_path:
-        lines.append('  subgraph cluster_path {')
-        lines.append('    label="Winning Path";')
-        lines.append('    style=dashed;')
-        for i, action in enumerate(result.victory_path):
-            node_id = f"step{i}"
-            lines.append(f'    {node_id} [label="{i+1}. {action.verb} {action.target}" shape=ellipse];')
-        # Chain the steps
-        for i in range(len(result.victory_path) - 1):
-            lines.append(f'    step{i} -> step{i+1};')
-        if result.victory_path:
-            lines.append(f'    step{len(result.victory_path)-1} -> victory [style=bold];')
-        lines.append('  }')
+        # Self-loops (actions that don't change state)
+        if from_id == to_id:
+            lines.append(f'  s{from_id} -> s{to_id} [label="{label}" style=dashed color=gray];')
+        else:
+            lines.append(f'  s{from_id} -> s{to_id} [label="{label}"];')
 
     lines.append("}")
     return "\n".join(lines)
@@ -128,7 +115,7 @@ def main(args: list[str] | None = None):
     parser.add_argument(
         "--dot",
         metavar="FILE",
-        help="Output puzzle dependency graph in DOT format",
+        help="Output state transition graph in DOT format",
     )
     parser.add_argument(
         "--effects-only",
@@ -192,31 +179,36 @@ def main(args: list[str] | None = None):
         print(format_section("Phase 3: State Space Exploration"))
         print(f"Exploring with max depth {opts.max_depth}...")
 
-    result = explore_state_space(world, effects, relevance, opts.max_depth)
+    graph = explore_state_space(world, relevance, opts.max_depth)
 
     if not opts.quiet:
-        print(result.summary())
+        print(graph.summary())
 
     # Verdict
+    victory_path = graph.get_victory_path()
+    victory_count = sum(1 for n in graph.nodes.values() if n.is_victory)
+    defeat_count = sum(1 for n in graph.nodes.values() if n.is_defeat)
+
     print(format_section("Verdict"))
-    if result.victory_found:
-        print(f"✓ WINNABLE - Victory reachable in {result.victory_depth} steps")
-        print(f"  States explored: {result.states_explored}")
-        print(f"  Unique states: {result.states_visited}")
+    if victory_path is not None:
+        print(f"✓ WINNABLE - Victory reachable in {len(victory_path)} steps")
+        print(f"  States: {len(graph.nodes)}")
+        print(f"  Transitions: {len(graph.edges)}")
+        if defeat_count:
+            print(f"  Defeat states: {defeat_count}")
     else:
         print("✗ NO VICTORY PATH FOUND")
-        if result.dead_ends:
-            print(f"  Dead ends: {len(result.dead_ends)}")
-        if result.defeat_states:
-            print(f"  Defeat states: {len(result.defeat_states)}")
+        print(f"  States explored: {len(graph.nodes)}")
+        if defeat_count:
+            print(f"  Defeat states: {defeat_count}")
 
     # Generate DOT if requested
     if opts.dot:
-        dot_content = generate_dot(world, effects, relevance, result)
+        dot_content = generate_state_graph_dot(graph)
         Path(opts.dot).write_text(dot_content)
-        print(f"\nPuzzle graph written to: {opts.dot}")
+        print(f"\nState graph written to: {opts.dot}")
 
-    return 0 if result.victory_found else 1
+    return 0 if victory_path is not None else 1
 
 
 if __name__ == "__main__":
