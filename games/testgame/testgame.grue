@@ -4,9 +4,9 @@
 (world
   :name "Test Game"
   :player @player
-  :intro "You wake up in a small room. There's a door to the north."
-  :victory (= (loc @player) @outside)
-  :defeat false)
+  :intro "You wake up in a small room. There's a door to the north.")
+
+(victory :when (= (loc @player) @outside))
 
 ; === Rooms ===
 

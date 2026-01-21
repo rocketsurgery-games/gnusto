@@ -184,6 +184,38 @@ class EffectAnalyzer:
             # Mark as modifiable by the built-in "go" action
             self.analysis.add_modify(player_loc, BehaviorRef("runtime", "go"))
 
+            # Navigation through doors (:via) depends on the door's :through behavior
+            # Find all doors used in exits and mark runtime:go as reading what :through reads
+            self._collect_navigation_dependencies()
+
+    def _collect_navigation_dependencies(self):
+        """Find all :via doors in exits and track their :through behavior dependencies.
+
+        When a room exit has :via @door, the runtime calls @door's :through behavior
+        to check if navigation is allowed. So runtime:go effectively reads whatever
+        :through behaviors read.
+        """
+        runtime_go = BehaviorRef("runtime", "go")
+
+        # Collect all doors used in :via exits
+        doors_used: set[str] = set()
+        for room in self.world.rooms.values():
+            for exit_info in room.exits:
+                # exit_info is an Exit with via attribute
+                if hasattr(exit_info, 'via') and exit_info.via:
+                    doors_used.add(exit_info.via)
+
+        # For each door, find what its :through behavior reads
+        for door_name in doors_used:
+            if door_name in self.world.objects:
+                door = self.world.objects[door_name]
+                if hasattr(door, 'behaviors') and door.behaviors:
+                    for behavior in door.behaviors:
+                        if behavior.verb == "through":
+                            # Analyze what :through reads and mark as read by runtime:go
+                            self._current_behavior = runtime_go
+                            self._walk_expr(behavior.body)
+
     def _analyze_object_behaviors(self, obj_name: str, obj: Any):
         """Analyze all behaviors on an object."""
         if not hasattr(obj, 'behaviors') or not obj.behaviors:
