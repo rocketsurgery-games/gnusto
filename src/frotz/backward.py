@@ -307,52 +307,248 @@ class BackwardAnalyzer:
                     node.children[precond] = tree.all_nodes[precond]
 
     def _extract_preconditions(self, behavior: BehaviorRef) -> list[Constraint]:
-        """Extract preconditions for a behavior from its reads.
+        """Extract preconditions for a behavior by analyzing its body.
 
-        This is a heuristic approach - we don't do full symbolic execution,
-        but we can infer likely preconditions from:
-        1. Known patterns (locked, open, etc.)
-        2. Location requirements
-        3. Boolean flags
+        We look for blocking conditions - patterns like:
+          (cond ((condition) (blocked ...)) ...)
+          (if (condition) (blocked ...) ...)
+
+        The negation of these conditions gives us what must be true
+        for the behavior to succeed.
         """
-        preconditions = []
+        preconditions: list[Constraint] = []
 
-        # Find what this behavior reads
-        for ref, readers in self.effects.reads.items():
-            if behavior in readers:
-                ref_str = str(ref)
-                initial_value = self._initial_state.get(ref_str)
+        # Special case: runtime:go gets preconditions from door :through behaviors
+        if behavior.object == "runtime" and behavior.verb == "go":
+            return self._extract_go_preconditions()
 
-                if isinstance(ref, PropertyRef):
-                    # Known blocking patterns
-                    if ref.property in ("locked", "lost", "dead", "broken"):
-                        preconditions.append(Constraint(ref, "=", False))
-                    elif ref.property in ("open", "freed", "rmung"):
-                        preconditions.append(Constraint(ref, "=", True))
-                    elif isinstance(initial_value, bool):
-                        # Boolean - guess opposite of initial (action usually changes state)
-                        preconditions.append(Constraint(ref, "=", not initial_value))
-                    elif isinstance(initial_value, int):
-                        # Numeric - might need a minimum value
-                        # For now, add as "changed from initial" constraint
-                        preconditions.append(Constraint(ref, "!=", initial_value))
+        # Find the behavior body
+        body = self._get_behavior_body(behavior)
+        if body is None:
+            return preconditions
 
-                elif isinstance(ref, LocationRef):
-                    # Location dependency - the object must be accessible
-                    # For player-centric games, objects usually need to be:
-                    # - Held by player (@player)
-                    # - In same room as player
-                    # For now, mark as "not initial" if initial is a specific location
-                    if initial_value and initial_value != "@player":
-                        # Object needs to be moved from initial location
-                        preconditions.append(Constraint(ref, "!=", initial_value))
+        # Extract blocking conditions from the body
+        blocking_conditions = self._extract_blocking_conditions(body)
 
-                elif isinstance(ref, QueueRef):
-                    # Queue dependency - event must be queued
-                    # We can represent this but it's complex
-                    pass
+        # Convert blocking conditions to preconditions
+        # If condition X leads to blocked, then NOT X must be true for success
+        # If (not X) leads to blocked, then X must be true for success
+        for condition, was_negated in blocking_conditions:
+            # was_negated=True means the blocking check was (not condition)
+            # So for success, we need condition to be TRUE
+            # was_negated=False means the blocking check was (condition)
+            # So for success, we need condition to be FALSE
+            must_be_true = was_negated
+            constraint = self._condition_to_constraint(condition, must_be_true)
+            if constraint is not None:
+                preconditions.append(constraint)
 
         return preconditions
+
+    def _extract_go_preconditions(self) -> list[Constraint]:
+        """Extract preconditions for movement from all door :through behaviors.
+
+        When player moves through a door (via :via in room exits), the door's
+        :through behavior is checked. We collect preconditions from all doors.
+        """
+        preconditions: list[Constraint] = []
+
+        # Find all doors used in room exits
+        doors_used: set[str] = set()
+        for room in self.world.rooms.values():
+            for exit_info in room.exits:
+                if hasattr(exit_info, 'via') and exit_info.via:
+                    doors_used.add(exit_info.via)
+
+        # Get preconditions from each door's :through behavior
+        for door_name in doors_used:
+            if door_name in self.world.objects:
+                door = self.world.objects[door_name]
+                if hasattr(door, 'behaviors') and door.behaviors:
+                    for behavior in door.behaviors:
+                        if behavior.verb == "through":
+                            # Extract blocking conditions from :through
+                            blocking = self._extract_blocking_conditions(behavior.body)
+                            for condition, was_negated in blocking:
+                                must_be_true = was_negated
+                                constraint = self._condition_to_constraint(condition, must_be_true)
+                                if constraint is not None:
+                                    preconditions.append(constraint)
+
+        return preconditions
+
+    def _get_behavior_body(self, behavior: BehaviorRef) -> Any:
+        """Get the body expression for a behavior."""
+        obj_name = behavior.object
+        verb = behavior.verb
+
+        # Handle event behaviors
+        if obj_name.startswith("event:"):
+            event_name = obj_name[6:]  # Strip "event:" prefix
+            if event_name in self.world.events:
+                return self.world.events[event_name].body
+            return None
+
+        # Handle room behaviors
+        if obj_name.startswith("@") and obj_name in self.world.rooms:
+            room = self.world.rooms[obj_name]
+            if hasattr(room, 'behaviors') and room.behaviors:
+                for b in room.behaviors:
+                    if b.verb == verb:
+                        return b.body
+            return None
+
+        # Handle object behaviors
+        if obj_name in self.world.objects:
+            obj = self.world.objects[obj_name]
+            if hasattr(obj, 'behaviors') and obj.behaviors:
+                for b in obj.behaviors:
+                    if b.verb == verb:
+                        return b.body
+
+        return None
+
+    def _extract_blocking_conditions(self, expr: Any) -> list[tuple[Any, bool]]:
+        """Extract conditions that lead to (blocked ...) outcomes.
+
+        Returns list of (condition, is_negated) tuples.
+        is_negated=True means the condition was already negated (e.g., (not X)).
+        """
+        results: list[tuple[Any, bool]] = []
+        self._walk_for_blockers(expr, results, [])
+        return results
+
+    def _walk_for_blockers(
+        self,
+        expr: Any,
+        results: list[tuple[Any, bool]],
+        condition_stack: list[tuple[Any, bool]],
+    ):
+        """Walk expression tree looking for (blocked ...) with condition context."""
+        if not isinstance(expr, SList) or not expr.items:
+            return
+
+        items = expr.items
+        head = items[0]
+
+        if not isinstance(head, Symbol):
+            # Could be a keyword-as-function, recurse into children
+            for item in items:
+                self._walk_for_blockers(item, results, condition_stack)
+            return
+
+        name = head.name
+
+        # (blocked ...) - we found a blocking outcome
+        if name == "blocked":
+            # All conditions in the stack must be negated for success
+            for condition, is_negated in condition_stack:
+                results.append((condition, is_negated))
+            return
+
+        # (cond (test1 result1) (test2 result2) ...)
+        if name == "cond":
+            for clause in items[1:]:
+                if isinstance(clause, SList) and len(clause.items) >= 2:
+                    test = clause.items[0]
+                    body = clause.items[1:]
+
+                    # Check if test is a literal 'true' (else clause)
+                    if isinstance(test, Symbol) and test.name == "true":
+                        # Else clause - process without adding condition
+                        for b in body:
+                            self._walk_for_blockers(b, results, condition_stack)
+                    else:
+                        # Regular clause - add condition to stack
+                        is_negated = self._is_negated_condition(test)
+                        inner_cond = self._unwrap_negation(test) if is_negated else test
+                        new_stack = condition_stack + [(inner_cond, is_negated)]
+                        for b in body:
+                            self._walk_for_blockers(b, results, new_stack)
+            return
+
+        # (if test then else?)
+        if name == "if" and len(items) >= 3:
+            test = items[1]
+            then_branch = items[2]
+            else_branch = items[3] if len(items) > 3 else None
+
+            is_negated = self._is_negated_condition(test)
+            inner_cond = self._unwrap_negation(test) if is_negated else test
+
+            # Then branch: condition is true (or negated is true)
+            then_stack = condition_stack + [(inner_cond, is_negated)]
+            self._walk_for_blockers(then_branch, results, then_stack)
+
+            # Else branch: condition is false (flip negation)
+            if else_branch:
+                else_stack = condition_stack + [(inner_cond, not is_negated)]
+                self._walk_for_blockers(else_branch, results, else_stack)
+            return
+
+        # Default: recurse into children
+        for item in items:
+            self._walk_for_blockers(item, results, condition_stack)
+
+    def _is_negated_condition(self, expr: Any) -> bool:
+        """Check if expression is (not ...)."""
+        if isinstance(expr, SList) and expr.items:
+            head = expr.items[0]
+            if isinstance(head, Symbol) and head.name == "not":
+                return True
+        return False
+
+    def _unwrap_negation(self, expr: Any) -> Any:
+        """Unwrap (not X) to X."""
+        if isinstance(expr, SList) and len(expr.items) >= 2:
+            return expr.items[1]
+        return expr
+
+    def _condition_to_constraint(self, condition: Any, must_be_true: bool) -> Constraint | None:
+        """Convert a condition expression to a Constraint.
+
+        must_be_true: if True, the condition must be true for success;
+                      if False, the condition must be false for success.
+        """
+        if not isinstance(condition, SList) or not condition.items:
+            return None
+
+        items = condition.items
+        head = items[0]
+
+        # (:prop @obj) - property read, must be truthy/falsy
+        if isinstance(head, Keyword) and len(items) >= 2:
+            obj = items[1]
+            if isinstance(obj, Symbol) and obj.name.startswith("@"):
+                ref = PropertyRef(obj.name, head.name)
+                # Property must be truthy (True) or falsy (False)
+                return Constraint(ref, "=", must_be_true)
+
+        if not isinstance(head, Symbol):
+            return None
+
+        name = head.name
+
+        # (held? @obj) - object must be held by player
+        if name == "held?" and len(items) >= 2:
+            obj = items[1]
+            if isinstance(obj, Symbol) and obj.name.startswith("@"):
+                ref = LocationRef(obj.name)
+                if must_be_true:
+                    return Constraint(ref, "=", "@player")
+                else:
+                    return Constraint(ref, "!=", "@player")
+
+        # (= left right) - equality check
+        if name == "=" and len(items) == 3:
+            # For now, skip complex equality - would need more analysis
+            pass
+
+        # (not X) - recurse with flipped must_be_true
+        if name == "not" and len(items) >= 2:
+            return self._condition_to_constraint(items[1], not must_be_true)
+
+        return None
 
 
 def build_victory_constraints(
