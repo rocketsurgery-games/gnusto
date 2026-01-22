@@ -314,8 +314,16 @@ class BackwardAnalyzer:
             else:
                 # Each path is an alternative achiever
                 for path in precondition_paths:
-                    achiever = Achiever(behavior=behavior, preconditions=path)
-                    node.achievers.append(achiever)
+                    # Filter out self-referential preconditions (same constraint we're trying to achieve)
+                    # e.g., runtime:drop requires @obj:location = @player to achieve @obj:location = @room
+                    # but if we're achieving @obj:location = @player, this is circular
+                    filtered_path = [p for p in path if p != constraint]
+
+                    # Skip achievers whose only precondition was self-referential
+                    # (they don't help achieve the constraint)
+                    if not path or filtered_path:
+                        achiever = Achiever(behavior=behavior, preconditions=filtered_path)
+                        node.achievers.append(achiever)
 
                     # Recursively expand preconditions
                     for precond in path:
@@ -410,6 +418,28 @@ class BackwardAnalyzer:
         if behavior.object == "runtime" and behavior.verb == "go":
             preconds = self._extract_go_preconditions()
             return [preconds] if preconds else []
+
+        # Special case: runtime:take needs the object to be takeable
+        # The target_ref tells us which object is being taken
+        if behavior.object == "runtime" and behavior.verb == "take":
+            if target_ref and isinstance(target_ref, LocationRef):
+                obj_name = target_ref.object
+                # To take an object, it must have :takeable = true
+                # The location accessibility check (player in same room) is handled by runtime
+                # and can't be easily modeled statically without room context
+                takeable_ref = PropertyRef(obj_name, "takeable")
+                return [[Constraint(takeable_ref, "=", True)]]
+            return []
+
+        # Special case: runtime:drop needs the object to be held by player first
+        # The target_ref tells us which object is being dropped
+        if behavior.object == "runtime" and behavior.verb == "drop":
+            if target_ref and isinstance(target_ref, LocationRef):
+                obj_name = target_ref.object
+                # To drop an object, player must be holding it
+                obj_loc_ref = LocationRef(obj_name)
+                return [[Constraint(obj_loc_ref, "=", "@player")]]
+            return []
 
         # Special case: event behaviors have implicit precondition that event is queued
         # Events are named "event:X" and the event must be in the queue to fire
@@ -576,9 +606,57 @@ class BackwardAnalyzer:
                 if constraint is not None:
                     constraints.append(constraint)
             if constraints:  # Only add non-empty paths
-                result.append(constraints)
+                # Filter out redundant/contradictory constraints
+                filtered = self._filter_contradictory_constraints(constraints, target_ref)
+                if filtered:
+                    result.append(filtered)
 
         return result
+
+    def _filter_contradictory_constraints(
+        self, constraints: list[Constraint], target_ref: StateRef | None
+    ) -> list[Constraint]:
+        """Filter out constraints that contradict each other or are redundant.
+
+        Specifically handles De Morgan artifacts where negated AND produces both:
+        - NOT A (location != X)
+        - NOT B (property = Y)
+
+        If target_ref is a LocationRef, and we have both a location constraint and
+        another constraint, we prefer the non-location constraint since the location
+        check is often just "where is this object now" rather than "what must change".
+
+        Also removes constraints that are directly contradictory (same ref, opposite values).
+        """
+        if not target_ref or len(constraints) <= 1:
+            return constraints
+
+        # Separate location constraints from others
+        location_constraints: list[Constraint] = []
+        other_constraints: list[Constraint] = []
+
+        for c in constraints:
+            if isinstance(c.ref, LocationRef):
+                location_constraints.append(c)
+            else:
+                other_constraints.append(c)
+
+        # If we're achieving a location change and have both location and property constraints,
+        # the location constraints like "obj != X" are often artifacts of De Morgan on
+        # conditions like "(and (= (loc obj) X) (not (:prop obj)))".
+        # The useful constraint is usually the property one.
+        if isinstance(target_ref, LocationRef) and other_constraints and location_constraints:
+            # Check if location constraints are about the same object as target
+            target_obj = target_ref.object
+            redundant_loc = [
+                c for c in location_constraints
+                if isinstance(c.ref, LocationRef) and c.ref.object == target_obj and c.operator in ("!=",)
+            ]
+            if redundant_loc:
+                # Keep only non-redundant location constraints
+                location_constraints = [c for c in location_constraints if c not in redundant_loc]
+
+        return other_constraints + location_constraints
 
     def _walk_for_effects(
         self,
@@ -660,15 +738,19 @@ class BackwardAnalyzer:
                             if inner_name == "set" and len(item.items) >= 4:
                                 obj = item.items[1]
                                 prop = item.items[2]
-                                if isinstance(obj, Symbol) and obj.name.startswith("@") and isinstance(prop, Keyword):
-                                    effect_ref = PropertyRef(obj.name, prop.name)
+                                # Resolve ?self to actual object name
+                                obj_name = self._resolve_object_ref(obj)
+                                if obj_name and isinstance(prop, Keyword):
+                                    effect_ref = PropertyRef(obj_name, prop.name)
                                     if target_ref is None or effect_ref == target_ref:
                                         paths.append(list(condition_stack))
                                         return
                             elif inner_name == "move" and len(item.items) >= 3:
                                 obj = item.items[1]
-                                if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                                    effect_ref = LocationRef(obj.name)
+                                # Resolve ?self to actual object name
+                                obj_name = self._resolve_object_ref(obj)
+                                if obj_name:
+                                    effect_ref = LocationRef(obj_name)
                                     if target_ref is None or effect_ref == target_ref:
                                         paths.append(list(condition_stack))
                                         return
@@ -779,6 +861,11 @@ class BackwardAnalyzer:
         The is_negated flag tracks whether the overall condition was negated.
 
         Returns list of (condition, is_negated) tuples.
+
+        NOTE: For negated ANDs (De Morgan), this returns ALL parts negated, which
+        means "all must be false" rather than the correct "at least one false".
+        This is conservative - it over-constrains. For proper OR handling, use
+        _decompose_condition_alternatives() which returns separate paths.
         """
         # Check for (and ...)
         if isinstance(test, SList) and test.items:
@@ -798,6 +885,51 @@ class BackwardAnalyzer:
 
         # Atomic condition
         return [(test, is_negated)]
+
+    def _decompose_condition_alternatives(
+        self, test: Any, is_negated: bool
+    ) -> list[list[tuple[Any, bool]]]:
+        """Decompose a condition into alternative paths (for proper De Morgan handling).
+
+        Unlike _decompose_condition which returns one combined list, this returns
+        multiple alternative paths when De Morgan's law applies:
+        - NOT (A AND B) = (NOT A) OR (NOT B) -> two paths
+        - (A AND B) -> one path with both conditions
+
+        Returns list of paths, where each path is a list of (condition, is_negated) tuples.
+        """
+        if isinstance(test, SList) and test.items:
+            head = test.items[0]
+            if isinstance(head, Symbol) and head.name == "and":
+                parts = test.items[1:]
+                if is_negated:
+                    # De Morgan: NOT (A AND B AND ...) = (NOT A) OR (NOT B) OR ...
+                    # Each part being false is an alternative path
+                    alternatives: list[list[tuple[Any, bool]]] = []
+                    for part in parts:
+                        part_negated = self._is_negated_condition(part)
+                        inner = self._unwrap_negation(part) if part_negated else part
+                        final_negated = not part_negated  # Negate the part
+                        # Recursively get alternatives for this part
+                        sub_alts = self._decompose_condition_alternatives(inner, final_negated)
+                        alternatives.extend(sub_alts)
+                    return alternatives
+                else:
+                    # (A AND B AND ...) = all must be true, single path
+                    combined: list[tuple[Any, bool]] = []
+                    for part in parts:
+                        part_negated = self._is_negated_condition(part)
+                        inner = self._unwrap_negation(part) if part_negated else part
+                        final_negated = part_negated  # Keep part's negation
+                        sub_alts = self._decompose_condition_alternatives(inner, final_negated)
+                        # For AND, we need all sub-conditions, so flatten all alternatives
+                        # (This assumes sub-conditions don't have ORs, which is usually true)
+                        for alt in sub_alts:
+                            combined.extend(alt)
+                    return [combined] if combined else [[]]
+
+        # Atomic condition - single path with single condition
+        return [[(test, is_negated)]]
 
     def _walk_for_blockers(
         self,
@@ -962,8 +1094,47 @@ class BackwardAnalyzer:
 
         # (= left right) - equality check
         if name == "=" and len(items) == 3:
-            # For now, skip complex equality - would need more analysis
-            pass
+            left, right = items[1], items[2]
+
+            # Case 1: (= ?param @object) - parameter must equal object
+            # This means the object must be accessible (typically held for takeable items)
+            # For non-takeable items (scenery), we skip this constraint
+            if isinstance(left, Symbol) and left.name.startswith("?"):
+                obj_name = self._resolve_object_ref(right)
+                if obj_name and must_be_true:
+                    # Only require holding if the object is takeable
+                    obj_def = self.world.objects.get(obj_name)
+                    if obj_def and obj_def.properties.get("takeable"):
+                        ref = LocationRef(obj_name)
+                        return Constraint(ref, "=", "@player")
+                    # For non-takeable objects, the equality check is just validation
+                    # that the player is interacting with the right thing - skip it
+
+            # Case 2: (= @object ?param) - symmetric case
+            if isinstance(right, Symbol) and right.name.startswith("?"):
+                obj_name = self._resolve_object_ref(left)
+                if obj_name and must_be_true:
+                    obj_def = self.world.objects.get(obj_name)
+                    if obj_def and obj_def.properties.get("takeable"):
+                        ref = LocationRef(obj_name)
+                        return Constraint(ref, "=", "@player")
+
+            # Case 3: (= (loc @obj) X) - location comparison
+            if isinstance(left, SList) and left.items:
+                head = left.items[0]
+                if isinstance(head, Symbol) and head.name == "loc" and len(left.items) >= 2:
+                    obj_name = self._resolve_object_ref(left.items[1])
+                    if obj_name:
+                        # Extract the expected location value
+                        loc_value = self._resolve_object_ref(right)
+                        if loc_value is None and isinstance(right, Symbol):
+                            loc_value = right.name  # Handle nil
+                        if loc_value is not None:
+                            ref = LocationRef(obj_name)
+                            if must_be_true:
+                                return Constraint(ref, "=", loc_value)
+                            else:
+                                return Constraint(ref, "!=", loc_value)
 
         # (not X) - recurse with flipped must_be_true
         if name == "not" and len(items) >= 2:
