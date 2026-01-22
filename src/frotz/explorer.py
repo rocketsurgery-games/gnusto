@@ -1,20 +1,58 @@
 """
 State space explorer for Grue games.
 
-Performs BFS exploration of the game state space, building an explicit
+Performs exploration of the game state space, building an explicit
 state transition graph. Uses only puzzle-relevant state for state identity.
+
+Supports two exploration modes:
+- BFS (default): Exhaustive exploration, finds shortest paths
+- Guided: Priority-based exploration using constraint satisfaction, can stop early
 """
 
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any
+from enum import Enum
+from heapq import heappush, heappop
+from typing import Any, TYPE_CHECKING
 
 from grue import GrueWorld
 from grue.runtime import GrueRuntime
 
 from .effects import StateRef, PropertyRef, LocationRef, QueueRef
 from .relevance import RelevanceAnalysis
+
+if TYPE_CHECKING:
+    from .clustering import ConstraintHierarchy, ClusterSignature
+
+
+class ExplorationMode(Enum):
+    """How to explore the state space."""
+    BFS = "bfs"  # Exhaustive BFS - finds all reachable states
+    GUIDED = "guided"  # Priority queue by constraint satisfaction
+    GUIDED_FIRST_VICTORY = "guided_first_victory"  # Stop at first victory
+
+
+@dataclass
+class ExplorationStats:
+    """Statistics from guided exploration."""
+    states_explored: int = 0
+    states_skipped_depth: int = 0
+    states_skipped_victory_found: int = 0
+    victory_found_at_depth: int | None = None
+    victory_found_after_states: int | None = None
+
+    def summary(self) -> str:
+        lines = [
+            f"States explored: {self.states_explored}",
+            f"States skipped (depth limit): {self.states_skipped_depth}",
+        ]
+        if self.victory_found_at_depth is not None:
+            lines.append(f"Victory found at depth: {self.victory_found_at_depth}")
+            lines.append(f"Victory found after exploring: {self.victory_found_after_states} states")
+        if self.states_skipped_victory_found > 0:
+            lines.append(f"States skipped (victory found): {self.states_skipped_victory_found}")
+        return "\n".join(lines)
 
 
 @dataclass(frozen=True)
@@ -421,21 +459,54 @@ class StateGraph:
 
 
 class StateExplorer:
-    """Explores the game state space using BFS, building a transition graph."""
+    """Explores the game state space, building a transition graph.
+
+    Supports multiple exploration modes:
+    - BFS: Standard breadth-first, finds shortest paths to all states
+    - GUIDED: Uses constraint hierarchy to prioritize states closer to victory
+    - GUIDED_FIRST_VICTORY: Stops as soon as victory is found
+
+    The guided modes use a priority queue where priority is based on:
+    1. Number of satisfied constraints (more = better = lower priority number)
+    2. Depth (shallower = better, as tiebreaker)
+
+    This means states that are closer to victory (more constraints satisfied)
+    are explored before states that are farther from victory.
+    """
 
     def __init__(
         self,
         world: GrueWorld,
         relevance: RelevanceAnalysis,
         max_depth: int = 100,
+        mode: ExplorationMode = ExplorationMode.BFS,
+        hierarchy: "ConstraintHierarchy | None" = None,
     ):
         self.world = world
         self.relevance = relevance
         self.max_depth = max_depth
+        self.mode = mode
+        self.hierarchy = hierarchy
         self._runtime = GrueRuntime(world)
 
+        # Statistics for guided exploration
+        self.stats = ExplorationStats()
+
     def explore(self) -> StateGraph:
-        """Run BFS exploration, returning the state transition graph."""
+        """Run exploration, returning the state transition graph.
+
+        Uses the configured mode:
+        - BFS: Standard breadth-first search
+        - GUIDED: Priority queue favoring states with more constraints satisfied
+        - GUIDED_FIRST_VICTORY: Same as GUIDED but stops at first victory
+        """
+        if self.mode == ExplorationMode.BFS:
+            return self._explore_bfs()
+        else:
+            return self._explore_guided()
+
+    def _explore_bfs(self) -> StateGraph:
+        """Standard BFS exploration."""
         graph = StateGraph()
 
         # Initial state
@@ -460,9 +531,11 @@ class StateExplorer:
             if node_id in processed:
                 continue
             processed.add(node_id)
+            self.stats.states_explored += 1
 
             # Depth limit
             if depth >= self.max_depth:
+                self.stats.states_skipped_depth += 1
                 continue
 
             node = graph.nodes[node_id]
@@ -509,6 +582,137 @@ class StateExplorer:
                 self._restore_state(saved)
 
         return graph
+
+    def _explore_guided(self) -> StateGraph:
+        """Guided exploration using constraint hierarchy for prioritization.
+
+        Priority is computed as: (-constraints_satisfied, depth)
+        - Negative constraints so that more satisfied = lower priority (explored first)
+        - Depth as tiebreaker so shallower states are explored first
+
+        If hierarchy is not provided, falls back to BFS behavior.
+        """
+        graph = StateGraph()
+        victory_found = False
+
+        # Initial state
+        self._runtime.reset()
+        initial_state = GameState.from_runtime(self._runtime, self.relevance.relevant)
+        is_victory = self._runtime.check_victory()
+        is_defeat = self._runtime.check_defeat()
+
+        initial_id = graph.add_node(
+            initial_state,
+            is_victory=is_victory,
+            is_defeat=is_defeat,
+            depth=0,
+            path=[],
+        )
+        graph.initial_id = initial_id
+
+        if is_victory:
+            victory_found = True
+            self.stats.victory_found_at_depth = 0
+            self.stats.victory_found_after_states = 1
+
+        # Priority queue: (priority, counter, node_id, depth)
+        # counter breaks ties for equal priority (FIFO within priority level)
+        counter = 0
+        priority = self._compute_priority(initial_state, 0)
+        pq: list[tuple[tuple[int, int], int, int, int]] = [(priority, counter, initial_id, 0)]
+        processed: set[int] = set()
+
+        while pq:
+            _, _, node_id, depth = heappop(pq)
+
+            if node_id in processed:
+                continue
+            processed.add(node_id)
+            self.stats.states_explored += 1
+
+            # Early termination for first-victory mode
+            if self.mode == ExplorationMode.GUIDED_FIRST_VICTORY and victory_found:
+                self.stats.states_skipped_victory_found += 1
+                continue
+
+            # Depth limit
+            if depth >= self.max_depth:
+                self.stats.states_skipped_depth += 1
+                continue
+
+            node = graph.nodes[node_id]
+
+            # Don't explore from terminal states
+            if node.is_victory or node.is_defeat:
+                continue
+
+            # Restore to this state by replaying the path
+            self._replay_path(node.path)
+
+            # Enumerate and try all actions
+            for action in self._enumerate_actions():
+                saved = self._save_state()
+
+                result = self._runtime.do(action.target, action.verb, *action.args)
+
+                if result.outcome == "success":
+                    self._runtime.process_events()
+
+                    new_state = GameState.from_runtime(
+                        self._runtime, self.relevance.relevant
+                    )
+
+                    is_victory = self._runtime.check_victory()
+                    is_defeat = self._runtime.check_defeat()
+
+                    # Build new path (only for new states)
+                    new_path = node.path + [action] if new_state not in graph.state_to_id else None
+
+                    # Add node (or get existing)
+                    new_id = graph.add_node(
+                        new_state,
+                        is_victory=is_victory,
+                        is_defeat=is_defeat,
+                        depth=depth + 1,
+                        path=new_path,
+                    )
+
+                    # Track victory discovery
+                    if is_victory and not victory_found:
+                        victory_found = True
+                        self.stats.victory_found_at_depth = depth + 1
+                        self.stats.victory_found_after_states = self.stats.states_explored
+
+                    # Add edge
+                    graph.add_edge(node_id, new_id, action)
+
+                    # Queue for exploration if new
+                    if new_id not in processed:
+                        counter += 1
+                        priority = self._compute_priority(new_state, depth + 1)
+                        heappush(pq, (priority, counter, new_id, depth + 1))
+
+                self._restore_state(saved)
+
+        return graph
+
+    def _compute_priority(self, state: GameState, depth: int) -> tuple[int, int]:
+        """Compute priority for guided exploration.
+
+        Returns (negative_satisfied_count, depth) so that:
+        - States with more constraints satisfied are explored first (more negative)
+        - Within same satisfaction level, shallower states come first
+        """
+        if self.hierarchy is None:
+            # No hierarchy - use depth only (BFS-like behavior)
+            return (0, depth)
+
+        state_values = dict(state.values)
+        signature = self.hierarchy.get_signature(state_values)
+        satisfied_count = sum(signature.bits)
+
+        # Negative so more satisfied = lower priority = explored first
+        return (-satisfied_count, depth)
 
     def _replay_path(self, path: list[Action]):
         """Restore runtime to a state by replaying actions from initial."""
@@ -562,7 +766,7 @@ class StateExplorer:
             room_def = self.world.rooms[player_room]
             for exit_info in room_def.exits:
                 actions.append(Action(
-                    target=player_room,
+                    target=exit_info.to,  # Destination room, not source
                     verb="go",
                     args=(exit_info.direction,)
                 ))
@@ -586,7 +790,21 @@ def explore_state_space(
     world: GrueWorld,
     relevance: RelevanceAnalysis,
     max_depth: int = 100,
-) -> StateGraph:
-    """Convenience function to explore a game's state space."""
-    explorer = StateExplorer(world, relevance, max_depth)
-    return explorer.explore()
+    mode: ExplorationMode = ExplorationMode.BFS,
+    hierarchy: "ConstraintHierarchy | None" = None,
+) -> tuple[StateGraph, ExplorationStats]:
+    """Convenience function to explore a game's state space.
+
+    Args:
+        world: The game world to explore
+        relevance: Relevance analysis determining which state to track
+        max_depth: Maximum exploration depth
+        mode: Exploration mode (BFS, GUIDED, or GUIDED_FIRST_VICTORY)
+        hierarchy: Optional constraint hierarchy for guided exploration
+
+    Returns:
+        Tuple of (state_graph, exploration_stats)
+    """
+    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy)
+    graph = explorer.explore()
+    return graph, explorer.stats

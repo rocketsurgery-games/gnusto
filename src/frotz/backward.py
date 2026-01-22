@@ -283,9 +283,17 @@ class BackwardAnalyzer:
             return
 
         # Find behaviors that can modify this state
-        modifiers = self.effects.modifies.get(ref, set())
-        if not modifiers:
+        all_modifiers = self.effects.modifies.get(ref, set())
+        if not all_modifiers:
             # No way to modify - treat as constant
+            node.is_constant = True
+            return
+
+        # Filter to behaviors that set the correct target value
+        modifiers = self._filter_modifiers_by_target(ref, constraint.value, all_modifiers)
+        if not modifiers:
+            # No behavior sets this specific value - treat as unachievable
+            # (This can happen if the constraint value is wrong or unreachable)
             node.is_constant = True
             return
 
@@ -312,6 +320,59 @@ class BackwardAnalyzer:
                         else:
                             # Reuse existing node (DAG, not tree)
                             node.children[precond] = tree.all_nodes[precond]
+
+    def _filter_modifiers_by_target(
+        self, ref: StateRef, target_value: Any, modifiers: set[BehaviorRef]
+    ) -> set[BehaviorRef]:
+        """Filter modifiers to only those that set the target value.
+
+        Uses modifies_to from effect analysis to determine what value each
+        behavior sets. If a behavior's target values are unknown (None in set),
+        we include it conservatively.
+
+        Args:
+            ref: The state reference being modified
+            target_value: The value we want the state to have
+            modifiers: All behaviors that can modify this state
+
+        Returns:
+            Filtered set of behaviors that can achieve the target value
+        """
+        if ref not in self.effects.modifies_to:
+            # No target value info - return all (conservative)
+            return modifiers
+
+        result = set()
+        for behavior in modifiers:
+            if behavior not in self.effects.modifies_to[ref]:
+                # No info for this behavior - include conservatively
+                result.add(behavior)
+                continue
+
+            target_values = self.effects.modifies_to[ref][behavior]
+
+            # If None is in the set, the value is unknown/variable - include conservatively
+            if None in target_values:
+                result.add(behavior)
+                continue
+
+            # Check if any of the target values match what we want
+            for val in target_values:
+                if self._values_match(val, target_value):
+                    result.add(behavior)
+                    break
+
+        return result
+
+    def _values_match(self, actual: Any, expected: Any) -> bool:
+        """Check if two values match, with special handling for symbols."""
+        if actual == expected:
+            return True
+        # Handle @symbol strings matching Symbol objects
+        if isinstance(expected, str) and expected.startswith("@"):
+            if isinstance(actual, str) and actual == expected:
+                return True
+        return False
 
     def _extract_preconditions(self, behavior: BehaviorRef) -> list[list[Constraint]]:
         """Extract preconditions for a behavior by analyzing its body.

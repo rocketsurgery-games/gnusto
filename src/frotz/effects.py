@@ -77,6 +77,11 @@ class EffectAnalysis:
     # What can modify each piece of state
     modifies: dict[StateRef, set[BehaviorRef]] = field(default_factory=dict)
 
+    # What target values each behavior sets for each state ref
+    # modifies_to[state][behavior] = set of possible target values
+    # None in the set means "unknown/variable value"
+    modifies_to: dict[StateRef, dict[BehaviorRef, set[Any]]] = field(default_factory=dict)
+
     # What reads each piece of state (for relevance analysis)
     reads: dict[StateRef, set[BehaviorRef]] = field(default_factory=dict)
 
@@ -86,12 +91,25 @@ class EffectAnalysis:
     # All state references found
     all_state: set[StateRef] = field(default_factory=set)
 
-    def add_modify(self, state: StateRef, behavior: BehaviorRef):
-        """Record that a behavior can modify a state reference."""
+    def add_modify(self, state: StateRef, behavior: BehaviorRef, target_value: Any = None):
+        """Record that a behavior can modify a state reference.
+
+        Args:
+            state: The state reference being modified
+            behavior: The behavior doing the modification
+            target_value: The value being set (None means unknown/variable)
+        """
         self.all_state.add(state)
         if state not in self.modifies:
             self.modifies[state] = set()
         self.modifies[state].add(behavior)
+
+        # Track target value
+        if state not in self.modifies_to:
+            self.modifies_to[state] = {}
+        if behavior not in self.modifies_to[state]:
+            self.modifies_to[state][behavior] = set()
+        self.modifies_to[state][behavior].add(target_value)
 
     def add_read(self, state: StateRef, behavior: BehaviorRef):
         """Record that a behavior reads a state reference."""
@@ -242,6 +260,44 @@ class EffectAnalyzer:
         self._current_behavior = BehaviorRef(f"event:{event_name}", "on_turn")
         self._walk_expr(event.body)
 
+    def _extract_literal_value(self, expr: Any) -> Any:
+        """Extract a literal value from an expression, or None if not a literal.
+
+        Returns the actual value for:
+        - Booleans: True, False
+        - Numbers: int, float
+        - Strings: str
+        - Symbols: @object names (as strings like "@player")
+        - Keywords: :keyword names
+
+        Returns None for complex expressions (function calls, etc.)
+        """
+        if expr is None:
+            return None
+        if isinstance(expr, bool):
+            return expr
+        if isinstance(expr, (int, float)):
+            return expr
+        if isinstance(expr, str):
+            return expr
+        if isinstance(expr, Symbol):
+            # Object references like @player, @cell
+            if expr.name.startswith("@"):
+                return expr.name
+            # Boolean symbols
+            if expr.name == "true":
+                return True
+            if expr.name == "false":
+                return False
+            if expr.name == "nil":
+                return None
+            # Other symbols are variable references - unknown value
+            return None
+        if isinstance(expr, Keyword):
+            return expr.name
+        # SList or other complex expressions - unknown value
+        return None
+
     def _walk_expr(self, expr: Any):
         """Recursively walk an expression looking for effects and reads."""
         if expr is None:
@@ -270,10 +326,12 @@ class EffectAnalyzer:
                 if name == "set" and len(items) >= 4:
                     obj = items[1]
                     prop = items[2]
+                    value_expr = items[3]
                     if isinstance(obj, Symbol) and obj.name.startswith("@"):
                         if isinstance(prop, Keyword):
                             ref = PropertyRef(obj.name, prop.name)
-                            self.analysis.add_modify(ref, self._current_behavior)
+                            target_value = self._extract_literal_value(value_expr)
+                            self.analysis.add_modify(ref, self._current_behavior, target_value)
                     # Also walk the value expression for reads
                     for item in items[3:]:
                         self._walk_expr(item)
@@ -283,10 +341,12 @@ class EffectAnalyzer:
                 if name == "set-prop" and len(items) >= 4:
                     obj = items[1]
                     prop = items[2]
+                    value_expr = items[3]
                     if isinstance(obj, Symbol) and obj.name.startswith("@"):
                         prop_name = prop.name if isinstance(prop, (Symbol, Keyword)) else str(prop)
                         ref = PropertyRef(obj.name, prop_name)
-                        self.analysis.add_modify(ref, self._current_behavior)
+                        target_value = self._extract_literal_value(value_expr)
+                        self.analysis.add_modify(ref, self._current_behavior, target_value)
                     for item in items[3:]:
                         self._walk_expr(item)
                     return
@@ -294,11 +354,14 @@ class EffectAnalyzer:
                 # Effect detection: (move @obj dest)
                 if name == "move" and len(items) >= 3:
                     obj = items[1]
+                    dest = items[2]
                     if isinstance(obj, Symbol) and obj.name.startswith("@"):
                         ref = LocationRef(obj.name)
-                        self.analysis.add_modify(ref, self._current_behavior)
+                        # Destination could be @room, @player, or (loc @player)
+                        target_value = self._extract_literal_value(dest)
+                        self.analysis.add_modify(ref, self._current_behavior, target_value)
                     # Walk destination for reads
-                    self._walk_expr(items[2])
+                    self._walk_expr(dest)
                     return
 
                 # Effect detection: (queue event) or (queue event countdown)

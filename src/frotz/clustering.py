@@ -164,51 +164,6 @@ class ConstraintHierarchy:
 
         return predecessors
 
-    def is_anomalous(self, sig: ClusterSignature) -> tuple[bool, str]:
-        """
-        Check if a signature represents an anomalous state.
-
-        Anomalies are states that violate expected constraint orderings.
-        A constraint should not be satisfied unless at least ONE of its
-        prerequisite groups is fully satisfied.
-
-        With OR-conditions, we have multiple ways to achieve a constraint:
-        - door_unlocked requires EITHER [key_held] OR [lockpick_held, lockpick_not_broken]
-        - If ANY group is satisfied, it's NOT anomalous
-
-        Example anomalies:
-        - door_open without door_unlocked (can open locked door?!)
-        - player_at_outside without door_open (walked through closed door?!)
-
-        Returns (is_anomalous, reason).
-        """
-        for i, info in enumerate(self.constraints):
-            if sig.bits[i]:  # Constraint is satisfied
-                # Check prerequisite groups (OR of ANDs)
-                if info.prerequisite_groups:
-                    # At least ONE group must be fully satisfied
-                    any_group_satisfied = False
-                    for group in info.prerequisite_groups:
-                        if all(sig.bits[idx] for idx in group):
-                            any_group_satisfied = True
-                            break
-
-                    if not any_group_satisfied:
-                        # Find which prerequisites are missing for reporting
-                        missing = []
-                        for idx in info.prerequisite_indices:
-                            if not sig.bits[idx]:
-                                missing.append(self.constraints[idx].name)
-                        if missing:
-                            return True, f"{info.name} without any complete path (missing: {', '.join(missing)})"
-                else:
-                    # Legacy behavior: flat list, all must be satisfied
-                    for prereq_idx in info.prerequisite_indices:
-                        if not sig.bits[prereq_idx]:
-                            prereq_name = self.constraints[prereq_idx].name
-                            return True, f"{info.name} without {prereq_name}"
-
-        return False, ""
 
 
 @dataclass
@@ -219,8 +174,6 @@ class Cluster:
     state_ids: list[int] = field(default_factory=list)
     is_victory: bool = False
     is_defeat: bool = False
-    is_anomalous: bool = False
-    anomaly_reason: str = ""
 
     @property
     def size(self) -> int:
@@ -272,9 +225,6 @@ class ClusterGraph:
         """Clusters containing victory states."""
         return [c for c in self.clusters.values() if c.is_victory]
 
-    def get_anomalous_clusters(self) -> list[Cluster]:
-        """Clusters representing anomalous states."""
-        return [c for c in self.clusters.values() if c.is_anomalous]
 
     def get_progression_path(self) -> list[ClusterSignature]:
         """
@@ -468,12 +418,9 @@ def cluster_state_graph(
 
         # Create or update cluster
         if sig not in result.clusters:
-            is_anomalous, anomaly_reason = hierarchy.is_anomalous(sig)
             result.clusters[sig] = Cluster(
                 signature=sig,
                 description=hierarchy.signature_to_description(sig),
-                is_anomalous=is_anomalous,
-                anomaly_reason=anomaly_reason,
             )
 
         cluster = result.clusters[sig]
@@ -555,8 +502,6 @@ def print_cluster_report(cluster_graph: ClusterGraph) -> str:
         v = "✓" if cluster.is_victory else ""
         d = "✗" if cluster.is_defeat else ""
         desc = cluster.description
-        if cluster.is_anomalous:
-            desc += f" [ANOMALY: {cluster.anomaly_reason}]"
         lines.append(f"{str(sig):<12} {cluster.size:<8} {v:<4} {d:<4} {desc}")
 
     lines.append("")
@@ -579,17 +524,6 @@ def print_cluster_report(cluster_graph: ClusterGraph) -> str:
             desc = cluster_graph.hierarchy.signature_to_description(sig)
             exists = "✓" if sig in cluster_graph.clusters else "?"
             lines.append(f"  {i}. {sig} {exists} {desc}")
-
-    lines.append("")
-
-    # Anomalies
-    anomalies = cluster_graph.get_anomalous_clusters()
-    if anomalies:
-        lines.append("ANOMALIES DETECTED")
-        lines.append("-" * 70)
-        for cluster in anomalies:
-            lines.append(f"  {cluster.signature}: {cluster.anomaly_reason}")
-            lines.append(f"    {cluster.size} states in this cluster")
 
     return "\n".join(lines)
 
@@ -619,8 +553,6 @@ def generate_cluster_dot(cluster_graph: ClusterGraph, rankdir: str = "LR") -> st
             style = 'style=filled fillcolor=green'
         elif cluster.is_defeat:
             style = 'style=filled fillcolor=red'
-        elif cluster.is_anomalous:
-            style = 'style=filled fillcolor=yellow'
         else:
             style = 'style=filled fillcolor=lightblue'
 

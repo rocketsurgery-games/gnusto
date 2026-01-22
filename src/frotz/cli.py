@@ -18,8 +18,9 @@ from grue import load_grue
 
 from .effects import analyze_effects
 from .relevance import analyze_relevance
-from .explorer import explore_state_space, StateGraph
+from .explorer import explore_state_space, StateGraph, ExplorationMode
 from .guided import GuidedExplorer, find_victory_path
+from .clustering import build_hierarchy
 
 
 def format_section(title: str) -> str:
@@ -187,6 +188,11 @@ def main(args: list[str] | None = None):
         default=50,
         help="Patience for guided search plateau detection (default: 50)",
     )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast mode: stop at first victory using constraint-guided exploration",
+    )
 
     opts = parser.parse_args(args)
 
@@ -256,13 +262,36 @@ def main(args: list[str] | None = None):
         defeat_count = 0  # Not tracked in guided mode
         graph = None  # No full graph in guided mode
 
+    elif opts.fast:
+        # Fast constraint-guided mode (stop at first victory)
+        if not opts.quiet:
+            print(format_section("Phase 3: Fast Constraint-Guided Search"))
+            print(f"Searching with max depth {opts.max_depth}...")
+
+        hierarchy = build_hierarchy(world, effects, relevance)
+        graph, stats = explore_state_space(
+            world, relevance, opts.max_depth,
+            mode=ExplorationMode.GUIDED_FIRST_VICTORY,
+            hierarchy=hierarchy
+        )
+
+        if not opts.quiet:
+            print(stats.summary())
+            print()
+            print(graph.summary())
+
+        # Compute victory info
+        victory_path = graph.get_victory_path()
+        victory_count = sum(1 for n in graph.nodes.values() if n.is_victory)
+        defeat_count = sum(1 for n in graph.nodes.values() if n.is_defeat)
+
     else:
         # Exhaustive BFS mode
         if not opts.quiet:
             print(format_section("Phase 3: State Space Exploration"))
             print(f"Exploring with max depth {opts.max_depth}...")
 
-        graph = explore_state_space(world, relevance, opts.max_depth)
+        graph, stats = explore_state_space(world, relevance, opts.max_depth)
 
         if not opts.quiet:
             print(graph.summary())
