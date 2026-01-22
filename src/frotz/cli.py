@@ -19,7 +19,7 @@ from grue import load_grue
 from .effects import analyze_effects
 from .relevance import analyze_relevance
 from .explorer import explore_state_space, StateGraph, ExplorationMode
-from .clustering import build_hierarchy
+from .clustering import build_hierarchy, cluster_state_graph, generate_cluster_dot
 
 
 def format_section(title: str) -> str:
@@ -124,7 +124,12 @@ def main(args: list[str] | None = None):
     parser.add_argument(
         "--dot",
         metavar="FILE",
-        help="Output state transition graph in DOT format",
+        help="Output cluster graph in DOT format (states collapsed by constraint signature)",
+    )
+    parser.add_argument(
+        "--dot-raw",
+        metavar="FILE",
+        help="Output raw state graph in DOT format (all states, no collapsing)",
     )
     parser.add_argument(
         "--effects-only",
@@ -291,9 +296,17 @@ def main(args: list[str] | None = None):
 
     # Generate DOT if requested
     if opts.dot:
-        dot_content = generate_state_graph_dot(graph)
+        # Cluster graph (collapsed by constraint signature)
+        clusters = cluster_state_graph(graph, hierarchy)
+        dot_content = generate_cluster_dot(clusters)
         Path(opts.dot).write_text(dot_content)
-        print(f"\nState graph written to: {opts.dot}")
+        print(f"\nCluster graph written to: {opts.dot} ({len(clusters.clusters)} clusters from {len(graph.nodes)} states)")
+
+    if opts.dot_raw:
+        # Raw state graph (all states)
+        dot_content = generate_state_graph_dot(graph)
+        Path(opts.dot_raw).write_text(dot_content)
+        print(f"\nRaw state graph written to: {opts.dot_raw} ({len(graph.nodes)} states)")
 
     return 0 if victory_path is not None else 1
 
