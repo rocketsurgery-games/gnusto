@@ -299,7 +299,7 @@ class BackwardAnalyzer:
 
         # For each modifier, extract preconditions (may have multiple alternative paths)
         for behavior in modifiers:
-            precondition_paths = self._extract_preconditions(behavior)
+            precondition_paths = self._extract_preconditions(behavior, ref)
 
             if not precondition_paths:
                 # No preconditions - single achiever with empty requirements
@@ -374,18 +374,25 @@ class BackwardAnalyzer:
                 return True
         return False
 
-    def _extract_preconditions(self, behavior: BehaviorRef) -> list[list[Constraint]]:
+    def _extract_preconditions(
+        self, behavior: BehaviorRef, target_ref: StateRef | None = None
+    ) -> list[list[Constraint]]:
         """Extract preconditions for a behavior by analyzing its body.
 
         Returns list of alternative paths (OR of ANDs).
         Each path is a list of constraints that must be satisfied together.
 
+        Args:
+            behavior: The behavior to extract preconditions from
+            target_ref: If provided, only extract conditions leading to effects on this ref.
+                       This enables effect-path analysis for complex conditionals.
+
         Uses two strategies:
         1. Blocking-based: Find conditions leading to (blocked ...) and negate them
-        2. Success-based: Find conditions leading to effects (for OR-conditions)
+        2. Effect-path: Find conditions leading to effects on target_ref
 
         The blocking approach works for simple gates (one path to success).
-        The success approach finds alternative paths (OR-conditions).
+        The effect-path approach finds conditions to reach specific effects.
         """
         # Special case: runtime:go gets preconditions from door :through behaviors
         if behavior.object == "runtime" and behavior.verb == "go":
@@ -418,16 +425,16 @@ class BackwardAnalyzer:
             if constraint is not None:
                 blocking_preconds.append(constraint)
 
-        # Strategy 2: Extract success paths (for OR-conditions)
-        success_paths = self._extract_success_conditions(body)
+        # Strategy 2: Extract effect-path conditions (for target ref)
+        effect_paths = self._extract_success_conditions(body, target_ref)
 
         # Combine strategies:
         # - If we have blocking conditions, they apply to ALL paths
-        # - If we have success paths, each path is an alternative
-        if success_paths:
-            # Each success path is an alternative, combined with blocking preconds
+        # - If we have effect paths, each path is an alternative
+        if effect_paths:
+            # Each effect path is an alternative, combined with blocking preconds
             result: list[list[Constraint]] = []
-            for path in success_paths:
+            for path in effect_paths:
                 # Combine and deduplicate
                 combined = blocking_preconds + path
                 seen: set[str] = set()
@@ -519,16 +526,23 @@ class BackwardAnalyzer:
         self._walk_for_blockers(expr, results, [])
         return results
 
-    def _extract_success_conditions(self, expr: Any) -> list[list[Constraint]]:
-        """Extract conditions that lead to effects (set/move).
+    def _extract_success_conditions(
+        self, expr: Any, target_ref: StateRef | None = None
+    ) -> list[list[Constraint]]:
+        """Extract conditions that lead to effects on target_ref.
 
         Returns list of alternative paths (OR of ANDs).
         Each path is a list of constraints that must be satisfied together.
 
+        Args:
+            expr: The expression to analyze
+            target_ref: If provided, only record paths to effects that modify this ref.
+                       If None, record paths to all effects (legacy behavior).
+
         This handles OR-conditions where multiple cond branches can succeed.
         """
         paths: list[list[tuple[Any, bool]]] = []
-        self._walk_for_effects(expr, [], paths)
+        self._walk_for_effects(expr, [], paths, target_ref)
 
         # Convert condition tuples to constraints
         result: list[list[Constraint]] = []
@@ -550,8 +564,16 @@ class BackwardAnalyzer:
         expr: Any,
         condition_stack: list[tuple[Any, bool]],
         paths: list[list[tuple[Any, bool]]],
+        target_ref: StateRef | None = None,
     ):
-        """Walk expression tree looking for effects (set/move) with condition context."""
+        """Walk expression tree looking for effects with condition context.
+
+        Args:
+            expr: The expression to walk
+            condition_stack: Current stack of conditions to reach this point
+            paths: List to append successful paths to
+            target_ref: If provided, only record paths to effects that modify this ref
+        """
         if not isinstance(expr, SList) or not expr.items:
             return
 
@@ -561,35 +583,94 @@ class BackwardAnalyzer:
         if not isinstance(head, Symbol):
             # Could be a keyword-as-function, recurse into children
             for item in items:
-                self._walk_for_effects(item, condition_stack, paths)
+                self._walk_for_effects(item, condition_stack, paths, target_ref)
             return
 
         name = head.name
 
-        # (set ...) or (move ...) - we found an effect
-        if name in ("set", "move"):
-            # Record this path's conditions
-            if condition_stack:
+        # Effect detection: (set @obj :prop value)
+        if name == "set" and len(items) >= 4:
+            obj = items[1]
+            prop = items[2]
+            if isinstance(obj, Symbol) and obj.name.startswith("@") and isinstance(prop, Keyword):
+                effect_ref = PropertyRef(obj.name, prop.name)
+                if target_ref is None or effect_ref == target_ref:
+                    paths.append(list(condition_stack))
+            return
+
+        # Effect detection: (move @obj dest)
+        if name == "move" and len(items) >= 3:
+            obj = items[1]
+            if isinstance(obj, Symbol) and obj.name.startswith("@"):
+                effect_ref = LocationRef(obj.name)
+                if target_ref is None or effect_ref == target_ref:
+                    paths.append(list(condition_stack))
+            return
+
+        # Effect detection: (queue event-name) or (queue event-name countdown)
+        if name == "queue" and len(items) >= 2:
+            event = items[1]
+            event_name = event.name if isinstance(event, Symbol) else str(event)
+            effect_ref = QueueRef(event_name)
+            if target_ref is None or effect_ref == target_ref:
                 paths.append(list(condition_stack))
             return
 
-        # (quote (...)) - quoted effect list, check inside
-        if name == "quote" and len(items) >= 2:
+        # Effect detection: (dequeue event-name)
+        if name == "dequeue" and len(items) >= 2:
+            event = items[1]
+            event_name = event.name if isinstance(event, Symbol) else str(event)
+            effect_ref = QueueRef(event_name)
+            if target_ref is None or effect_ref == target_ref:
+                paths.append(list(condition_stack))
+            return
+
+        # (quote (...)) or quasiquote (`) - quoted effect list, check inside
+        if name in ("quote", "quasiquote") and len(items) >= 2:
             quoted = items[1]
             if isinstance(quoted, SList):
-                # Check if this contains effects
+                # Check each item in quoted list for effects
                 for item in quoted.items:
                     if isinstance(item, SList) and item.items:
                         inner_head = item.items[0]
-                        if isinstance(inner_head, Symbol) and inner_head.name in ("set", "move"):
-                            # Found effect in quoted list
-                            if condition_stack:
-                                paths.append(list(condition_stack))
-                            return
+                        if isinstance(inner_head, Symbol):
+                            inner_name = inner_head.name
+                            # Check for set/move/queue/dequeue in quoted list
+                            if inner_name == "set" and len(item.items) >= 4:
+                                obj = item.items[1]
+                                prop = item.items[2]
+                                if isinstance(obj, Symbol) and obj.name.startswith("@") and isinstance(prop, Keyword):
+                                    effect_ref = PropertyRef(obj.name, prop.name)
+                                    if target_ref is None or effect_ref == target_ref:
+                                        paths.append(list(condition_stack))
+                                        return
+                            elif inner_name == "move" and len(item.items) >= 3:
+                                obj = item.items[1]
+                                if isinstance(obj, Symbol) and obj.name.startswith("@"):
+                                    effect_ref = LocationRef(obj.name)
+                                    if target_ref is None or effect_ref == target_ref:
+                                        paths.append(list(condition_stack))
+                                        return
+                            elif inner_name == "queue" and len(item.items) >= 2:
+                                event = item.items[1]
+                                event_name = event.name if isinstance(event, Symbol) else str(event)
+                                effect_ref = QueueRef(event_name)
+                                if target_ref is None or effect_ref == target_ref:
+                                    paths.append(list(condition_stack))
+                                    return
+                            elif inner_name == "dequeue" and len(item.items) >= 2:
+                                event = item.items[1]
+                                event_name = event.name if isinstance(event, Symbol) else str(event)
+                                effect_ref = QueueRef(event_name)
+                                if target_ref is None or effect_ref == target_ref:
+                                    paths.append(list(condition_stack))
+                                    return
             return
 
         # (cond (test1 result1) (test2 result2) ...)
+        # To reach branch N, all previous branches must have failed (their tests were false)
         if name == "cond":
+            accumulated_skip: list[tuple[Any, bool]] = []  # Conditions that must be FALSE to skip earlier branches
             for clause in items[1:]:
                 if isinstance(clause, SList) and len(clause.items) >= 2:
                     test = clause.items[0]
@@ -597,17 +678,28 @@ class BackwardAnalyzer:
 
                     # Check for else clause (Symbol 'true' OR Python True)
                     if self._is_else_clause(test):
-                        # Else clause - process without adding condition
+                        # Else clause - all previous conditions must have been false
+                        new_stack = condition_stack + accumulated_skip
                         for b in body:
-                            self._walk_for_effects(b, condition_stack, paths)
+                            self._walk_for_effects(b, new_stack, paths, target_ref)
                     else:
-                        # Regular clause - decompose condition and add to stack
+                        # Regular clause: to reach this branch, we need:
+                        # 1. All previous branch tests to be FALSE (accumulated_skip)
+                        # 2. This branch's test to be TRUE
                         is_negated = self._is_negated_condition(test)
                         inner_cond = self._unwrap_negation(test) if is_negated else test
                         decomposed = self._decompose_condition(inner_cond, is_negated)
-                        new_stack = condition_stack + decomposed
+
+                        new_stack = condition_stack + accumulated_skip + decomposed
                         for b in body:
-                            self._walk_for_effects(b, new_stack, paths)
+                            self._walk_for_effects(b, new_stack, paths, target_ref)
+
+                        # Add this test (negated) to accumulated_skip for subsequent branches
+                        # To skip this branch, this test must be FALSE
+                        # If test is (not X), then to skip we need X to be TRUE
+                        # If test is X, then to skip we need X to be FALSE
+                        skip_decomposed = self._decompose_condition(inner_cond, not is_negated)
+                        accumulated_skip.extend(skip_decomposed)
             return
 
         # (if test then else?)
@@ -622,18 +714,32 @@ class BackwardAnalyzer:
             # Then branch: decompose condition
             decomposed = self._decompose_condition(inner_cond, is_negated)
             then_stack = condition_stack + decomposed
-            self._walk_for_effects(then_branch, then_stack, paths)
+            self._walk_for_effects(then_branch, then_stack, paths, target_ref)
 
             # Else branch: condition is false (flip negation for each part)
             if else_branch:
                 flipped = [(c, not n) for c, n in decomposed]
                 else_stack = condition_stack + flipped
-                self._walk_for_effects(else_branch, else_stack, paths)
+                self._walk_for_effects(else_branch, else_stack, paths, target_ref)
+            return
+
+        # Function call inlining: (function-name args...)
+        if name in self.world.functions:
+            fn = self.world.functions[name]
+            # Track to avoid infinite recursion
+            if not hasattr(self, '_inline_stack_effects'):
+                self._inline_stack_effects = set()
+            if name not in self._inline_stack_effects:
+                self._inline_stack_effects.add(name)
+                try:
+                    self._walk_for_effects(fn.body, condition_stack, paths, target_ref)
+                finally:
+                    self._inline_stack_effects.discard(name)
             return
 
         # Default: recurse into children
         for item in items:
-            self._walk_for_effects(item, condition_stack, paths)
+            self._walk_for_effects(item, condition_stack, paths, target_ref)
 
     def _is_else_clause(self, test: Any) -> bool:
         """Check if a cond test is an else clause (literal true)."""
@@ -807,6 +913,13 @@ class BackwardAnalyzer:
                     return Constraint(ref, "=", "@player")
                 else:
                     return Constraint(ref, "!=", "@player")
+
+        # (queued? event) - event must be in queue
+        if name == "queued?" and len(items) >= 2:
+            event = items[1]
+            event_name = event.name if isinstance(event, Symbol) else str(event)
+            ref = QueueRef(event_name)
+            return Constraint(ref, "=", must_be_true)
 
         # (= left right) - equality check
         if name == "=" and len(items) == 3:
