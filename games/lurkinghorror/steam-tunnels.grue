@@ -357,7 +357,7 @@
 (object @steam-pipes
   :location nil  ; Global object
   :description "steam pipes"
-  :properties (:nodesc true)
+  :properties (:nodesc true :hot false)
   :behaviors (
     :examine (fn ()
       (success :message
@@ -421,7 +421,7 @@
 (object @pressure-valve
   :location @tunnel-east
   :description "pressure valve"
-  :properties (:nodesc true :turns 0)
+  :properties (:nodesc true :turns 0 :open false)
 
   :behaviors (
     :examine (fn ()
@@ -525,7 +525,7 @@
 (object @dead-rat
   :location nil  ; Appears when rats killed by steam
   :description "dead rat"
-  :properties (:takeable true :searchable true :open true :container true :heat 0)
+  :properties (:takeable true :searchable true :open true :container true :heat 0 :touched false)
 
   :behaviors (
     :describe (fn ()
@@ -602,7 +602,7 @@
 (object @brick-wall
   :location @steam-tunnel-east
   :description "brick wall"
-  :properties (:nodesc true :broken false)  ; Set when wall is destroyed
+  :properties (:nodesc true :broken false :touched false)  ; Set when wall is destroyed
 
   :behaviors (
     :examine (fn ()

@@ -140,7 +140,7 @@
 (object @tentacle
   :location nil  ; Global, present via room :visible
   :description "ropy strand"
-  :properties (:nodesc true)  ; Not :invisible initially - visible when in @great-dome
+  :properties (:nodesc true :invisible false)  ; Not :invisible initially - visible when in @great-dome
 
   :behaviors (
     :examine (fn ()
@@ -170,7 +170,7 @@
 (object @dome-ladder
   :location nil  ; Appears after creature flees
   :description "wooden ladder"
-  :properties (:takeable true :size 120)
+  :properties (:takeable true :size 120 :touched false)
 
   :behaviors (
     :describe (fn ()
@@ -223,7 +223,7 @@
   :location @on-dome
   :description "bronze plug"
   :fdesc "In the exact center of the flat area is a bronze plug."
-  :properties (:takeable true :trytake true :weapon true)
+  :properties (:takeable true :trytake true :weapon true :rmung false :touched false)
   :behaviors (
     :examine (fn ()
       (success :message

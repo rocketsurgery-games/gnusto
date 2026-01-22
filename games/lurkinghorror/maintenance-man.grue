@@ -217,7 +217,7 @@
 (object @emergency-cabinet
   :location @inf-4
   :description "emergency cabinet"
-  :properties (:container true :transparent true :readable true :searchable true :openable true)
+  :properties (:container true :transparent true :readable true :searchable true :openable true :rmung false)
   :text "\"In case of emergency, break glass.\""
 
   :behaviors (

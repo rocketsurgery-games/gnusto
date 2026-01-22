@@ -71,6 +71,7 @@
 
 (room @alchemy-lab
   :description "Lab"
+  :properties (:lit false)  ; Initially dark until lit by professor's lantern/ritual
   :exits
     ((north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
      (down :to @under-alchemy-lab :via @alchemy-lab-down-barrier))
@@ -311,7 +312,7 @@
   :location @alchemy-dept
   :description "sign-up sheet"
   :fdesc "Taped to the wall to the right of the archway is a sign-up sheet."
-  :properties (:takeable true :trytake true :readable true :remembered false)
+  :properties (:takeable true :trytake true :readable true :remembered false :rmung false :touched false)
 
   :behaviors (
     :examine (fn ()
@@ -514,7 +515,7 @@
 (object @pentagram
   :location @alchemy-lab
   :description "pentagram"
-  :properties (:nodesc true :vehicle true :open true :container true :searchable true :capacity 200)
+  :properties (:nodesc true :vehicle true :open true :container true :searchable true :capacity 200 :rmung false)
 
   :behaviors (
     :examine (fn ()
@@ -651,7 +652,7 @@
 (object @lovecraft
   :location @alchemy-lab
   :description "Alchemy Department computer"
-  :properties (:readable true :size 30
+  :properties (:readable true :size 30 :powered false
                :text "Written with a marking pen on the display is \"Lovecraft.\"")
 
   :behaviors (
@@ -691,7 +692,7 @@
 (object @ring
   :location @professor
   :description "brass hyrax"
-  :properties (:takeable true :trytake true :touched true)
+  :properties (:takeable true :trytake true :touched true :wearable false)
   :behaviors (
     :examine (fn ()
       (success :message "The G.U.E. Tech class ring is a gold ring depicting a hyrax eating a twig. Such rings are familiarly known as \"brass hyraxes.\""))

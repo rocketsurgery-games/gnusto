@@ -83,7 +83,7 @@
   (assert (player-at? @top-of-dome)))
 
 (test "creature flees when reaching top-of-dome"
-  :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @dome-ladder :touched false) (move! @dome-ladder nil) (move! @gloves @player) (set @gloves :wornbit true))
+  :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @dome-ladder :touched false) (move! @dome-ladder nil) (move! @gloves @player) (set @gloves :wearable true))
   (go :direction up)
   (assert (outcome? success))
   (assert (player-at? @top-of-dome))

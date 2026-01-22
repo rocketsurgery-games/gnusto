@@ -132,7 +132,7 @@
 (object @forklift
   :location @aero-basement
   :description "forklift"
-  :properties (:vehicle true :surface true :open true :container true :searchable true :capacity 100)
+  :properties (:vehicle true :surface true :open true :container true :searchable true :capacity 100 :powered false)
 
   :behaviors (
     :examine (fn ()

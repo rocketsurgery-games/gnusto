@@ -113,7 +113,7 @@
 (object @smooth-stone
   :location nil  ; Appears in @platform-room during nightmare
   :description "smooth stone"
-  :properties (:takeable true :searchable true :open true :container true :weapon true :value 5)
+  :properties (:takeable true :searchable true :open true :container true :weapon true :value 5 :touched false)
 
   :behaviors (
     :describe (fn ()

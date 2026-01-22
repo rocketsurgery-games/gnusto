@@ -171,6 +171,25 @@ class GrueRuntime:
 
         return scoped_functions, scoped_values
 
+    # Implied properties: capability flag -> state property with default value
+    # These are semantic implications from ZIL-style flags
+    IMPLIED_PROPERTIES: dict[str, tuple[str, Any]] = {
+        "openable": ("open", False),      # :openable true implies :open false
+        "wearable": ("worn", False),      # :wearable true implies :worn false
+        "lightable": ("lit", False),      # :lightable true implies :lit false
+    }
+
+    def _add_implied_properties(self, props: dict[str, Any]) -> None:
+        """Add implied state properties based on capability flags.
+
+        When an object has a capability flag (like :openable), it implies the
+        existence of a state property (like :open) with a default value.
+        This allows (:open @door) to work without explicitly declaring :open false.
+        """
+        for flag, (state_prop, default) in self.IMPLIED_PROPERTIES.items():
+            if props.get(flag) and state_prop not in props:
+                props[state_prop] = default
+
     def _init_state(self) -> GameState:
         """Initialize game state from world definition."""
         state = GameState()
@@ -182,6 +201,7 @@ class GrueRuntime:
             # Convert flags to boolean properties
             for flag in room.flags:
                 props[flag] = True
+            self._add_implied_properties(props)
             state.objects[room_name] = ObjectState(
                 name=room_name,
                 location=None,  # Rooms don't have locations
@@ -194,6 +214,7 @@ class GrueRuntime:
             # Convert flags to boolean properties
             for flag in obj.flags:
                 props[flag] = True
+            self._add_implied_properties(props)
             state.objects[name] = ObjectState(
                 name=name,
                 location=obj.location,
@@ -225,9 +246,66 @@ class GrueRuntime:
             return None
         return self.state.objects[obj].location
 
+    def _get_declared_properties(self, obj: str) -> set[str]:
+        """Get the set of declared properties for an object.
+
+        Properties are declared via:
+        - :properties in the object/room definition
+        - :flags in the object/room definition (converted to boolean props)
+        - Implied properties from capability flags (e.g., :openable implies :open)
+        - Built-in properties: description, location
+        """
+        declared: set[str] = {"description", "location"}
+
+        props: dict[str, Any] = {}
+
+        # Check world.objects (includes player, NPCs, items)
+        if obj in self.world.objects:
+            world_obj = self.world.objects[obj]
+            declared.update(world_obj.properties.keys())
+            declared.update(world_obj.flags)
+            props.update(world_obj.properties)
+            for flag in world_obj.flags:
+                props[flag] = True
+
+        # Check world.rooms
+        if obj in self.world.rooms:
+            room = self.world.rooms[obj]
+            declared.update(room.properties.keys())
+            declared.update(room.flags)
+            props.update(room.properties)
+            for flag in room.flags:
+                props[flag] = True
+
+        # Add implied state properties from capability flags
+        for flag, (state_prop, _) in self.IMPLIED_PROPERTIES.items():
+            if props.get(flag):
+                declared.add(state_prop)
+
+        return declared
+
+    def _check_property_declared(self, obj: str, prop: str, operation: str) -> None:
+        """Raise error if property is not declared on object.
+
+        Args:
+            obj: Object name
+            prop: Property name
+            operation: "read" or "write" for error message
+        """
+        declared = self._get_declared_properties(obj)
+        if prop not in declared:
+            raise ValueError(
+                f"Undeclared property {operation}: (:{prop} {obj}). "
+                f"Declared properties: {sorted(declared)}"
+            )
+
     def get_object_property(self, obj: str, prop: str) -> Any:
         if obj not in self.state.objects:
             return None
+
+        # Strict mode: check property is declared
+        self._check_property_declared(obj, prop, "read")
+
         # First check runtime state properties (None is a valid value)
         state_props = self.state.objects[obj].properties
         if prop in state_props:
@@ -243,21 +321,15 @@ class GrueRuntime:
         return None
 
     def has_object_property(self, obj: str, prop: str) -> bool:
-        """Check if object has a property (distinguishes missing from None)."""
+        """Check if object has a declared property.
+
+        With strict property initialization, this now checks whether the property
+        is declared in the world definition, not whether it has a runtime value.
+        All declared properties always have values (their initial values).
+        """
         if obj not in self.state.objects:
             return False
-        # Check runtime state properties
-        state_props = self.state.objects[obj].properties
-        if prop in state_props:
-            return True
-        # Check world definition for static properties
-        if obj in self.world.objects:
-            world_obj = self.world.objects[obj]
-            if prop == "description":
-                return True
-            if world_obj.properties and prop in world_obj.properties:
-                return True
-        return False
+        return prop in self._get_declared_properties(obj)
 
     def get_global(self, name: str) -> Any:
         # Check bindings first (for ?self, ?actor, ?with, ?on, etc.)
@@ -446,6 +518,8 @@ class GrueRuntime:
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
         if obj in self.state.objects:
+            # Strict mode: check property is declared
+            self._check_property_declared(obj, prop, "write")
             self.state.objects[obj].properties[prop] = value
 
     def set_global(self, name: str, value: Any) -> None:

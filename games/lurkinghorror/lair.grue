@@ -683,7 +683,7 @@
 (object @output-cable
   :location @repeater
   :description "cablelike appendage"
-  :properties (:nodesc true)
+  :properties (:nodesc true :rmung false)
   :behaviors (
     :examine (fn ()
       (cond
@@ -727,7 +727,7 @@
 (object @high-voltage
   :location nil  ; Found by searching pool in inner-lair
   :description "power line"
-  :properties (:takeable true :weapon true :cut-count 0)  ; Counter for axe hits when cutting
+  :properties (:takeable true :weapon true :cut-count 0 :rmung false :powered false)  ; Counter for axe hits when cutting
 
   :behaviors (
     :examine (fn ()
@@ -1052,7 +1052,7 @@
 (object @boots
   :location @brown-basement
   :description "pair of rubber boots"
-  :properties (:takeable true)
+  :properties (:takeable true :wearable false)
   :behaviors (
     :examine (fn ()
       (success :message "They are well-used rubber boots."))

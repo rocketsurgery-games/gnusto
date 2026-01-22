@@ -146,7 +146,7 @@
 )
 
 (test-group "rats blocking"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set-prop! @cable on false))
+  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set-prop! @cable mounted false))
 
   (test "rats block passage when present"
     (go :direction east)

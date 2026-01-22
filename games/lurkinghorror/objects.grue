@@ -16,7 +16,7 @@
 (object @master-key
   :description "master key"
   :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
-  :properties (:takeable true :key true))
+  :properties (:takeable true :key true :touched false))
 
 (object @keyring
   :description "keyring"
@@ -46,7 +46,7 @@
 (object @chinese-food
   :description "Chinese food"
   :location @carton  ; Inside the carton
-  :properties (:food true :heat 0)  ; 0=cold, 12+=hot, higher=overcooked
+  :properties (:food true :heat 0 :rmung false)  ; 0=cold, 12+=hot, higher=overcooked
 
   :behaviors (
     :examine (fn ()
@@ -74,7 +74,7 @@
 (object @snack
   :description "package of Funny Bones"
   :location @kitchen-counter  ; In ZIL: (IN KITCHEN-COUNTER)
-  :properties (:takeable true :food true :readable true :openable true :heat 0)
+  :properties (:takeable true :food true :readable true :openable true :heat 0 :rmung false)
 
   :behaviors (
     :examine (fn ()
@@ -186,10 +186,7 @@
   :location nil
   :properties (:invisible true))
 
-(object @cable
-  :description "cable"
-  :location nil
-  :properties (:invisible true))
+; @cable is fully implemented in steam-tunnels.grue
 
 (object @hand
   :description "your hand"

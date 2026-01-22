@@ -311,7 +311,7 @@
 (object @mummified-hand
   :location nil  ; Hidden until found by searching tub
   :description "human hand"
-  :properties (:takeable true :searchable true :open true :container true :heat 0 :last-pointed-room nil :animation-count 0)
+  :properties (:takeable true :searchable true :open true :container true :heat 0 :last-pointed-room nil :animation-count 0 :touched false :person false)
 
   :behaviors (
     :describe (fn ()
