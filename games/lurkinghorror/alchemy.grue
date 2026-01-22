@@ -71,7 +71,7 @@
 
 (room @alchemy-lab
   :description "Lab"
-  :properties (:lit false)  ; Initially dark until lit by professor's lantern/ritual
+  :properties (:lit false :touched false)  ; Initially dark until lit by professor's lantern/ritual
   :exits
     ((north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
      (down :to @under-alchemy-lab :via @alchemy-lab-down-barrier))
