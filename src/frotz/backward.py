@@ -814,6 +814,27 @@ def build_victory_constraints(
     return trees
 
 
+def build_defeat_constraints(
+    world: GrueWorld,
+    effects: EffectAnalysis,
+    relevance: RelevanceAnalysis,
+) -> list[ConstraintTree]:
+    """Build constraint trees for all defeat conditions."""
+    if not world.defeat:
+        return []
+
+    analyzer = BackwardAnalyzer(world, effects, relevance)
+    trees = []
+
+    for name, defeat in world.defeat.items():
+        constraints = _extract_constraints_from_expr(defeat.when)
+        for constraint in constraints:
+            tree = analyzer.build_tree(constraint)
+            trees.append(tree)
+
+    return trees
+
+
 def _extract_constraints_from_expr(expr: Any) -> list[Constraint]:
     """Extract Constraint objects from a Grue expression."""
     constraints = []
@@ -828,6 +849,15 @@ def _extract_recursive(expr: Any, constraints: list[Constraint]):
 
     items = expr.items
     head = items[0]
+
+    # (:keyword @object) - boolean property check (implicitly = true)
+    if isinstance(head, Keyword) and len(items) == 2:
+        obj = items[1]
+        if isinstance(obj, Symbol) and obj.name.startswith("@"):
+            prop_name = head.name  # Keyword.name doesn't have ':'
+            ref = PropertyRef(obj.name, prop_name)
+            constraints.append(Constraint(ref, "=", True))
+        return
 
     if not isinstance(head, Symbol):
         return

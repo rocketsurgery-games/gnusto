@@ -19,7 +19,16 @@ from grue import load_grue
 from .effects import analyze_effects
 from .relevance import analyze_relevance
 from .explorer import explore_state_space, StateGraph, ExplorationMode
-from .clustering import build_hierarchy, cluster_state_graph, generate_cluster_dot
+from .clustering import (
+    build_hierarchy,
+    cluster_state_graph,
+    generate_cluster_dot,
+    compute_dominators,
+    generate_dominator_dot,
+    generate_structure_dot,
+    compute_regions,
+    generate_region_dot,
+)
 
 
 def format_section(title: str) -> str:
@@ -166,6 +175,21 @@ def main(args: list[str] | None = None):
         action="store_true",
         help="Stop at first victory (don't explore full state space)",
     )
+    parser.add_argument(
+        "--dominators",
+        metavar="FILE",
+        help="Output dominator tree in DOT format (shows mandatory progression structure)",
+    )
+    parser.add_argument(
+        "--structure",
+        metavar="FILE",
+        help="Output simplified structure graph (just mandatory victory paths)",
+    )
+    parser.add_argument(
+        "--regions",
+        metavar="FILE",
+        help="Output region graph in DOT format (SCCs as puzzle regions)",
+    )
 
     opts = parser.parse_args(args)
 
@@ -307,6 +331,48 @@ def main(args: list[str] | None = None):
         dot_content = generate_state_graph_dot(graph)
         Path(opts.dot_raw).write_text(dot_content)
         print(f"\nRaw state graph written to: {opts.dot_raw} ({len(graph.nodes)} states)")
+
+    if opts.dominators or opts.structure:
+        # Compute clusters and dominators (needed for both outputs)
+        clusters = cluster_state_graph(graph, hierarchy)
+        dom_tree = compute_dominators(clusters)
+        victory_sigs = {s for s, c in clusters.clusters.items() if c.is_victory}
+        mandatory_count = sum(
+            1 for sig in clusters.clusters
+            if dom_tree.is_mandatory(sig, victory_sigs)
+        )
+
+    if opts.dominators:
+        # Dominator tree (full mandatory progression structure)
+        dot_content = generate_dominator_dot(clusters, dom_tree)
+        Path(opts.dominators).write_text(dot_content)
+        print(f"\nDominator tree written to: {opts.dominators}")
+        print(f"  {len(clusters.clusters)} clusters, {mandatory_count} mandatory waypoints")
+        if dom_tree.unreachable:
+            print(f"  {len(dom_tree.unreachable)} unreachable clusters")
+
+    if opts.structure:
+        # Simplified structure graph (just mandatory paths)
+        dot_content = generate_structure_dot(clusters, dom_tree)
+        Path(opts.structure).write_text(dot_content)
+        print(f"\nStructure graph written to: {opts.structure}")
+        print(f"  {len(victory_sigs)} victory paths, {mandatory_count} mandatory waypoints")
+
+    if opts.regions:
+        # Region graph (SCCs as puzzle regions)
+        clusters = cluster_state_graph(graph, hierarchy)
+        region_graph = compute_regions(clusters)
+        dot_content = generate_region_dot(region_graph, clusters)
+        Path(opts.regions).write_text(dot_content)
+
+        # Count region types
+        multi_cluster = sum(1 for r in region_graph.regions.values() if r.size > 1)
+        victories = sum(1 for r in region_graph.regions.values() if r.has_victory and r.is_terminal)
+        defeats = sum(1 for r in region_graph.regions.values() if r.has_defeat and r.is_terminal)
+
+        print(f"\nRegion graph written to: {opts.regions}")
+        print(f"  {len(region_graph.regions)} regions ({multi_cluster} explorable, {victories} victories, {defeats} defeats)")
+        print(f"  {len(region_graph.transitions)} inter-region transitions")
 
     return 0 if victory_path is not None else 1
 

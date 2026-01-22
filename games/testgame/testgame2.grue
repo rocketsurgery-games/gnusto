@@ -1,0 +1,241 @@
+; Extended test game with two areas and a bottleneck
+;
+; Area 1: Cell - escape using key OR lockpick (same as testgame)
+; Bottleneck: "Outside" is now a courtyard, not victory
+; Area 2: Courtyard with guard - bribe with coin OR gem to reach freedom
+;
+; This tests:
+; - Bottleneck detection (courtyard is chokepoint)
+; - Whether Area 1 choices matter in Area 2 (coin/gem carry over)
+; - Parallel victory paths (coin OR gem)
+
+(world
+  :name "Test Game 2: Two Areas"
+  :player @player
+  :intro "You wake up in a prison cell. Beyond the door lies a guarded courtyard, and beyond that... freedom.")
+
+; Victory is now reaching the gate, not just getting outside
+(victory :when (= (loc @player) @freedom))
+
+(defeat death
+  :when (:dead @player)
+  :context ((message "You have died.")))
+
+; === Rooms ===
+
+; Area 1: The Cell
+(room @cell
+  :description "Cell"
+  :ldesc "A small, damp cell with stone walls. A heavy door leads north. A dark pit opens to the east."
+  :properties (:lit true)
+  :exits ((north :to @courtyard :via @cell-door)
+          (east :to @pit)))
+
+(room @pit
+  :description "Pit"
+  :ldesc "A deep pit with something glowing at the bottom."
+  :properties (:lit true)
+  :exits ((west :to @cell)
+          (down :to @pit-bottom)))
+
+(room @pit-bottom
+  :description "Pit Bottom"
+  :ldesc "The bottom of the pit. A glowing orb pulses ominously."
+  :properties (:lit true)
+  :exits ((up :to @pit)))
+
+; Bottleneck: The Courtyard (was "outside" in testgame)
+(room @courtyard
+  :description "Courtyard"
+  :ldesc "A stone courtyard. A bored guard blocks the gate to the north. The cell door is to the south."
+  :properties (:lit true)
+  :exits ((south :to @cell)
+          (north :to @freedom :via @gate)))
+
+; Area 2 Victory: Freedom
+(room @freedom
+  :description "Freedom"
+  :ldesc "You're free! The open road stretches before you."
+  :properties (:lit true)
+  :exits ((south :to @courtyard)))
+
+; === Player ===
+
+(object @player
+  :location @cell
+  :description "yourself"
+  :properties (:person true :dead false))
+
+; === Area 1 Objects: Cell Escape Puzzle ===
+
+(object @key
+  :location @cell
+  :description "brass key"
+  :ldesc "A small brass key lies on the floor."
+  :behaviors (
+    :take (fn () '((move @key @player) (success :message "You pick up the key.")))
+    :drop (fn () '((move @key (loc @player)) (success :message "You drop the key.")))
+    :examine (fn () (success :message "A small brass key, tarnished with age."))))
+
+(object @lockpick
+  :location @cell
+  :description "rusty lockpick"
+  :ldesc "A rusty lockpick lies in the corner."
+  :properties (:broken false)
+  :behaviors (
+    :take (fn () '((move @lockpick @player) (success :message "You pick up the lockpick.")))
+    :drop (fn () '((move @lockpick (loc @player)) (success :message "You drop the lockpick.")))
+    :examine (fn ()
+      (if (:broken @lockpick)
+        (success :message "A broken lockpick. Useless now.")
+        (success :message "A rusty but functional lockpick. Looks fragile.")))))
+
+(object @cell-door
+  :location @cell
+  :description "cell door"
+  :properties (:locked true :open false)
+  :behaviors (
+    :examine (fn ()
+      (if (:locked @cell-door)
+        (success :message "A heavy wooden door, locked tight.")
+        (success :message "A heavy wooden door, now unlocked.")))
+
+    :unlock (fn ()
+      (cond
+        ((not (:locked @cell-door))
+          (success :message "It's already unlocked."))
+        ((held? @key)
+          '((set @cell-door :locked false)
+            (success :message "You unlock the door with the brass key.")))
+        ((and (held? @lockpick) (not (:broken @lockpick)))
+          '((set @cell-door :locked false)
+            (set @lockpick :broken true)
+            (success :message "You pick the lock. The rusty lockpick snaps!")))
+        (true
+          (blocked :reason no-tool :message "You don't have anything to unlock it with."))))
+
+    :lock (fn ()
+      (cond
+        ((:locked @cell-door)
+          (success :message "It's already locked."))
+        ((not (held? @key))
+          (blocked :reason no-key :message "You don't have the key."))
+        (true
+          '((set @cell-door :locked true)
+            (success :message "You lock the door.")))))
+
+    :open (fn ()
+      (cond
+        ((:open @cell-door)
+          (success :message "It's already open."))
+        ((:locked @cell-door)
+          (blocked :reason locked :message "The door is locked."))
+        (true
+          '((set @cell-door :open true)
+            (success :message "You open the door.")))))
+
+    :close (fn ()
+      (if (not (:open @cell-door))
+        (success :message "It's already closed.")
+        '((set @cell-door :open false)
+          (success :message "You close the door."))))
+
+    :through (fn ()
+      (cond
+        ((:locked @cell-door)
+          (blocked :reason locked :message "The door is locked."))
+        ((not (:open @cell-door))
+          (blocked :reason closed :message "The door is closed."))
+        (true (success))))))
+
+; === Bribe Items (collected in Area 1, used in Area 2) ===
+
+(object @coin
+  :location @cell
+  :description "silver coin"
+  :ldesc "A silver coin glints on the floor."
+  :behaviors (
+    :take (fn () '((move @coin @player) (success :message "You pocket the silver coin.")))
+    :drop (fn () '((move @coin (loc @player)) (success :message "You drop the coin.")))
+    :examine (fn () (success :message "A silver coin. Might be valuable to someone."))))
+
+(object @gem
+  :location @cell
+  :description "sparkling gem"
+  :ldesc "A sparkling gem lies half-hidden in a crack."
+  :behaviors (
+    :take (fn () '((move @gem @player) (success :message "You take the sparkling gem.")))
+    :drop (fn () '((move @gem (loc @player)) (success :message "You drop the gem.")))
+    :examine (fn () (success :message "A brilliant gem that catches the light."))))
+
+; === Deadly Trap ===
+
+(object @orb
+  :location @pit-bottom
+  :description "glowing orb"
+  :ldesc "A strange orb pulses with an eerie light."
+  :behaviors (
+    :examine (fn () (success :message "The orb pulses hypnotically. It looks dangerous to touch."))
+    :take (fn ()
+      '((set @player :dead true)
+        (success :message "As your fingers touch the orb, dark energy surges through you. Everything goes black.")))
+    :touch (fn ()
+      '((set @player :dead true)
+        (success :message "Dark energy courses through your body. You collapse.")))))
+
+; === Area 2 Objects: Guard Bribe Puzzle ===
+
+(object @guard
+  :location @courtyard
+  :description "bored guard"
+  :ldesc "A guard stands by the gate, looking bored."
+  :properties (:bribed false)
+  :behaviors (
+    :examine (fn ()
+      (if (:bribed @guard)
+        (success :message "The guard is pointedly looking the other way.")
+        (success :message "The guard eyes you suspiciously. Maybe he can be bribed?")))
+
+    :bribe (fn ()
+      (cond
+        ((:bribed @guard)
+          (success :message "The guard waves you on. 'Go, go, before anyone sees.'"))
+        ((held? @coin)
+          '((set @guard :bribed true)
+            (move @coin @guard)
+            (success :message "The guard pockets the coin and steps aside. 'Be quick about it.'")))
+        ((held? @gem)
+          '((set @guard :bribed true)
+            (move @gem @guard)
+            (success :message "The guard's eyes widen at the gem. 'Go. I saw nothing.'")))
+        (true
+          (blocked :reason nothing-to-give :message "The guard scowls. 'What's in it for me?'"))))))
+
+(object @gate
+  :location @courtyard
+  :description "iron gate"
+  :ldesc "A heavy iron gate leads north to freedom."
+  :properties (:open false)
+  :behaviors (
+    :examine (fn ()
+      (success :message "A sturdy iron gate. The guard controls who passes."))
+
+    :open (fn ()
+      (if (not (:bribed @guard))
+        (blocked :reason guard :message "The guard blocks your way. 'Not so fast.'")
+        '((set @gate :open true)
+          (success :message "You push the gate open."))))
+
+    :close (fn ()
+      (if (not (:open @gate))
+        (success :message "It's already closed.")
+        '((set @gate :open false)
+          (success :message "You close the gate."))))
+
+    :through (fn ()
+      (cond
+        ((not (:bribed @guard))
+          (blocked :reason guard :message "The guard blocks your way."))
+        ((not (:open @gate))
+          (blocked :reason closed :message "The gate is closed."))
+        (true (success))))))
