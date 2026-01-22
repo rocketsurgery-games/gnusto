@@ -131,6 +131,12 @@ def main(args: list[str] | None = None):
         help="Maximum exploration depth (default: 100)",
     )
     parser.add_argument(
+        "--max-states",
+        type=int,
+        default=None,
+        help="Maximum states to explore (default: unlimited)",
+    )
+    parser.add_argument(
         "--dot",
         metavar="FILE",
         help="Output cluster graph in DOT format (states collapsed by constraint signature)",
@@ -241,7 +247,9 @@ def main(args: list[str] | None = None):
 
     hierarchy = build_hierarchy(world, effects, relevance)
     mode = ExplorationMode.GUIDED_FIRST_VICTORY if opts.fast else ExplorationMode.GUIDED
-    graph, stats = explore_state_space(world, relevance, opts.max_depth, mode, hierarchy)
+    graph, stats = explore_state_space(
+        world, relevance, opts.max_depth, mode, hierarchy, opts.max_states
+    )
 
     if not opts.quiet:
         print(stats.summary())

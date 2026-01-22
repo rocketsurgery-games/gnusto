@@ -37,6 +37,7 @@ class ExplorationStats:
     states_explored: int = 0
     states_skipped_depth: int = 0
     states_skipped_victory_found: int = 0
+    states_skipped_max_states: int = 0
     victory_found_at_depth: int | None = None
     victory_found_after_states: int | None = None
 
@@ -50,6 +51,8 @@ class ExplorationStats:
             lines.append(f"Victory found after exploring: {self.victory_found_after_states} states")
         if self.states_skipped_victory_found > 0:
             lines.append(f"States skipped (victory found): {self.states_skipped_victory_found}")
+        if self.states_skipped_max_states > 0:
+            lines.append(f"States skipped (max states reached): {self.states_skipped_max_states}")
         return "\n".join(lines)
 
 
@@ -473,10 +476,12 @@ class StateExplorer:
         max_depth: int = 100,
         mode: ExplorationMode = ExplorationMode.GUIDED,
         hierarchy: "ConstraintHierarchy | None" = None,
+        max_states: int | None = None,
     ):
         self.world = world
         self.relevance = relevance
         self.max_depth = max_depth
+        self.max_states = max_states
         self.mode = mode
         self.hierarchy = hierarchy
         self._runtime = GrueRuntime(world)
@@ -533,6 +538,11 @@ class StateExplorer:
             if self.mode == ExplorationMode.GUIDED_FIRST_VICTORY and victory_found:
                 self.stats.states_skipped_victory_found += 1
                 continue
+
+            # Max states limit
+            if self.max_states is not None and self.stats.states_explored >= self.max_states:
+                self.stats.states_skipped_max_states = len(pq)  # Track how many we're leaving unexplored
+                break
 
             # Depth limit
             if depth >= self.max_depth:
@@ -691,6 +701,7 @@ def explore_state_space(
     max_depth: int = 100,
     mode: ExplorationMode = ExplorationMode.GUIDED,
     hierarchy: "ConstraintHierarchy | None" = None,
+    max_states: int | None = None,
 ) -> tuple[StateGraph, ExplorationStats]:
     """Convenience function to explore a game's state space.
 
@@ -700,10 +711,11 @@ def explore_state_space(
         max_depth: Maximum exploration depth
         mode: GUIDED (full exploration) or GUIDED_FIRST_VICTORY (stop at first victory)
         hierarchy: Constraint hierarchy for prioritization (recommended)
+        max_states: Maximum states to explore (None = unlimited)
 
     Returns:
         Tuple of (state_graph, exploration_stats)
     """
-    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy)
+    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy, max_states)
     graph = explorer.explore()
     return graph, explorer.stats

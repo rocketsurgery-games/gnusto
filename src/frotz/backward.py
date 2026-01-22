@@ -392,6 +392,18 @@ class BackwardAnalyzer:
             preconds = self._extract_go_preconditions()
             return [preconds] if preconds else []
 
+        # Special case: event behaviors have implicit precondition that event is queued
+        # Events are named "event:X" and the event must be in the queue to fire
+        if behavior.object.startswith("event:"):
+            event_name = behavior.object.split(":", 1)[1]
+            # The event being queued is a precondition
+            # We model this as: some behavior must have called (queue event_name ...)
+            # Those behaviors become the "achievers" for this implicit constraint
+            queue_ref = QueueRef(event_name)
+            queue_constraint = Constraint(queue_ref, "=", True)
+            # Return as single precondition - the queue must be active
+            return [[queue_constraint]]
+
         # Find the behavior body
         body = self._get_behavior_body(behavior)
         if body is None:
@@ -727,6 +739,20 @@ class BackwardAnalyzer:
             if else_branch:
                 else_stack = condition_stack + [(inner_cond, not is_negated)]
                 self._walk_for_blockers(else_branch, results, else_stack)
+            return
+
+        # Function call inlining: (function-name args...)
+        if name in self.world.functions:
+            fn = self.world.functions[name]
+            # Track to avoid infinite recursion
+            if not hasattr(self, '_inline_stack'):
+                self._inline_stack = set()
+            if name not in self._inline_stack:
+                self._inline_stack.add(name)
+                try:
+                    self._walk_for_blockers(fn.body, results, condition_stack)
+                finally:
+                    self._inline_stack.discard(name)
             return
 
         # Default: recurse into children

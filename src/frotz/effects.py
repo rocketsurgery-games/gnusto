@@ -322,6 +322,24 @@ class EffectAnalyzer:
             if isinstance(head, Symbol):
                 name = head.name
 
+                # Function call inlining: (function-name args...)
+                # If this is a call to a defn'd function, walk its body
+                if name in self.world.functions:
+                    fn = self.world.functions[name]
+                    # Track that we're inlining to avoid infinite recursion
+                    if not hasattr(self, '_inlining_stack'):
+                        self._inlining_stack = set()
+                    if name not in self._inlining_stack:
+                        self._inlining_stack.add(name)
+                        try:
+                            self._walk_expr(fn.body)
+                        finally:
+                            self._inlining_stack.discard(name)
+                    # Also walk arguments for potential reads
+                    for item in items[1:]:
+                        self._walk_expr(item)
+                    return
+
                 # Effect detection: (set @obj :prop value)
                 if name == "set" and len(items) >= 4:
                     obj = items[1]
