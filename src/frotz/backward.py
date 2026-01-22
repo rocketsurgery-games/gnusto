@@ -66,11 +66,17 @@ class Constraint:
 
     @staticmethod
     def _values_equal(a: Any, b: Any) -> bool:
-        """Check equality with nil/None handling."""
+        """Check equality with nil/None and falsy value handling.
+
+        In Grue, nil and False are both falsy values, and truthy checks
+        like (:prop @obj) evaluate to the property value, treating nil/False
+        as falsy. So for constraint matching, we treat falsy values as equivalent.
+        """
         if a == b:
             return True
-        nil_values = (None, "nil")
-        if a in nil_values and b in nil_values:
+        # Falsy values: None, "nil", False are all equivalent
+        falsy_values = (None, "nil", False)
+        if a in falsy_values and b in falsy_values:
             return True
         return False
 
@@ -228,6 +234,7 @@ class BackwardAnalyzer:
         self.effects = effects
         self.relevance = relevance
         self._initial_state: dict[str, Any] = {}
+        self._current_self: str | None = None  # Object name for ?self resolution
         self._collect_initial_state()
 
     def _collect_initial_state(self):
@@ -365,13 +372,18 @@ class BackwardAnalyzer:
         return result
 
     def _values_match(self, actual: Any, expected: Any) -> bool:
-        """Check if two values match, with special handling for symbols."""
+        """Check if two values match, with special handling for symbols and nil."""
         if actual == expected:
             return True
         # Handle @symbol strings matching Symbol objects
         if isinstance(expected, str) and expected.startswith("@"):
             if isinstance(actual, str) and actual == expected:
                 return True
+        # Handle nil/None equivalence
+        # Effect analysis stores Python None for 'nil', but constraints may use string 'nil'
+        nil_values = (None, "nil")
+        if actual in nil_values and expected in nil_values:
+            return True
         return False
 
     def _extract_preconditions(
@@ -411,47 +423,56 @@ class BackwardAnalyzer:
             # Return as single precondition - the queue must be active
             return [[queue_constraint]]
 
-        # Find the behavior body
-        body = self._get_behavior_body(behavior)
-        if body is None:
-            return []
+        # Set _current_self for ?self resolution in condition analysis
+        # Object behaviors use the object name, room behaviors use the room name
+        obj_name = behavior.object
+        if obj_name.startswith("@"):
+            self._current_self = obj_name
 
-        # Strategy 1: Extract from blocking conditions
-        blocking_conditions = self._extract_blocking_conditions(body)
-        blocking_preconds: list[Constraint] = []
-        for condition, was_negated in blocking_conditions:
-            must_be_true = was_negated
-            constraint = self._condition_to_constraint(condition, must_be_true)
-            if constraint is not None:
-                blocking_preconds.append(constraint)
+        try:
+            # Find the behavior body
+            body = self._get_behavior_body(behavior)
+            if body is None:
+                return []
 
-        # Strategy 2: Extract effect-path conditions (for target ref)
-        effect_paths = self._extract_success_conditions(body, target_ref)
+            # Strategy 1: Extract from blocking conditions
+            blocking_conditions = self._extract_blocking_conditions(body)
+            blocking_preconds: list[Constraint] = []
+            for condition, was_negated in blocking_conditions:
+                must_be_true = was_negated
+                constraint = self._condition_to_constraint(condition, must_be_true)
+                if constraint is not None:
+                    blocking_preconds.append(constraint)
 
-        # Combine strategies:
-        # - If we have blocking conditions, they apply to ALL paths
-        # - If we have effect paths, each path is an alternative
-        if effect_paths:
-            # Each effect path is an alternative, combined with blocking preconds
-            result: list[list[Constraint]] = []
-            for path in effect_paths:
-                # Combine and deduplicate
-                combined = blocking_preconds + path
-                seen: set[str] = set()
-                deduped: list[Constraint] = []
-                for c in combined:
-                    key = str(c)
-                    if key not in seen:
-                        seen.add(key)
-                        deduped.append(c)
-                result.append(deduped)
-            return result
-        elif blocking_preconds:
-            # Only blocking conditions, single path
-            return [blocking_preconds]
-        else:
-            # No conditions found
-            return []
+            # Strategy 2: Extract effect-path conditions (for target ref)
+            effect_paths = self._extract_success_conditions(body, target_ref)
+
+            # Combine strategies:
+            # - If we have blocking conditions, they apply to ALL paths
+            # - If we have effect paths, each path is an alternative
+            if effect_paths:
+                # Each effect path is an alternative, combined with blocking preconds
+                result: list[list[Constraint]] = []
+                for path in effect_paths:
+                    # Combine and deduplicate
+                    combined = blocking_preconds + path
+                    seen: set[str] = set()
+                    deduped: list[Constraint] = []
+                    for c in combined:
+                        key = str(c)
+                        if key not in seen:
+                            seen.add(key)
+                            deduped.append(c)
+                    result.append(deduped)
+                return result
+            elif blocking_preconds:
+                # Only blocking conditions, single path
+                return [blocking_preconds]
+            else:
+                # No conditions found
+                return []
+        finally:
+            self._current_self = None
 
     def _extract_go_preconditions(self) -> list[Constraint]:
         """Extract preconditions for movement from all door :through behaviors.
@@ -879,6 +900,22 @@ class BackwardAnalyzer:
             return expr.items[1]
         return expr
 
+    def _resolve_object_ref(self, expr: Any) -> str | None:
+        """Resolve an expression to an object name.
+
+        Handles:
+        - @object symbols -> "@object"
+        - ?self -> current behavior's object (if set)
+
+        Returns None if the expression can't be resolved to a static object name.
+        """
+        if isinstance(expr, Symbol):
+            if expr.name.startswith("@"):
+                return expr.name
+            if expr.name == "?self" and self._current_self:
+                return self._current_self
+        return None
+
     def _condition_to_constraint(self, condition: Any, must_be_true: bool) -> Constraint | None:
         """Convert a condition expression to a Constraint.
 
@@ -891,11 +928,12 @@ class BackwardAnalyzer:
         items = condition.items
         head = items[0]
 
-        # (:prop @obj) - property read, must be truthy/falsy
+        # (:prop @obj) or (:prop ?self) - property read, must be truthy/falsy
         if isinstance(head, Keyword) and len(items) >= 2:
             obj = items[1]
-            if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                ref = PropertyRef(obj.name, head.name)
+            obj_name = self._resolve_object_ref(obj)
+            if obj_name:
+                ref = PropertyRef(obj_name, head.name)
                 # Property must be truthy (True) or falsy (False)
                 return Constraint(ref, "=", must_be_true)
 
@@ -904,11 +942,12 @@ class BackwardAnalyzer:
 
         name = head.name
 
-        # (held? @obj) - object must be held by player
+        # (held? @obj) or (held? ?self) - object must be held by player
         if name == "held?" and len(items) >= 2:
             obj = items[1]
-            if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                ref = LocationRef(obj.name)
+            obj_name = self._resolve_object_ref(obj)
+            if obj_name:
+                ref = LocationRef(obj_name)
                 if must_be_true:
                     return Constraint(ref, "=", "@player")
                 else:

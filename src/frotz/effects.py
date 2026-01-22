@@ -152,6 +152,7 @@ class EffectAnalyzer:
         self.world = world
         self.analysis = EffectAnalysis()
         self._current_behavior: BehaviorRef | None = None
+        self._current_self: str | None = None  # Object name for ?self resolution
 
     def analyze(self) -> EffectAnalysis:
         """Run the analysis and return results."""
@@ -206,6 +207,10 @@ class EffectAnalyzer:
             # Find all doors used in exits and mark runtime:go as reading what :through reads
             self._collect_navigation_dependencies()
 
+        # Built-in: takeable objects can be taken/dropped by runtime
+        # This is equivalent to having default :take and :drop behaviors
+        self._collect_takeable_effects()
+
     def _collect_navigation_dependencies(self):
         """Find all :via doors in exits and track their :through behavior dependencies.
 
@@ -234,6 +239,40 @@ class EffectAnalyzer:
                             self._current_behavior = runtime_go
                             self._walk_expr(behavior.body)
 
+    def _collect_takeable_effects(self):
+        """Model runtime default :take and :drop behaviors for takeable objects.
+
+        Objects with :takeable true can be taken (moved to @player) and dropped
+        (moved to current room) via the runtime's default behavior. This is
+        equivalent to having implicit behaviors on each takeable object.
+        """
+        player_name = self.world.player or "@player"
+
+        for obj_name, obj in self.world.objects.items():
+            # Check if object is takeable
+            is_takeable = obj.properties.get("takeable", False)
+            if not is_takeable:
+                continue
+
+            # Check if object has a custom :take behavior that already handles location
+            # If so, we don't need to add the runtime default
+            has_custom_take = False
+            if hasattr(obj, 'behaviors') and obj.behaviors:
+                for behavior in obj.behaviors:
+                    if behavior.verb == "take":
+                        has_custom_take = True
+                        break
+
+            if not has_custom_take:
+                # Runtime's default :take moves object to player
+                obj_loc = LocationRef(obj_name)
+                self.analysis.add_modify(obj_loc, BehaviorRef("runtime", "take"), player_name)
+
+            # Drop is always available for held objects (runtime default)
+            # It moves the object to current room (variable destination)
+            obj_loc = LocationRef(obj_name)
+            self.analysis.add_modify(obj_loc, BehaviorRef("runtime", "drop"), None)  # None = unknown destination
+
     def _analyze_object_behaviors(self, obj_name: str, obj: Any):
         """Analyze all behaviors on an object."""
         if not hasattr(obj, 'behaviors') or not obj.behaviors:
@@ -241,7 +280,9 @@ class EffectAnalyzer:
 
         for behavior in obj.behaviors:
             self._current_behavior = BehaviorRef(obj_name, behavior.verb)
+            self._current_self = obj_name  # Track ?self for resolution
             self._walk_expr(behavior.body)
+            self._current_self = None
 
     def _analyze_room_behaviors(self, room_name: str, room: Any):
         """Analyze all behaviors on a room."""
@@ -250,7 +291,9 @@ class EffectAnalyzer:
 
         for behavior in room.behaviors:
             self._current_behavior = BehaviorRef(room_name, behavior.verb)
+            self._current_self = room_name  # Track ?self for resolution
             self._walk_expr(behavior.body)
+            self._current_self = None
 
     def _analyze_event(self, event_name: str, event: Any):
         """Analyze an event's body (on_turn handler)."""
@@ -259,6 +302,22 @@ class EffectAnalyzer:
 
         self._current_behavior = BehaviorRef(f"event:{event_name}", "on_turn")
         self._walk_expr(event.body)
+
+    def _resolve_object_ref(self, expr: Any) -> str | None:
+        """Resolve an expression to an object name.
+
+        Handles:
+        - @object symbols -> "@object"
+        - ?self -> current behavior's object (if set)
+
+        Returns None if the expression can't be resolved to a static object name.
+        """
+        if isinstance(expr, Symbol):
+            if expr.name.startswith("@"):
+                return expr.name
+            if expr.name == "?self" and self._current_self:
+                return self._current_self
+        return None
 
     def _extract_literal_value(self, expr: Any) -> Any:
         """Extract a literal value from an expression, or None if not a literal.
@@ -340,16 +399,16 @@ class EffectAnalyzer:
                         self._walk_expr(item)
                     return
 
-                # Effect detection: (set @obj :prop value)
+                # Effect detection: (set @obj :prop value) or (set ?self :prop value)
                 if name == "set" and len(items) >= 4:
                     obj = items[1]
                     prop = items[2]
                     value_expr = items[3]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                        if isinstance(prop, Keyword):
-                            ref = PropertyRef(obj.name, prop.name)
-                            target_value = self._extract_literal_value(value_expr)
-                            self.analysis.add_modify(ref, self._current_behavior, target_value)
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name and isinstance(prop, Keyword):
+                        ref = PropertyRef(obj_name, prop.name)
+                        target_value = self._extract_literal_value(value_expr)
+                        self.analysis.add_modify(ref, self._current_behavior, target_value)
                     # Also walk the value expression for reads
                     for item in items[3:]:
                         self._walk_expr(item)
@@ -360,26 +419,37 @@ class EffectAnalyzer:
                     obj = items[1]
                     prop = items[2]
                     value_expr = items[3]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
                         prop_name = prop.name if isinstance(prop, (Symbol, Keyword)) else str(prop)
-                        ref = PropertyRef(obj.name, prop_name)
+                        ref = PropertyRef(obj_name, prop_name)
                         target_value = self._extract_literal_value(value_expr)
                         self.analysis.add_modify(ref, self._current_behavior, target_value)
                     for item in items[3:]:
                         self._walk_expr(item)
                     return
 
-                # Effect detection: (move @obj dest)
+                # Effect detection: (move @obj dest) or (move ?self dest)
                 if name == "move" and len(items) >= 3:
                     obj = items[1]
                     dest = items[2]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                        ref = LocationRef(obj.name)
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
+                        ref = LocationRef(obj_name)
                         # Destination could be @room, @player, or (loc @player)
                         target_value = self._extract_literal_value(dest)
                         self.analysis.add_modify(ref, self._current_behavior, target_value)
                     # Walk destination for reads
                     self._walk_expr(dest)
+                    return
+
+                # Effect detection: (take @obj) or (take ?self) - moves object to player
+                if name == "take" and len(items) >= 2:
+                    obj = items[1]
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
+                        ref = LocationRef(obj_name)
+                        self.analysis.add_modify(ref, self._current_behavior, "@player")
                     return
 
                 # Effect detection: (queue event) or (queue event countdown)
@@ -401,19 +471,21 @@ class EffectAnalyzer:
                 # Read detection: (:prop @obj) or (:prop @obj default)
                 # This is handled by keyword-as-function below
 
-                # Read detection: (loc @obj)
+                # Read detection: (loc @obj) or (loc ?self)
                 if name == "loc" and len(items) >= 2:
                     obj = items[1]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                        ref = LocationRef(obj.name)
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
+                        ref = LocationRef(obj_name)
                         self.analysis.add_read(ref, self._current_behavior)
                     return
 
-                # Read detection: (held? @obj)
+                # Read detection: (held? @obj) or (held? ?self)
                 if name == "held?" and len(items) >= 2:
                     obj = items[1]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                        ref = LocationRef(obj.name)
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
+                        ref = LocationRef(obj_name)
                         self.analysis.add_read(ref, self._current_behavior)
                     return
 
@@ -425,19 +497,21 @@ class EffectAnalyzer:
                     self.analysis.add_read(ref, self._current_behavior)
                     return
 
-                # Read detection: (in-room? @obj @room ...)
+                # Read detection: (in-room? @obj @room ...) or (in-room? ?self @room ...)
                 if name == "in-room?" and len(items) >= 2:
                     obj = items[1]
-                    if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                        ref = LocationRef(obj.name)
+                    obj_name = self._resolve_object_ref(obj)
+                    if obj_name:
+                        ref = LocationRef(obj_name)
                         self.analysis.add_read(ref, self._current_behavior)
                     return
 
-            # Keyword-as-function: (:prop @obj) reads a property
+            # Keyword-as-function: (:prop @obj) or (:prop ?self) reads a property
             if isinstance(head, Keyword) and len(items) >= 2:
                 obj = items[1]
-                if isinstance(obj, Symbol) and obj.name.startswith("@"):
-                    ref = PropertyRef(obj.name, head.name)
+                obj_name = self._resolve_object_ref(obj)
+                if obj_name:
+                    ref = PropertyRef(obj_name, head.name)
                     self.analysis.add_read(ref, self._current_behavior)
                 # Walk remaining args
                 for item in items[2:]:
