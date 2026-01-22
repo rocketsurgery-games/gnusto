@@ -208,6 +208,7 @@ class ClusterGraph:
     """
     clusters: dict[ClusterSignature, Cluster] = field(default_factory=dict)
     transitions: list[ClusterTransition] = field(default_factory=list)
+    initial_sig: ClusterSignature | None = None  # Signature of the initial state's cluster
     hierarchy: ConstraintHierarchy | None = None
 
     # Statistics
@@ -408,6 +409,12 @@ def cluster_state_graph(
     result.total_states = len(graph.nodes)
     result.total_edges = len(graph.edges)
 
+    # Track initial state's cluster
+    if graph.initial_id is not None:
+        initial_node = graph.nodes[graph.initial_id]
+        initial_values = dict(initial_node.state.values)
+        result.initial_sig = hierarchy.get_signature(initial_values)
+
     # Classify each state into a cluster
     state_to_sig: dict[int, ClusterSignature] = {}
 
@@ -546,11 +553,17 @@ def generate_cluster_dot(cluster_graph: ClusterGraph, rankdir: str = "LR") -> st
         else:
             desc_vertical = "(no progress)"
 
-        # Add state count
-        label = f"{sig}\\n{desc_vertical}\\n({cluster.size} states)"
+        # Mark initial cluster
+        is_initial = (sig == cluster_graph.initial_sig)
+        if is_initial:
+            label = f"START\\n{sig}\\n{desc_vertical}\\n({cluster.size} states)"
+        else:
+            label = f"{sig}\\n{desc_vertical}\\n({cluster.size} states)"
 
         if cluster.is_victory:
             style = 'style=filled fillcolor=green'
+        elif is_initial:
+            style = 'style="filled,bold" fillcolor=yellow penwidth=3'
         elif cluster.is_defeat:
             style = 'style=filled fillcolor=red'
         else:
