@@ -163,6 +163,86 @@ class EffectAnalysis:
 
         return "\n".join(lines)
 
+    def to_paths(self) -> "PathEffectAnalysis":
+        """Convert to StatePath-based representation.
+
+        Returns a PathEffectAnalysis with the same data but using StatePath
+        instead of PropertyRef/LocationRef/QueueRef/HeldRef.
+        """
+        from frotz.state import StatePath, state_ref_to_path
+
+        result = PathEffectAnalysis()
+
+        for ref in self.all_state:
+            result.all_state.add(state_ref_to_path(ref))
+
+        for ref, behaviors in self.modifies.items():
+            path = state_ref_to_path(ref)
+            result.modifies[path] = behaviors.copy()
+
+        for ref, behavior_targets in self.modifies_to.items():
+            path = state_ref_to_path(ref)
+            result.modifies_to[path] = {
+                behavior: targets.copy()
+                for behavior, targets in behavior_targets.items()
+            }
+
+        for ref, behaviors in self.reads.items():
+            path = state_ref_to_path(ref)
+            result.reads[path] = behaviors.copy()
+
+        for ref in self.constants:
+            result.constants.add(state_ref_to_path(ref))
+
+        return result
+
+
+@dataclass
+class PathEffectAnalysis:
+    """Effect analysis results using StatePath.
+
+    This is the new unified representation that Phase 3 (value domain inference)
+    will use. It has the same structure as EffectAnalysis but uses StatePath
+    instead of the old StateRef variants.
+    """
+
+    # What can modify each piece of state
+    modifies: dict["StatePath", set[BehaviorRef]] = field(default_factory=dict)
+
+    # What target values each behavior sets for each state path
+    modifies_to: dict["StatePath", dict[BehaviorRef, set[Any]]] = field(
+        default_factory=dict
+    )
+
+    # What reads each piece of state
+    reads: dict["StatePath", set[BehaviorRef]] = field(default_factory=dict)
+
+    # State paths that are never modified
+    constants: set["StatePath"] = field(default_factory=set)
+
+    # All state paths found
+    all_state: set["StatePath"] = field(default_factory=set)
+
+    def get_write_values(self, path: "StatePath") -> set[Any]:
+        """Get all possible values that can be written to a path.
+
+        Returns the union of target values across all behaviors that write
+        to this path. None in the set means "unknown/variable value".
+        """
+        if path not in self.modifies_to:
+            return set()
+        result = set()
+        for targets in self.modifies_to[path].values():
+            result.update(targets)
+        return result
+
+
+# Import StatePath for type annotations (at module level after PathEffectAnalysis)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from frotz.state import StatePath
+
 
 class EffectAnalyzer:
     """Analyzes a Grue world to find what state can change."""
