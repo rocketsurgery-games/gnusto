@@ -591,8 +591,11 @@
     :read (fn ()
       (success :message (prop ?self :text)))
 
+    ; Note: explicit (held? ?obj) needed for back-propagation to find preconditions
     :put (fn (?obj)
       (cond
+        ((not (held? ?obj))
+          (blocked :reason not-held :message "You're not holding that."))
         ((not (in? @elixir ?self))
           (default))
         ((= ?obj @dead-rat)
@@ -807,8 +810,11 @@
       (redirect :action (do ?self :ask ?topic)))
 
     ; Give/show things to professor
+    ; Note: explicit (held? ?obj) needed for back-propagation to find preconditions
     :give (fn (?obj)
       (cond
+        ((not (held? ?obj))
+          (blocked :reason not-held :message "You're not holding that."))
         ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
         ((> (:ritual-stage @professor) 2)
