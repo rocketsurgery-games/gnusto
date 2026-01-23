@@ -477,6 +477,7 @@ class StateExplorer:
         mode: ExplorationMode = ExplorationMode.GUIDED,
         hierarchy: "ConstraintHierarchy | None" = None,
         max_states: int | None = None,
+        state_refs: "set[StateRef] | None" = None,
     ):
         self.world = world
         self.relevance = relevance
@@ -484,6 +485,8 @@ class StateExplorer:
         self.max_states = max_states
         self.mode = mode
         self.hierarchy = hierarchy
+        # Use explicit state_refs if provided, otherwise fall back to relevance
+        self.state_refs = state_refs if state_refs is not None else relevance.relevant
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
 
@@ -501,7 +504,7 @@ class StateExplorer:
 
         # Initial state
         self._runtime.reset()
-        initial_state = GameState.from_runtime(self._runtime, self.relevance.relevant)
+        initial_state = GameState.from_runtime(self._runtime, self.state_refs)
         is_victory = self._runtime.check_victory()
         is_defeat = self._runtime.check_defeat()
 
@@ -568,7 +571,7 @@ class StateExplorer:
                     self._runtime.process_events()
 
                     new_state = GameState.from_runtime(
-                        self._runtime, self.relevance.relevant
+                        self._runtime, self.state_refs
                     )
 
                     is_victory = self._runtime.check_victory()
@@ -638,6 +641,12 @@ class StateExplorer:
         inventory = self._runtime.get_inventory()
         player_room = self._runtime.get_player_room()
 
+        # Also include room's :visible scenery objects (like power-cord)
+        if player_room and player_room in self.world.rooms:
+            room_def = self.world.rooms[player_room]
+            if hasattr(room_def, 'visible') and room_def.visible:
+                visible = list(set(visible) | set(room_def.visible))
+
         for obj_name in visible:
             if obj_name not in self.world.objects:
                 continue
@@ -669,6 +678,22 @@ class StateExplorer:
                             for arg2 in arg_candidates:
                                 actions.append(Action(target=obj_name, verb=verb, args=(arg1, arg2)))
                     # Could extend to more params if needed
+
+        # Runtime default actions for takeable objects
+        for obj_name in visible:
+            if obj_name not in self.world.objects:
+                continue
+            obj = self.world.objects[obj_name]
+            # Add 'take' for takeable objects not in inventory
+            if obj.properties.get("takeable") and obj_name not in inventory:
+                actions.append(Action(target=obj_name, verb="take"))
+
+        # Runtime default actions for inventory items
+        for obj_name in inventory:
+            if obj_name not in self.world.objects:
+                continue
+            # Add 'drop' for items in inventory
+            actions.append(Action(target=obj_name, verb="drop"))
 
         # Movement actions
         if player_room and player_room in self.world.rooms:
@@ -702,6 +727,7 @@ def explore_state_space(
     mode: ExplorationMode = ExplorationMode.GUIDED,
     hierarchy: "ConstraintHierarchy | None" = None,
     max_states: int | None = None,
+    state_refs: "set[StateRef] | None" = None,
 ) -> tuple[StateGraph, ExplorationStats]:
     """Convenience function to explore a game's state space.
 
@@ -712,10 +738,13 @@ def explore_state_space(
         mode: GUIDED (full exploration) or GUIDED_FIRST_VICTORY (stop at first victory)
         hierarchy: Constraint hierarchy for prioritization (recommended)
         max_states: Maximum states to explore (None = unlimited)
+        state_refs: Explicit set of state refs to track. If provided, overrides
+            relevance.relevant. Use this to track only constraint-derived refs
+            for precise winnability analysis.
 
     Returns:
         Tuple of (state_graph, exploration_stats)
     """
-    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy, max_states)
+    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy, max_states, state_refs)
     graph = explorer.explore()
     return graph, explorer.stats

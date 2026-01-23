@@ -220,6 +220,29 @@ class ConstraintTree:
 
         return False
 
+    def get_all_state_refs(self) -> set[StateRef]:
+        """Get all state refs referenced by constraints in this tree.
+
+        This returns the precise set of state that must be tracked to
+        detect progress toward this tree's victory condition.
+        """
+        refs: set[StateRef] = set()
+        for constraint in self.all_nodes.keys():
+            refs.add(constraint.ref)
+        return refs
+
+
+def collect_constraint_refs(trees: list["ConstraintTree"]) -> set[StateRef]:
+    """Collect all state refs from a list of constraint trees.
+
+    Use this to get the precise set of state refs needed for winnability
+    analysis, derived from backward constraint propagation.
+    """
+    refs: set[StateRef] = set()
+    for tree in trees:
+        refs.update(tree.get_all_state_refs())
+    return refs
+
 
 class BackwardAnalyzer:
     """Builds constraint trees by backward propagation from terminal conditions."""
