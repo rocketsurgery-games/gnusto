@@ -249,37 +249,53 @@ if behavior.object.startswith("event:"):
     return [[Constraint(QueueRef(event_name), "=", True)]]
 ```
 
-## Known Gaps and Future Work
+## Navigation Barrier Analysis
 
-### Navigation Barrier Analysis (frotzlm-gv2.13)
+Navigation barriers (`:via @barrier` in room exits) can block movement based on
+game state. Their `:through` behaviors read arbitrary state to decide whether
+to allow passage.
 
-**Problem**: Navigation barriers (`:via @barrier`) can read arbitrary state in
-their `:through` behavior. Effect analysis tracks what they read, but this
-doesn't flow back into constraint back-propagation.
+### How It Works
 
-**Example**: `@waxer-exit-barrier:through` in LH:
-```grue
-:through (fn (?dest ?from)
-  (cond
-    ((and (= (loc @floor-waxer) ?from)
-          (= (loc @maintenance-man) @floor-waxer))
-      (cond
-        ((:severed @power-cord) ...)
-        (true (blocked ...))))
-    (true (success))))
+Effect analysis already tracks what `runtime:go` reads from barrier behaviors.
+The `collect_navigation_refs()` function extracts these refs for exploration:
+
+```python
+def collect_navigation_refs(effects, include_locations=False) -> set[StateRef]:
+    """Collect state refs that affect navigation."""
+    refs = set()
+    runtime_go = BehaviorRef("runtime", "go")
+    for state_ref, behaviors in effects.reads.items():
+        if runtime_go in behaviors:
+            # Skip LocationRefs by default (state explosion)
+            if not include_locations and isinstance(state_ref, LocationRef):
+                if state_ref.object != "@player":
+                    continue
+            refs.add(state_ref)
+    return refs
 ```
 
-The barrier reads:
+### Example: Floor Waxer Barrier
+
+`@waxer-exit-barrier:through` in LH reads:
 - `(loc @floor-waxer)` - where is the waxer?
 - `(loc @maintenance-man)` - is he riding it?
 - `(:severed @power-cord)` - has cord been cut?
 
-**Current state**: Effect analysis records these as reads by `runtime:go`.
-But back-prop for `@player:location` doesn't include them as preconditions.
+These are now included in state fingerprinting (PropertyRefs directly, LocationRefs
+only if `include_locations=True` to avoid state explosion).
 
-**Solution direction**: Analyze `:through` behaviors the same way we analyze
-other behaviors—extract success/blocking conditions and add them as
-preconditions for the `runtime:go` achiever when the exit uses that barrier.
+### State Explosion Trade-off
+
+Including LocationRefs (like `@floor-waxer:location`) multiplies the state space
+by the number of possible locations (~50 rooms). For LH:
+- Without location refs: 22 navigation refs
+- With location refs: 25 navigation refs (+3 LocationRefs)
+
+The CLI uses `include_locations=False` by default. For games where mobile object
+positions affect navigation critically, set `include_locations=True`.
+
+## Known Gaps and Future Work
 
 ### Abstract Object Predicates (frotzlm-gv2.14)
 

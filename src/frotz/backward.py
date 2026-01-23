@@ -243,6 +243,46 @@ def collect_constraint_refs(trees: list["ConstraintTree"]) -> set[StateRef]:
     return refs
 
 
+def collect_navigation_refs(
+    effects: EffectAnalysis,
+    include_locations: bool = False
+) -> set[StateRef]:
+    """Collect state refs that affect navigation (from barrier :through behaviors).
+
+    Navigation barriers (:via in room exits) can conditionally block movement
+    based on game state. Effect analysis tracks what runtime:go reads from
+    these barriers. This function extracts those refs so exploration can
+    distinguish states where movement is blocked vs allowed.
+
+    This is necessary because constraint back-propagation doesn't automatically
+    discover navigation dependencies - a barrier might read @floor-waxer:location
+    to decide whether to block, but this isn't a "precondition" in the traditional
+    sense (there's no achiever that sets it to allow passage).
+
+    Args:
+        effects: The effect analysis results
+        include_locations: If True, include LocationRefs (which can cause state
+                          explosion for mobile objects). Default False to avoid
+                          explosion; set True if you need complete navigation tracking.
+
+    Returns:
+        Set of state refs read by navigation barriers
+    """
+    refs: set[StateRef] = set()
+    runtime_go = BehaviorRef("runtime", "go")
+
+    for state_ref, behaviors in effects.reads.items():
+        if runtime_go in behaviors:
+            # Skip LocationRefs by default (they cause state explosion)
+            if not include_locations and isinstance(state_ref, LocationRef):
+                # Exception: player location is always needed
+                if state_ref.object != "@player":
+                    continue
+            refs.add(state_ref)
+
+    return refs
+
+
 class BackwardAnalyzer:
     """Builds constraint trees by backward propagation from terminal conditions."""
 

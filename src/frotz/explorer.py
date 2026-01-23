@@ -635,15 +635,11 @@ class StateExplorer:
         """Enumerate all valid actions from current state, including arguments."""
         actions = []
 
-        visible = self._runtime.get_visible_objects()
+        # Use for_description=False to include nodesc objects (like power-cord)
+        # since exploration is about interaction possibilities, not room descriptions
+        visible = self._runtime.get_visible_objects(for_description=False)
         inventory = self._runtime.get_inventory()
         player_room = self._runtime.get_player_room()
-
-        # Also include room's :visible scenery objects (like power-cord)
-        if player_room and player_room in self.world.rooms:
-            room_def = self.world.rooms[player_room]
-            if hasattr(room_def, 'visible') and room_def.visible:
-                visible = list(set(visible) | set(room_def.visible))
 
         for obj_name in visible:
             if obj_name not in self.world.objects:

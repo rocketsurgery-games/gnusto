@@ -21,7 +21,7 @@ from pathlib import Path
 from grue import load_grue
 
 from .effects import analyze_effects, LocationRef
-from .backward import build_victory_constraints, collect_constraint_refs
+from .backward import build_victory_constraints, collect_constraint_refs, collect_navigation_refs
 from .explorer import explore_state_space, StateGraph, ExplorationMode
 
 
@@ -207,8 +207,13 @@ def main(args: list[str] | None = None):
     constraint_refs = collect_constraint_refs(victory_trees)
     constraint_refs.add(LocationRef('@player'))  # Always track player location
 
+    # Add navigation-relevant state refs (from barrier :through behaviors)
+    nav_refs = collect_navigation_refs(effects)
+    constraint_refs.update(nav_refs)
+
     if not opts.quiet:
         print(f"\nTracking {len(constraint_refs)} state refs:")
+        print(f"  (from constraints: {len(collect_constraint_refs(victory_trees)) + 1}, from navigation: {len(nav_refs)})")
         for ref in sorted(str(r) for r in constraint_refs):
             print(f"  {ref}")
 
