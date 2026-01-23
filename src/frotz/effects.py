@@ -425,10 +425,10 @@ class EffectAnalyzer:
         - Booleans: True, False
         - Numbers: int, float
         - Strings: str
-        - Symbols: @object names (as strings like "@player")
+        - Symbols: @object names, room names, object names
         - Keywords: :keyword names
 
-        Returns None for complex expressions (function calls, etc.)
+        Returns None for complex expressions (function calls, variable refs, etc.)
         """
         if expr is None:
             return None
@@ -449,6 +449,12 @@ class EffectAnalyzer:
                 return False
             if expr.name == "nil":
                 return None
+            # Room names (known locations)
+            if expr.name in self.world.rooms:
+                return expr.name
+            # Object names (known objects)
+            if expr.name in self.world.objects:
+                return expr.name
             # Other symbols are variable references - unknown value
             return None
         if isinstance(expr, Keyword):
