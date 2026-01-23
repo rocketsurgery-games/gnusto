@@ -8,6 +8,10 @@ Examples:
     frotz games/testgame/testgame.grue
     frotz games/lurkinghorror/ --max-depth 50
     frotz games/testgame/testgame.grue --dot states.dot
+
+Note: This CLI has been simplified to focus on core constraint back-propagation
+and state exploration. Clustering, dominators, regions, and relevance analysis
+have been moved to frotz/deferred/ for later integration.
 """
 
 import argparse
@@ -16,19 +20,9 @@ from pathlib import Path
 
 from grue import load_grue
 
-from .effects import analyze_effects
-from .relevance import analyze_relevance
+from .effects import analyze_effects, LocationRef
+from .backward import build_victory_constraints, collect_constraint_refs
 from .explorer import explore_state_space, StateGraph, ExplorationMode
-from .clustering import (
-    build_hierarchy,
-    cluster_state_graph,
-    generate_cluster_dot,
-    compute_dominators,
-    generate_dominator_dot,
-    generate_structure_dot,
-    compute_regions,
-    generate_region_dot,
-)
 
 
 def format_section(title: str) -> str:
@@ -139,12 +133,7 @@ def main(args: list[str] | None = None):
     parser.add_argument(
         "--dot",
         metavar="FILE",
-        help="Output cluster graph in DOT format (states collapsed by constraint signature)",
-    )
-    parser.add_argument(
-        "--dot-raw",
-        metavar="FILE",
-        help="Output raw state graph in DOT format (all states, no collapsing)",
+        help="Output state graph in DOT format",
     )
     parser.add_argument(
         "--effects-only",
@@ -152,9 +141,9 @@ def main(args: list[str] | None = None):
         help="Only run effect analysis (skip exploration)",
     )
     parser.add_argument(
-        "--relevance-only",
+        "--constraints-only",
         action="store_true",
-        help="Only run effect and relevance analysis (skip exploration)",
+        help="Only run effect and constraint analysis (skip exploration)",
     )
     parser.add_argument(
         "-q", "--quiet",
@@ -162,39 +151,14 @@ def main(args: list[str] | None = None):
         help="Minimal output (just verdict)",
     )
     parser.add_argument(
-        "--minimize",
-        action="store_true",
-        help="Apply bisimulation minimization to reduce equivalent states",
-    )
-    parser.add_argument(
         "--walkthrough",
         action="store_true",
         help="Output just the shortest victory path (walkthrough)",
     )
     parser.add_argument(
-        "--black-holes",
-        action="store_true",
-        help="Analyze black holes (states from which victory is unreachable)",
-    )
-    parser.add_argument(
         "--fast",
         action="store_true",
         help="Stop at first victory (don't explore full state space)",
-    )
-    parser.add_argument(
-        "--dominators",
-        metavar="FILE",
-        help="Output dominator tree in DOT format (shows mandatory progression structure)",
-    )
-    parser.add_argument(
-        "--structure",
-        metavar="FILE",
-        help="Output simplified structure graph (just mandatory victory paths)",
-    )
-    parser.add_argument(
-        "--regions",
-        metavar="FILE",
-        help="Output region graph in DOT format (SCCs as puzzle regions)",
     )
 
     opts = parser.parse_args(args)
@@ -226,45 +190,45 @@ def main(args: list[str] | None = None):
     if opts.effects_only:
         return 0
 
-    # Phase 2: Relevance analysis
-    relevance = analyze_relevance(world, effects)
-
-    if not opts.quiet:
-        print(format_section("Phase 2: Relevance Analysis"))
-        print(relevance.summary())
-
     if not world.victory:
         print("\n⚠ No victory condition defined - skipping exploration")
         return 0
 
-    if opts.relevance_only:
+    # Phase 2: Constraint back-propagation
+    victory_trees = build_victory_constraints(world, effects)
+
+    if not opts.quiet:
+        print(format_section("Phase 2: Constraint Back-Propagation"))
+        print(f"Built {len(victory_trees)} constraint trees")
+        for tree in victory_trees:
+            print(f"\n{tree}")
+
+    # Collect state refs from constraints
+    constraint_refs = collect_constraint_refs(victory_trees)
+    constraint_refs.add(LocationRef('@player'))  # Always track player location
+
+    if not opts.quiet:
+        print(f"\nTracking {len(constraint_refs)} state refs:")
+        for ref in sorted(str(r) for r in constraint_refs):
+            print(f"  {ref}")
+
+    if opts.constraints_only:
         return 0
 
-    # Phase 3: State exploration (always constraint-guided)
+    # Phase 3: State exploration
     if not opts.quiet:
         print(format_section("Phase 3: State Space Exploration"))
         print(f"Exploring with max depth {opts.max_depth}...")
 
-    hierarchy = build_hierarchy(world, effects, relevance)
     mode = ExplorationMode.GUIDED_FIRST_VICTORY if opts.fast else ExplorationMode.GUIDED
     graph, stats = explore_state_space(
-        world, relevance, opts.max_depth, mode, hierarchy, opts.max_states
+        world, constraint_refs, opts.max_depth, mode, None, opts.max_states
     )
 
     if not opts.quiet:
         print(stats.summary())
         print()
         print(graph.summary())
-
-    # Bisimulation minimization
-    if opts.minimize:
-        original_states = len(graph.nodes)
-        original_edges = len(graph.edges)
-        graph = graph.minimize()
-        if not opts.quiet:
-            print(f"\nAfter bisimulation minimization:")
-            print(f"  States: {original_states} → {len(graph.nodes)}")
-            print(f"  Transitions: {original_edges} → {len(graph.edges)}")
 
     victory_path = graph.get_victory_path()
     victory_count = sum(1 for n in graph.nodes.values() if n.is_victory)
@@ -298,89 +262,11 @@ def main(args: list[str] | None = None):
         if defeat_count:
             print(f"  Defeat states: {defeat_count}")
 
-    # Black hole analysis
-    if opts.black_holes:
-        black_holes = graph.get_black_holes()
-        clusters = graph.cluster_black_hole_entries()
-
-        print(format_section("Black Hole Analysis"))
-        print(f"Black hole states: {len(black_holes)} (victory unreachable)")
-        print(f"Entry point clusters: {len(clusters)}")
-
-        for i, cluster in enumerate(clusters, 1):
-            print(f"\n--- Failure Mode {i} ({len(cluster['entries'])} entry points) ---")
-
-            if cluster['delta']:
-                print("  What changed:")
-                for prop, val in sorted(cluster['delta'].items()):
-                    prop_short = prop.replace("@", "").replace(":location", ".loc").replace(":", ".")
-                    if isinstance(val, str):
-                        val_short = val.replace("@", "")
-                    else:
-                        val_short = val
-                    print(f"    {prop_short} → {val_short}")
-
-            print(f"  Triggered by: {', '.join(sorted(cluster['actions']))}")
-
-            if cluster['entries']:
-                edge, from_props, to_props = cluster['entries'][0]
-                print(f"  Example: {edge.action}")
-
     # Generate DOT if requested
     if opts.dot:
-        # Cluster graph (collapsed by constraint signature)
-        clusters = cluster_state_graph(graph, hierarchy)
-        dot_content = generate_cluster_dot(clusters)
-        Path(opts.dot).write_text(dot_content)
-        print(f"\nCluster graph written to: {opts.dot} ({len(clusters.clusters)} clusters from {len(graph.nodes)} states)")
-
-    if opts.dot_raw:
-        # Raw state graph (all states)
         dot_content = generate_state_graph_dot(graph)
-        Path(opts.dot_raw).write_text(dot_content)
-        print(f"\nRaw state graph written to: {opts.dot_raw} ({len(graph.nodes)} states)")
-
-    if opts.dominators or opts.structure:
-        # Compute clusters and dominators (needed for both outputs)
-        clusters = cluster_state_graph(graph, hierarchy)
-        dom_tree = compute_dominators(clusters)
-        victory_sigs = {s for s, c in clusters.clusters.items() if c.is_victory}
-        mandatory_count = sum(
-            1 for sig in clusters.clusters
-            if dom_tree.is_mandatory(sig, victory_sigs)
-        )
-
-    if opts.dominators:
-        # Dominator tree (full mandatory progression structure)
-        dot_content = generate_dominator_dot(clusters, dom_tree)
-        Path(opts.dominators).write_text(dot_content)
-        print(f"\nDominator tree written to: {opts.dominators}")
-        print(f"  {len(clusters.clusters)} clusters, {mandatory_count} mandatory waypoints")
-        if dom_tree.unreachable:
-            print(f"  {len(dom_tree.unreachable)} unreachable clusters")
-
-    if opts.structure:
-        # Simplified structure graph (just mandatory paths)
-        dot_content = generate_structure_dot(clusters, dom_tree)
-        Path(opts.structure).write_text(dot_content)
-        print(f"\nStructure graph written to: {opts.structure}")
-        print(f"  {len(victory_sigs)} victory paths, {mandatory_count} mandatory waypoints")
-
-    if opts.regions:
-        # Region graph (SCCs as puzzle regions)
-        clusters = cluster_state_graph(graph, hierarchy)
-        region_graph = compute_regions(clusters)
-        dot_content = generate_region_dot(region_graph, clusters)
-        Path(opts.regions).write_text(dot_content)
-
-        # Count region types
-        multi_cluster = sum(1 for r in region_graph.regions.values() if r.size > 1)
-        victories = sum(1 for r in region_graph.regions.values() if r.has_victory and r.is_terminal)
-        defeats = sum(1 for r in region_graph.regions.values() if r.has_defeat and r.is_terminal)
-
-        print(f"\nRegion graph written to: {opts.regions}")
-        print(f"  {len(region_graph.regions)} regions ({multi_cluster} explorable, {victories} victories, {defeats} defeats)")
-        print(f"  {len(region_graph.transitions)} inter-region transitions")
+        Path(opts.dot).write_text(dot_content)
+        print(f"\nState graph written to: {opts.dot} ({len(graph.nodes)} states)")
 
     return 0 if victory_path is not None else 1
 

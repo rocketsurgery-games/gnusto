@@ -19,10 +19,11 @@ from grue import GrueWorld
 from grue.runtime import GrueRuntime
 
 from .effects import StateRef, PropertyRef, LocationRef, QueueRef
-from .relevance import RelevanceAnalysis
 
+# Note: ConstraintHierarchy is from clustering.py which is in deferred/
+# We keep the type hint but don't import the module
 if TYPE_CHECKING:
-    from .clustering import ConstraintHierarchy
+    from .deferred.clustering import ConstraintHierarchy
 
 
 class ExplorationMode(Enum):
@@ -472,21 +473,18 @@ class StateExplorer:
     def __init__(
         self,
         world: GrueWorld,
-        relevance: RelevanceAnalysis,
+        state_refs: set[StateRef],
         max_depth: int = 100,
         mode: ExplorationMode = ExplorationMode.GUIDED,
         hierarchy: "ConstraintHierarchy | None" = None,
         max_states: int | None = None,
-        state_refs: "set[StateRef] | None" = None,
     ):
         self.world = world
-        self.relevance = relevance
+        self.state_refs = state_refs
         self.max_depth = max_depth
         self.max_states = max_states
         self.mode = mode
         self.hierarchy = hierarchy
-        # Use explicit state_refs if provided, otherwise fall back to relevance
-        self.state_refs = state_refs if state_refs is not None else relevance.relevant
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
 
@@ -722,29 +720,26 @@ class StateExplorer:
 
 def explore_state_space(
     world: GrueWorld,
-    relevance: RelevanceAnalysis,
+    state_refs: set[StateRef],
     max_depth: int = 100,
     mode: ExplorationMode = ExplorationMode.GUIDED,
     hierarchy: "ConstraintHierarchy | None" = None,
     max_states: int | None = None,
-    state_refs: "set[StateRef] | None" = None,
 ) -> tuple[StateGraph, ExplorationStats]:
     """Convenience function to explore a game's state space.
 
     Args:
         world: The game world to explore
-        relevance: Relevance analysis determining which state to track
+        state_refs: Set of state refs to track for state fingerprinting.
+            Typically derived from constraint back-propagation.
         max_depth: Maximum exploration depth
         mode: GUIDED (full exploration) or GUIDED_FIRST_VICTORY (stop at first victory)
         hierarchy: Constraint hierarchy for prioritization (recommended)
         max_states: Maximum states to explore (None = unlimited)
-        state_refs: Explicit set of state refs to track. If provided, overrides
-            relevance.relevant. Use this to track only constraint-derived refs
-            for precise winnability analysis.
 
     Returns:
         Tuple of (state_graph, exploration_stats)
     """
-    explorer = StateExplorer(world, relevance, max_depth, mode, hierarchy, max_states, state_refs)
+    explorer = StateExplorer(world, state_refs, max_depth, mode, hierarchy, max_states)
     graph = explorer.explore()
     return graph, explorer.stats

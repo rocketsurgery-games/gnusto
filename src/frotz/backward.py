@@ -26,7 +26,6 @@ from .effects import (
     QueueRef,
     BehaviorRef,
 )
-from .relevance import RelevanceAnalysis
 
 
 @dataclass
@@ -251,11 +250,9 @@ class BackwardAnalyzer:
         self,
         world: GrueWorld,
         effects: EffectAnalysis,
-        relevance: RelevanceAnalysis,
     ):
         self.world = world
         self.effects = effects
-        self.relevance = relevance
         self._initial_state: dict[str, Any] = {}
         self._current_self: str | None = None  # Object name for ?self resolution
         self._collect_initial_state()
@@ -1169,13 +1166,12 @@ class BackwardAnalyzer:
 def build_victory_constraints(
     world: GrueWorld,
     effects: EffectAnalysis,
-    relevance: RelevanceAnalysis,
 ) -> list[ConstraintTree]:
     """Build constraint trees for all victory conditions."""
     if not world.victory:
         return []
 
-    analyzer = BackwardAnalyzer(world, effects, relevance)
+    analyzer = BackwardAnalyzer(world, effects)
     constraints = _extract_constraints_from_expr(world.victory.when)
 
     trees = []
@@ -1189,13 +1185,12 @@ def build_victory_constraints(
 def build_defeat_constraints(
     world: GrueWorld,
     effects: EffectAnalysis,
-    relevance: RelevanceAnalysis,
 ) -> list[ConstraintTree]:
     """Build constraint trees for all defeat conditions."""
     if not world.defeat:
         return []
 
-    analyzer = BackwardAnalyzer(world, effects, relevance)
+    analyzer = BackwardAnalyzer(world, effects)
     trees = []
 
     for name, defeat in world.defeat.items():
