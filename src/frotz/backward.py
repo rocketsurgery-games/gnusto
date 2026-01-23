@@ -24,6 +24,7 @@ from .effects import (
     PropertyRef,
     LocationRef,
     QueueRef,
+    HeldRef,
     BehaviorRef,
 )
 
@@ -231,15 +232,52 @@ class ConstraintTree:
         return refs
 
 
-def collect_constraint_refs(trees: list["ConstraintTree"]) -> set[StateRef]:
+def _abstract_constraint_ref(constraint: Constraint) -> StateRef:
+    """Convert a constraint's ref to an abstract predicate where applicable.
+
+    LocationRef constraints that compare against @player are converted to HeldRef:
+    - LocationRef(obj) = @player  →  HeldRef(obj) (tracks: is it held?)
+    - LocationRef(obj) != @player →  HeldRef(obj) (tracks: is it held?)
+
+    This dramatically reduces state space for "held item" constraints:
+    instead of tracking N possible locations, we track 1 boolean.
+
+    Player location is NOT abstracted - we need the actual room for navigation.
+    """
+    ref = constraint.ref
+
+    # Convert LocationRef to HeldRef when the constraint is about being held
+    if isinstance(ref, LocationRef):
+        # Don't abstract player location - we need actual room for navigation
+        if ref.object == "@player":
+            return ref
+
+        # If constraint compares location to @player, use HeldRef
+        if constraint.operator in ("=", "!=") and constraint.value == "@player":
+            return HeldRef(ref.object)
+
+    return ref
+
+
+def collect_constraint_refs(trees: list["ConstraintTree"], abstract_held: bool = True) -> set[StateRef]:
     """Collect all state refs from a list of constraint trees.
 
     Use this to get the precise set of state refs needed for winnability
     analysis, derived from backward constraint propagation.
+
+    Args:
+        trees: The constraint trees to collect refs from
+        abstract_held: If True (default), convert LocationRef constraints that
+                      compare to @player into HeldRef predicates. This reduces
+                      state explosion from O(rooms) to O(2) for held items.
     """
     refs: set[StateRef] = set()
     for tree in trees:
-        refs.update(tree.get_all_state_refs())
+        for constraint in tree.all_nodes.keys():
+            if abstract_held:
+                refs.add(_abstract_constraint_ref(constraint))
+            else:
+                refs.add(constraint.ref)
     return refs
 
 
@@ -1291,6 +1329,14 @@ def _extract_recursive(expr: Any, constraints: list[Constraint]):
     if name == "and":
         for item in items[1:]:
             _extract_recursive(item, constraints)
+        return
+
+    # (held? @obj) - object is held by player (location = @player)
+    if name == "held?" and len(items) >= 2:
+        obj = items[1]
+        if isinstance(obj, Symbol) and obj.name.startswith("@"):
+            ref = LocationRef(obj.name)
+            constraints.append(Constraint(ref, "=", "@player"))
         return
 
 

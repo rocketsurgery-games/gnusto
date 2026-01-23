@@ -53,8 +53,27 @@ class QueueRef:
         return f"queue:{self.event}"
 
 
+@dataclass
+class HeldRef:
+    """Abstract predicate: is object held by player?
+
+    This is an abstraction of LocationRef(object) that reduces state space:
+    - LocationRef tracks exact location (~N rooms as possible values)
+    - HeldRef tracks only "held vs not-held" (2 values: True/False)
+
+    Use when the constraint only cares about "player has X", not "X is in room Y".
+    """
+    object: str  # e.g., "@key"
+
+    def __hash__(self):
+        return hash(("held", self.object))
+
+    def __str__(self):
+        return f"{self.object}:held"
+
+
 # A StateRef is any of the above
-StateRef = PropertyRef | LocationRef | QueueRef
+StateRef = PropertyRef | LocationRef | QueueRef | HeldRef
 
 
 @dataclass

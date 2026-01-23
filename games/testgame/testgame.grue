@@ -16,7 +16,14 @@
   :player @player
   :intro "You wake up in a small cell. There's a door to the north and a pit to the east.")
 
-(victory :when (= (loc @player) @outside))
+; Victory requires escaping WITH the treasure from the treasury
+; This forces the player to:
+; 1. Go to pit to get coin
+; 2. Bribe guard with coin
+; 3. Enter treasury and take treasure
+; 4. Return and escape through the cell door
+(victory :when (and (= (loc @player) @outside)
+                    (held? @treasure)))
 
 (defeat death
   :when (:dead @player)
@@ -26,10 +33,13 @@
 
 (room @cell
   :description "Cell"
-  :ldesc "A small, damp cell with stone walls. A heavy door leads north. A dark pit opens to the east."
+  :ldesc "A small, damp cell with stone walls. A heavy door leads north. A dark pit opens to the east. Passages lead south, west, and up."
   :properties (:lit true)
   :exits ((north :to @outside :via @cell-door)
-          (east :to @pit)))
+          (east :to @pit)
+          (south :to @guard-post)
+          (west :to @corridor-south)
+          (up :to @furnace-room)))
 
 (room @outside
   :description "Outside"
@@ -277,3 +287,176 @@
   :description "The Void"
   :ldesc "Items lost forever end up here."
   :properties (:lit false))
+
+; ============================================================================
+; LH-INSPIRED PATTERNS FOR ANALYZER TESTING
+; ============================================================================
+
+; === Pattern 1: Wearable Item (like LH gloves) ===
+; The furnace room has a hot lever that requires gloves to pull
+
+(room @furnace-room
+  :description "Furnace Room"
+  :ldesc "A sweltering room dominated by a massive furnace. A metal lever protrudes from the wall. Stairs lead down."
+  :properties (:lit true)
+  :visible (@hot-lever)  ; Lever is scenery, always visible here
+  :exits ((down :to @cell)))
+
+(object @gloves
+  :location @pit
+  :description "thick gloves"
+  :ldesc "A pair of thick work gloves lies here."
+  :properties (:wearable true :worn false :takeable true)
+  :behaviors (
+    :take (fn ()
+      '((move @gloves @player)
+        (success :message "You pick up the thick gloves.")))
+    :wear (fn ()
+      (cond
+        ((not (held? @gloves))
+          (blocked :reason not-held :message "You're not holding the gloves."))
+        ((:worn @gloves)
+          (success :message "You're already wearing them."))
+        (true
+          '((set @gloves :worn true)
+            (success :message "You put on the thick gloves.")))))
+    :remove (fn ()
+      (if (not (:worn @gloves))
+        (success :message "You're not wearing them.")
+        '((set @gloves :worn false)
+          (success :message "You take off the gloves."))))
+    :examine (fn ()
+      (if (:worn @gloves)
+        (success :message "Thick work gloves. You're wearing them.")
+        (success :message "Thick work gloves, good for handling hot objects.")))))
+
+(object @hot-lever
+  :location nil  ; Visible via room's :visible list
+  :description "metal lever"
+  :properties (:pulled false :nodesc true)
+  :behaviors (
+    :examine (fn ()
+      (if (:pulled @hot-lever)
+        (success :message "The lever is in the down position. Heat radiates from it.")
+        (success :message "A metal lever glowing with heat. It controls something.")))
+    :pull (fn ()
+      (cond
+        ((:pulled @hot-lever)
+          (success :message "The lever is already pulled."))
+        ((and (held? @gloves) (:worn @gloves))
+          '((set @hot-lever :pulled true)
+            (success :message "Protected by the gloves, you pull the hot lever. A distant clunk echoes.")))
+        ((held? @gloves)
+          (blocked :reason gloves-not-worn
+            :message "You're holding the gloves but not wearing them. That won't protect you."))
+        (true
+          '((set @player :dead true)
+            (success :message "You grab the lever and immediately smell burning flesh. The pain is unbearable.")))))))
+
+; === Pattern 2: Navigation Barrier (like LH floor-waxer barrier) ===
+; A guard blocks passage unless you show them something (the gem)
+
+(room @guard-post
+  :description "Guard Post"
+  :ldesc "A small checkpoint. A bored guard stands here blocking the passage south."
+  :properties (:lit true)
+  :exits ((north :to @cell)
+          (south :to @treasury :via @guard-barrier)))
+
+(object @guard
+  :location @guard-post
+  :description "bored guard"
+  :properties (:bribed false)
+  :behaviors (
+    :examine (fn ()
+      (if (:bribed @guard)
+        (success :message "The guard counts coins, ignoring you.")
+        (success :message "A guard in worn armor. Looks corruptible.")))
+    :give (fn (?obj)
+      (cond
+        ((:bribed @guard)
+          (success :message "The guard waves you off. 'I already let you through.'"))
+        ; Must be holding the coin to give it
+        ((and (= ?obj @coin) (held? @coin))
+          '((set @guard :bribed true)
+            (move @coin @guard)
+            (success :message "The guard pockets the coin with a wink. 'Go on through.'")))
+        (true
+          (success :message "The guard isn't interested in that."))))))
+
+(object @guard-barrier
+  :location @guard-post
+  :description "passage"
+  :properties ()
+  :behaviors (
+    :through (fn ()
+      (if (:bribed @guard)
+        (success)
+        (blocked :reason guard-blocks
+          :message "The guard steps in front of you. 'No one passes without... consideration.'")))))
+
+(room @treasury
+  :description "Treasury"
+  :ldesc "A small room with a pedestal in the center. A golden treasure rests on the pedestal."
+  :properties (:lit true)
+  :exits ((north :to @guard-post)))
+
+(object @treasure
+  :location @treasury
+  :description "golden treasure"
+  :ldesc "A glittering golden treasure sits on the pedestal."
+  :properties (:takeable true)
+  :behaviors (
+    :take (fn () '((move @treasure @player) (success :message "You take the golden treasure. It's heavy but valuable!")))
+    :examine (fn () (success :message "A beautiful golden artifact, encrusted with jewels."))))
+
+; === Pattern 3: Global Object / nodesc (like LH power-cord) ===
+; A wire runs through multiple rooms and needs to be cut
+
+(room @corridor-north
+  :description "North Corridor"
+  :ldesc "A long corridor. Wires run along the ceiling."
+  :properties (:lit true)
+  :visible (@wire)
+  :exits ((south :to @corridor-south)))
+
+(room @corridor-south
+  :description "South Corridor"
+  :ldesc "The corridor continues. The same wires run overhead."
+  :properties (:lit true)
+  :visible (@wire)
+  :exits ((north :to @corridor-north)
+          (east :to @cell)))
+
+(object @wire
+  :location nil  ; Global - visible from rooms with it in :visible
+  :description "electrical wire"
+  :properties (:nodesc true :severed false)
+  :behaviors (
+    :examine (fn ()
+      (if (:severed @wire)
+        (success :message "The wire hangs in two pieces, no longer dangerous.")
+        (success :message "A thick electrical wire running along the ceiling. Looks dangerous.")))
+    :cut (fn ()
+      (cond
+        ((:severed @wire)
+          (success :message "It's already been cut."))
+        ((not (held? @rock))
+          (blocked :reason no-tool
+            :message "You'd need something to cut it with."))
+        (true
+          '((set @wire :severed true)
+            (success :message "You throw the rock at the wire, severing it in a shower of sparks!")))))))
+
+; === Pattern 4: Timed Event (like LH maint-attack) ===
+; After pulling the lever, something happens in 3 turns
+
+(event alarm-triggers
+  :on-turn
+    (cond
+      ((:alerted @guard)
+        '((dequeue alarm-triggers)
+          (success)))
+      (true
+        '((set @guard :alerted true)
+          (success :message "ALARM! The guard snaps to attention!")))))

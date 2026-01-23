@@ -18,7 +18,7 @@ from typing import Any, TYPE_CHECKING
 from grue import GrueWorld
 from grue.runtime import GrueRuntime
 
-from .effects import StateRef, PropertyRef, LocationRef, QueueRef
+from .effects import StateRef, PropertyRef, LocationRef, QueueRef, HeldRef
 
 # Note: ConstraintHierarchy is from clustering.py which is in deferred/
 # We keep the type hint but don't import the module
@@ -96,6 +96,10 @@ class GameState:
                 val = runtime.get_object_location(ref.object)
             elif isinstance(ref, QueueRef):
                 val = runtime.get_queue_countdown(ref.event)
+            elif isinstance(ref, HeldRef):
+                # HeldRef is True if object's location is @player
+                loc = runtime.get_object_location(ref.object)
+                val = (loc == runtime.player_name)
             else:
                 continue
             # Convert lists to tuples for hashability
