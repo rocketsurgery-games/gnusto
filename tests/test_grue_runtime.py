@@ -632,20 +632,6 @@ class TestRedirectFollowing:
 class TestDefaultGlobals:
     """Test built-in runtime globals (score, moves)."""
 
-    def test_default_globals_initialized(self):
-        """Default globals (score, moves) are initialized to 0."""
-        source = """
-        (world :player PLAYER)
-        (room LOBBY :description "A lobby")
-        (object PLAYER :location LOBBY)
-        """
-        world = parse_grue(source)
-        runtime = GrueRuntime(world)
-
-        # Default globals are present
-        assert runtime.get_global("score") == 0
-        assert runtime.get_global("moves") == 0
-
     def test_properties_in_behavior_conditions(self):
         """Object properties can be checked in behavior conditions."""
         source = """
@@ -1294,7 +1280,7 @@ class TestEffectListSyntax:
         (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
-        (object @lamp :location LOBBY
+        (object @lamp :location LOBBY :properties (:lightable true :lit false)
           :behaviors (
             :turn-on (fn ()
               '((set @lamp :lit true)
@@ -1350,7 +1336,7 @@ class TestEffectListSyntax:
           :behaviors (
             :push (fn ()
               '((redirect (do @mechanism :activate))))))
-        (object @mechanism :location LOBBY
+        (object @mechanism :location LOBBY :properties (:active false)
           :behaviors (
             :activate (fn ()
               '((set @mechanism :active true)
@@ -1391,7 +1377,7 @@ class TestEffectListSyntax:
         (world :player @player)
         (room LOBBY :description "A lobby")
         (object @player :location LOBBY :properties (:person true))
-        (object @widget :location LOBBY
+        (object @widget :location LOBBY :properties (:active false :powered false)
           :behaviors (
             :activate (fn ()
               '((set @widget :active true)
@@ -1410,8 +1396,8 @@ class TestEffectListSyntax:
         source = """
         (world :player @player)
         (room LOBBY :description "A lobby")
-        (object @player :location LOBBY :properties (:person true))
-        (object @treasure :location LOBBY :properties (:takeable true)
+        (object @player :location LOBBY :properties (:person true :score 0))
+        (object @treasure :location LOBBY :properties (:takeable true :taken false)
           :behaviors (
             :take (fn ()
               '((move @treasure @player)
@@ -1422,7 +1408,7 @@ class TestEffectListSyntax:
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
-        # score starts at 0 (built-in default)
+        # score starts at 0
         assert runtime.get_global("score") == 0
 
         result = runtime.do("@treasure", "take")
