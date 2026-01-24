@@ -38,6 +38,7 @@ class AbstractionKind(Enum):
     HELD = auto()       # Abstract to {held, not-held} (2 values)
     BOOLEAN = auto()    # Abstract to truthiness {true, false}
     FINITE = auto()     # Track finite set of values
+    QUEUE = auto()      # Abstract to {PENDING, NOT_PENDING, FIRING} (3 values)
     UNKNOWN = auto()    # Value is completely unknown (not tracked)
 
 
@@ -78,6 +79,24 @@ class ValueDomain:
             kind=AbstractionKind.HELD,
             values=frozenset({"@player", NOT_HELD}),
             abstraction=lambda v: "@player" if v == "@player" else NOT_HELD,
+        )
+
+    @staticmethod
+    def queue() -> ValueDomain:
+        """Queue countdown abstraction: PENDING, NOT_PENDING, or FIRING.
+
+        Abstracts queue countdown values to just 3 states:
+        - QUEUE_NOT_PENDING: Event not queued (countdown is None/missing)
+        - QUEUE_FIRING: countdown == 0 (fires this turn)
+        - QUEUE_PENDING: countdown > 0 (will fire eventually)
+
+        This collapses countdowns 1, 2, 3, ... into a single PENDING state,
+        dramatically reducing state space for timed events.
+        """
+        return ValueDomain(
+            kind=AbstractionKind.QUEUE,
+            values=frozenset({QUEUE_PENDING, QUEUE_NOT_PENDING, QUEUE_FIRING}),
+            abstraction=_queue_abstraction,
         )
 
     @staticmethod
@@ -123,6 +142,29 @@ class ValueDomain:
 
 # Sentinel value for "not held by player"
 NOT_HELD = object()
+
+# Sentinel values for queue countdown abstraction
+QUEUE_PENDING = object()      # countdown > 0 (will fire eventually)
+QUEUE_NOT_PENDING = object()  # not queued (missing from dict)
+QUEUE_FIRING = object()       # countdown == 0 (fires this turn)
+
+
+def _queue_abstraction(countdown: int | None) -> object:
+    """Abstract a queue countdown value to PENDING/NOT_PENDING/FIRING.
+
+    Args:
+        countdown: The queue countdown value from runtime:
+            - None when not queued (missing from dict) - maps to NOT_PENDING
+            - 0 means fires this turn - maps to FIRING
+            - >0 means fires after N turns - maps to PENDING
+            - Indefinite (None in dict) is treated as PENDING
+    """
+    if countdown is None:
+        return QUEUE_NOT_PENDING
+    elif countdown == 0:
+        return QUEUE_FIRING
+    else:
+        return QUEUE_PENDING
 
 
 # =============================================================================
@@ -312,6 +354,10 @@ class DomainAnalyzer:
         read_pattern: ReadPattern
     ) -> ValueDomain:
         """Compute the optimal domain for a single path."""
+
+        # Queue paths: always use queue abstraction (PENDING/NOT_PENDING/FIRING)
+        if path.kind == "queue":
+            return ValueDomain.queue()
 
         # Boolean properties: always use boolean domain
         if path.kind == "prop":

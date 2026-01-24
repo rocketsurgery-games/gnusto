@@ -13,7 +13,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from heapq import heappush, heappop
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from grue import GrueWorld
 from grue.runtime import GrueRuntime
@@ -49,6 +49,109 @@ class ExplorationMode(Enum):
     """How to explore the state space."""
     GUIDED = "guided"  # Priority queue by constraint satisfaction (full exploration)
     GUIDED_FIRST_VICTORY = "guided_first_victory"  # Stop at first victory
+    SUBGOAL = "subgoal"  # Stop when goal_check returns True
+
+
+@dataclass
+class Subgoal:
+    """A subgoal to achieve during exploration.
+
+    A subgoal defines a target state condition. When the runtime reaches
+    a state where check() returns True, exploration stops.
+
+    Subgoals can be chained: once achieved, the path becomes the setup
+    for the next subgoal exploration.
+
+    Attributes:
+        name: Human-readable description
+        check: Function that takes runtime and returns True when goal is achieved
+        state_refs: State refs to track for this subgoal exploration
+    """
+    name: str
+    check: Callable[["GrueRuntime"], bool]
+    state_refs: set[StateRef] = field(default_factory=set)
+
+    @staticmethod
+    def held(obj: str, name: str | None = None) -> "Subgoal":
+        """Create a subgoal for holding an object.
+
+        Always includes player location to enable navigation-based exploration.
+        """
+        return Subgoal(
+            name=name or f"{obj} held",
+            check=lambda rt: rt.get_object_location(obj) == "@player",
+            state_refs={LocationRef(obj), LocationRef("@player")},
+        )
+
+    @staticmethod
+    def property_equals(obj: str, prop: str, value: Any, name: str | None = None) -> "Subgoal":
+        """Create a subgoal for a property having a specific value.
+
+        Always includes player location to enable navigation-based exploration.
+        """
+        return Subgoal(
+            name=name or f"{obj}:{prop} = {value}",
+            check=lambda rt: rt.get_object_property(obj, prop) == value,
+            state_refs={PropertyRef(obj, prop), LocationRef("@player")},
+        )
+
+    @staticmethod
+    def location_not(obj: str, loc: str, name: str | None = None) -> "Subgoal":
+        """Create a subgoal for an object NOT being at a location.
+
+        Always includes player location to enable navigation-based exploration.
+        """
+        return Subgoal(
+            name=name or f"{obj} not at {loc}",
+            check=lambda rt: rt.get_object_location(obj) != loc,
+            state_refs={LocationRef(obj), LocationRef("@player")},
+        )
+
+
+@dataclass
+class SyntheticState:
+    """A synthetic starting state for isolated puzzle testing.
+
+    Instead of replaying actions to reach a state, directly set state values.
+    This allows exploring puzzle segments in isolation, bypassing dependencies.
+
+    Use cases:
+    - Test if a subgoal is achievable given certain preconditions
+    - Isolate puzzle segments from their prerequisites
+    - Debug specific game states without full replay
+
+    Example:
+        # Test: can we sever the cord if we start with axe and gloves?
+        synthetic = SyntheticState(
+            locations={"@player": "@inf-5", "@axe": "@player", "@gloves": "@player"},
+            properties={("@emergency-cabinet", "rmung"): True}
+        )
+        path, stats = explore_subgoal(
+            world,
+            Subgoal.property_equals("@power-cord", "severed", True),
+            setup=synthetic.apply
+        )
+    """
+
+    locations: dict[str, str] = field(default_factory=dict)
+    properties: dict[tuple[str, str], Any] = field(default_factory=dict)
+
+    def apply(self, runtime: "GrueRuntime") -> None:
+        """Apply this synthetic state to a runtime."""
+        for obj, loc in self.locations.items():
+            runtime.move_object(obj, loc)
+        for (obj, prop), value in self.properties.items():
+            runtime.set_object_property(obj, prop, value)
+
+    def __repr__(self) -> str:
+        parts = []
+        if self.locations:
+            locs = ", ".join(f"{k}={v}" for k, v in sorted(self.locations.items()))
+            parts.append(f"locations={{{locs}}}")
+        if self.properties:
+            props = ", ".join(f"{k[0]}.{k[1]}={v}" for k, v in sorted(self.properties.items()))
+            parts.append(f"properties={{{props}}}")
+        return f"SyntheticState({', '.join(parts)})"
 
 
 @dataclass
@@ -58,8 +161,11 @@ class ExplorationStats:
     states_skipped_depth: int = 0
     states_skipped_victory_found: int = 0
     states_skipped_max_states: int = 0
+    states_skipped_goal_found: int = 0
     victory_found_at_depth: int | None = None
     victory_found_after_states: int | None = None
+    goal_found_at_depth: int | None = None
+    goal_found_after_states: int | None = None
 
     def summary(self) -> str:
         lines = [
@@ -69,8 +175,13 @@ class ExplorationStats:
         if self.victory_found_at_depth is not None:
             lines.append(f"Victory found at depth: {self.victory_found_at_depth}")
             lines.append(f"Victory found after exploring: {self.victory_found_after_states} states")
+        if self.goal_found_at_depth is not None:
+            lines.append(f"Goal found at depth: {self.goal_found_at_depth}")
+            lines.append(f"Goal found after exploring: {self.goal_found_after_states} states")
         if self.states_skipped_victory_found > 0:
             lines.append(f"States skipped (victory found): {self.states_skipped_victory_found}")
+        if self.states_skipped_goal_found > 0:
+            lines.append(f"States skipped (goal found): {self.states_skipped_goal_found}")
         if self.states_skipped_max_states > 0:
             lines.append(f"States skipped (max states reached): {self.states_skipped_max_states}")
         return "\n".join(lines)
@@ -534,6 +645,8 @@ class StateExplorer:
         hierarchy: "ConstraintHierarchy | None" = None,
         max_states: int | None = None,
         abstraction_config: AbstractionConfig | None = None,
+        setup: Callable[["GrueRuntime"], None] | None = None,
+        goal_check: Callable[["GrueRuntime"], bool] | None = None,
     ):
         self.world = world
         self.state_refs = state_refs
@@ -542,8 +655,11 @@ class StateExplorer:
         self.mode = mode
         self.hierarchy = hierarchy
         self.abstraction_config = abstraction_config
+        self.setup = setup
+        self.goal_check = goal_check
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
+        self.goal_path: list[Action] | None = None  # Path to goal if found
 
         # Validate: must provide either state_refs or abstraction_config
         if state_refs is None and abstraction_config is None:
@@ -564,12 +680,21 @@ class StateExplorer:
         - Depth as tiebreaker so shallower states are explored first
 
         If hierarchy is not provided, uses depth-only ordering (FIFO).
+
+        In SUBGOAL mode, exploration stops when goal_check returns True.
+        The path to the goal is stored in self.goal_path.
         """
         graph = StateGraph()
         victory_found = False
+        goal_found = False
 
         # Initial state
         self._runtime.reset()
+
+        # Apply setup function if provided (for puzzle isolation)
+        if self.setup is not None:
+            self.setup(self._runtime)
+
         initial_state = self._extract_game_state()
         is_victory = self._runtime.check_victory()
         is_defeat = self._runtime.check_defeat()
@@ -587,6 +712,15 @@ class StateExplorer:
             victory_found = True
             self.stats.victory_found_at_depth = 0
             self.stats.victory_found_after_states = 1
+
+        # Check if initial state already satisfies goal
+        if self.goal_check is not None and self.goal_check(self._runtime):
+            goal_found = True
+            self.goal_path = []
+            self.stats.goal_found_at_depth = 0
+            self.stats.goal_found_after_states = 1
+            if self.mode == ExplorationMode.SUBGOAL:
+                return graph
 
         # Priority queue: (priority, counter, node_id, depth)
         # counter breaks ties for equal priority (FIFO within priority level)
@@ -606,6 +740,11 @@ class StateExplorer:
             # Early termination for first-victory mode
             if self.mode == ExplorationMode.GUIDED_FIRST_VICTORY and victory_found:
                 self.stats.states_skipped_victory_found += 1
+                continue
+
+            # Early termination for subgoal mode
+            if self.mode == ExplorationMode.SUBGOAL and goal_found:
+                self.stats.states_skipped_goal_found += 1
                 continue
 
             # Max states limit
@@ -631,10 +770,17 @@ class StateExplorer:
             for action in self._enumerate_actions():
                 saved = self._save_state()
 
-                result = self._runtime.do(action.target, action.verb, *action.args)
-
-                if result.outcome == "success":
+                # Handle wait action specially - just process events
+                if action.target == "_wait":
                     self._runtime.process_events()
+                    action_succeeded = True
+                else:
+                    result = self._runtime.do(action.target, action.verb, *action.args)
+                    action_succeeded = result.outcome == "success"
+                    if action_succeeded:
+                        self._runtime.process_events()
+
+                if action_succeeded:
 
                     new_state = self._extract_game_state()
 
@@ -658,6 +804,14 @@ class StateExplorer:
                         victory_found = True
                         self.stats.victory_found_at_depth = depth + 1
                         self.stats.victory_found_after_states = self.stats.states_explored
+
+                    # Check goal condition
+                    if self.goal_check is not None and not goal_found:
+                        if self.goal_check(self._runtime):
+                            goal_found = True
+                            self.goal_path = node.path + [action]
+                            self.stats.goal_found_at_depth = depth + 1
+                            self.stats.goal_found_after_states = self.stats.states_explored
 
                     # Add edge
                     graph.add_edge(node_id, new_id, action)
@@ -693,9 +847,16 @@ class StateExplorer:
     def _replay_path(self, path: list[Action]):
         """Restore runtime to a state by replaying actions from initial."""
         self._runtime.reset()
+        # Reapply setup function if provided
+        if self.setup is not None:
+            self.setup(self._runtime)
         for action in path:
-            self._runtime.do(action.target, action.verb, *action.args)
-            self._runtime.process_events()
+            if action.target == "_wait":
+                # Wait just processes events
+                self._runtime.process_events()
+            else:
+                self._runtime.do(action.target, action.verb, *action.args)
+                self._runtime.process_events()
 
     def _enumerate_actions(self) -> list[Action]:
         """Enumerate all valid actions from current state, including arguments."""
@@ -764,6 +925,9 @@ class StateExplorer:
                     verb="go",
                     args=(exit_info.direction,)
                 ))
+
+        # Wait action - always available to advance time
+        actions.append(Action(target="_wait", verb="wait"))
 
         return actions
 
@@ -862,3 +1026,115 @@ def explore_with_inferred_abstraction(
     )
     graph = explorer.explore()
     return graph, explorer.stats, config
+
+
+def explore_subgoal(
+    world: GrueWorld,
+    subgoal: Subgoal,
+    max_depth: int = 100,
+    max_states: int | None = None,
+    setup: Callable[["GrueRuntime"], None] | None = None,
+) -> tuple[list[Action] | None, ExplorationStats]:
+    """Explore to achieve a specific subgoal.
+
+    This is a convenience function for subgoal-based exploration. It:
+    1. Uses the subgoal's state_refs for fingerprinting
+    2. Stops exploration as soon as the goal is achieved
+    3. Returns the path to the goal (or None if not found)
+
+    Args:
+        world: The game world to explore
+        subgoal: The Subgoal to achieve
+        max_depth: Maximum exploration depth
+        max_states: Maximum states to explore (None = unlimited)
+        setup: Optional function to set up initial state (for puzzle isolation)
+
+    Returns:
+        Tuple of (path_to_goal, exploration_stats)
+        path_to_goal is None if the goal was not found
+    """
+    explorer = StateExplorer(
+        world,
+        state_refs=subgoal.state_refs or {LocationRef("@player")},
+        max_depth=max_depth,
+        mode=ExplorationMode.SUBGOAL,
+        max_states=max_states,
+        setup=setup,
+        goal_check=subgoal.check,
+    )
+    explorer.explore()
+    return explorer.goal_path, explorer.stats
+
+
+def explore_subgoals(
+    world: GrueWorld,
+    subgoals: list[Subgoal],
+    max_depth_per_goal: int = 50,
+    max_states_per_goal: int | None = None,
+    initial_state: SyntheticState | Callable[["GrueRuntime"], None] | None = None,
+) -> tuple[list[Action] | None, list[ExplorationStats]]:
+    """Chain multiple subgoals, exploring each in sequence.
+
+    Each subgoal is explored starting from the state reached by achieving
+    the previous subgoal. This allows breaking a large puzzle into smaller,
+    more tractable pieces.
+
+    Args:
+        world: The game world to explore
+        subgoals: List of Subgoals to achieve in order
+        max_depth_per_goal: Maximum exploration depth for each subgoal
+        max_states_per_goal: Maximum states per subgoal exploration
+        initial_state: Optional initial state for exploration. Can be:
+            - SyntheticState: directly sets locations/properties
+            - Callable: custom setup function (runtime -> None)
+            - None: start from world's default initial state
+
+    Returns:
+        Tuple of (combined_path, list_of_stats)
+        combined_path is None if any subgoal was not achievable
+        list_of_stats contains stats for each subgoal exploration
+    """
+    combined_path: list[Action] = []
+    all_stats: list[ExplorationStats] = []
+
+    # Normalize initial_state to a callable
+    if initial_state is None:
+        base_setup: Callable[[GrueRuntime], None] | None = None
+    elif isinstance(initial_state, SyntheticState):
+        base_setup = initial_state.apply
+    else:
+        base_setup = initial_state
+
+    for i, subgoal in enumerate(subgoals):
+        # Create setup function that:
+        # 1. Applies initial state (if any)
+        # 2. Replays the combined path so far
+        if combined_path or base_setup:
+            prefix = list(combined_path)  # Copy to avoid closure issues
+            initial = base_setup  # Capture for closure
+
+            def setup(runtime: GrueRuntime, prefix=prefix, initial=initial):
+                if initial:
+                    initial(runtime)
+                for action in prefix:
+                    runtime.do(action.target, action.verb, *action.args)
+                    runtime.process_events()
+        else:
+            setup = None
+
+        path, stats = explore_subgoal(
+            world,
+            subgoal,
+            max_depth=max_depth_per_goal,
+            max_states=max_states_per_goal,
+            setup=setup,
+        )
+        all_stats.append(stats)
+
+        if path is None:
+            # This subgoal was not achievable
+            return None, all_stats
+
+        combined_path.extend(path)
+
+    return combined_path, all_stats

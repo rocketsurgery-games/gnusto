@@ -281,10 +281,7 @@ def collect_constraint_refs(trees: list["ConstraintTree"], abstract_held: bool =
     return refs
 
 
-def collect_navigation_refs(
-    effects: EffectAnalysis,
-    include_locations: bool = False
-) -> set[StateRef]:
+def collect_navigation_refs(effects: EffectAnalysis) -> set[StateRef]:
     """Collect state refs that affect navigation (from barrier :through behaviors).
 
     Navigation barriers (:via in room exits) can conditionally block movement
@@ -297,11 +294,13 @@ def collect_navigation_refs(
     to decide whether to block, but this isn't a "precondition" in the traditional
     sense (there's no achiever that sets it to allow passage).
 
+    Note: This includes LocationRefs for objects whose location is checked by
+    navigation barriers. While LocationRefs can cause state explosion in general,
+    the set of objects checked by barriers is typically small (e.g., mobile NPCs
+    that block passages), so including them is necessary for correct reachability.
+
     Args:
         effects: The effect analysis results
-        include_locations: If True, include LocationRefs (which can cause state
-                          explosion for mobile objects). Default False to avoid
-                          explosion; set True if you need complete navigation tracking.
 
     Returns:
         Set of state refs read by navigation barriers
@@ -311,11 +310,6 @@ def collect_navigation_refs(
 
     for state_ref, behaviors in effects.reads.items():
         if runtime_go in behaviors:
-            # Skip LocationRefs by default (they cause state explosion)
-            if not include_locations and isinstance(state_ref, LocationRef):
-                # Exception: player location is always needed
-                if state_ref.object != "@player":
-                    continue
             refs.add(state_ref)
 
     return refs
