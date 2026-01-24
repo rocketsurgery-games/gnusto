@@ -9,7 +9,6 @@ are explored first. Can stop at first victory or explore the full state space.
 """
 
 from collections import deque
-from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from heapq import heappush, heappop
@@ -18,7 +17,7 @@ from typing import Any, Callable, TYPE_CHECKING
 from grue import GrueWorld
 from grue.runtime import GrueRuntime
 
-from .effects import StateRef, PropertyRef, LocationRef, QueueRef, HeldRef
+from .effects import StateRef, PropertyRef, LocationRef, QueueRef, HeldRef, BehaviorRef, EffectAnalysis
 from .state import StatePath
 from .domains import AbstractionConfig
 
@@ -647,6 +646,7 @@ class StateExplorer:
         abstraction_config: AbstractionConfig | None = None,
         setup: Callable[["GrueRuntime"], None] | None = None,
         goal_check: Callable[["GrueRuntime"], bool] | None = None,
+        effects: EffectAnalysis | None = None,
     ):
         self.world = world
         self.state_refs = state_refs
@@ -657,6 +657,7 @@ class StateExplorer:
         self.abstraction_config = abstraction_config
         self.setup = setup
         self.goal_check = goal_check
+        self.effects = effects
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
         self.goal_path: list[Action] | None = None  # Path to goal if found
@@ -664,6 +665,33 @@ class StateExplorer:
         # Validate: must provide either state_refs or abstraction_config
         if state_refs is None and abstraction_config is None:
             raise ValueError("Must provide either state_refs or abstraction_config")
+
+        # Compute relevant behaviors for action pruning
+        # A behavior is relevant if it can modify any tracked state
+        self._relevant_behaviors: set[tuple[str, str]] | None = None
+        self._objects_with_tracked_location: set[str] | None = None
+        if effects is not None and state_refs is not None:
+            self._relevant_behaviors = set()
+            self._objects_with_tracked_location = set()
+            for ref in state_refs:
+                # Track objects whose location is tracked (for runtime:take/drop)
+                # Both LocationRef and HeldRef mean we care about the object's location
+                if isinstance(ref, LocationRef):
+                    self._objects_with_tracked_location.add(ref.object)
+                elif isinstance(ref, HeldRef):
+                    self._objects_with_tracked_location.add(ref.object)
+
+                # For HeldRef, also check LocationRef since HeldRef is an abstraction
+                # of location (held = location == @player)
+                refs_to_check = [ref]
+                if isinstance(ref, HeldRef):
+                    refs_to_check.append(LocationRef(ref.object))
+
+                for r in refs_to_check:
+                    if r in effects.modifies:
+                        for beh in effects.modifies[r]:
+                            # beh is BehaviorRef with .object and .verb
+                            self._relevant_behaviors.add((beh.object, beh.verb))
 
     def _extract_game_state(self) -> GameState:
         """Extract current game state using the appropriate API."""
@@ -763,12 +791,14 @@ class StateExplorer:
             if node.is_victory or node.is_defeat:
                 continue
 
-            # Restore to this state by replaying the path
+            # Restore to this state by replaying the path, then enumerate actions
             self._replay_path(node.path)
+            actions = self._enumerate_actions()
 
-            # Enumerate and try all actions
-            for action in self._enumerate_actions():
-                saved = self._save_state()
+            # Try each action via replay (avoids expensive deepcopy save/restore)
+            for action in actions:
+                # Replay path + try action (cheaper than deepcopy save/restore)
+                self._replay_path(node.path)
 
                 # Handle wait action specially - just process events
                 if action.target == "_wait":
@@ -822,8 +852,6 @@ class StateExplorer:
                         priority = self._compute_priority(new_state, depth + 1)
                         heappush(pq, (priority, counter, new_id, depth + 1))
 
-                self._restore_state(saved)
-
         return graph
 
     def _compute_priority(self, state: GameState, depth: int) -> tuple[int, int]:
@@ -859,7 +887,12 @@ class StateExplorer:
                 self._runtime.process_events()
 
     def _enumerate_actions(self) -> list[Action]:
-        """Enumerate all valid actions from current state, including arguments."""
+        """Enumerate all valid actions from current state, including arguments.
+
+        When effect analysis is provided, prunes actions that cannot modify
+        any tracked state. This significantly reduces the branching factor
+        by skipping observation-only behaviors like 'examine', 'ask-about', etc.
+        """
         actions = []
 
         # Use for_description=False to include nodesc objects (like power-cord)
@@ -883,6 +916,11 @@ class StateExplorer:
                 if verb in ("through", "describe", "fdesc"):
                     continue
 
+                # Action pruning: skip behaviors that don't modify tracked state
+                if self._relevant_behaviors is not None:
+                    if (obj_name, verb) not in self._relevant_behaviors:
+                        continue
+
                 if not behavior.params:
                     # No parameters - simple action
                     actions.append(Action(target=obj_name, verb=verb))
@@ -901,22 +939,31 @@ class StateExplorer:
                     # Could extend to more params if needed
 
         # Runtime default actions for takeable objects
+        # Runtime:take modifies object location - only include for objects whose
+        # location is tracked, or if no pruning is active
         for obj_name in visible:
             if obj_name not in self.world.objects:
                 continue
             obj = self.world.objects[obj_name]
             # Add 'take' for takeable objects not in inventory
             if obj.properties.get("takeable") and obj_name not in inventory:
-                actions.append(Action(target=obj_name, verb="take"))
+                # Check if this object's location is tracked
+                if self._objects_with_tracked_location is None or \
+                   obj_name in self._objects_with_tracked_location:
+                    actions.append(Action(target=obj_name, verb="take"))
 
         # Runtime default actions for inventory items
+        # Runtime:drop modifies object location - only include for objects whose
+        # location is tracked, or if no pruning is active
         for obj_name in inventory:
             if obj_name not in self.world.objects:
                 continue
             # Add 'drop' for items in inventory
-            actions.append(Action(target=obj_name, verb="drop"))
+            if self._objects_with_tracked_location is None or \
+               obj_name in self._objects_with_tracked_location:
+                actions.append(Action(target=obj_name, verb="drop"))
 
-        # Movement actions
+        # Movement actions - always relevant since they change player location
         if player_room and player_room in self.world.rooms:
             room_def = self.world.rooms[player_room]
             for exit_info in room_def.exits:
@@ -926,22 +973,11 @@ class StateExplorer:
                     args=(exit_info.direction,)
                 ))
 
-        # Wait action - always available to advance time
+        # Wait action - always available to advance time (events may modify state)
         actions.append(Action(target="_wait", verb="wait"))
 
         return actions
 
-    def _save_state(self) -> dict:
-        """Save runtime state for later restoration."""
-        return {
-            "objects": deepcopy(self._runtime.state.objects),
-            "queues": deepcopy(self._runtime.state.queues),
-        }
-
-    def _restore_state(self, saved: dict):
-        """Restore runtime state from a saved snapshot."""
-        self._runtime.state.objects = saved["objects"]
-        self._runtime.state.queues = saved["queues"]
 
 
 def explore_state_space(
@@ -952,6 +988,7 @@ def explore_state_space(
     hierarchy: "ConstraintHierarchy | None" = None,
     max_states: int | None = None,
     abstraction_config: AbstractionConfig | None = None,
+    effects: EffectAnalysis | None = None,
 ) -> tuple[StateGraph, ExplorationStats]:
     """Convenience function to explore a game's state space.
 
@@ -965,6 +1002,9 @@ def explore_state_space(
         max_states: Maximum states to explore (None = unlimited)
         abstraction_config: AbstractionConfig for state fingerprinting (new API).
             When provided, uses automatic value abstraction.
+        effects: EffectAnalysis for action pruning. When provided, only actions
+            that can modify tracked state are enumerated, significantly reducing
+            branching factor.
 
     Returns:
         Tuple of (state_graph, exploration_stats)
@@ -973,7 +1013,8 @@ def explore_state_space(
         Must provide either state_refs (legacy) or abstraction_config (new).
     """
     explorer = StateExplorer(
-        world, state_refs, max_depth, mode, hierarchy, max_states, abstraction_config
+        world, state_refs, max_depth, mode, hierarchy, max_states, abstraction_config,
+        effects=effects,
     )
     graph = explorer.explore()
     return graph, explorer.stats
