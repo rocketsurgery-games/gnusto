@@ -154,6 +154,139 @@ class SyntheticState:
 
 
 @dataclass
+class MonotonicPruner:
+    """Prunes states dominated by previously seen states via one-way flag analysis.
+
+    One-way flags are properties that only change in one direction (e.g., False->True
+    for 'rmung', 'severed'). A state S1 dominates state S2 if:
+    - All non-monotonic values are identical
+    - All monotonic values in S1 are >= the "final" value compared to S2
+
+    For example, if rmung goes False->True:
+    - {player@kitchen, rmung=True} dominates {player@kitchen, rmung=False}
+    - Because any path from rmung=False must eventually go through rmung=True
+
+    Usage:
+        pruner = MonotonicPruner.from_effects(effects, world, tracked_refs)
+        if not pruner.should_prune(new_state):
+            pruner.record(new_state)
+            # ... explore this state ...
+    """
+
+    # Maps StateRef string -> (initial, final) for tracked one-way flags
+    monotonic_keys: dict[str, tuple[Any, Any]]
+
+    # Maps non-monotonic fingerprint -> best monotonic values seen
+    # "best" means closest to final value (e.g., True for False->True)
+    seen_fingerprints: dict[tuple, dict[str, Any]] = field(default_factory=dict)
+
+    # Count of states pruned
+    pruned_count: int = 0
+
+    @classmethod
+    def from_effects(
+        cls,
+        effects: "EffectAnalysis",
+        world: "GrueWorld",
+        tracked_refs: set["StateRef"],
+    ) -> "MonotonicPruner":
+        """Create a pruner for the given tracked state refs.
+
+        Only creates monotonic entries for refs that are:
+        1. One-way flags according to effect analysis
+        2. Actually being tracked in the exploration
+        """
+        one_way = effects.get_one_way_flags(world)
+
+        # Filter to only tracked refs
+        monotonic_keys = {}
+        for ref, (initial, final) in one_way.items():
+            ref_str = str(ref)
+            if ref in tracked_refs:
+                monotonic_keys[ref_str] = (initial, final)
+
+        return cls(monotonic_keys=monotonic_keys)
+
+    def _split_state(self, state: "GameState") -> tuple[tuple, dict[str, Any]]:
+        """Split state into (non-monotonic fingerprint, monotonic values)."""
+        non_mono_parts = []
+        mono_values = {}
+
+        for key, val in state.values:
+            if key in self.monotonic_keys:
+                mono_values[key] = val
+            else:
+                non_mono_parts.append((key, val))
+
+        return tuple(non_mono_parts), mono_values
+
+    def _is_better_or_equal(self, existing: dict[str, Any], new: dict[str, Any]) -> bool:
+        """Check if existing monotonic values are >= new values (toward final).
+
+        Returns True if existing dominates new (new can be pruned).
+        """
+        for key, (initial, final) in self.monotonic_keys.items():
+            existing_val = existing.get(key, initial)
+            new_val = new.get(key, initial)
+
+            # "Better" means closer to final
+            # existing dominates new if existing is at final OR new is at initial
+            existing_at_final = (existing_val == final)
+            new_at_initial = (new_val == initial)
+
+            # If existing is at final and new is at initial -> existing dominates
+            # If both at same value -> equal, continue checking
+            # If new is at final and existing is at initial -> new is better, no domination
+            if existing_at_final and new_at_initial:
+                continue  # This key contributes to domination
+            elif existing_val == new_val:
+                continue  # Equal on this key
+            else:
+                # new is at final, existing is at initial -> no domination
+                return False
+
+        return True
+
+    def should_prune(self, state: "GameState") -> bool:
+        """Check if this state should be pruned (dominated by existing state)."""
+        if not self.monotonic_keys:
+            return False  # No monotonic tracking, no pruning
+
+        fingerprint, mono_values = self._split_state(state)
+
+        if fingerprint not in self.seen_fingerprints:
+            return False  # Haven't seen this fingerprint before
+
+        existing_mono = self.seen_fingerprints[fingerprint]
+        if self._is_better_or_equal(existing_mono, mono_values):
+            self.pruned_count += 1
+            return True
+
+        return False
+
+    def record(self, state: "GameState") -> None:
+        """Record a state, updating best monotonic values for its fingerprint."""
+        if not self.monotonic_keys:
+            return
+
+        fingerprint, mono_values = self._split_state(state)
+
+        if fingerprint not in self.seen_fingerprints:
+            self.seen_fingerprints[fingerprint] = mono_values.copy()
+        else:
+            # Update to best (closest to final) for each key
+            existing = self.seen_fingerprints[fingerprint]
+            for key, (initial, final) in self.monotonic_keys.items():
+                existing_val = existing.get(key, initial)
+                new_val = mono_values.get(key, initial)
+
+                # Keep the one closer to final
+                if new_val == final:
+                    existing[key] = final
+                # else keep existing
+
+
+@dataclass
 class ExplorationStats:
     """Statistics from exploration."""
     states_explored: int = 0
@@ -161,6 +294,7 @@ class ExplorationStats:
     states_skipped_victory_found: int = 0
     states_skipped_max_states: int = 0
     states_skipped_goal_found: int = 0
+    states_pruned_monotonic: int = 0
     victory_found_at_depth: int | None = None
     victory_found_after_states: int | None = None
     goal_found_at_depth: int | None = None
@@ -171,6 +305,8 @@ class ExplorationStats:
             f"States explored: {self.states_explored}",
             f"States skipped (depth limit): {self.states_skipped_depth}",
         ]
+        if self.states_pruned_monotonic > 0:
+            lines.append(f"States pruned (monotonic): {self.states_pruned_monotonic}")
         if self.victory_found_at_depth is not None:
             lines.append(f"Victory found at depth: {self.victory_found_at_depth}")
             lines.append(f"Victory found after exploring: {self.victory_found_after_states} states")
@@ -646,6 +782,7 @@ class StateExplorer:
         abstraction_config: AbstractionConfig | None = None,
         setup: Callable[["GrueRuntime"], None] | None = None,
         goal_check: Callable[["GrueRuntime"], bool] | None = None,
+        state_goal_check: Callable[["GameState"], bool] | None = None,
         effects: EffectAnalysis | None = None,
     ):
         self.world = world
@@ -657,6 +794,7 @@ class StateExplorer:
         self.abstraction_config = abstraction_config
         self.setup = setup
         self.goal_check = goal_check
+        self.state_goal_check = state_goal_check
         self.effects = effects
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
@@ -692,6 +830,11 @@ class StateExplorer:
                         for beh in effects.modifies[r]:
                             # beh is BehaviorRef with .object and .verb
                             self._relevant_behaviors.add((beh.object, beh.verb))
+
+        # Initialize monotonic pruner if we have effects and state_refs
+        self._monotonic_pruner: MonotonicPruner | None = None
+        if effects is not None and state_refs is not None:
+            self._monotonic_pruner = MonotonicPruner.from_effects(effects, world, state_refs)
 
     def _extract_game_state(self) -> GameState:
         """Extract current game state using the appropriate API."""
@@ -741,12 +884,21 @@ class StateExplorer:
             self.stats.victory_found_at_depth = 0
             self.stats.victory_found_after_states = 1
 
-        # Check if initial state already satisfies goal
+        # Check if initial state already satisfies goal (runtime-based or state-based)
         if self.goal_check is not None and self.goal_check(self._runtime):
             goal_found = True
             self.goal_path = []
             self.stats.goal_found_at_depth = 0
             self.stats.goal_found_after_states = 1
+            if self.mode == ExplorationMode.SUBGOAL:
+                return graph
+        elif self.state_goal_check is not None and self.state_goal_check(initial_state):
+            goal_found = True
+            self.goal_path = []
+            self.stats.goal_found_at_depth = 0
+            self.stats.goal_found_after_states = 1
+            # Mark initial node as victory for state_goal matches
+            graph.nodes[initial_id].is_victory = True
             if self.mode == ExplorationMode.SUBGOAL:
                 return graph
 
@@ -814,11 +966,20 @@ class StateExplorer:
 
                     new_state = self._extract_game_state()
 
+                    # Monotonic pruning: skip states dominated by previously seen ones
+                    if self._monotonic_pruner is not None:
+                        if self._monotonic_pruner.should_prune(new_state):
+                            continue  # Skip this dominated state
+
                     is_victory = self._runtime.check_victory()
                     is_defeat = self._runtime.check_defeat()
 
                     # Build new path (only for new states)
                     new_path = node.path + [action] if new_state not in graph.state_to_id else None
+
+                    # Record state for monotonic pruning (before adding to graph)
+                    if self._monotonic_pruner is not None:
+                        self._monotonic_pruner.record(new_state)
 
                     # Add node (or get existing)
                     new_id = graph.add_node(
@@ -835,13 +996,23 @@ class StateExplorer:
                         self.stats.victory_found_at_depth = depth + 1
                         self.stats.victory_found_after_states = self.stats.states_explored
 
-                    # Check goal condition
+                    # Check goal condition (runtime-based)
                     if self.goal_check is not None and not goal_found:
                         if self.goal_check(self._runtime):
                             goal_found = True
                             self.goal_path = node.path + [action]
                             self.stats.goal_found_at_depth = depth + 1
                             self.stats.goal_found_after_states = self.stats.states_explored
+
+                    # Check goal condition (state-based)
+                    if self.state_goal_check is not None and not goal_found:
+                        if self.state_goal_check(new_state):
+                            goal_found = True
+                            self.goal_path = node.path + [action]
+                            self.stats.goal_found_at_depth = depth + 1
+                            self.stats.goal_found_after_states = self.stats.states_explored
+                            # Mark this node as victory for state_goal matches
+                            graph.nodes[new_id].is_victory = True
 
                     # Add edge
                     graph.add_edge(node_id, new_id, action)
@@ -851,6 +1022,10 @@ class StateExplorer:
                         counter += 1
                         priority = self._compute_priority(new_state, depth + 1)
                         heappush(pq, (priority, counter, new_id, depth + 1))
+
+        # Update stats with monotonic pruning count
+        if self._monotonic_pruner is not None:
+            self.stats.states_pruned_monotonic = self._monotonic_pruner.pruned_count
 
         return graph
 

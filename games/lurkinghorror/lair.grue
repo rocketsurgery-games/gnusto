@@ -650,6 +650,8 @@
           (cond
             ((in? ?self @input-socket)
               (blocked :reason already-plugged :message "It's already plugged in."))
+            ((first (contents @input-socket))
+              (blocked :reason occupied :message "There's already something in the socket."))
             (true
               '((move ?self @input-socket)
                 (success :message "You screw it back on.")))))

@@ -162,6 +162,56 @@ class EffectAnalysis:
         """Compute the set of state that is never modified."""
         self.constants = self.all_state - set(self.modifies.keys())
 
+    def get_one_way_flags(self, world: "GrueWorld") -> dict[StateRef, tuple[Any, Any]]:
+        """Identify properties that only change in one direction.
+
+        Returns a dict mapping StateRef -> (initial_value, final_value) for
+        properties that:
+        1. Are only ever set to a single known value (not None/variable)
+        2. Have an initial value different from that target value
+
+        Common examples:
+        - rmung: False -> True (destroyed)
+        - severed: False -> True (cut)
+        - locked: True -> False (unlocked)
+
+        These can be used for monotonic pruning: if we've seen a state with
+        a one-way flag at its final value, states with the same other values
+        but the flag at initial value are dominated (can't reach anything new).
+        """
+        result: dict[StateRef, tuple[Any, Any]] = {}
+
+        for ref, behavior_targets in self.modifies_to.items():
+            if not isinstance(ref, PropertyRef):
+                continue
+
+            # Collect all target values across all behaviors
+            all_targets: set[Any] = set()
+            for targets in behavior_targets.values():
+                all_targets.update(targets)
+
+            # If only one known value (not None), it's a candidate
+            if len(all_targets) != 1 or None in all_targets:
+                continue
+
+            target_value = list(all_targets)[0]
+
+            # Get initial value from world definition
+            obj_name = ref.object
+            prop_name = ref.property
+
+            initial_value = None
+            if obj_name in world.objects:
+                initial_value = world.objects[obj_name].properties.get(prop_name)
+            elif obj_name in world.rooms:
+                initial_value = world.rooms[obj_name].properties.get(prop_name)
+
+            # If initial != final, this is a one-way flag
+            if initial_value is not None and initial_value != target_value:
+                result[ref] = (initial_value, target_value)
+
+        return result
+
     def summary(self) -> str:
         """Return a human-readable summary."""
         lines = []
@@ -357,8 +407,11 @@ class EffectAnalyzer:
                     for behavior in door.behaviors:
                         if behavior.verb == "through":
                             # Analyze what :through reads and mark as read by runtime:go
+                            # Set _current_self so ?self references resolve to the door
                             self._current_behavior = runtime_go
+                            self._current_self = door_name
                             self._walk_expr(behavior.body)
+                            self._current_self = None
 
     def _collect_takeable_effects(self):
         """Model runtime default :take and :drop behaviors for takeable objects.

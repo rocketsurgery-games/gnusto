@@ -69,7 +69,7 @@
           (str "This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets"
                (if (> (:moved @junk) junk-moves-needed)
                  ". A narrow path winds eastward through the junk."
-                 "; you can't even see the east wall."))))))))
+                 ". you can't even see the east wall."))))))))
 
 (room @storage-room
   :description "Ancient Storage"
