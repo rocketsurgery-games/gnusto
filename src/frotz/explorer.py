@@ -19,11 +19,30 @@ from grue import GrueWorld
 from grue.runtime import GrueRuntime
 
 from .effects import StateRef, PropertyRef, LocationRef, QueueRef, HeldRef
+from .state import StatePath
+from .domains import AbstractionConfig
 
 # Note: ConstraintHierarchy is from clustering.py which is in deferred/
 # We keep the type hint but don't import the module
 if TYPE_CHECKING:
     from .deferred.clustering import ConstraintHierarchy
+
+
+def _extract_path_value(runtime: GrueRuntime, path: StatePath) -> Any:
+    """Extract a value from runtime for a given StatePath."""
+    kind = path.kind
+    if kind == "loc":
+        return runtime.get_object_location(path.object)
+    elif kind == "prop":
+        return runtime.get_object_property(path.object, path.property_name)
+    elif kind == "queue":
+        return runtime.get_queue_countdown(path.event_name)
+    elif kind == "held":
+        # Abstract held predicate: True if location is @player
+        loc = runtime.get_object_location(path.object)
+        return loc == runtime.player_name
+    else:
+        return None
 
 
 class ExplorationMode(Enum):
@@ -87,7 +106,7 @@ class GameState:
         runtime: GrueRuntime,
         relevant: set[StateRef],
     ) -> "GameState":
-        """Extract relevant state from a runtime."""
+        """Extract relevant state from a runtime (legacy StateRef API)."""
         values = []
         for ref in sorted(relevant, key=str):
             if isinstance(ref, PropertyRef):
@@ -107,6 +126,34 @@ class GameState:
                 val = tuple(val)
             values.append((str(ref), val))
         return cls(values=tuple(values))
+
+    @classmethod
+    def from_abstraction_config(
+        cls,
+        runtime: GrueRuntime,
+        config: AbstractionConfig,
+    ) -> "GameState":
+        """Extract state using AbstractionConfig with automatic abstraction.
+
+        This is the new API that uses inferred value domains for optimal
+        state space exploration. Abstraction functions are applied to
+        produce minimal fingerprints.
+        """
+        # Extract concrete values for all tracked paths
+        state_values: dict[StatePath, Any] = {}
+        for path in config.tracked_paths:
+            val = _extract_path_value(runtime, path)
+            # Convert lists to tuples for hashability
+            if isinstance(val, list):
+                val = tuple(val)
+            state_values[path] = val
+
+        # Use AbstractionConfig.fingerprint() to apply abstraction
+        fingerprint = config.fingerprint(state_values)
+
+        # Convert StatePath keys to strings for consistency
+        values = tuple((str(path), val) for path, val in fingerprint)
+        return cls(values=values)
 
     def __str__(self):
         parts = [f"{k}={v}" for k, v in self.values]
@@ -472,16 +519,21 @@ class StateExplorer:
     2. Depth (shallower = better, as tiebreaker)
 
     States closer to victory (more constraints satisfied) are explored first.
+
+    Supports two APIs for state fingerprinting:
+    - Legacy: set[StateRef] with manual state extraction
+    - New: AbstractionConfig with automatic value abstraction
     """
 
     def __init__(
         self,
         world: GrueWorld,
-        state_refs: set[StateRef],
+        state_refs: set[StateRef] | None = None,
         max_depth: int = 100,
         mode: ExplorationMode = ExplorationMode.GUIDED,
         hierarchy: "ConstraintHierarchy | None" = None,
         max_states: int | None = None,
+        abstraction_config: AbstractionConfig | None = None,
     ):
         self.world = world
         self.state_refs = state_refs
@@ -489,8 +541,20 @@ class StateExplorer:
         self.max_states = max_states
         self.mode = mode
         self.hierarchy = hierarchy
+        self.abstraction_config = abstraction_config
         self._runtime = GrueRuntime(world)
         self.stats = ExplorationStats()
+
+        # Validate: must provide either state_refs or abstraction_config
+        if state_refs is None and abstraction_config is None:
+            raise ValueError("Must provide either state_refs or abstraction_config")
+
+    def _extract_game_state(self) -> GameState:
+        """Extract current game state using the appropriate API."""
+        if self.abstraction_config is not None:
+            return GameState.from_abstraction_config(self._runtime, self.abstraction_config)
+        else:
+            return GameState.from_runtime(self._runtime, self.state_refs)
 
     def explore(self) -> StateGraph:
         """Run constraint-guided exploration, returning the state transition graph.
@@ -506,7 +570,7 @@ class StateExplorer:
 
         # Initial state
         self._runtime.reset()
-        initial_state = GameState.from_runtime(self._runtime, self.state_refs)
+        initial_state = self._extract_game_state()
         is_victory = self._runtime.check_victory()
         is_defeat = self._runtime.check_defeat()
 
@@ -572,9 +636,7 @@ class StateExplorer:
                 if result.outcome == "success":
                     self._runtime.process_events()
 
-                    new_state = GameState.from_runtime(
-                        self._runtime, self.state_refs
-                    )
+                    new_state = self._extract_game_state()
 
                     is_victory = self._runtime.check_victory()
                     is_defeat = self._runtime.check_defeat()
@@ -720,26 +782,83 @@ class StateExplorer:
 
 def explore_state_space(
     world: GrueWorld,
-    state_refs: set[StateRef],
+    state_refs: set[StateRef] | None = None,
     max_depth: int = 100,
     mode: ExplorationMode = ExplorationMode.GUIDED,
     hierarchy: "ConstraintHierarchy | None" = None,
     max_states: int | None = None,
+    abstraction_config: AbstractionConfig | None = None,
 ) -> tuple[StateGraph, ExplorationStats]:
     """Convenience function to explore a game's state space.
 
     Args:
         world: The game world to explore
-        state_refs: Set of state refs to track for state fingerprinting.
+        state_refs: Set of state refs to track for state fingerprinting (legacy API).
             Typically derived from constraint back-propagation.
         max_depth: Maximum exploration depth
         mode: GUIDED (full exploration) or GUIDED_FIRST_VICTORY (stop at first victory)
         hierarchy: Constraint hierarchy for prioritization (recommended)
         max_states: Maximum states to explore (None = unlimited)
+        abstraction_config: AbstractionConfig for state fingerprinting (new API).
+            When provided, uses automatic value abstraction.
 
     Returns:
         Tuple of (state_graph, exploration_stats)
+
+    Note:
+        Must provide either state_refs (legacy) or abstraction_config (new).
     """
-    explorer = StateExplorer(world, state_refs, max_depth, mode, hierarchy, max_states)
+    explorer = StateExplorer(
+        world, state_refs, max_depth, mode, hierarchy, max_states, abstraction_config
+    )
     graph = explorer.explore()
     return graph, explorer.stats
+
+
+def explore_with_inferred_abstraction(
+    world: GrueWorld,
+    max_depth: int = 100,
+    mode: ExplorationMode = ExplorationMode.GUIDED,
+    hierarchy: "ConstraintHierarchy | None" = None,
+    max_states: int | None = None,
+    paths: set[StatePath] | None = None,
+) -> tuple[StateGraph, ExplorationStats, AbstractionConfig]:
+    """Explore using automatically inferred value domains.
+
+    This is the new recommended API that:
+    1. Runs effect analysis on the game
+    2. Infers optimal value domains for state paths
+    3. Explores using the inferred AbstractionConfig
+
+    Args:
+        world: The game world to explore
+        max_depth: Maximum exploration depth
+        mode: GUIDED (full exploration) or GUIDED_FIRST_VICTORY (stop at first victory)
+        hierarchy: Constraint hierarchy for prioritization (recommended)
+        max_states: Maximum states to explore (None = unlimited)
+        paths: Optional subset of StatePaths to track. If None, tracks all relevant paths.
+
+    Returns:
+        Tuple of (state_graph, exploration_stats, abstraction_config)
+    """
+    from .effects import analyze_effects
+    from .domains import infer_abstraction
+
+    # Step 1: Effect analysis
+    effects = analyze_effects(world)
+
+    # Step 2: Infer value domains
+    config = infer_abstraction(world, effects, paths)
+
+    # Step 3: Explore with inferred config
+    explorer = StateExplorer(
+        world,
+        state_refs=None,
+        max_depth=max_depth,
+        mode=mode,
+        hierarchy=hierarchy,
+        max_states=max_states,
+        abstraction_config=config,
+    )
+    graph = explorer.explore()
+    return graph, explorer.stats, config

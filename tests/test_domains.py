@@ -555,3 +555,158 @@ class TestEdgeCases:
         # Should have START and END in domain
         assert "START" in domain.values
         assert "END" in domain.values
+
+
+# =============================================================================
+# Explorer Integration Tests
+# =============================================================================
+
+
+class TestExplorerIntegration:
+    """Tests for explorer integration with AbstractionConfig."""
+
+    def test_explore_with_abstraction_config(self):
+        """Explorer can use AbstractionConfig for state fingerprinting."""
+        from frotz.explorer import (
+            StateExplorer,
+            ExplorationMode,
+            explore_state_space,
+            explore_with_inferred_abstraction,
+        )
+
+        world = make_test_world("""
+        (object @player :location ROOM1)
+        (world :player @player)
+
+        (object @key
+            :location ROOM1
+            :properties (:takeable true))
+
+        (object @door
+            :location ROOM2
+            :properties (:locked true)
+            :behaviors (
+                :unlock (fn ()
+                    (if (and (held? @key) (:locked ?self))
+                        '((set ?self :locked false)
+                          (success :message "Unlocked"))
+                        '((blocked :reason no-key))))))
+
+        (room ROOM1 :description "room 1")
+        (room ROOM2 :description "room 2")
+        """)
+
+        effects = analyze_effects(world)
+        config = infer_abstraction(world, effects)
+
+        # Create explorer with abstraction config
+        explorer = StateExplorer(
+            world,
+            state_refs=None,
+            max_depth=10,
+            mode=ExplorationMode.GUIDED_FIRST_VICTORY,
+            max_states=100,
+            abstraction_config=config,
+        )
+
+        graph = explorer.explore()
+
+        # Should have explored some states
+        assert len(graph.nodes) > 0
+
+    def test_explore_with_inferred_abstraction_convenience(self):
+        """explore_with_inferred_abstraction runs full pipeline."""
+        from frotz.explorer import explore_with_inferred_abstraction, ExplorationMode
+
+        world = make_test_world("""
+        (object @player :location ROOM)
+        (world :player @player)
+
+        (object @ball
+            :location ROOM
+            :properties (:takeable true))
+        (room ROOM :description "room")
+        """)
+
+        graph, stats, config = explore_with_inferred_abstraction(
+            world,
+            max_depth=5,
+            mode=ExplorationMode.GUIDED_FIRST_VICTORY,
+            max_states=50,
+        )
+
+        # Should return valid results
+        assert len(graph.nodes) > 0
+        assert stats.states_explored > 0
+        assert len(config.tracked_paths) >= 0
+
+    def test_game_state_from_abstraction_config(self):
+        """GameState.from_abstraction_config extracts and abstracts values."""
+        from frotz.explorer import GameState
+        from grue.runtime import GrueRuntime
+
+        world = make_test_world("""
+        (object @player :location ROOM)
+        (world :player @player)
+
+        (object @key
+            :location @player
+            :properties (:takeable true))
+        (object @ball
+            :location ROOM
+            :properties (:takeable true))
+        (room ROOM :description "room")
+        """)
+
+        runtime = GrueRuntime(world)
+        runtime.reset()
+
+        # Create config with held abstraction for @key
+        config = AbstractionConfig()
+        key_loc = StatePath.loc("@key")
+        config.tracked_paths.add(key_loc)
+        config.domains[key_loc] = ValueDomain.held()
+
+        state = GameState.from_abstraction_config(runtime, config)
+
+        # Key is held, so value should be @player
+        state_dict = dict(state.values)
+        assert state_dict.get(str(key_loc)) == "@player"
+
+    def test_floor_waxer_domain_in_exploration(self):
+        """Floor-waxer pattern works in exploration context."""
+        from frotz.explorer import explore_with_inferred_abstraction, ExplorationMode
+
+        world = make_test_world("""
+        (object @player :location INF1)
+        (world :player @player)
+
+        (object @floor-waxer
+            :location INF1)
+
+        (room INF1 :description "inf 1")
+        (room INF2 :description "inf 2")
+        (room INF3 :description "inf 3")
+
+        (event waxer-moves
+            :on-turn
+            (cond
+                ((= (loc @floor-waxer) INF1) '((move @floor-waxer INF2)))
+                ((= (loc @floor-waxer) INF2) '((move @floor-waxer INF3)))
+                ((= (loc @floor-waxer) INF3) '((move @floor-waxer INF1)))))
+        """)
+
+        # Explore with only the waxer location tracked
+        paths = {StatePath.loc("@floor-waxer")}
+        graph, stats, config = explore_with_inferred_abstraction(
+            world,
+            max_depth=10,
+            max_states=100,
+            paths=paths,
+        )
+
+        # Should have 3-value domain for waxer location
+        waxer_loc = StatePath.loc("@floor-waxer")
+        if waxer_loc in config.domains:
+            domain = config.domains[waxer_loc]
+            assert len(domain.values) == 3

@@ -14,6 +14,7 @@ from typing import Any
 
 from grue import GrueWorld
 from grue.sexpr import SList, Symbol, Keyword
+from grue.reduce import Reducer
 
 
 @dataclass
@@ -129,6 +130,26 @@ class EffectAnalysis:
         if behavior not in self.modifies_to[state]:
             self.modifies_to[state][behavior] = set()
         self.modifies_to[state][behavior].add(target_value)
+
+    def add_modify_values(self, state: StateRef, behavior: BehaviorRef, target_values: set[Any]):
+        """Record that a behavior can modify a state reference to multiple possible values.
+
+        Args:
+            state: The state reference being modified
+            behavior: The behavior doing the modification
+            target_values: Set of possible values (None in set means unknown/variable)
+        """
+        self.all_state.add(state)
+        if state not in self.modifies:
+            self.modifies[state] = set()
+        self.modifies[state].add(behavior)
+
+        # Track target values
+        if state not in self.modifies_to:
+            self.modifies_to[state] = {}
+        if behavior not in self.modifies_to[state]:
+            self.modifies_to[state][behavior] = set()
+        self.modifies_to[state][behavior].update(target_values)
 
     def add_read(self, state: StateRef, behavior: BehaviorRef):
         """Record that a behavior reads a state reference."""
@@ -252,6 +273,7 @@ class EffectAnalyzer:
         self.analysis = EffectAnalysis()
         self._current_behavior: BehaviorRef | None = None
         self._current_self: str | None = None  # Object name for ?self resolution
+        self._reducer = Reducer(world=world)  # Partial evaluator for inlining
 
     def analyze(self) -> EffectAnalysis:
         """Run the analysis and return results."""
@@ -380,7 +402,9 @@ class EffectAnalyzer:
         for behavior in obj.behaviors:
             self._current_behavior = BehaviorRef(obj_name, behavior.verb)
             self._current_self = obj_name  # Track ?self for resolution
-            self._walk_expr(behavior.body)
+            # Reduce before walking to inline functions and expose literal values
+            reduced_body = self._reducer.reduce(behavior.body)
+            self._walk_expr(reduced_body)
             self._current_self = None
 
     def _analyze_room_behaviors(self, room_name: str, room: Any):
@@ -391,7 +415,9 @@ class EffectAnalyzer:
         for behavior in room.behaviors:
             self._current_behavior = BehaviorRef(room_name, behavior.verb)
             self._current_self = room_name  # Track ?self for resolution
-            self._walk_expr(behavior.body)
+            # Reduce before walking to inline functions and expose literal values
+            reduced_body = self._reducer.reduce(behavior.body)
+            self._walk_expr(reduced_body)
             self._current_self = None
 
     def _analyze_event(self, event_name: str, event: Any):
@@ -400,7 +426,9 @@ class EffectAnalyzer:
             return
 
         self._current_behavior = BehaviorRef(f"event:{event_name}", "on_turn")
-        self._walk_expr(event.body)
+        # Reduce before walking to inline functions and expose literal values
+        reduced_body = self._reducer.reduce(event.body)
+        self._walk_expr(reduced_body)
 
     def _resolve_object_ref(self, expr: Any) -> str | None:
         """Resolve an expression to an object name.
@@ -462,6 +490,55 @@ class EffectAnalyzer:
         # SList or other complex expressions - unknown value
         return None
 
+    def _extract_possible_values(self, expr: Any) -> set[Any]:
+        """Extract all possible literal values from an expression.
+
+        Unlike _extract_literal_value which returns a single value,
+        this handles control flow (cond, if) and quasiquote (unquote)
+        to return the set of all possible values.
+
+        Returns a set containing:
+        - The literal values if determinable
+        - {None} if the value is completely unknown
+        """
+        # Try simple literal extraction first
+        literal = self._extract_literal_value(expr)
+        if literal is not None:
+            return {literal}
+
+        if not isinstance(expr, SList) or not expr.items:
+            return {None}  # Unknown
+
+        head = expr.items[0]
+        if not isinstance(head, Symbol):
+            return {None}
+
+        name = head.name
+
+        # Handle (unquote expr) - unwrap and recurse
+        if name == "unquote" and len(expr.items) >= 2:
+            return self._extract_possible_values(expr.items[1])
+
+        # Handle (cond (test1 result1) (test2 result2) ...)
+        if name == "cond":
+            values = set()
+            for clause in expr.items[1:]:
+                if isinstance(clause, SList) and len(clause.items) >= 2:
+                    result_expr = clause.items[1]
+                    values.update(self._extract_possible_values(result_expr))
+            return values if values else {None}
+
+        # Handle (if cond then else?)
+        if name == "if":
+            values = set()
+            if len(expr.items) >= 3:
+                values.update(self._extract_possible_values(expr.items[2]))
+            if len(expr.items) >= 4:
+                values.update(self._extract_possible_values(expr.items[3]))
+            return values if values else {None}
+
+        return {None}  # Unknown
+
     def _walk_expr(self, expr: Any):
         """Recursively walk an expression looking for effects and reads."""
         if expr is None:
@@ -512,8 +589,8 @@ class EffectAnalyzer:
                     obj_name = self._resolve_object_ref(obj)
                     if obj_name and isinstance(prop, Keyword):
                         ref = PropertyRef(obj_name, prop.name)
-                        target_value = self._extract_literal_value(value_expr)
-                        self.analysis.add_modify(ref, self._current_behavior, target_value)
+                        target_values = self._extract_possible_values(value_expr)
+                        self.analysis.add_modify_values(ref, self._current_behavior, target_values)
                     # Also walk the value expression for reads
                     for item in items[3:]:
                         self._walk_expr(item)
@@ -528,8 +605,8 @@ class EffectAnalyzer:
                     if obj_name:
                         prop_name = prop.name if isinstance(prop, (Symbol, Keyword)) else str(prop)
                         ref = PropertyRef(obj_name, prop_name)
-                        target_value = self._extract_literal_value(value_expr)
-                        self.analysis.add_modify(ref, self._current_behavior, target_value)
+                        target_values = self._extract_possible_values(value_expr)
+                        self.analysis.add_modify_values(ref, self._current_behavior, target_values)
                     for item in items[3:]:
                         self._walk_expr(item)
                     return
@@ -541,9 +618,9 @@ class EffectAnalyzer:
                     obj_name = self._resolve_object_ref(obj)
                     if obj_name:
                         ref = LocationRef(obj_name)
-                        # Destination could be @room, @player, or (loc @player)
-                        target_value = self._extract_literal_value(dest)
-                        self.analysis.add_modify(ref, self._current_behavior, target_value)
+                        # Destination could be @room, @player, or complex (cond/unquote)
+                        target_values = self._extract_possible_values(dest)
+                        self.analysis.add_modify_values(ref, self._current_behavior, target_values)
                     # Walk destination for reads
                     self._walk_expr(dest)
                     return
