@@ -210,11 +210,18 @@ class Decomposer:
             # Direct match - behavior explicitly sets to target value
             if target_value in values:
                 result.append(behavior)
-            # None means variable/unknown value - only match for @player targets
-            # (runtime:take/drop put things at player, which is what we want for
-            # "get object X" goals, but not for "put X in specific location Y")
+            # None means variable/unknown value - need careful handling
             elif None in values:
-                # For LocationRef targets, only match None if target is @player
+                # Special case: runtime:go can achieve any room for @player:location
+                if (isinstance(ref, LocationRef) and ref.object == '@player' and
+                    behavior.object == 'runtime' and behavior.verb == 'go'):
+                    # Check if target is a valid room
+                    if target_value in self.world.rooms:
+                        result.append(behavior)
+                    continue
+
+                # For other LocationRef targets, only match None if target is @player
+                # (runtime:take/drop put things at player's location, not specific rooms)
                 if isinstance(ref, LocationRef) and target_value != '@player':
                     continue  # Skip - drop/take can't achieve specific non-player locations
                 result.append(behavior)
@@ -253,6 +260,9 @@ class Decomposer:
             if isinstance(ref, LocationRef):
                 # Special case: player location just means "be somewhere"
                 if ref.object == '@player':
+                    continue
+                # Skip objects that can't be taken (vehicles, scenery, rooms, etc.)
+                if not self._is_takeable(ref.object):
                     continue
                 # Assume we need to hold the object
                 goals.add(Goal(ref, '@player'))
@@ -294,6 +304,26 @@ class Decomposer:
             else:
                 break
         return loc
+
+    def _is_takeable(self, obj_name: str) -> bool:
+        """Check if an object can be taken by the player."""
+        # Rooms, events, and special objects can't be taken
+        if obj_name in self.world.rooms:
+            return False
+
+        obj = self.world.objects.get(obj_name)
+        if not obj:
+            return False
+
+        # Objects with these properties typically can't be taken
+        non_takeable_props = {'vehicle', 'scenery', 'static', 'person', 'creature'}
+        for prop in non_takeable_props:
+            if obj.properties.get(prop):
+                return False
+
+        # Check if there's a take behavior that prevents taking
+        # (we can't easily tell, so assume takeable if not blocked)
+        return True
 
     def _get_initial_value(self, ref: StateRef) -> Any:
         """Get the initial value of a state reference."""
