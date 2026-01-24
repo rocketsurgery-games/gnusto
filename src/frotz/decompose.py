@@ -180,7 +180,7 @@ class Decomposer:
         # Find preconditions for each achiever
         all_preconditions: set[Goal] = set()
         for behavior in achievers:
-            preconds = self._preconditions_for(behavior)
+            preconds = self._preconditions_for(behavior, achieving=goal)
             all_preconditions.update(preconds)
 
         sp = Subproblem(
@@ -207,19 +207,43 @@ class Decomposer:
 
         result = []
         for behavior, values in self.effects.modifies_to[ref].items():
-            # None means variable/unknown value - might achieve it
-            if target_value in values or None in values:
+            # Direct match - behavior explicitly sets to target value
+            if target_value in values:
+                result.append(behavior)
+            # None means variable/unknown value - only match for @player targets
+            # (runtime:take/drop put things at player, which is what we want for
+            # "get object X" goals, but not for "put X in specific location Y")
+            elif None in values:
+                # For LocationRef targets, only match None if target is @player
+                if isinstance(ref, LocationRef) and target_value != '@player':
+                    continue  # Skip - drop/take can't achieve specific non-player locations
                 result.append(behavior)
         return result
 
-    def _preconditions_for(self, behavior: BehaviorRef) -> set[Goal]:
+    def _preconditions_for(self, behavior: BehaviorRef, achieving: Goal | None = None) -> set[Goal]:
         """Find goals that must be satisfied for a behavior to succeed.
 
         This is a simplified version - we know what state is READ but not
         what VALUE is required. For now, we make educated guesses based on
         common patterns.
+
+        Args:
+            behavior: The behavior to find preconditions for
+            achieving: The goal this behavior is achieving (filtered from results
+                       to avoid circular dependencies)
         """
         goals = set()
+
+        # Special case: runtime:take achieving @X:location = @player
+        # requires player to be at the object's initial location
+        if (behavior.object == 'runtime' and behavior.verb == 'take' and
+            achieving is not None and isinstance(achieving.ref, LocationRef) and
+            achieving.value == '@player'):
+            obj_name = achieving.ref.object
+            obj_loc = self._get_object_room(obj_name)
+            if obj_loc and obj_loc != '@player':
+                # Player needs to be in the room where the object is
+                goals.add(Goal(LocationRef('@player'), obj_loc))
 
         for ref, readers in self.effects.reads.items():
             if behavior not in readers:
@@ -243,7 +267,33 @@ class Decomposer:
                     goals.add(Goal(ref, True))
                 # For others, we'd need deeper analysis of the conditionals
 
+        # Filter out the goal we're trying to achieve - behaviors often read
+        # the state they modify (e.g., to check "not already done")
+        if achieving is not None:
+            goals.discard(achieving)
+
         return goals
+
+    def _get_object_room(self, obj_name: str) -> str | None:
+        """Get the room where an object is located (traversing containers)."""
+        obj = self.world.objects.get(obj_name)
+        if not obj:
+            return None
+
+        loc = obj.location
+        # Traverse up through containers to find the room
+        visited = set()
+        while loc and loc not in visited:
+            visited.add(loc)
+            if loc in self.world.rooms:
+                return loc
+            # Check if it's an object (container)
+            container = self.world.objects.get(loc)
+            if container:
+                loc = container.location
+            else:
+                break
+        return loc
 
     def _get_initial_value(self, ref: StateRef) -> Any:
         """Get the initial value of a state reference."""
