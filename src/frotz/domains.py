@@ -452,7 +452,8 @@ def analyze_domains(world: "GrueWorld", effects: "EffectAnalysis") -> DomainAnal
 def infer_abstraction(
     world: "GrueWorld",
     effects: "EffectAnalysis",
-    paths: set[StatePath] | None = None
+    paths: set[StatePath] | None = None,
+    include_player_loc: bool = True,
 ) -> AbstractionConfig:
     """Infer the optimal abstraction configuration for exploration.
 
@@ -466,6 +467,52 @@ def infer_abstraction(
         world: The Grue game world
         effects: Effect analysis results
         paths: Optional set of paths to track. If None, tracks all relevant paths.
+        include_player_loc: If True, always include player location (default True).
+            Player location is needed for exploration even though its domain
+            can't be statically inferred.
     """
     analysis = analyze_domains(world, effects)
-    return AbstractionConfig.from_analysis(analysis, paths)
+    config = AbstractionConfig.from_analysis(analysis, paths)
+
+    # Player location is special - we can't infer its domain statically
+    # (it depends on runtime parameters), but we need to track it for
+    # exploration to work properly. Add it with a concrete (empty) domain.
+    if include_player_loc:
+        player_path = StatePath.loc(world.player)
+        if player_path not in config.tracked_paths:
+            tracked = set(config.tracked_paths)
+            tracked.add(player_path)
+            domains = dict(config.domains)
+            domains[player_path] = ValueDomain.concrete(set())
+            config = AbstractionConfig(tracked_paths=tracked, domains=domains)
+
+    return config
+
+
+def state_refs_to_paths(refs: set) -> set[StatePath]:
+    """Convert legacy StateRef objects to StatePath objects.
+
+    This bridges backward analysis (which produces StateRefs) with
+    domain inference (which works on StatePaths).
+
+    Conversion rules:
+    - LocationRef(@obj) -> loc(@obj)
+    - PropertyRef(@obj, prop) -> prop(@obj, prop)
+    - HeldRef(@obj) -> loc(@obj)  # Domain inference will give HELD abstraction
+    - QueueRef(event) -> queue(event)
+    """
+    from .effects import LocationRef, PropertyRef, HeldRef, QueueRef
+
+    paths = set()
+    for ref in refs:
+        if isinstance(ref, LocationRef):
+            paths.add(StatePath.loc(ref.object))
+        elif isinstance(ref, PropertyRef):
+            paths.add(StatePath.prop(ref.object, ref.property))
+        elif isinstance(ref, HeldRef):
+            # HeldRef maps to location - domain inference will correctly
+            # give it HELD abstraction if it's only used in held? checks
+            paths.add(StatePath.loc(ref.object))
+        elif isinstance(ref, QueueRef):
+            paths.add(StatePath.queue(ref.event))
+    return paths

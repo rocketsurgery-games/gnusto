@@ -22,6 +22,7 @@ from frotz.domains import (
     AbstractionConfig,
     analyze_domains,
     infer_abstraction,
+    state_refs_to_paths,
 )
 from frotz.state import StatePath
 from frotz.effects import (
@@ -30,6 +31,7 @@ from frotz.effects import (
     PropertyRef,
     LocationRef,
     QueueRef,
+    HeldRef,
     BehaviorRef,
     analyze_effects,
 )
@@ -710,3 +712,42 @@ class TestExplorerIntegration:
         if waxer_loc in config.domains:
             domain = config.domains[waxer_loc]
             assert len(domain.values) == 3
+
+    def test_state_refs_to_paths_conversion(self):
+        """state_refs_to_paths converts legacy StateRefs to StatePaths."""
+        refs = {
+            LocationRef("@key"),
+            PropertyRef("@door", "locked"),
+            HeldRef("@sword"),
+            QueueRef("timer"),
+        }
+
+        paths = state_refs_to_paths(refs)
+
+        # LocationRef -> loc()
+        assert StatePath.loc("@key") in paths
+
+        # PropertyRef -> prop()
+        assert StatePath.prop("@door", "locked") in paths
+
+        # HeldRef -> loc() (domain inference will apply HELD abstraction)
+        assert StatePath.loc("@sword") in paths
+
+        # QueueRef -> queue()
+        assert StatePath.queue("timer") in paths
+
+        # Total count
+        assert len(paths) == 4
+
+    def test_state_refs_deduplication(self):
+        """HeldRef and LocationRef for same object deduplicate."""
+        refs = {
+            LocationRef("@key"),
+            HeldRef("@key"),  # Same object - should dedupe
+        }
+
+        paths = state_refs_to_paths(refs)
+
+        # Should only have one path
+        assert len(paths) == 1
+        assert StatePath.loc("@key") in paths
