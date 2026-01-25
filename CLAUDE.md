@@ -20,6 +20,89 @@ bd sync                               # Sync with git remote
 Do NOT start work on a bead without claiming it.
 
 
+# CLI Tools
+
+The project provides several CLI commands (installed via `pip install -e .`):
+
+## gnusto - Play Games
+
+Play a Grue game with an LLM-powered natural language agent:
+
+```bash
+gnusto games/lurkinghorror/            # Simple REPL mode
+gnusto games/lurkinghorror/ --tui      # Fullscreen TUI
+gnusto games/lurkinghorror/ --debug    # Show agent tool calls
+```
+
+## grue-test - Run Tests
+
+Run Grue-native tests for game validation:
+
+```bash
+grue-test games/testgame/              # Test a game
+grue-test games/lurkinghorror/ -v      # Verbose output
+grue-test . -q                         # Quiet, summary only
+```
+
+## grue-repl - Interactive REPL
+
+Interactive REPL for exploring Grue games directly (without LLM):
+
+```bash
+grue-repl games/testgame/
+```
+
+## frotz - Design Tools
+
+Static analysis tools for game design validation. See `docs/frotz.md` for detailed documentation.
+
+```bash
+# Check if a state is reachable
+frotz reach --to "@key@player" games/testgame
+frotz reach --to "(= (:location @player) @lair)" games/lurkinghorror
+
+# Generate DOT graph of reachability
+frotz reach --to "@key@player" games/testgame --dot reach.dot
+
+# Full state space analysis with victory path
+frotz analyze games/testgame --walkthrough
+frotz analyze games/testgame --fast --dot states.dot
+```
+
+**State specification syntax:**
+
+| Format | Meaning |
+|--------|---------|
+| `@obj@room` | `(= (:location @obj) @room)` |
+| `@obj@player` | Object held by player |
+| `@obj:prop=value` | `(= (:prop @obj) value)` |
+
+## zil-to-grue - ZIL Converter
+
+Convert ZIL source code to Grue format:
+
+```bash
+zil-to-grue path/to/zil-game/ -d output/   # Multi-file output
+zil-to-grue path/to/zil-game/ --stdout     # Print to stdout
+```
+
+## illustration - Scene Generation
+
+Generate illustrations using OmniGen2:
+
+```bash
+illustration --scene white_house --output scene.png
+illustration --scene custom --prompt "A troll under a bridge" --output troll.png
+illustration --list-scenes
+illustration --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
+```
+
+**Hardware notes:**
+- **CUDA GPU (17GB+ VRAM)**: Full speed with `--dtype bf16`
+- **NVIDIA GB10**: Works with CUDA. Requires uninstalling triton (CLI provides instructions)
+- **CPU**: Works but slow (~28s/step). Uses float32 automatically
+
+
 # Converting ZIL to Grue
 
 When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their beads P1, so we fix them before moving on to the rest of the conversion.
@@ -70,28 +153,3 @@ When ending a work session, complete ALL steps. Work is NOT complete until `git 
 - Work is NOT complete until `git push` succeeds
 - Never stop before pushing - that leaves work stranded locally
 - If push fails, resolve and retry until it succeeds
-
-
-# Illustration Generation
-
-Generate illustrations for text adventure games using OmniGen2.
-
-**Architecture:**
-- `src/filfre/` - CLI package with OmniGen2 pipeline wrapper and Zork scene prompts
-- `vendor/omnigen2/` - OmniGen2 submodule (added to sys.path at runtime)
-- `illustration/benchmark/` - Performance benchmarks and optimization results
-- `illustration/` - Experiment outputs and artifacts
-
-**Commands:**
-```bash
-filfre --scene hades_entrance --output hades.png      # Generate an image
-filfre --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
-filfre --scene custom --prompt "A troll under a bridge" --output troll.png
-filfre --cpu-offload ...      # ~50% VRAM reduction
-filfre --sequential-offload ... # <3GB VRAM, slower
-```
-
-**Hardware:**
-- **NVIDIA GB10**: Works with CUDA. Requires uninstalling triton (the CLI detects this and provides instructions). Flash-attn not beneficial (SDPA is optimal).
-- **Apple Silicon (MPS)**: Defaults to CPU due to attention issues. Use `--force-mps` to try anyway.
-- **CPU**: Works but slow (~28s/step). Uses float32 automatically.
