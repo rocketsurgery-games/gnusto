@@ -45,19 +45,19 @@
     ; === ROOM DESCRIPTION ===
     ; HACKER-DESC function - varies by location
     :describe (fn () (cond
-      ((here? @terminal-room) (success :context ((description "Sitting at a terminal is a hacker whom you recognize."))))
-      ((here? @inner-lair)    (success :context ((description "A muddy, scratched-up hacker stands tiredly here."))))
-      (true (success :context ((description "A hacker is here."))))))
+      ((here? @terminal-room) '((success "Sitting at a terminal is a hacker whom you recognize.")))
+      ((here? @inner-lair)    '((success "A muddy, scratched-up hacker stands tiredly here.")))
+      (true '((success "A hacker is here.")))))
 
     ; === EXAMINE ===
     ; Note: Full implementation would check global lair-cnt for possessed state
     ; and global hacker-help for helping state. Simplified for basic translation.
     :examine (fn () (cond
-      ((here? @inner-lair) (success :context ((description "He's muddy, wet, and tired looking."))))
-      (true                (success :context ((description hacker-desc)))))) ; Normal state - at his own terminal
+      ((here? @inner-lair) '((success "He's muddy, wet, and tired looking.")))
+      (true                `((success ,hacker-desc))))) ; Normal state - at his own terminal
 
-    :smell (fn () (success :context ((description "Either the hacker, his clothing, or both are in need of cleaning."))))
-    :listen (fn () (success :context ((description "He is humming something. It sounds classical, perhaps Bach?"))))
+    :smell (fn () '((success "Either the hacker, his clothing, or both are in need of cleaning.")))
+    :listen (fn () '((success "He is humming something. It sounds classical, perhaps Bach?")))
 
     ; === THANK ===
     :thank (fn () (cond
