@@ -305,7 +305,7 @@
 (object @odd-paper
   :description "classics paper"
   :location nil  ; Appears after clicking yak-window
-  :properties (:readable true :nodesc true :read-page false)
+  :properties (:readable true :nodesc true :read-page false :touched false)
 
   :behaviors (
     :examine (fn ()

@@ -63,6 +63,7 @@ class ActionResult:
     effects_applied: list[str] = field(default_factory=list)  # Description of effects
     error: str | None = None  # For errors
     redirects: list[SExpr] = field(default_factory=list)  # Chain of redirected actions
+    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
 
 
 class GrueRuntime:
@@ -1472,7 +1473,8 @@ class GrueRuntime:
             reason=outcome.reason,
             default_action=outcome.redirect_action,
             context=context,
-            effects_applied=outcome.effects_applied
+            effects_applied=outcome.effects_applied,
+            output=outcome.output
         )
 
     def _check_death_context(self, result: ActionResult):

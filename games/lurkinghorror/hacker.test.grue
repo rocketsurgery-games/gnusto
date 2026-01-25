@@ -40,7 +40,7 @@
     :setup ((move! @coke @player))
     (do @hacker :give @coke)
     (assert (outcome? blocked))
-    (assert (reason? wrong-drink)))
+    (assert (reason? "hacker only drinks diet coke")))
 )
 
 (test-group "trade"
@@ -53,7 +53,7 @@
   (test "propose bad trade - rejected"
     (do @hacker :trade @coke @master-key)
     (assert (outcome? blocked))
-    (assert (reason? bad-trade)))
+    (assert (reason? "bad trade")))
 )
 
 (test-group "ask-for"
@@ -61,11 +61,11 @@
   (test "master key - not revealed yet"
     (do @hacker :ask-for @master-key)
     (assert (outcome? blocked))
-    (assert (reason? suspicious)))
+    (assert (reason? "master key not yet revealed")))
 
   (test "master key - revealed but no quid pro quo"
     :setup ((set @master-key :touched true))
     (do @hacker :ask-for @master-key)
     (assert (outcome? blocked))
-    (assert (reason? quid-pro-quo)))
+    (assert (reason? "hacker wants food first")))
 )

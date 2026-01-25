@@ -255,12 +255,14 @@ class EffectOutcome:
     - context: Key-value pairs (message, description, etc.)
     - redirect_action: For redirect outcomes, the (do ...) form
     - effects_applied: List of effect descriptions for debugging
+    - output: List of structured output effects [(type, entity, text), ...]
     """
     outcome: str  # "success", "blocked", "redirect", "default"
     reason: str | None = None
     context: dict[str, Any] = field(default_factory=dict)
     redirect_action: list | None = None  # The (do ...) for redirects
     effects_applied: list[str] = field(default_factory=list)
+    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
 
 
 class EffectInterpreter:
@@ -299,6 +301,9 @@ class EffectInterpreter:
 
     # Effect names that terminate the effect list
     TERMINATORS = frozenset({"success", "blocked", "redirect", "default"})
+
+    # Effect names that produce structured output (player-facing content)
+    OUTPUT_EFFECTS = frozenset({"narrate", "say"})
 
     def __init__(self, state: MutableWorldState, bindings: dict[str, Any] | None = None,
                  functions: dict[str, Any] | None = None):
@@ -370,17 +375,20 @@ class EffectInterpreter:
             EvalError: If validation fails (no terminator, multiple terminators, etc.)
         """
         self._effects_applied = []
+        self._output: list[tuple[str, str | None, str]] = []
 
         # Validate and find terminator
         terminator = self._validate_and_find_terminator(effects)
 
-        # Apply all mutation effects
+        # Apply all mutation and output effects
         for effect in effects:
             if not isinstance(effect, list) or len(effect) == 0:
                 continue
             effect_name = effect[0]
             if effect_name in self.MUTATIONS:
                 self._apply_mutation(effect)
+            elif effect_name in self.OUTPUT_EFFECTS:
+                self._collect_output(effect)
 
         # Convert terminator to outcome
         return self._terminator_to_outcome(terminator)
@@ -436,7 +444,7 @@ class EffectInterpreter:
                         f"{terminator[0]} and {effect_name}"
                     )
                 terminator = effect
-            elif effect_name not in self.MUTATIONS:
+            elif effect_name not in self.MUTATIONS and effect_name not in self.OUTPUT_EFFECTS:
                 raise EvalError(f"Unknown effect: {effect_name}")
 
         if terminator is None:
@@ -644,27 +652,73 @@ class EffectInterpreter:
             # Create a new dict if current is None or not a collection
             return {key: self._assoc_in(None, rest_path, value)}
 
+    def _collect_output(self, effect: list) -> None:
+        """Collect an output effect (narrate, say).
+
+        Output effects produce structured player-facing content:
+        - (narrate "text") - general narrative
+        - (say @speaker "text") - dialogue with speaker
+        """
+        name = effect[0]
+        args = [self._resolve_arg(arg) for arg in effect[1:]]
+
+        if name == "narrate":
+            if len(args) != 1:
+                raise EvalError(f"'narrate' expects 1 argument (text), got {len(args)}")
+            text = args[0]
+            self._output.append(("narrate", None, str(text)))
+
+        elif name == "say":
+            if len(args) != 2:
+                raise EvalError(f"'say' expects 2 arguments (speaker, text), got {len(args)}")
+            speaker, text = args[0], args[1]
+            self._output.append(("say", str(speaker), str(text)))
+
     def _terminator_to_outcome(self, terminator: list) -> EffectOutcome:
         """Convert a terminator effect to an EffectOutcome."""
         name = terminator[0]
         args = terminator[1:]
 
         if name == "success":
+            # New style: (success "reason text" [:context ...])
+            # Old style: (success [:message ...] [:context ...])
+            reason = None
+            if args and isinstance(args[0], str):
+                reason = args[0]
+                args = args[1:]
             context = self._parse_terminator_kwargs(args)
             return EffectOutcome(
                 outcome="success",
+                reason=reason,
                 context=context,
-                effects_applied=self._effects_applied
+                effects_applied=self._effects_applied,
+                output=self._output
             )
 
         elif name == "blocked":
-            context = self._parse_terminator_kwargs(args)
-            reason = context.pop("reason", "unknown")
+            # New style: (blocked "reason text" [:context ...])
+            # Old style: (blocked :reason keyword [:context ...])
+            reason = None
+            if args and isinstance(args[0], str):
+                # New style: first arg is text reason
+                reason = args[0]
+                args = args[1:]
+                context = self._parse_terminator_kwargs(args)
+            else:
+                # Old style: :reason keyword
+                context = self._parse_terminator_kwargs(args)
+                reason = context.pop("reason", "unknown")
+                # Convert keyword reason to string for backwards compatibility
+                if hasattr(reason, 'name'):
+                    reason = reason.name
+                elif not isinstance(reason, str):
+                    reason = str(reason)
             return EffectOutcome(
                 outcome="blocked",
                 reason=reason,
                 context=context,
-                effects_applied=self._effects_applied
+                effects_applied=self._effects_applied,
+                output=self._output
             )
 
         elif name == "redirect":
@@ -693,7 +747,8 @@ class EffectInterpreter:
                 outcome="redirect",
                 redirect_action=action,
                 context=context,
-                effects_applied=self._effects_applied
+                effects_applied=self._effects_applied,
+                output=self._output
             )
 
         elif name == "default":
@@ -701,7 +756,8 @@ class EffectInterpreter:
             return EffectOutcome(
                 outcome="default",
                 context=context,
-                effects_applied=self._effects_applied
+                effects_applied=self._effects_applied,
+                output=self._output
             )
 
         else:

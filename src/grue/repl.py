@@ -47,7 +47,7 @@ Usage:
 
 import sys
 import readline  # noqa: F401 - For command history
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -144,6 +144,7 @@ class ActionDone:
     effects: list[str]
     redirects: list[SExpr]
     location: LocationResult | None = None  # For movement
+    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
 
 
 @dataclass
@@ -153,6 +154,7 @@ class ActionBlocked:
     message: str
     context: list[tuple[str, Any]]
     redirects: list[SExpr]
+    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
 
 
 @dataclass
@@ -343,6 +345,7 @@ class ReplEvaluator:
                     effects=[str(e) for e in result.effects_applied],
                     redirects=list(result.redirects) if result.redirects else [],
                     location=self._make_location_result(),
+                    output=list(result.output) if result.output else [],
                 )
             elif result.outcome == "blocked":
                 ctx = list(result.context) if result.context else []
@@ -351,6 +354,7 @@ class ReplEvaluator:
                     message=_extract_blocked_message(result.reason, ctx),
                     context=ctx,
                     redirects=list(result.redirects) if result.redirects else [],
+                    output=list(result.output) if result.output else [],
                 )
             else:
                 return ActionError(message=result.error or result.reason or result.outcome)
@@ -395,6 +399,7 @@ class ReplEvaluator:
                     context=list(result.context) if result.context else [],
                     effects=[str(e) for e in result.effects_applied],
                     redirects=list(result.redirects) if result.redirects else [],
+                    output=list(result.output) if result.output else [],
                 )
             elif result.outcome == "blocked":
                 ctx = list(result.context) if result.context else []
@@ -403,6 +408,7 @@ class ReplEvaluator:
                     message=_extract_blocked_message(result.reason, ctx),
                     context=ctx,
                     redirects=list(result.redirects) if result.redirects else [],
+                    output=list(result.output) if result.output else [],
                 )
             elif result.outcome == "default":
                 return ActionDone(
@@ -410,6 +416,7 @@ class ReplEvaluator:
                     context=list(result.context) if result.context else [],
                     effects=[],
                     redirects=list(result.redirects) if result.redirects else [],
+                    output=list(result.output) if result.output else [],
                 )
             else:
                 return ActionError(message=result.error or result.outcome)
@@ -514,6 +521,12 @@ def print_result(result: Any) -> bool:
         if result.redirects:
             redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
             print(f"[via {redirect_chain}]")
+        # Print structured output first (player-facing content)
+        for out_type, entity, text in result.output:
+            if out_type == "narrate":
+                print(text)
+            elif out_type == "say":
+                print(f'{entity}: "{text}"')
         ctx_info = ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
         if result.message:
             msg = f"{result.message}" + (f", {ctx_info}" if ctx_info else "")
@@ -532,6 +545,12 @@ def print_result(result: Any) -> bool:
         if result.redirects:
             redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
             print(f"[via {redirect_chain}]")
+        # Print structured output first (player-facing content)
+        for out_type, entity, text in result.output:
+            if out_type == "narrate":
+                print(text)
+            elif out_type == "say":
+                print(f'{entity}: "{text}"')
         print(f"[BLOCKED: {result.reason}]")
         for k, v in result.context:
             print(f"  {k}: {v}")
