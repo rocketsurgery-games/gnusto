@@ -277,6 +277,14 @@ class Decomposer:
                     goals.add(Goal(ref, True))
                 # For others, we'd need deeper analysis of the conditionals
 
+        # Add preconditions from required action arguments
+        # E.g., @high-voltage:cut requires @axe, so player must hold the axe
+        if behavior in self.effects.required_args:
+            for obj_name in self.effects.required_args[behavior]:
+                # Only add as precondition if it's a takeable object
+                if self._is_takeable(obj_name):
+                    goals.add(Goal(LocationRef(obj_name), '@player'))
+
         # Filter out the goal we're trying to achieve - behaviors often read
         # the state they modify (e.g., to check "not already done")
         if achieving is not None:
@@ -315,8 +323,13 @@ class Decomposer:
         if not obj:
             return False
 
+        # Objects in @global are abstract (body parts, etc.) - not takeable
+        if obj.location == '@global':
+            return False
+
         # Objects with these properties typically can't be taken
-        non_takeable_props = {'vehicle', 'scenery', 'static', 'person', 'creature'}
+        non_takeable_props = {'vehicle', 'scenery', 'static', 'person', 'creature',
+                              'nodesc'}  # nodesc=abstract/hidden things
         for prop in non_takeable_props:
             if obj.properties.get(prop):
                 return False

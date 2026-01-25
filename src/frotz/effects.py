@@ -111,6 +111,11 @@ class EffectAnalysis:
     # All state references found
     all_state: set[StateRef] = field(default_factory=set)
 
+    # Required action arguments for behaviors
+    # required_args[behavior] = set of object names that must be passed as arguments
+    # E.g., if a behavior has (= ?tool @axe), it requires @axe as an argument
+    required_args: dict[BehaviorRef, set[str]] = field(default_factory=dict)
+
     def add_modify(self, state: StateRef, behavior: BehaviorRef, target_value: Any = None):
         """Record that a behavior can modify a state reference.
 
@@ -157,6 +162,16 @@ class EffectAnalysis:
         if state not in self.reads:
             self.reads[state] = set()
         self.reads[state].add(behavior)
+
+    def add_required_arg(self, behavior: BehaviorRef, obj_name: str):
+        """Record that a behavior requires a specific object as argument.
+
+        This is detected from patterns like (= ?tool @axe) which constrain
+        an action argument to a specific object.
+        """
+        if behavior not in self.required_args:
+            self.required_args[behavior] = set()
+        self.required_args[behavior].add(obj_name)
 
     def compute_constants(self):
         """Compute the set of state that is never modified."""
@@ -630,6 +645,30 @@ class EffectAnalyzer:
                         finally:
                             self._inlining_stack.discard(name)
                     # Also walk arguments for potential reads
+                    for item in items[1:]:
+                        self._walk_expr(item)
+                    return
+
+                # Argument constraint detection: (= ?arg @obj)
+                # This pattern indicates the behavior requires a specific object as argument
+                if name == "=" and len(items) == 3:
+                    arg1, arg2 = items[1], items[2]
+                    # Check for ?var = @obj pattern (either order)
+                    obj_name = None
+                    is_arg_constraint = False
+
+                    if isinstance(arg1, Symbol) and arg1.name.startswith("?"):
+                        # ?arg = @obj
+                        obj_name = self._resolve_object_ref(arg2)
+                        is_arg_constraint = True
+                    elif isinstance(arg2, Symbol) and arg2.name.startswith("?"):
+                        # @obj = ?arg
+                        obj_name = self._resolve_object_ref(arg1)
+                        is_arg_constraint = True
+
+                    if is_arg_constraint and obj_name and self._current_behavior:
+                        self.analysis.add_required_arg(self._current_behavior, obj_name)
+                    # Continue walking to catch nested expressions
                     for item in items[1:]:
                         self._walk_expr(item)
                     return
