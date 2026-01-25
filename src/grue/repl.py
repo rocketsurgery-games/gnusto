@@ -145,6 +145,7 @@ class ActionDone:
     redirects: list[SExpr]
     location: LocationResult | None = None  # For movement
     output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
+    reason: str | None = None  # Success reason text (e.g., description for describe/examine)
 
 
 @dataclass
@@ -346,6 +347,7 @@ class ReplEvaluator:
                     redirects=list(result.redirects) if result.redirects else [],
                     location=self._make_location_result(),
                     output=list(result.output) if result.output else [],
+                    reason=result.reason,
                 )
             elif result.outcome == "blocked":
                 ctx = list(result.context) if result.context else []
@@ -400,6 +402,7 @@ class ReplEvaluator:
                     effects=[str(e) for e in result.effects_applied],
                     redirects=list(result.redirects) if result.redirects else [],
                     output=list(result.output) if result.output else [],
+                    reason=result.reason,
                 )
             elif result.outcome == "blocked":
                 ctx = list(result.context) if result.context else []
@@ -417,6 +420,7 @@ class ReplEvaluator:
                     effects=[],
                     redirects=list(result.redirects) if result.redirects else [],
                     output=list(result.output) if result.output else [],
+                    reason=result.reason,
                 )
             else:
                 return ActionError(message=result.error or result.outcome)

@@ -655,21 +655,49 @@ class GameSession:
     def _format_action_result(self, result: Any) -> str:
         """Format an action result for display."""
         if isinstance(result, ActionDone):
-            parts = [result.message] if result.message else []
+            parts = []
+            # Include structured output (narrate/say effects)
+            for out_type, entity, text in result.output:
+                if out_type == "narrate":
+                    parts.append(text)
+                elif out_type == "say":
+                    parts.append(f'{entity}: "{text}"')
+            # Include reason (used for describe/examine descriptions)
+            if result.reason:
+                parts.append(result.reason)
+            # Fall back to legacy context values
             for key, value in result.context:
-                # Extract user-facing context values
-                if key in ("description", "message"):
+                if key in ("description", "message", "response"):
                     parts.append(str(value))
             return " ".join(parts) if parts else "Done."
         elif isinstance(result, ActionBlocked):
+            parts = []
+            # Include structured output (narrate/say effects)
+            for out_type, entity, text in result.output:
+                if out_type == "narrate":
+                    parts.append(text)
+                elif out_type == "say":
+                    parts.append(f'{entity}: "{text}"')
+            if parts:
+                return " ".join(parts) + f" (Blocked: {result.reason})"
             return f"Blocked: {result.message}"
         elif isinstance(result, ActionError):
             return f"Error: {result.message}"
         elif isinstance(result, ActionResult):
             # Runtime ActionResult (from events)
             parts = []
+            # Include structured output
+            for out_type, entity, text in result.output:
+                if out_type == "narrate":
+                    parts.append(text)
+                elif out_type == "say":
+                    parts.append(f'{entity}: "{text}"')
+            # Include reason for describe/examine
+            if result.reason:
+                parts.append(result.reason)
+            # Fall back to legacy context
             for key, value in result.context:
-                if key in ("description", "message"):
+                if key in ("description", "message", "response"):
                     parts.append(str(value))
             return " ".join(parts) if parts else ""
         else:
