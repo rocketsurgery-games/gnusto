@@ -1,86 +1,111 @@
 """
-Automatic subproblem decomposition via backward chaining.
+Subproblem decomposition for guided state-space exploration.
 
-Given a goal state, traces back through effect analysis to find:
-1. What behaviors can achieve the goal
-2. What preconditions those behaviors require
-3. Recursively, what behaviors achieve those preconditions
+This module provides a thin wrapper around the backward constraint propagation
+system (backward.py) to define exploration subproblems. Each subproblem represents
+a constraint that must be achieved, with defined start/end state conditions.
 
-Produces a dependency graph of subproblems.
+The goal is to make full state-space exploration tractable by breaking it into
+smaller pieces:
+1. Build constraint tree from victory condition (via backward.py)
+2. Each constraint node becomes a subproblem boundary
+3. Explore from "parent constraints satisfied" to "this constraint satisfied"
+
+This approach leverages the constraint tree's dependency ordering rather than
+trying to independently identify "irreversible" state changes.
 """
 
 from dataclasses import dataclass, field
 from typing import Any
 
 from grue import GrueWorld
+
+from .backward import (
+    BackwardAnalyzer,
+    Constraint,
+    ConstraintNode,
+    ConstraintTree,
+    build_victory_constraints,
+    collect_constraint_refs,
+)
 from .effects import (
-    EffectAnalysis, StateRef, BehaviorRef,
-    PropertyRef, LocationRef, HeldRef, QueueRef,
-    analyze_effects
+    EffectAnalysis,
+    StateRef,
+    PropertyRef,
+    LocationRef,
+    analyze_effects,
 )
 
 
 @dataclass
-class Goal:
-    """A goal state to achieve."""
-    ref: StateRef
-    value: Any
-
-    def __str__(self):
-        return f"{self.ref} = {self.value}"
-
-    def __hash__(self):
-        return hash((self.ref, self.value))
-
-    def __eq__(self, other):
-        return isinstance(other, Goal) and self.ref == other.ref and self.value == other.value
-
-
-@dataclass
 class Subproblem:
-    """A subproblem identified during decomposition."""
-    name: str
-    goal: Goal
-    achievers: list[BehaviorRef]  # Behaviors that can achieve this goal
-    preconditions: set[Goal]  # Goals that must be achieved first
-    is_initial: bool = False  # True if goal is satisfied in initial state
+    """A subproblem for guided exploration.
+
+    Each subproblem represents achieving a specific constraint. The exploration
+    should start from states where all parent constraints are satisfied and
+    explore until this constraint is satisfied.
+
+    Attributes:
+        constraint: The constraint to achieve
+        parent_constraints: Constraints that must be satisfied before this one
+        is_initial: True if constraint is satisfied in initial state (leaf node)
+        is_root: True if this is the root/goal constraint
+    """
+    constraint: Constraint
+    parent_constraints: list[Constraint] = field(default_factory=list)
+    is_initial: bool = False
+    is_root: bool = False
 
     def __str__(self):
         if self.is_initial:
-            return f"{self.name}: {self.goal} [INITIAL]"
-        achiever_str = ", ".join(str(a) for a in self.achievers)
-        return f"{self.name}: {self.goal} <- [{achiever_str}]"
+            return f"{self.constraint} [INITIAL]"
+        elif self.is_root:
+            return f"{self.constraint} [ROOT/GOAL]"
+        else:
+            parents = ", ".join(str(p) for p in self.parent_constraints)
+            return f"{self.constraint} <- [{parents}]"
+
+    @property
+    def state_ref(self) -> StateRef:
+        """The state reference this subproblem targets."""
+        return self.constraint.ref
+
+    @property
+    def target_value(self) -> Any:
+        """The value the state ref should have when this subproblem is solved."""
+        return self.constraint.value
 
 
 @dataclass
 class DecompositionResult:
     """Result of decomposing a goal into subproblems."""
-    root_goal: Goal
-    subproblems: dict[Goal, Subproblem]
-    edges: list[tuple[Goal, Goal]]  # (from_goal, to_goal) = from depends on to
+    root_constraint: Constraint
+    subproblems: dict[Constraint, Subproblem]
+    constraint_tree: ConstraintTree  # Original tree for reference
 
     def summary(self) -> str:
-        lines = [f"=== Decomposition: {self.root_goal} ===", ""]
+        """Generate a human-readable summary."""
+        lines = [f"=== Decomposition: {self.root_constraint} ===", ""]
 
-        # Group by depth (BFS order)
-        visited = set()
-        queue = [self.root_goal]
-        depth = {self.root_goal: 0}
+        # Show in dependency order (BFS from root)
+        visited: set[Constraint] = set()
+        queue = [self.root_constraint]
+        depth: dict[Constraint, int] = {self.root_constraint: 0}
 
         while queue:
-            goal = queue.pop(0)
-            if goal in visited:
+            constraint = queue.pop(0)
+            if constraint in visited:
                 continue
-            visited.add(goal)
+            visited.add(constraint)
 
-            sp = self.subproblems.get(goal)
+            sp = self.subproblems.get(constraint)
             if sp:
-                indent = "  " * depth[goal]
+                indent = "  " * depth[constraint]
                 lines.append(f"{indent}{sp}")
-                for precond in sp.preconditions:
-                    if precond not in depth:
-                        depth[precond] = depth[goal] + 1
-                        queue.append(precond)
+                for parent in sp.parent_constraints:
+                    if parent not in depth:
+                        depth[parent] = depth[constraint] + 1
+                        queue.append(parent)
 
         lines.append("")
         lines.append(f"Total subproblems: {len(self.subproblems)}")
@@ -99,11 +124,11 @@ class DecompositionResult:
         ]
 
         # Node definitions
-        for goal, sp in self.subproblems.items():
-            label = str(goal).replace("@", "").replace(":", "\\n")
-            node_id = self._goal_id(goal)
+        for constraint, sp in self.subproblems.items():
+            label = str(constraint).replace("@", "").replace(":", "\\n")
+            node_id = self._constraint_id(constraint)
 
-            if goal == self.root_goal:
+            if sp.is_root:
                 style = 'style=filled fillcolor=palegreen'
             elif sp.is_initial:
                 style = 'style=filled fillcolor=lightblue'
@@ -115,315 +140,84 @@ class DecompositionResult:
         lines.append("")
 
         # Edges (from depends on to)
-        for from_goal, to_goal in self.edges:
-            from_id = self._goal_id(from_goal)
-            to_id = self._goal_id(to_goal)
-            lines.append(f'  {from_id} -> {to_id};')
+        for constraint, sp in self.subproblems.items():
+            from_id = self._constraint_id(constraint)
+            for parent in sp.parent_constraints:
+                # Skip self-referential edges
+                if parent == constraint:
+                    continue
+                to_id = self._constraint_id(parent)
+                lines.append(f'  {from_id} -> {to_id};')
 
         lines.append("}")
         return "\n".join(lines)
 
-    def _goal_id(self, goal: Goal) -> str:
-        """Generate a valid DOT node ID for a goal."""
-        s = str(goal.ref).replace("@", "").replace(":", "_").replace("-", "_")
-        v = str(goal.value).replace("@", "").replace("-", "_")
-        return f"g_{s}_{v}"
+    def _constraint_id(self, constraint: Constraint) -> str:
+        """Generate a valid DOT node ID for a constraint."""
+        import re
+        ref_str = str(constraint.ref)
+        val_str = str(constraint.value)
+        op_str = constraint.operator
+        # Sanitize to only allow alphanumeric and underscore
+        def sanitize(s: str) -> str:
+            return re.sub(r'[^a-zA-Z0-9]', '_', s)
+        return f"c_{sanitize(ref_str)}_{sanitize(op_str)}_{sanitize(val_str)}"
+
+    def get_state_refs(self) -> set[StateRef]:
+        """Get all state refs referenced by subproblems."""
+        return {sp.constraint.ref for sp in self.subproblems.values()}
 
 
-class Decomposer:
-    """Decomposes goals into subproblems via backward chaining."""
+def decompose_from_tree(tree: ConstraintTree) -> DecompositionResult:
+    """Convert a constraint tree into subproblems.
 
-    def __init__(self, world: GrueWorld, effects: EffectAnalysis | None = None):
-        self.world = world
-        self.effects = effects or analyze_effects(world)
-        self.subproblems: dict[Goal, Subproblem] = {}
-        self.edges: list[tuple[Goal, Goal]] = []
-        self._counter = 0
-        # Build room connectivity map: dest_room -> list of barriers
-        self._room_barriers: dict[str, list[str]] = self._build_room_barriers()
+    Each ConstraintNode becomes a Subproblem. The node's children become
+    parent_constraints (things that must be achieved first).
+    """
+    subproblems: dict[Constraint, Subproblem] = {}
 
-    def _build_room_barriers(self) -> dict[str, list[str]]:
-        """Build map from destination rooms to barriers that gate entry."""
-        result: dict[str, list[str]] = {}
-        for room_name, room in self.world.rooms.items():
-            for exit in room.exits:
-                if exit.via:  # Has a barrier
-                    dest = exit.to
-                    if dest not in result:
-                        result[dest] = []
-                    if exit.via not in result[dest]:
-                        result[dest].append(exit.via)
-        return result
+    def process_node(node: ConstraintNode, is_root: bool = False):
+        if node.constraint in subproblems:
+            return
 
-    def _barrier_preconditions(self, dest_room: str) -> set[Goal]:
-        """Get preconditions from barriers gating entry to a room.
-
-        Analyzes the :through behavior of each barrier to find what state
-        it reads, then converts those reads to goal preconditions.
-        """
-        goals: set[Goal] = set()
-        barriers = self._room_barriers.get(dest_room, [])
-
-        for barrier_name in barriers:
-            through_ref = BehaviorRef(barrier_name, 'through')
-
-            # Find what the barrier's :through behavior reads
-            for ref, readers in self.effects.reads.items():
-                if through_ref not in readers:
-                    continue
-
-                # Convert reads to preconditions based on property type
-                if isinstance(ref, PropertyRef):
-                    # Boolean properties: rmung, broken, freed, mounted, severed, etc.
-                    # Assume they need to be True (barrier is passable when condition met)
-                    if ref.property in ('rmung', 'broken', 'freed', 'mounted', 'severed', 'open'):
-                        goals.add(Goal(ref, True))
-                    # Skip other properties we can't infer values for
-                    # (e.g., 'person' - just checking if something is a person)
-
-                # LocationRef - barrier checks if something is at a location
-                # Skip these - they're usually checking NPC positions which are
-                # either initial state or need deeper analysis
-                # (e.g., @maintenance-man:location, @floor-waxer:location)
-
-        return goals
-
-    def decompose(self, goal: Goal, max_depth: int = 10) -> DecompositionResult:
-        """Decompose a goal into subproblems."""
-        self.subproblems = {}
-        self.edges = []
-        self._counter = 0
-
-        self._decompose_recursive(goal, depth=0, max_depth=max_depth)
-
-        return DecompositionResult(
-            root_goal=goal,
-            subproblems=self.subproblems,
-            edges=self.edges,
-        )
-
-    def _decompose_recursive(self, goal: Goal, depth: int, max_depth: int) -> Subproblem:
-        """Recursively decompose a goal."""
-        # Already processed?
-        if goal in self.subproblems:
-            return self.subproblems[goal]
-
-        # Check if goal is satisfied in initial state
-        initial_value = self._get_initial_value(goal.ref)
-        if initial_value == goal.value:
-            sp = Subproblem(
-                name=f"sp{self._counter}",
-                goal=goal,
-                achievers=[],
-                preconditions=set(),
-                is_initial=True,
-            )
-            self._counter += 1
-            self.subproblems[goal] = sp
-            return sp
-
-        # Find behaviors that can achieve this goal
-        achievers = self._what_achieves(goal.ref, goal.value)
-
-        # Find preconditions for each achiever
-        all_preconditions: set[Goal] = set()
-        for behavior in achievers:
-            preconds = self._preconditions_for(behavior, achieving=goal)
-            all_preconditions.update(preconds)
+        # Collect parent constraints from children
+        parent_constraints = list(node.children.keys())
 
         sp = Subproblem(
-            name=f"sp{self._counter}",
-            goal=goal,
-            achievers=achievers,
-            preconditions=all_preconditions,
+            constraint=node.constraint,
+            parent_constraints=parent_constraints,
+            is_initial=node.is_initial or node.is_constant,
+            is_root=is_root,
         )
-        self._counter += 1
-        self.subproblems[goal] = sp
+        subproblems[node.constraint] = sp
 
-        # Recursively decompose preconditions
-        if depth < max_depth:
-            for precond in all_preconditions:
-                self.edges.append((goal, precond))
-                self._decompose_recursive(precond, depth + 1, max_depth)
+        # Recursively process children
+        for child in node.children.values():
+            process_node(child)
 
-        return sp
+    process_node(tree.root, is_root=True)
 
-    def _what_achieves(self, ref: StateRef, target_value: Any) -> list[BehaviorRef]:
-        """Find behaviors that can set ref to target_value."""
-        if ref not in self.effects.modifies_to:
-            return []
+    return DecompositionResult(
+        root_constraint=tree.root.constraint,
+        subproblems=subproblems,
+        constraint_tree=tree,
+    )
 
-        result = []
-        for behavior, values in self.effects.modifies_to[ref].items():
-            # Direct match - behavior explicitly sets to target value
-            if target_value in values:
-                result.append(behavior)
-            # None means variable/unknown value - need careful handling
-            elif None in values:
-                # Special case: runtime:go can achieve any room for @player:location
-                if (isinstance(ref, LocationRef) and ref.object == '@player' and
-                    behavior.object == 'runtime' and behavior.verb == 'go'):
-                    # Check if target is a valid room
-                    if target_value in self.world.rooms:
-                        result.append(behavior)
-                    continue
 
-                # For other LocationRef targets, only match None if target is @player
-                # (runtime:take/drop put things at player's location, not specific rooms)
-                if isinstance(ref, LocationRef) and target_value != '@player':
-                    continue  # Skip - drop/take can't achieve specific non-player locations
-                result.append(behavior)
-        return result
+def decompose_victory(
+    world: GrueWorld,
+    effects: EffectAnalysis | None = None,
+    max_depth: int = 15,
+) -> list[DecompositionResult]:
+    """Decompose victory conditions into subproblems.
 
-    def _preconditions_for(self, behavior: BehaviorRef, achieving: Goal | None = None) -> set[Goal]:
-        """Find goals that must be satisfied for a behavior to succeed.
+    Returns a list of DecompositionResult, one per victory constraint tree.
+    """
+    if effects is None:
+        effects = analyze_effects(world)
 
-        This is a simplified version - we know what state is READ but not
-        what VALUE is required. For now, we make educated guesses based on
-        common patterns.
-
-        Args:
-            behavior: The behavior to find preconditions for
-            achieving: The goal this behavior is achieving (filtered from results
-                       to avoid circular dependencies)
-        """
-        goals = set()
-
-        # Any behavior achieving @X:location = @player (pickup) requires player
-        # to be in the same room as the object. This applies to runtime:take,
-        # object-specific :take behaviors, and other transfer effects.
-        if (achieving is not None and isinstance(achieving.ref, LocationRef) and
-            achieving.value == '@player' and achieving.ref.object != '@player'):
-            obj_name = achieving.ref.object
-            obj_loc = self._get_object_room(obj_name)
-            if obj_loc and obj_loc != '@player':
-                # Player needs to be in the room where the object is
-                goals.add(Goal(LocationRef('@player'), obj_loc))
-
-        # Special case: runtime:go achieving @player:location = <room>
-        # Add preconditions from barriers gating entry to that room
-        is_runtime_go = (behavior.object == 'runtime' and behavior.verb == 'go')
-        if (is_runtime_go and achieving is not None and
-            isinstance(achieving.ref, LocationRef) and achieving.ref.object == '@player'):
-            dest_room = achieving.value
-            if dest_room in self.world.rooms:
-                goals.update(self._barrier_preconditions(dest_room))
-
-        for ref, readers in self.effects.reads.items():
-            if behavior not in readers:
-                continue
-
-            # For LocationRef, assume we need the object held (for most actions)
-            if isinstance(ref, LocationRef):
-                # Special case: player location just means "be somewhere"
-                if ref.object == '@player':
-                    continue
-                # Skip location reads for runtime:go - they check NPC/obstacle positions
-                if is_runtime_go:
-                    continue
-                # Skip objects that can't be taken (vehicles, scenery, rooms, etc.)
-                if not self._is_takeable(ref.object):
-                    continue
-                # Assume we need to hold the object
-                goals.add(Goal(ref, '@player'))
-
-            # For PropertyRef, guess based on common patterns
-            elif isinstance(ref, PropertyRef):
-                # Skip property preconditions for runtime:go - they're room-specific
-                if is_runtime_go:
-                    continue
-                # rmung usually needs to be True (thing is destroyed/open)
-                if ref.property == 'rmung':
-                    goals.add(Goal(ref, True))
-                # wearable usually needs to be True
-                elif ref.property == 'wearable':
-                    goals.add(Goal(ref, True))
-                # For others, we'd need deeper analysis of the conditionals
-
-        # Add preconditions from required action arguments
-        # E.g., @high-voltage:cut requires @axe, so player must hold the axe
-        if behavior in self.effects.required_args:
-            for obj_name in self.effects.required_args[behavior]:
-                # Only add as precondition if it's a takeable object
-                if self._is_takeable(obj_name):
-                    goals.add(Goal(LocationRef(obj_name), '@player'))
-
-        # Filter out the goal we're trying to achieve - behaviors often read
-        # the state they modify (e.g., to check "not already done")
-        if achieving is not None:
-            goals.discard(achieving)
-
-        return goals
-
-    def _get_object_room(self, obj_name: str) -> str | None:
-        """Get the room where an object is located (traversing containers)."""
-        obj = self.world.objects.get(obj_name)
-        if not obj:
-            return None
-
-        loc = obj.location
-        # Traverse up through containers to find the room
-        visited = set()
-        while loc and loc not in visited:
-            visited.add(loc)
-            if loc in self.world.rooms:
-                return loc
-            # Check if it's an object (container)
-            container = self.world.objects.get(loc)
-            if container:
-                loc = container.location
-            else:
-                break
-        return loc
-
-    def _is_takeable(self, obj_name: str) -> bool:
-        """Check if an object can be taken by the player."""
-        # Rooms, events, and special objects can't be taken
-        if obj_name in self.world.rooms:
-            return False
-
-        obj = self.world.objects.get(obj_name)
-        if not obj:
-            return False
-
-        # Objects in @global are abstract (body parts, etc.) - not takeable
-        if obj.location == '@global':
-            return False
-
-        # Objects with these properties typically can't be taken
-        non_takeable_props = {'vehicle', 'scenery', 'static', 'person', 'creature',
-                              'nodesc'}  # nodesc=abstract/hidden things
-        for prop in non_takeable_props:
-            if obj.properties.get(prop):
-                return False
-
-        # Check if there's a take behavior that prevents taking
-        # (we can't easily tell, so assume takeable if not blocked)
-        return True
-
-    def _get_initial_value(self, ref: StateRef) -> Any:
-        """Get the initial value of a state reference."""
-        if isinstance(ref, LocationRef):
-            obj = self.world.objects.get(ref.object)
-            if obj:
-                return obj.location
-            room = self.world.rooms.get(ref.object)
-            if room:
-                return None  # Rooms don't have locations
-
-        elif isinstance(ref, PropertyRef):
-            obj = self.world.objects.get(ref.object)
-            if obj:
-                return obj.properties.get(ref.property)
-            room = self.world.rooms.get(ref.object)
-            if room:
-                return room.properties.get(ref.property)
-
-        elif isinstance(ref, QueueRef):
-            # Events start unqueued
-            return None
-
-        return None
+    trees = build_victory_constraints(world, effects)
+    return [decompose_from_tree(tree) for tree in trees]
 
 
 def decompose_goal(
@@ -431,11 +225,20 @@ def decompose_goal(
     ref: StateRef,
     value: Any,
     effects: EffectAnalysis | None = None,
-    max_depth: int = 10,
+    max_depth: int = 15,
 ) -> DecompositionResult:
-    """Convenience function to decompose a goal."""
-    decomposer = Decomposer(world, effects)
-    return decomposer.decompose(Goal(ref, value), max_depth)
+    """Decompose a specific goal into subproblems.
+
+    This is useful for testing or analyzing specific constraints.
+    """
+    if effects is None:
+        effects = analyze_effects(world)
+
+    analyzer = BackwardAnalyzer(world, effects)
+    constraint = Constraint(ref, "=", value)
+    tree = analyzer.build_tree(constraint, max_depth=max_depth)
+
+    return decompose_from_tree(tree)
 
 
 # CLI entry point
@@ -448,7 +251,8 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python -m frotz.decompose <game_path> [--dot output.dot]")
         print()
-        print("Decomposes the victory condition into subproblems.")
+        print("Decomposes the victory condition into subproblems using")
+        print("backward constraint propagation.")
         sys.exit(1)
 
     game_path = Path(sys.argv[1])
@@ -465,17 +269,28 @@ def main():
     print(f"Decomposing: {world.name or game_path}")
     print()
 
-    # For now, use a hardcoded goal for testing
-    # TODO: Extract from victory condition
-    goal_ref = LocationRef('@high-voltage')
-    goal_value = '@input-socket'
+    results = decompose_victory(world, effects)
 
-    result = decompose_goal(world, goal_ref, goal_value, effects, max_depth=5)
-    print(result.summary())
+    if not results:
+        print("No victory conditions found.")
+        sys.exit(0)
 
-    if dot_output:
-        Path(dot_output).write_text(result.to_dot())
-        print(f"\nDOT graph written to: {dot_output}")
+    for i, result in enumerate(results):
+        if len(results) > 1:
+            print(f"--- Victory constraint {i+1} ---")
+        print(result.summary())
+        print()
+
+        if dot_output:
+            # If multiple results, append index to filename
+            if len(results) > 1:
+                base, ext = dot_output.rsplit(".", 1) if "." in dot_output else (dot_output, "dot")
+                out_path = f"{base}_{i+1}.{ext}"
+            else:
+                out_path = dot_output
+
+            Path(out_path).write_text(result.to_dot())
+            print(f"DOT graph written to: {out_path}")
 
 
 if __name__ == "__main__":
