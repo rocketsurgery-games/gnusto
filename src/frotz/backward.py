@@ -602,6 +602,16 @@ class BackwardAnalyzer:
                 if constraint is not None:
                     blocking_preconds.append(constraint)
 
+            # Strategy 1b: Add implicit visibility constraint for object behaviors
+            # Player must be able to see the object to interact with it (runtime enforces visible?)
+            if obj_name.startswith("@"):
+                vis_constraint = self._get_visibility_constraint(obj_name)
+                if vis_constraint:
+                    # Only add if not already present
+                    vis_key = str(vis_constraint)
+                    if not any(str(c) == vis_key for c in blocking_preconds):
+                        blocking_preconds.append(vis_constraint)
+
             # Strategy 2: Extract effect-path conditions (for target ref)
             effect_paths = self._extract_success_conditions(body, target_ref)
 
@@ -1202,6 +1212,69 @@ class BackwardAnalyzer:
                 break
 
         return None
+
+    def _get_visibility_rooms(self, obj_name: str) -> set[str]:
+        """Get rooms where an object is visible (statically).
+
+        Returns a set of room names where the player can see the object.
+        Used for implicit visibility constraints in backward analysis.
+
+        Visibility sources:
+        1. Object is in room's :visible list (scenery)
+        2. Object's location chain leads to a room
+        3. Object is held by player (visible everywhere) - returns empty set
+        4. Object has nil location (dynamic, not yet revealed) - returns empty set
+        """
+        rooms: set[str] = set()
+
+        # Check all rooms for :visible scenery
+        for room_name, room in self.world.rooms.items():
+            if hasattr(room, 'visible') and room.visible:
+                if obj_name in room.visible:
+                    rooms.add(room_name)
+
+        # Check object's location chain
+        obj = self.world.objects.get(obj_name)
+        if obj and obj.location:
+            loc = obj.location
+            visited: set[str] = set()
+            while loc and loc not in visited:
+                visited.add(loc)
+                if loc in self.world.rooms:
+                    rooms.add(loc)
+                    break
+                if loc == "@player":
+                    # Object is held - visible everywhere, no constraint needed
+                    return set()
+                container = self.world.objects.get(loc)
+                if container:
+                    loc = container.location
+                else:
+                    break
+
+        return rooms
+
+    def _get_visibility_constraint(self, obj_name: str) -> Constraint | None:
+        """Get a visibility constraint for an object.
+
+        Returns a player location constraint if the object has a static visibility
+        location, or None if the object is dynamically visible (held, or revealed
+        through gameplay).
+
+        For objects visible in multiple rooms, returns constraint for the first room
+        found (the constraint tree will expand to find achievers for that room).
+        """
+        rooms = self._get_visibility_rooms(obj_name)
+        if not rooms:
+            # Object has no static visibility - either held or dynamically revealed
+            return None
+
+        # If object is visible in exactly one room, require player there
+        # If multiple rooms, require player in one of them (we pick the first)
+        # The backward analysis will find paths to achieve this location
+        room = next(iter(sorted(rooms)))  # Deterministic: pick alphabetically first
+        player_loc_ref = LocationRef("@player")
+        return Constraint(player_loc_ref, "=", room)
 
     def _condition_to_constraint(self, condition: Any, must_be_true: bool) -> Constraint | None:
         """Convert a condition expression to a Constraint.
