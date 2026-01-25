@@ -28,7 +28,7 @@ All benchmarks run with `--scene white_house --steps 25 --seed 42` at 1024×1024
 For best speed/quality tradeoff:
 
 ```bash
-python test_omnigen2.py --scene white_house --taylorseer --cfg-range-end 0.7
+filfre --scene white_house --taylorseer --cfg-range-end 0.7
 ```
 
 This achieves **2.2x speedup** with minimal quality impact.

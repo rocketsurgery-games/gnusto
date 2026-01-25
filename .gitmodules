@@ -1,0 +1,3 @@
+[submodule "vendor/omnigen2"]
+	path = vendor/omnigen2
+	url = https://github.com/VectorSpaceLab/OmniGen2.git

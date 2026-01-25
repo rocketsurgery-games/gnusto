@@ -77,17 +77,18 @@ When ending a work session, complete ALL steps. Work is NOT complete until `git 
 Generate illustrations for text adventure games using OmniGen2.
 
 **Architecture:**
-- `src/illustration/` - CLI package with OmniGen2 pipeline wrapper and Zork scene prompts
-- `illustration/omnigen2_repo/` - Cloned OmniGen2 repository (added to sys.path at runtime)
+- `src/filfre/` - CLI package with OmniGen2 pipeline wrapper and Zork scene prompts
+- `vendor/omnigen2/` - OmniGen2 submodule (added to sys.path at runtime)
 - `illustration/benchmark/` - Performance benchmarks and optimization results
+- `illustration/` - Experiment outputs and artifacts
 
 **Commands:**
 ```bash
-illustration --scene hades_entrance --output hades.png      # Generate an image
-illustration --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
-illustration --scene custom --prompt "A troll under a bridge" --output troll.png
-illustration --cpu-offload ...      # ~50% VRAM reduction
-illustration --sequential-offload ... # <3GB VRAM, slower
+filfre --scene hades_entrance --output hades.png      # Generate an image
+filfre --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
+filfre --scene custom --prompt "A troll under a bridge" --output troll.png
+filfre --cpu-offload ...      # ~50% VRAM reduction
+filfre --sequential-offload ... # <3GB VRAM, slower
 ```
 
 **Hardware:**

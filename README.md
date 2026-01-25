@@ -5,13 +5,13 @@ Generate illustrations for text adventure games using OmniGen2.
 ## Setup
 
 ```bash
-# Clone OmniGen2 repo (if not already done)
-cd illustration
-git clone https://github.com/OmniGen2/OmniGen2.git omnigen2_repo
-pip install -r omnigen2_repo/requirements.txt
-cd ..
+# Initialize submodules
+git submodule update --init
 
-# Install gnusto (includes illustration CLI)
+# Install OmniGen2 dependencies
+pip install -r vendor/omnigen2/requirements.txt
+
+# Install gnusto (includes filfre CLI)
 pip install -e .
 ```
 
@@ -19,16 +19,16 @@ pip install -e .
 
 ```bash
 # Generate a scene
-illustration --scene white_house --output scene.png
+filfre --scene white_house --output scene.png
 
 # Custom prompt
-illustration --scene custom --prompt "A troll under a bridge" --output troll.png
+filfre --scene custom --prompt "A troll under a bridge" --output troll.png
 
 # List available scenes
-illustration --list-scenes
+filfre --list-scenes
 
 # In-context generation with reference images
-illustration --scene custom \
+filfre --scene custom \
     --reference lantern.png \
     --prompt "A dungeon with the brass lantern from <img1> illuminating stone walls"
 ```
@@ -38,7 +38,7 @@ illustration --scene custom \
 For faster generation on NVIDIA GPUs:
 
 ```bash
-illustration --scene white_house --taylorseer --cfg-range-end 0.7
+filfre --scene white_house --taylorseer --cfg-range-end 0.7
 ```
 
 This achieves ~2.2x speedup. See `illustration/benchmark/RESULTS.md` for detailed benchmarks.
