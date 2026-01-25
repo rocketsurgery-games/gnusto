@@ -34,6 +34,7 @@ grue-repl = "grue.repl:main"
 grue-test = "grue.test:main"
 zil-to-grue = "grue.converter:cli_main"
 frotz = "frotz.cli:main"
+illustration = "illustration.cli:main"
 
 [dependency-groups]
 dev = [

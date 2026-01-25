@@ -71,3 +71,26 @@ When ending a work session, complete ALL steps. Work is NOT complete until `git 
 - Never stop before pushing - that leaves work stranded locally
 - If push fails, resolve and retry until it succeeds
 
+
+# Illustration Generation
+
+Generate illustrations for text adventure games using OmniGen2.
+
+**Architecture:**
+- `src/illustration/` - CLI package with OmniGen2 pipeline wrapper and Zork scene prompts
+- `illustration/omnigen2_repo/` - Cloned OmniGen2 repository (added to sys.path at runtime)
+- `illustration/benchmark/` - Performance benchmarks and optimization results
+
+**Commands:**
+```bash
+illustration --scene hades_entrance --output hades.png      # Generate an image
+illustration --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
+illustration --scene custom --prompt "A troll under a bridge" --output troll.png
+illustration --cpu-offload ...      # ~50% VRAM reduction
+illustration --sequential-offload ... # <3GB VRAM, slower
+```
+
+**Hardware:**
+- **NVIDIA GB10**: Works with CUDA. Requires uninstalling triton (the CLI detects this and provides instructions). Flash-attn not beneficial (SDPA is optimal).
+- **Apple Silicon (MPS)**: Defaults to CPU due to attention issues. Use `--force-mps` to try anyway.
+- **CPU**: Works but slow (~28s/step). Uses float32 automatically.

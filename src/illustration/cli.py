@@ -1,36 +1,122 @@
 #!/usr/bin/env python3
 """
-Test script for OmniGen2 text-to-image generation.
+CLI for OmniGen2 text-to-image generation.
 
-This script tests OmniGen2's ability to generate consistent illustrations
-for text adventure game scenes like Zork.
+Generates illustrations for text adventure game scenes like Zork.
 
 Setup:
-    cd omnigen2_repo
-    pip install -r requirements.txt
+    cd illustration
+    git clone https://github.com/OmniGen2/OmniGen2.git omnigen2_repo
+    cd omnigen2_repo && pip install -r requirements.txt && cd ..
     # Optional but recommended:
     pip install flash-attn==2.7.4.post1 --no-build-isolation
-    cd ..
-    python test_omnigen2.py --scene hades_entrance
+
+Usage:
+    illustration --scene hades_entrance
+    illustration --scene custom --prompt "A dragon in a cave" --output dragon.png
 
 For lower VRAM (< 17GB), use:
-    python test_omnigen2.py --scene hades_entrance --cpu-offload
+    illustration --scene hades_entrance --cpu-offload
 
 In-context generation with reference images:
-    python test_omnigen2.py --scene custom \\
+    illustration --scene custom \\
         --reference lantern.png \\
         --prompt "A dungeon scene with the brass lantern from <img1> illuminating ancient stone walls"
 """
 
 import argparse
+import importlib.util
 import os
 import re
 import sys
 from pathlib import Path
 
-# Add the omnigen2_repo to path so we can import from it
-REPO_PATH = Path(__file__).parent / "omnigen2_repo"
-sys.path.insert(0, str(REPO_PATH))
+
+def check_triton_compatibility():
+    """Check for triton incompatibility with certain GPUs and warn/exit.
+
+    NVIDIA GB10 (sm_121) is not supported by triton's ptxas.
+    """
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return  # No GPU, no problem
+
+        # Check GPU compute capability
+        capability = torch.cuda.get_device_capability(0)
+        major, minor = capability
+
+        # sm_121 (compute capability 12.1) is GB10, not supported by triton
+        if major >= 12:
+            if importlib.util.find_spec("triton") is not None:
+                gpu_name = torch.cuda.get_device_name(0)
+                print(f"ERROR: triton is installed but incompatible with {gpu_name} (sm_{major}{minor}).")
+                print("       triton's ptxas does not support this architecture.")
+                print()
+                print("To fix, uninstall triton:")
+                print("    uv pip uninstall triton")
+                print("    # or: pip uninstall triton")
+                print()
+                print("OmniGen2 will use PyTorch's native implementations instead (no performance loss).")
+                sys.exit(1)
+    except Exception:
+        pass  # Don't fail on detection errors
+
+
+def find_omnigen2_repo() -> Path:
+    """Locate the omnigen2_repo directory.
+
+    Checks in order:
+    1. OMNIGEN2_REPO_PATH environment variable
+    2. ./illustration/omnigen2_repo (relative to CWD)
+    3. Adjacent to this package's source location (for dev installs)
+
+    Returns:
+        Path to omnigen2_repo directory.
+
+    Raises:
+        RuntimeError: If omnigen2_repo cannot be found.
+    """
+    # Check environment variable first
+    if env_path := os.environ.get("OMNIGEN2_REPO_PATH"):
+        path = Path(env_path)
+        if path.exists():
+            return path
+
+    # Check relative to CWD (typical usage)
+    cwd_path = Path.cwd() / "illustration" / "omnigen2_repo"
+    if cwd_path.exists():
+        return cwd_path
+
+    # Check relative to project root (look for pyproject.toml)
+    current = Path.cwd()
+    for _ in range(5):  # Don't go too far up
+        if (current / "pyproject.toml").exists():
+            project_path = current / "illustration" / "omnigen2_repo"
+            if project_path.exists():
+                return project_path
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+
+    raise RuntimeError(
+        "Could not find omnigen2_repo. Either:\n"
+        "  1. Run from the project root directory, or\n"
+        "  2. Set OMNIGEN2_REPO_PATH environment variable, or\n"
+        "  3. Clone OmniGen2 to ./illustration/omnigen2_repo"
+    )
+
+
+def setup_omnigen2_imports():
+    """Add omnigen2_repo to sys.path for imports."""
+    repo_path = find_omnigen2_repo()
+    if str(repo_path) not in sys.path:
+        sys.path.insert(0, str(repo_path))
+
+
+# Set up imports before importing OmniGen2 modules
+setup_omnigen2_imports()
 
 import torch
 from PIL import Image, ImageOps
@@ -237,18 +323,18 @@ The atmosphere is oppressive and confusing, a place where one could easily becom
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Test OmniGen2 with Zork scenes",
+        description="Generate illustrations for text adventure scenes using OmniGen2",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python test_omnigen2.py --scene hades_entrance
-  python test_omnigen2.py --scene white_house --seed 42
-  python test_omnigen2.py --scene custom --prompt "A dragon in a cave"
-  python test_omnigen2.py --list-scenes
+  illustration --scene hades_entrance
+  illustration --scene white_house --seed 42
+  illustration --scene custom --prompt "A dragon in a cave"
+  illustration --list-scenes
 
 For low VRAM systems:
-  python test_omnigen2.py --scene hades_entrance --cpu-offload
-  python test_omnigen2.py --scene hades_entrance --sequential-offload  # < 3GB VRAM
+  illustration --scene hades_entrance --cpu-offload
+  illustration --scene hades_entrance --sequential-offload  # < 3GB VRAM
         """,
     )
     parser.add_argument(
@@ -376,6 +462,9 @@ For low VRAM systems:
     )
 
     args = parser.parse_args()
+
+    # Check for triton incompatibility before doing anything heavy
+    check_triton_compatibility()
 
     # Validate mutually exclusive options
     if args.taylorseer and args.teacache:
