@@ -389,7 +389,7 @@ class BackwardAnalyzer:
             return
 
         # Filter to behaviors that set the correct target value
-        modifiers = self._filter_modifiers_by_target(ref, constraint.value, all_modifiers)
+        modifiers = self._filter_modifiers_by_target(ref, constraint.value, all_modifiers, constraint.operator)
         if not modifiers:
             # No behavior sets this specific value - treat as unachievable
             # (This can happen if the constraint value is wrong or unreachable)
@@ -429,18 +429,24 @@ class BackwardAnalyzer:
                             node.children[precond] = tree.all_nodes[precond]
 
     def _filter_modifiers_by_target(
-        self, ref: StateRef, target_value: Any, modifiers: set[BehaviorRef]
+        self, ref: StateRef, target_value: Any, modifiers: set[BehaviorRef], operator: str = "="
     ) -> set[BehaviorRef]:
         """Filter modifiers to only those that set the target value.
 
         Uses modifies_to from effect analysis to determine what value each
-        behavior sets. If a behavior's target values are unknown (None in set),
-        we include it conservatively.
+        behavior sets.
+
+        For equality constraints (=), we exclude behaviors with unknown (None) target
+        values since we need behaviors that demonstrably achieve the specific value.
+
+        For other constraints (>=, !=, etc.), we include behaviors with unknown values
+        conservatively since we can't determine if they satisfy the constraint.
 
         Args:
             ref: The state reference being modified
             target_value: The value we want the state to have
             modifiers: All behaviors that can modify this state
+            operator: The constraint operator (=, >=, !=, etc.)
 
         Returns:
             Filtered set of behaviors that can achieve the target value
@@ -448,6 +454,15 @@ class BackwardAnalyzer:
         if ref not in self.effects.modifies_to:
             # No target value info - return all (conservative)
             return modifiers
+
+        # For equality constraints, we can filter precisely
+        # For other operators (>=, !=, etc.), include behaviors with unknown values
+        is_equality = operator == "="
+
+        # Special case: QueueRef values are always set to True by `queue` effect
+        # The effect analysis may record None (unknown) because it can't determine
+        # the delay statically, but semantically queuing always makes the queue active.
+        is_queue_to_true = isinstance(ref, QueueRef) and target_value is True
 
         result = set()
         for behavior in modifiers:
@@ -458,10 +473,19 @@ class BackwardAnalyzer:
 
             target_values = self.effects.modifies_to[ref][behavior]
 
-            # If None is in the set, the value is unknown/variable - include conservatively
+            # If None is in the set, the target value is unknown/variable.
             if None in target_values:
-                result.add(behavior)
-                continue
+                if is_queue_to_true:
+                    # Queue effects always set the queue to True, even if delay is unknown
+                    result.add(behavior)
+                    continue
+                elif is_equality:
+                    # For equality, skip unknown values - we need a specific value
+                    continue
+                else:
+                    # For other operators, include conservatively
+                    result.add(behavior)
+                    continue
 
             # Check if any of the target values match what we want
             for val in target_values:
@@ -511,16 +535,28 @@ class BackwardAnalyzer:
             preconds = self._extract_go_preconditions()
             return [preconds] if preconds else []
 
-        # Special case: runtime:take needs the object to be takeable
+        # Special case: runtime:take needs the object to be takeable AND player in same room
         # The target_ref tells us which object is being taken
         if behavior.object == "runtime" and behavior.verb == "take":
             if target_ref and isinstance(target_ref, LocationRef):
                 obj_name = target_ref.object
-                # To take an object, it must have :takeable = true
-                # The location accessibility check (player in same room) is handled by runtime
-                # and can't be easily modeled statically without room context
+                preconds = []
+
+                # Object must be takeable
                 takeable_ref = PropertyRef(obj_name, "takeable")
-                return [[Constraint(takeable_ref, "=", True)]]
+                preconds.append(Constraint(takeable_ref, "=", True))
+
+                # Player must be in same room as object
+                # We use the object's initial location as the target room
+                obj = self.world.objects.get(obj_name)
+                if obj and obj.location:
+                    # Find the room containing this object (traverse containers)
+                    obj_room = self._get_object_room(obj_name)
+                    if obj_room and obj_room in self.world.rooms:
+                        player_loc_ref = LocationRef("@player")
+                        preconds.append(Constraint(player_loc_ref, "=", obj_room))
+
+                return [preconds] if preconds else []
             return []
 
         # Special case: runtime:drop needs the object to be held by player first
@@ -565,6 +601,16 @@ class BackwardAnalyzer:
                 constraint = self._condition_to_constraint(condition, must_be_true)
                 if constraint is not None:
                     blocking_preconds.append(constraint)
+
+            # Strategy 1b: Add implicit visibility constraint for object behaviors
+            # Player must be able to see the object to interact with it (runtime enforces visible?)
+            if obj_name.startswith("@"):
+                vis_constraint = self._get_visibility_constraint(obj_name)
+                if vis_constraint:
+                    # Only add if not already present
+                    vis_key = str(vis_constraint)
+                    if not any(str(c) == vis_key for c in blocking_preconds):
+                        blocking_preconds.append(vis_constraint)
 
             # Strategy 2: Extract effect-path conditions (for target ref)
             effect_paths = self._extract_success_conditions(body, target_ref)
@@ -1139,6 +1185,96 @@ class BackwardAnalyzer:
             if expr.name == "?self" and self._current_self:
                 return self._current_self
         return None
+
+    def _get_object_room(self, obj_name: str) -> str | None:
+        """Get the room containing an object (traversing containers).
+
+        Returns the room name if found, or None if the object is not in a room
+        (e.g., held by player, in a container that's held, etc.).
+        """
+        obj = self.world.objects.get(obj_name)
+        if not obj:
+            return None
+
+        loc = obj.location
+        visited: set[str] = set()
+
+        while loc and loc not in visited:
+            visited.add(loc)
+            # Check if location is a room
+            if loc in self.world.rooms:
+                return loc
+            # Check if location is an object (container)
+            container = self.world.objects.get(loc)
+            if container:
+                loc = container.location
+            else:
+                break
+
+        return None
+
+    def _get_visibility_rooms(self, obj_name: str) -> set[str]:
+        """Get rooms where an object is visible (statically).
+
+        Returns a set of room names where the player can see the object.
+        Used for implicit visibility constraints in backward analysis.
+
+        Visibility sources:
+        1. Object is in room's :visible list (scenery)
+        2. Object's location chain leads to a room
+        3. Object is held by player (visible everywhere) - returns empty set
+        4. Object has nil location (dynamic, not yet revealed) - returns empty set
+        """
+        rooms: set[str] = set()
+
+        # Check all rooms for :visible scenery
+        for room_name, room in self.world.rooms.items():
+            if hasattr(room, 'visible') and room.visible:
+                if obj_name in room.visible:
+                    rooms.add(room_name)
+
+        # Check object's location chain
+        obj = self.world.objects.get(obj_name)
+        if obj and obj.location:
+            loc = obj.location
+            visited: set[str] = set()
+            while loc and loc not in visited:
+                visited.add(loc)
+                if loc in self.world.rooms:
+                    rooms.add(loc)
+                    break
+                if loc == "@player":
+                    # Object is held - visible everywhere, no constraint needed
+                    return set()
+                container = self.world.objects.get(loc)
+                if container:
+                    loc = container.location
+                else:
+                    break
+
+        return rooms
+
+    def _get_visibility_constraint(self, obj_name: str) -> Constraint | None:
+        """Get a visibility constraint for an object.
+
+        Returns a player location constraint if the object has a static visibility
+        location, or None if the object is dynamically visible (held, or revealed
+        through gameplay).
+
+        For objects visible in multiple rooms, returns constraint for the first room
+        found (the constraint tree will expand to find achievers for that room).
+        """
+        rooms = self._get_visibility_rooms(obj_name)
+        if not rooms:
+            # Object has no static visibility - either held or dynamically revealed
+            return None
+
+        # If object is visible in exactly one room, require player there
+        # If multiple rooms, require player in one of them (we pick the first)
+        # The backward analysis will find paths to achieve this location
+        room = next(iter(sorted(rooms)))  # Deterministic: pick alphabetically first
+        player_loc_ref = LocationRef("@player")
+        return Constraint(player_loc_ref, "=", room)
 
     def _condition_to_constraint(self, condition: Any, must_be_true: bool) -> Constraint | None:
         """Convert a condition expression to a Constraint.
