@@ -139,6 +139,54 @@ class Decomposer:
         self.subproblems: dict[Goal, Subproblem] = {}
         self.edges: list[tuple[Goal, Goal]] = []
         self._counter = 0
+        # Build room connectivity map: dest_room -> list of barriers
+        self._room_barriers: dict[str, list[str]] = self._build_room_barriers()
+
+    def _build_room_barriers(self) -> dict[str, list[str]]:
+        """Build map from destination rooms to barriers that gate entry."""
+        result: dict[str, list[str]] = {}
+        for room_name, room in self.world.rooms.items():
+            for exit in room.exits:
+                if exit.via:  # Has a barrier
+                    dest = exit.to
+                    if dest not in result:
+                        result[dest] = []
+                    if exit.via not in result[dest]:
+                        result[dest].append(exit.via)
+        return result
+
+    def _barrier_preconditions(self, dest_room: str) -> set[Goal]:
+        """Get preconditions from barriers gating entry to a room.
+
+        Analyzes the :through behavior of each barrier to find what state
+        it reads, then converts those reads to goal preconditions.
+        """
+        goals: set[Goal] = set()
+        barriers = self._room_barriers.get(dest_room, [])
+
+        for barrier_name in barriers:
+            through_ref = BehaviorRef(barrier_name, 'through')
+
+            # Find what the barrier's :through behavior reads
+            for ref, readers in self.effects.reads.items():
+                if through_ref not in readers:
+                    continue
+
+                # Convert reads to preconditions based on property type
+                if isinstance(ref, PropertyRef):
+                    # Boolean properties: rmung, broken, freed, mounted, severed, etc.
+                    # Assume they need to be True (barrier is passable when condition met)
+                    if ref.property in ('rmung', 'broken', 'freed', 'mounted', 'severed', 'open'):
+                        goals.add(Goal(ref, True))
+                    # Skip other properties we can't infer values for
+                    # (e.g., 'person' - just checking if something is a person)
+
+                # LocationRef - barrier checks if something is at a location
+                # Skip these - they're usually checking NPC positions which are
+                # either initial state or need deeper analysis
+                # (e.g., @maintenance-man:location, @floor-waxer:location)
+
+        return goals
 
     def decompose(self, goal: Goal, max_depth: int = 10) -> DecompositionResult:
         """Decompose a goal into subproblems."""
@@ -241,16 +289,25 @@ class Decomposer:
         """
         goals = set()
 
-        # Special case: runtime:take achieving @X:location = @player
-        # requires player to be at the object's initial location
-        if (behavior.object == 'runtime' and behavior.verb == 'take' and
-            achieving is not None and isinstance(achieving.ref, LocationRef) and
-            achieving.value == '@player'):
+        # Any behavior achieving @X:location = @player (pickup) requires player
+        # to be in the same room as the object. This applies to runtime:take,
+        # object-specific :take behaviors, and other transfer effects.
+        if (achieving is not None and isinstance(achieving.ref, LocationRef) and
+            achieving.value == '@player' and achieving.ref.object != '@player'):
             obj_name = achieving.ref.object
             obj_loc = self._get_object_room(obj_name)
             if obj_loc and obj_loc != '@player':
                 # Player needs to be in the room where the object is
                 goals.add(Goal(LocationRef('@player'), obj_loc))
+
+        # Special case: runtime:go achieving @player:location = <room>
+        # Add preconditions from barriers gating entry to that room
+        is_runtime_go = (behavior.object == 'runtime' and behavior.verb == 'go')
+        if (is_runtime_go and achieving is not None and
+            isinstance(achieving.ref, LocationRef) and achieving.ref.object == '@player'):
+            dest_room = achieving.value
+            if dest_room in self.world.rooms:
+                goals.update(self._barrier_preconditions(dest_room))
 
         for ref, readers in self.effects.reads.items():
             if behavior not in readers:
@@ -261,6 +318,9 @@ class Decomposer:
                 # Special case: player location just means "be somewhere"
                 if ref.object == '@player':
                     continue
+                # Skip location reads for runtime:go - they check NPC/obstacle positions
+                if is_runtime_go:
+                    continue
                 # Skip objects that can't be taken (vehicles, scenery, rooms, etc.)
                 if not self._is_takeable(ref.object):
                     continue
@@ -269,6 +329,9 @@ class Decomposer:
 
             # For PropertyRef, guess based on common patterns
             elif isinstance(ref, PropertyRef):
+                # Skip property preconditions for runtime:go - they're room-specific
+                if is_runtime_go:
+                    continue
                 # rmung usually needs to be True (thing is destroyed/open)
                 if ref.property == 'rmung':
                     goals.add(Goal(ref, True))
