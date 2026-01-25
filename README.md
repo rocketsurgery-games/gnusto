@@ -9,7 +9,7 @@ Gnusto is a toolkit for creating and playing text adventure games:
 - **Grue Language** - A LISP-like language for defining interactive fiction games with pure functional semantics and formal effect systems
 - **LLM Player** - Play games using natural language via Claude
 - **Frotz** - Static analysis tools for verifying winnability and detecting soft-locks
-- **Illustration** - Generate scene illustrations using OmniGen2
+- **Filfre** - Generate scene illustrations using OmniGen2
 
 ## Installation
 
@@ -63,23 +63,24 @@ frotz analyze games/testgame --fast --dot states.dot
 
 See `docs/frotz.md` for detailed documentation.
 
-### zil-to-grue - ZIL Converter
+### zilch - ZIL Converter
 
-Convert ZIL source code to Grue format:
+Convert ZIL source code to Grue format (ZIL-changer):
 
 ```bash
-zil-to-grue path/to/zil-game/ -d output/
-zil-to-grue path/to/zil-game/ --stdout
+zilch path/to/zil-game/ -d output/
+zilch path/to/zil-game/ --stdout
 ```
 
-### illustration - Scene Generation
+### filfre - Scene Generation
 
-Generate illustrations using OmniGen2 (requires CUDA GPU with 17GB+ VRAM):
+Generate illustrations using OmniGen2 (requires CUDA GPU with 17GB+ VRAM).
+Named after the Enchanter spell that creates gratuitous fireworks:
 
 ```bash
-illustration --scene white_house --output scene.png
-illustration --scene custom --prompt "A troll under a bridge" --output troll.png
-illustration --list-scenes
+filfre --scene white_house --output scene.png
+filfre --scene custom --prompt "A troll under a bridge" --output troll.png
+filfre --list-scenes
 ```
 
 See `CLAUDE.md` for hardware-specific notes.
@@ -91,7 +92,7 @@ src/
   grue/         # Grue language runtime and parser
   frotz/        # Static analysis tools
   gnusto/       # LLM player
-  illustration/ # Scene generation
+  filfre/       # Scene generation (filfre CLI)
 games/
   testgame/     # Simple test game
   lurkinghorror/ # The Lurking Horror (in progress)

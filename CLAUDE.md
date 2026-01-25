@@ -77,24 +77,25 @@ frotz analyze games/testgame --fast --dot states.dot
 | `@obj@player` | Object held by player |
 | `@obj:prop=value` | `(= (:prop @obj) value)` |
 
-## zil-to-grue - ZIL Converter
+## zilch - ZIL Converter
 
-Convert ZIL source code to Grue format:
+Convert ZIL source code to Grue format (ZIL-changer):
 
 ```bash
-zil-to-grue path/to/zil-game/ -d output/   # Multi-file output
-zil-to-grue path/to/zil-game/ --stdout     # Print to stdout
+zilch path/to/zil-game/ -d output/   # Multi-file output
+zilch path/to/zil-game/ --stdout     # Print to stdout
 ```
 
-## illustration - Scene Generation
+## filfre - Scene Generation
 
-Generate illustrations using OmniGen2:
+Generate illustrations using OmniGen2. Named after the Enchanter spell that
+creates gratuitous fireworks:
 
 ```bash
-illustration --scene white_house --output scene.png
-illustration --scene custom --prompt "A troll under a bridge" --output troll.png
-illustration --list-scenes
-illustration --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
+filfre --scene white_house --output scene.png
+filfre --scene custom --prompt "A troll under a bridge" --output troll.png
+filfre --list-scenes
+filfre --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
 ```
 
 **Hardware notes:**

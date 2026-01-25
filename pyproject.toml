@@ -32,7 +32,7 @@ dev = [
 gnusto = "gnusto.__main__:main"
 grue-repl = "grue.repl:main"
 grue-test = "grue.test:main"
-zil-to-grue = "grue.converter:cli_main"
+zilch = "grue.converter:cli_main"
 frotz = "frotz.cli:main"
 filfre = "filfre.cli:main"
 
