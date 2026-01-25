@@ -501,6 +501,35 @@ class StateGraph:
 
         return None
 
+    def get_path_to(self, target_id: int) -> list[Action] | None:
+        """Find shortest path to a specific state using BFS."""
+        if target_id not in self.nodes:
+            return None
+
+        if target_id == self.initial_id:
+            return []
+
+        # BFS from initial state
+        visited = {self.initial_id}
+        queue = deque([(self.initial_id, [])])
+
+        # Build adjacency list
+        adj: dict[int, list[tuple[int, Action]]] = {i: [] for i in self.nodes}
+        for edge in self.edges:
+            adj[edge.from_id].append((edge.to_id, edge.action))
+
+        while queue:
+            node_id, path = queue.popleft()
+            if node_id == target_id:
+                return path
+
+            for next_id, action in adj[node_id]:
+                if next_id not in visited:
+                    visited.add(next_id)
+                    queue.append((next_id, path + [action]))
+
+        return None
+
     def get_victory_reachable(self) -> set[int]:
         """Find all states from which victory is reachable (backward reachability)."""
         victory_ids = {n.id for n in self.nodes.values() if n.is_victory}
