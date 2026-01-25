@@ -50,6 +50,30 @@ to verify the core algorithm works correctly first.
 **To restore**: Once constraint back-prop and exploration are verified correct,
 clustering can be reintegrated for scalability.
 
+### decompose.py
+
+**Purpose**: Constraint tree decomposition for subproblem identification.
+Wraps backward.py to define exploration boundaries based on constraint
+dependencies.
+
+**Previous use**: Never integrated into CLI - experimental approach.
+
+**Why deferred**: Explores an alternative to explicit state-space exploration
+by leveraging constraint tree structure. May be useful for hierarchical
+analysis but needs more design work.
+
+### subproblem.py
+
+**Purpose**: Manual subproblem definition for isolated state-space exploration.
+Allows defining setup functions, goals, and state refs for exploring specific
+game sections.
+
+**Previous use**: Never integrated into CLI - experimental API.
+
+**Why deferred**: Manual subproblem definition is less useful than automatic
+constraint-driven exploration. Could be useful for debugging specific puzzles
+but lower priority than getting the full pipeline working.
+
 ## Restoration
 
 To bring these modules back:
