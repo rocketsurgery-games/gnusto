@@ -1,35 +1,77 @@
-The existing UI is just a terminal repl that requires you to interact via Grue syntax. I propose that we should have multiple UI modes:
-- REPL:  Useful as a debugging tool.
-- TUI:   A "real" terminal UI, that uses the LM for interaction.
-- Voice: A voice input/output UI suitable for phones and visually-impaired players.
-- GUI:   Conceptually the same as the terminal UI, but with images, and other bells and whistles.
+# Gnusto UI Modes
 
-# Terminal
-In the terminal UI, how can we segregate different text streams?
-- Room description
-- Object, exit, character descriptions
-- Conversation
-- Action / reaction
-- Debug display (e.g., LLM history, Grue REPL)
-- ...
+UI modes for playing Gnusto games:
+
+| Mode | Status | Description |
+|------|--------|-------------|
+| **Terminal** | ✅ Implemented | Rich-formatted terminal with colors, natural scrolling |
+| **Voice** | 🔮 Future | Voice input/output for phones, accessibility |
+| **Web** | 🔮 Future | Browser-based GUI with images, sounds |
 
 
-# Notes, maps, & context
-It would be a significant improvement to have much of this stuff taken on for you, like most modern games. Stylistically, we could still evoke a hand-written aesthetic (or whatever form's appropriate for the game in question).
+# Terminal Mode
+
+The default mode. Uses Rich for formatting with graceful degradation for
+non-interactive terminals (pipes, scripts).
+
+## Features
+
+- **Colors & styling** - Room names (cyan), commands (green), dialogue (yellow), etc.
+- **Natural scrolling** - Uses terminal's native scroll, no alternate screen
+- **Slash commands** - `/save`, `/load`, `/debug`, `/help`, `/quit`
+- **Pipe-friendly** - Works with `gnusto game/ | tee log.txt`
+
+## Text Styles
+
+| Style | Color/Format | Usage |
+|-------|--------------|-------|
+| `room.name` | Bold cyan | Room header |
+| `room.desc` | Default | Room description |
+| `room.nearby` | Dim | "Nearby: kitchen, hallway" |
+| `room.inventory` | Dim | "Carrying: flashlight, key" |
+| `command` | Bold green | Player commands |
+| `action` | Dim | Game action results |
+| `narrative` | Default | LLM narrative response |
+| `dialogue` | Yellow | Character speech |
+| `system` | Dim | System messages, errors |
+
+## Usage
+
+```bash
+gnusto games/lurkinghorror/           # Play a game
+gnusto games/lurkinghorror/ --debug   # With debug output
+```
+
+## Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/save [slot]` | Save game (default slot: "default") |
+| `/load [slot]` | Load game |
+| `/saves` | List available saves |
+| `/debug` | Show LLM context |
+| `/quit` | Exit game |
 
 
-# Style
-For the GUI mode, we want to add graphics judiciously, while respecting the feel (feelies?) of the original game. 
+# Future: Web Mode
 
-## Zork
-Hand-drawn "Teenagers playing D&D" aesthetic.
+For rich graphics, we'll move to a web-based interface rather than trying to
+do complex rendering in the terminal. Benefits:
 
-## Enchanter 
-Florid calligraphy on parchment, much like the game's original feelies.
+- Real image support (not terminal graphics protocols)
+- Sound and music
+- Works on any device with a browser
+- Easier to style and layout
 
-## Infidel 
+Architecture: Local server + browser, or hosted.
 
-## Lurking Horror 
 
-## AMFV 
+# Future: Voice Mode
 
+Accessibility-focused mode for:
+- Visually impaired players
+- Phone/mobile play
+- Hands-free gaming
+
+Would use speech-to-text for input, text-to-speech for output.

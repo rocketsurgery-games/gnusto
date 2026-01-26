@@ -395,11 +395,7 @@ class GameSession:
                         style="magenta",
                     )
 
-                # Stream action description before executing
-                if on_action:
-                    action_desc = self._describe_action(tool_call)
-                    on_action(action_desc)
-
+                # Execute the action (skip streaming "Verb-ing @target..." - let LLM narrate)
                 result = self._execute_tool(tool_call)
                 iteration_results.append((tool_call.id, result))
                 all_results.append(result)

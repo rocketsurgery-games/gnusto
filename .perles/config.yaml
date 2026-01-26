@@ -45,6 +45,9 @@ views:
       - name: In Progress
         query: status = in_progress
         color: '#54A0FF'
+      - name: Closed
+        query: status = closed
+        color: '#AABBCC'
   - name: Bugs
     columns:
       - name: Blocked Bugs

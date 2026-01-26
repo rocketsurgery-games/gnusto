@@ -29,8 +29,7 @@ The project provides several CLI commands (installed via `pip install -e .`):
 Play a Grue game with an LLM-powered natural language agent:
 
 ```bash
-gnusto games/lurkinghorror/            # Simple REPL mode
-gnusto games/lurkinghorror/ --tui      # Fullscreen TUI
+gnusto games/lurkinghorror/            # Play a game
 gnusto games/lurkinghorror/ --debug    # Show agent tool calls
 ```
 

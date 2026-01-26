@@ -20,8 +20,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "litellm>=1.81.0",
     "rich>=14.2.0",
-    "textual>=7.3.0",
-    "textual-image[textual]>=0.8.0",
+    "blessed>=1.20.0",
 ]
 
 [project.optional-dependencies]
