@@ -2,7 +2,7 @@
 Textual-based TUI for Gnusto.
 
 A fullscreen terminal interface with:
-- Room panel: current location and visible objects
+- Room panel: current location, room image, and visible objects
 - Narrative panel: scrollable conversation history
 - Input: natural language command entry (always focused)
 - Debug screen: LLM context (F3 to toggle)
@@ -15,10 +15,12 @@ Keyboard shortcuts:
 Designed to work well at any terminal size (80x24 and up).
 """
 
+from pathlib import Path
+
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Static, RichLog
 
@@ -26,6 +28,14 @@ from grue.save import save_game, load_game, list_saves
 
 from .agent import GameSession, TurnRecord
 from .state import get_game_state
+
+# Import textual-image for terminal image display (Kitty protocol)
+try:
+    from textual_image.widget import Image as ImageWidget
+    HAS_IMAGE_SUPPORT = True
+except ImportError:
+    HAS_IMAGE_SUPPORT = False
+    ImageWidget = None
 
 
 class DebugScreen(ModalScreen):
@@ -98,6 +108,26 @@ class GnustoApp(App):
         margin-bottom: 1;
     }
 
+    /* Horizontal layout for room content (image + description) */
+    #room-content {
+        height: auto;
+    }
+
+    #room-image {
+        width: 24;
+        height: 12;
+        margin-right: 1;
+    }
+
+    /* Hide image container when no image */
+    #room-image.hidden {
+        display: none;
+    }
+
+    #room-text {
+        width: 1fr;
+    }
+
     #room-description {
         text-overflow: fold;
     }
@@ -152,7 +182,14 @@ class GnustoApp(App):
         # Room panel - auto-height, non-scrolling
         with Vertical(id="room-panel"):
             yield Static(id="room-header")
-            yield Static(id="room-description")
+            # Horizontal layout for image (optional) + description
+            with Horizontal(id="room-content"):
+                if HAS_IMAGE_SUPPORT:
+                    yield ImageWidget(id="room-image", classes="hidden")
+                yield Vertical(
+                    Static(id="room-description"),
+                    id="room-text",
+                )
         # Narrative panel - RichLog handles its own scrolling
         yield RichLog(id="narrative", wrap=True, highlight=False, markup=True)
         yield Input(placeholder="What do you do?")
@@ -174,6 +211,23 @@ class GnustoApp(App):
         self._update_display()
         self.query_one(Input).focus()
 
+    def _get_room_image_path(self, room_id: str) -> Path | None:
+        """Find image for a room if one exists.
+
+        Looks for images in: <game_path>/images/<room_id>.png
+        Room IDs like @terminal-room become terminal-room.png
+        """
+        # Strip leading @ from room ID
+        room_name = room_id.lstrip("@")
+        image_path = Path(self.game_path) / "gfx" / f"{room_name}.png"
+        if image_path.exists():
+            return image_path
+        # Also try .jpg
+        image_path = image_path.with_suffix(".jpg")
+        if image_path.exists():
+            return image_path
+        return None
+
     def _update_display(self) -> None:
         """Update game display with current state."""
         if not self.session:
@@ -187,6 +241,16 @@ class GnustoApp(App):
             header.update(f"{state.room_name} ({state.vehicle[1]} {state.vehicle[0]})")
         else:
             header.update(state.room_name)
+
+        # Update room image if supported
+        if HAS_IMAGE_SUPPORT:
+            image_widget = self.query_one("#room-image", ImageWidget)
+            image_path = self._get_room_image_path(state.room)
+            if image_path:
+                image_widget.image = str(image_path)
+                image_widget.remove_class("hidden")
+            else:
+                image_widget.add_class("hidden")
 
         # Update room description
         desc_lines = [state.room_description]
