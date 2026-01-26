@@ -30,12 +30,24 @@ from .agent import GameSession, TurnRecord
 from .state import get_game_state
 
 # Import textual-image for terminal image display (Kitty protocol)
+# Detection must happen before Textual starts, so we check env vars
+import os
+
+HAS_IMAGE_SUPPORT = False
+ImageWidget = None
+
 try:
-    from textual_image.widget import Image as ImageWidget
-    HAS_IMAGE_SUPPORT = True
+    # Check for Kitty terminal via environment variable
+    if os.environ.get("KITTY_WINDOW_ID"):
+        # Force TGP (Kitty graphics protocol) for Kitty terminal
+        from textual_image.widget import TGPImage as ImageWidget
+        HAS_IMAGE_SUPPORT = True
+    else:
+        # Use auto-detection for other terminals
+        from textual_image.widget import Image as ImageWidget
+        HAS_IMAGE_SUPPORT = True
 except ImportError:
-    HAS_IMAGE_SUPPORT = False
-    ImageWidget = None
+    pass
 
 
 class DebugScreen(ModalScreen):
