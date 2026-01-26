@@ -174,8 +174,6 @@
   :location nil
   :properties (:invisible true))
 
-; @smooth-stone is now defined in yuggoth.grue with full behavior
-
 (object @urchins
   :description "urchins"
   :location nil
@@ -186,12 +184,8 @@
   :location nil
   :properties (:invisible true))
 
-; @cable is fully implemented in steam-tunnels.grue
-
 (object @hand
   :description "your hand"
   :location @player
   :properties (:invisible true :nodesc true))
-
-; @dead-rat is now fully implemented in steam-tunnels.grue
 
