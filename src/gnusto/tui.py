@@ -29,7 +29,7 @@ from grue.save import save_game, load_game, list_saves
 from .agent import GameSession, TurnRecord
 from .state import get_game_state
 
-# Import textual-image for terminal image display (Kitty protocol)
+# Import textual-image for terminal image display
 # Detection must happen before Textual starts, so we check env vars
 import os
 
@@ -37,13 +37,19 @@ HAS_IMAGE_SUPPORT = False
 ImageWidget = None
 
 try:
-    # Check for Kitty terminal via environment variable
-    if os.environ.get("KITTY_WINDOW_ID"):
-        # Force TGP (Kitty graphics protocol) for Kitty terminal
+    # Check if we're inside neovim's embedded terminal
+    # nvim's terminal doesn't pass through graphics protocol escape sequences
+    # even though KITTY_WINDOW_ID may be inherited from parent terminal
+    if os.environ.get("NVIM"):
+        # In nvim: use halfcell/unicode fallback (no graphics protocol)
+        from textual_image.widget import HalfcellImage as ImageWidget
+        HAS_IMAGE_SUPPORT = True
+    elif os.environ.get("KITTY_WINDOW_ID"):
+        # In Kitty (not nvim): use Kitty graphics protocol
         from textual_image.widget import TGPImage as ImageWidget
         HAS_IMAGE_SUPPORT = True
     else:
-        # Use auto-detection for other terminals
+        # Other terminals: auto-detect best method
         from textual_image.widget import Image as ImageWidget
         HAS_IMAGE_SUPPORT = True
 except ImportError:
@@ -107,11 +113,13 @@ class GnustoApp(App):
     ENABLE_COMMAND_PALETTE = False
 
     CSS = """
-    /* Room panel: fixed height, bottom border only */
+    /* Room panel: auto height with max to leave space for narrative */
     #room-panel {
         height: auto;
+        max-height: 50%;
         border-bottom: solid grey;
         padding: 0 1;
+        overflow: hidden;
     }
 
     #room-header {
@@ -147,12 +155,10 @@ class GnustoApp(App):
     /* Narrative panel: fills remaining space, bottom border only */
     #narrative {
         height: 1fr;
+        min-height: 5;
         width: 100%;
         border-bottom: solid grey;
         padding: 0 1;
-        overflow-x: hidden;
-        scrollbar-visibility: hidden;
-        text-overflow: fold;
     }
 
     /* Input at bottom - minimal styling, no border */
