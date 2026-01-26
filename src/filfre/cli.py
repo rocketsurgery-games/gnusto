@@ -9,15 +9,13 @@ Setup:
     pip install -r vendor/omnigen2/requirements.txt
 
 Usage:
-    filfre --scene hades_entrance
-    filfre --scene custom --prompt "A dragon in a cave" --output dragon.png
+    filfre --prompt "A dragon in a cave" --output dragon.png
 
 For lower VRAM (< 17GB), use:
-    filfre --scene hades_entrance --cpu-offload
+    filfre --prompt "A dragon in a cave" --cpu-offload
 
 In-context generation with reference images:
-    filfre --scene custom \\
-        --reference lantern.png \\
+    filfre --reference lantern.png \\
         --prompt "A dungeon scene with the brass lantern from <img1> illuminating ancient stone walls"
 """
 
@@ -260,85 +258,18 @@ def generate_image(
     return results.images
 
 
-# Example Zork-style scene descriptions
-ZORK_SCENES = {
-    "hades_entrance": """A dark fantasy illustration in a detailed painterly style.
-
-A massive ancient stone gateway dominates the scene, weathered and imposing. Above the gateway arch, carved deeply into the stone, reads the inscription: "Abandon every hope all ye who enter here!"
-
-The gate stands open, revealing a desolate hellscape beyond. In the far right corner of the scene, a gruesome pile of mangled bodies lies in shadow.
-
-Translucent evil spirits hover menacingly in the gateway opening, their ghostly forms blocking passage. They leer with malevolent grins.
-
-In the foreground near the viewer's feet, a small exquisite jade figurine rests on the rocky ground, its green surface catching what little light exists.
-
-The atmosphere is oppressive and foreboding, with a sickly greenish pallor to the lighting.""",
-
-    "white_house": """A nostalgic illustration in a detailed painterly style.
-
-A small white colonial house stands in a forest clearing. The house has a boarded front door and small windows.
-
-To the west, a dense forest of tall deciduous trees. To the east, an overgrown path leads away into darkness.
-
-A small mailbox stands near the path, slightly rusted but still functional.
-
-The scene is lit by late afternoon sunlight filtering through the trees, casting long shadows across the clearing.
-
-The atmosphere is mysterious but not threatening, with a sense of adventure and discovery.""",
-
-    "trophy_case": """A warm interior illustration in a detailed painterly style.
-
-An elegant living room in an old house. Dark wood paneling on the walls. A large ornate trophy case dominates one wall, its glass doors reflecting candlelight.
-
-On the mantelpiece above a cold fireplace, a brass lantern sits unlit. Nearby, an ancient elvish sword hangs on the wall, its blade glinting.
-
-A worn oriental rug covers the wooden floor. Dust motes float in shafts of light from a small window.
-
-The atmosphere is one of faded grandeur, a place that was once important but has been long abandoned.""",
-
-    "flood_control_dam": """A dramatic illustration in a detailed painterly style.
-
-A massive concrete dam stretches across a river gorge. The structure is immense, industrial, brutalist architecture from another era.
-
-Water cascades down the spillway with tremendous force. Mist rises from the churning waters below.
-
-A control room building sits atop the dam, with metal doors and small windows. Warning signs are posted near the entrance.
-
-The scene is lit by overcast daylight, giving everything a grey, imposing quality. The atmosphere conveys the overwhelming scale of human engineering.""",
-
-    "maze": """A claustrophobic illustration in a detailed painterly style.
-
-A twisting underground passage carved from rough stone. The walls are close, the ceiling low. Shadows pool in every corner.
-
-Multiple passages branch off in different directions, each looking identical to the others. The geometry is disorienting.
-
-A single flickering torch provides the only light, casting dancing shadows that make the walls seem to move.
-
-The atmosphere is oppressive and confusing, a place where one could easily become lost forever.""",
-}
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Generate illustrations for text adventure scenes using OmniGen2",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  illustration --scene hades_entrance
-  illustration --scene white_house --seed 42
-  illustration --scene custom --prompt "A dragon in a cave"
-  illustration --list-scenes
+  filfre --prompt "A dragon in a cave" --seed 42
 
 For low VRAM systems:
-  illustration --scene hades_entrance --cpu-offload
-  illustration --scene hades_entrance --sequential-offload  # < 3GB VRAM
+  filfre --prompt "A dragon in a cave" --cpu-offload
+  filfre --prompt "A dragon in a cave" --sequential-offload  # < 3GB VRAM
         """,
-    )
-    parser.add_argument(
-        "--scene",
-        choices=list(ZORK_SCENES.keys()) + ["custom"],
-        default="hades_entrance",
-        help="Which scene to generate",
     )
     parser.add_argument(
         "--prompt",
@@ -478,13 +409,10 @@ For low VRAM systems:
         return
 
     # Determine prompt
-    if args.scene == "custom":
-        if not args.prompt:
-            print("Error: --prompt required when using --scene custom")
-            sys.exit(1)
-        prompt = args.prompt
-    else:
-        prompt = ZORK_SCENES[args.scene]
+    if not args.prompt:
+        print("Error: --prompt required")
+        sys.exit(1)
+    prompt = args.prompt
 
     # Load reference images if provided
     input_images = None
@@ -502,7 +430,6 @@ For low VRAM systems:
                 print(f"WARNING: Prompt references <img{max_ref}> but only {len(input_images)} image(s) provided.")
 
     print("=" * 60)
-    print(f"Scene: {args.scene}")
     print(f"Output: {args.output}")
     print(f"Size: {args.width}x{args.height}")
     print(f"Steps: {args.steps}")
