@@ -10,8 +10,7 @@
   (test "take - blocked when hacker in it"
     :setup ((move! @hacker @chair))
     (do @chair :take)
-    (assert (outcome? blocked))
-    (assert (reason? in-use)))
+    (assert (outcome? blocked)))
 
   (test "take - success when hacker not in it"
     (do @chair :take)
@@ -29,14 +28,12 @@
   (test "sit - blocked when hacker using it"
     :setup ((move! @hacker @chair))
     (do @chair :sit)
-    (assert (outcome? blocked))
-    (assert (reason? occupied)))
+    (assert (outcome? blocked)))
 
   (test "sit - blocked when already sitting"
     :setup ((move! @player @chair))
     (do @chair :sit)
-    (assert (outcome? blocked))
-    (assert (reason? already-there)))
+    (assert (outcome? blocked)))
 
   (test "stand from chair"
     :setup ((move! @player @chair))

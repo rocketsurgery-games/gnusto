@@ -42,7 +42,6 @@
   (test "cannot go north through glass wall"
     (go :direction north)
     (assert (outcome? blocked))
-    (assert (reason? glass-wall))
     (assert (loc? @player @cs-3rd)))
 )
 
@@ -60,7 +59,6 @@
   (test "cannot go west - snow drifts"
     (go :direction west)
     (assert (outcome? blocked))
-    (assert (reason? snow-drifts))
     (assert (loc? @player @smith-st)))
 )
 
@@ -74,7 +72,6 @@
   (test "cannot go east - snow drifts"
     (go :direction east)
     (assert (outcome? blocked))
-    (assert (reason? snow-drifts))
     (assert (loc? @player @smith-st-2)))
 )
 

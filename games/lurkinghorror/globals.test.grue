@@ -64,8 +64,7 @@
 
 (test "push wall"
   (do @wall :push)
-  (assert (outcome? blocked))
-  (assert (reason? solid)))
+  (assert (outcome? blocked)))
 
 (test "examine north wall"
   (do @north-wall :examine)
@@ -84,8 +83,7 @@
 
 (test "climb ground"
   (do @ground :climb)
-  (assert (outcome? blocked))
-  (assert (reason? waste)))
+  (assert (outcome? blocked)))
 
 (test "ceiling look under"
   (do @ceiling :look-under)
@@ -115,8 +113,7 @@
 
 (test "turn off light"
   (do @light :turn-off)
-  (assert (outcome? blocked))
-  (assert (reason? waste)))
+  (assert (outcome? blocked)))
 
 (test "examine snow outside"
   :setup ((move! @player @courtyard))

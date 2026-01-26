@@ -300,7 +300,7 @@ class EffectInterpreter:
     })
 
     # Effect names that terminate the effect list
-    TERMINATORS = frozenset({"success", "blocked", "redirect", "default"})
+    TERMINATORS = frozenset({"success", "blocked", "redirect", "default", "victory"})
 
     # Effect names that produce structured output (player-facing content)
     OUTPUT_EFFECTS = frozenset({"narrate", "say"})
@@ -450,7 +450,7 @@ class EffectInterpreter:
         if terminator is None:
             raise EvalError(
                 "Effect list must contain exactly one terminator "
-                "(success, blocked, redirect, or default)"
+                "(success, blocked, redirect, default, or victory)"
             )
 
         return terminator
@@ -695,24 +695,63 @@ class EffectInterpreter:
                 output=self._output
             )
 
-        elif name == "blocked":
-            # New style: (blocked "reason text" [:context ...])
-            # Old style: (blocked :reason keyword [:context ...])
+        elif name == "victory":
+            # (victory) or (victory "message")
+            # Victory is like success but sets victory=true in context
             reason = None
+            context = {"victory": True}
             if args and isinstance(args[0], str):
-                # New style: first arg is text reason
                 reason = args[0]
                 args = args[1:]
-                context = self._parse_terminator_kwargs(args)
-            else:
-                # Old style: :reason keyword
-                context = self._parse_terminator_kwargs(args)
-                reason = context.pop("reason", "unknown")
-                # Convert keyword reason to string for backwards compatibility
-                if hasattr(reason, 'name'):
-                    reason = reason.name
-                elif not isinstance(reason, str):
-                    reason = str(reason)
+            context.update(self._parse_terminator_kwargs(args))
+            return EffectOutcome(
+                outcome="success",
+                reason=reason,
+                context=context,
+                effects_applied=self._effects_applied,
+                output=self._output
+            )
+
+        elif name == "blocked":
+            # New style: (blocked reason "message" [:key val ...]) where reason is a symbol/string
+            # Or: (blocked "message") where message only, reason defaults to unknown
+            # Old style: (blocked :reason keyword [:context ...])
+            # NOTE: quasiquote converts Symbol to string, so reason may be string or Symbol
+            reason = "unknown"
+            context: dict[str, Any] = {}
+            if args:
+                first_arg = args[0]
+                # Check for new positional style
+                if isinstance(first_arg, Symbol) and not isinstance(first_arg, Keyword):
+                    # (blocked reason "message" [:key val ...]) - reason is a symbol
+                    reason = first_arg.name
+                    if len(args) > 1:
+                        context["message"] = args[1]
+                    # Parse any remaining keyword args
+                    if len(args) > 2:
+                        context.update(self._parse_terminator_kwargs(args[2:]))
+                elif isinstance(first_arg, str):
+                    # Check if this is (blocked "reason" "message" ...) vs (blocked "message")
+                    # If second arg is also a string, treat first as reason
+                    if len(args) > 1 and isinstance(args[1], str):
+                        # (blocked "reason" "message" [:key val ...]) - reason as string
+                        reason = first_arg
+                        context["message"] = args[1]
+                        if len(args) > 2:
+                            context.update(self._parse_terminator_kwargs(args[2:]))
+                    else:
+                        # (blocked "message" [:key val ...]) - just a message, no reason
+                        context["message"] = first_arg
+                        if len(args) > 1:
+                            context.update(self._parse_terminator_kwargs(args[1:]))
+                elif isinstance(first_arg, Keyword):
+                    # Old style: (blocked :reason X :message "...")
+                    context = self._parse_terminator_kwargs(args)
+                    reason = context.pop("reason", "unknown")
+                    if hasattr(reason, 'name'):
+                        reason = reason.name
+                    elif not isinstance(reason, str):
+                        reason = str(reason)
             return EffectOutcome(
                 outcome="blocked",
                 reason=reason,
@@ -2010,6 +2049,22 @@ class ExprEvaluator:
                 i += 1
         return kwargs
 
+    def _parse_kwargs_from_list(self, items: list) -> dict[str, Any]:
+        """Parse keyword arguments from a list of items."""
+        kwargs: dict[str, Any] = {}
+        i = 0
+        while i < len(items):
+            if isinstance(items[i], Keyword):
+                key = items[i].name
+                if i + 1 < len(items):
+                    kwargs[key] = items[i + 1]
+                    i += 2
+                else:
+                    raise EvalError(f"Keyword :{key} has no value")
+            else:
+                i += 1
+        return kwargs
+
     def _parse_context_list(
         self, expr: SExpr, env: Optional[Environment] = None
     ) -> dict[str, Any]:
@@ -2041,54 +2096,93 @@ class ExprEvaluator:
         return result
 
     def _eval_success(self, form: SList, env: Optional[Environment] = None) -> BehaviorSuccess:
-        """(success [:key value ...])
+        """(success "message" [:key value ...]) or (success [:key value ...])
 
         Examples:
             (success)
-            (success :message "Done!")
+            (success "Done!")                        ; New style with message
+            (success :message "Done!")               ; Old keyword style
             (success :context ((mechanism push-bar)))
         """
-        kwargs = self._parse_kwargs(form)
         context: dict[str, Any] = {}
 
-        for key, val in kwargs.items():
-            if key == "context":
-                # Format: ((key value) ...) - values evaluated if expressions
-                context.update(self._parse_context_list(val, env))
-            elif key == "message":
-                # Message should always be evaluated to a string
-                context[key] = self.eval(val, env)
-            else:
-                # Direct key-value pair - always evaluate to resolve variables
-                context[key] = self.eval(val, env)
+        # Check for new positional style: (success "message" [:key value ...])
+        args = form.items[1:]  # Skip the 'success' symbol
+        if args:
+            first_arg = args[0]
+            if isinstance(first_arg, str):
+                # (success "message" [:key val ...]) - positional message
+                context["message"] = first_arg
+                # Parse any remaining keyword args
+                if len(args) > 1:
+                    remaining_kwargs = self._parse_kwargs_from_list(args[1:])
+                    for key, val in remaining_kwargs.items():
+                        if key == "context":
+                            context.update(self._parse_context_list(val, env))
+                        else:
+                            context[key] = self.eval(val, env)
+            elif isinstance(first_arg, SList):
+                # Could be (success (str ...)) - evaluate as message
+                context["message"] = self.eval(first_arg, env)
+                # Parse any remaining keyword args
+                if len(args) > 1:
+                    remaining_kwargs = self._parse_kwargs_from_list(args[1:])
+                    for key, val in remaining_kwargs.items():
+                        if key == "context":
+                            context.update(self._parse_context_list(val, env))
+                        else:
+                            context[key] = self.eval(val, env)
+            elif isinstance(first_arg, Keyword):
+                # Old keyword style: (success :message "..." [:key val ...])
+                kwargs = self._parse_kwargs(form)
+                for key, val in kwargs.items():
+                    if key == "context":
+                        context.update(self._parse_context_list(val, env))
+                    elif key == "message":
+                        context[key] = self.eval(val, env)
+                    else:
+                        context[key] = self.eval(val, env)
 
         return BehaviorSuccess(context=context)
 
     def _eval_blocked(self, form: SList, env: Optional[Environment] = None) -> BehaviorBlocked:
-        """(blocked :reason REASON [:key value ...])
+        """(blocked "message" [:context ((key val) ...)])
+
+        The preferred form is simply (blocked "message"). Reason codes are deprecated
+        and ignored. For backward compatibility, legacy forms are parsed but reason
+        codes are not exposed.
 
         Examples:
-            (blocked :reason locked)
-            (blocked :reason no-key :message "The door is locked.")
+            (blocked "Something went wrong.")                    ; Preferred
+            (blocked :message "The door is locked.")             ; Keyword style (legacy)
+            (blocked :reason ignored :message "The door is locked.")  ; Reason ignored
         """
-        kwargs = self._parse_kwargs(form)
-        reason = "unknown"
         context: dict[str, Any] = {}
 
-        for key, val in kwargs.items():
-            if key == "reason":
-                # Reason is a literal identifier (not evaluated)
-                if isinstance(val, Symbol):
-                    reason = val.name
-                else:
-                    reason = str(self.eval(val, env))
-            elif key == "context":
-                context.update(self._parse_context_list(val))
-            else:
-                # Other context values - evaluate to resolve variables
-                context[key] = self.eval(val, env)
+        args = form.items[1:]  # Skip the 'blocked' symbol
+        if args:
+            first_arg = args[0]
+            if isinstance(first_arg, str):
+                # (blocked "message") - preferred form
+                context["message"] = str(first_arg)
+            elif isinstance(first_arg, SList):
+                # Could be (blocked (str ...)) - evaluate as message
+                context["message"] = self.eval(first_arg, env)
+            elif isinstance(first_arg, Keyword):
+                # Keyword style: (blocked :reason X :message "..." :context ...)
+                # Parse but ignore :reason
+                kwargs = self._parse_kwargs(form)
+                for key, val in kwargs.items():
+                    if key == "reason":
+                        # Ignore reason codes - they are deprecated
+                        pass
+                    elif key == "context":
+                        context.update(self._parse_context_list(val))
+                    else:
+                        context[key] = self.eval(val, env)
 
-        return BehaviorBlocked(reason=reason, context=context)
+        # Always use "unknown" as reason - reason codes are deprecated
+        return BehaviorBlocked(reason="unknown", context=context)
 
     def _eval_redirect(self, form: SList, env: Optional[Environment] = None) -> BehaviorRedirect:
         """(redirect ACTION [:key value ...]) or (redirect :action ACTION) or (redirect :to ROOM)

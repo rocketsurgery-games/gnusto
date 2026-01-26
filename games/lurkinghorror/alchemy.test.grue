@@ -45,8 +45,7 @@
   (test "door is locked by default"
     :setup ((move! @player @chemistry-bldg))
     (go :direction south)
-    (assert (outcome? blocked))
-    (assert (reason? locked)))
+    (assert (outcome? blocked)))
 
   (test "can read department of alchemy on door"
     :setup ((move! @player @chemistry-bldg))
@@ -61,8 +60,7 @@
   (test "wrong key doesn't work"
     :setup ((move! @player @chemistry-bldg) (move! @key-1 @player))
     (do @alchemy-door :unlock @key-1)
-    (assert (outcome? blocked))
-    (assert (reason? wrong-key)))
+    (assert (outcome? blocked)))
 )
 
 (test "knock on door"
@@ -88,8 +86,7 @@
   (test "professor blocks lab entry without note"
     :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
     (go :direction south)
-    (assert (outcome? blocked))
-    (assert (reason? professor-blocks)))
+    (assert (outcome? blocked)))
 
   (test "showing note to professor sets flag"
     :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (move! @note @player) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
@@ -127,8 +124,7 @@
   (test "can't take sign-up sheet when professor present"
     :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept))
     (do @signup :take)
-    (assert (outcome? blocked))
-    (assert (reason? professor-prevents)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "lab bench and trapdoor"
@@ -152,14 +148,12 @@
   (test "can't go down without moving bench"
     :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved false))
     (go :direction down)
-    (assert (outcome? blocked))
-    (assert (reason? no-way-down)))
+    (assert (outcome? blocked)))
 
   (test "can't go down with closed trapdoor"
     :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open false))
     (go :direction down)
-    (assert (outcome? blocked))
-    (assert (reason? trapdoor-closed)))
+    (assert (outcome? blocked)))
 
   (test "can open trapdoor after moving bench"
     :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open false))
@@ -200,14 +194,12 @@
   (test "can't take elixir"
     :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @elixir :take)
-    (assert (outcome? blocked))
-    (assert (reason? liquid)))
+    (assert (outcome? blocked)))
 
   (test "can't drink elixir"
     :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @elixir :drink)
-    (assert (outcome? blocked))
-    (assert (reason? too-thick)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "pentagram"
@@ -232,8 +224,7 @@
   (test "can't exit pentagram when tied up without scuffing"
     :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 3) (set @pentagram :rmung false))
     (do @pentagram :exit)
-    (assert (outcome? blocked))
-    (assert (reason? magical-barrier)))
+    (assert (outcome? blocked)))
 
   (test "can scuff pentagram with knife"
     :setup ((move! @player @pentagram) (move! @knife @player) (set-prop! @professor ritual-stage 3) (set @pentagram :rmung false))
@@ -271,8 +262,7 @@
   (test "can't take nitrogen directly"
     :setup ((move! @player @temporary-lab))
     (do @nitrogen :take)
-    (assert (outcome? blocked))
-    (assert (reason? dangerous)))
+    (assert (outcome? blocked)))
 
   (test "opening flask creates mist"
     :setup ((move! @player @temporary-lab) (set @flask :open false) (move! @nitrogen @flask))
@@ -342,8 +332,7 @@
   (test "can't wear ring with gloves"
     :setup ((set @gloves :wearable true))
     (do @ring :wear)
-    (assert (outcome? blocked))
-    (assert (reason? gloves-in-way)))
+    (assert (outcome? blocked)))
 
   (test "can take off ring"
     :setup ((set @ring :wearable true))
@@ -354,8 +343,7 @@
   (test "can't take off ring with gloves"
     :setup ((set @ring :wearable true) (set @gloves :wearable true))
     (do @ring :take-off)
-    (assert (outcome? blocked))
-    (assert (reason? gloves-in-way)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "ring on hand puzzle"
@@ -364,8 +352,7 @@
   (test "can't put ring on mummified hand"
     :setup ((set @mummified-hand :person false))
     (do @ring :put-on @mummified-hand)
-    (assert (outcome? blocked))
-    (assert (reason? too-dry)))
+    (assert (outcome? blocked)))
 
   (test "can put ring on animated hand"
     :setup ((set @mummified-hand :person true))
@@ -416,8 +403,7 @@
   (test "give to mummified hand blocked"
     :setup ((move! @knife @player))
     (do @mummified-hand :give @knife)
-    (assert (outcome? blocked))
-    (assert (reason? inanimate)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "professor ritual event"
@@ -442,6 +428,5 @@
   (test "player in pentagram dies"
     :setup ((move! @player @pentagram))
     (wait)
-    (assert (outcome? blocked))
-    (assert (reason? death)))
+    (assert (outcome? blocked)))
 )

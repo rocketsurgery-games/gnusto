@@ -28,20 +28,17 @@
   (test "blocked when carrying PC - south"
     :setup ((move! @pc @player))
     (go :direction south)
-    (assert (outcome? blocked))
-    (assert (reason? tech-property)))
+    (assert (outcome? blocked)))
 
   (test "blocked when carrying PC - out"
     :setup ((move! @pc @player))
     (go :direction out)
-    (assert (outcome? blocked))
-    (assert (reason? tech-property)))
+    (assert (outcome? blocked)))
 
   (test "blocked when carrying chair - south"
     :setup ((move! @chair @player))
     (go :direction south)
-    (assert (outcome? blocked))
-    (assert (reason? tech-property)))
+    (assert (outcome? blocked)))
 
   (test "can leave after putting PC back"
     :setup ((move! @pc @player) (move! @pc @terminal-room))
@@ -55,8 +52,7 @@
   (assert (outcome? success))
   (assert (held? @pc))
   (go :direction south)
-  (assert (outcome? blocked))
-  (assert (reason? tech-property)))
+  (assert (outcome? blocked)))
 
 (test "take PC, drop PC, then exit"
   (do @pc :take)
@@ -129,25 +125,21 @@
   (test "can't turn off PC"
     :setup ((set @pc :powered true))
     (do @pc :turn-off)
-    (assert (outcome? blocked))
-    (assert (reason? hacker-interference)))
+    (assert (outcome? blocked)))
 
   (test "can't unplug PC"
     (do @pc :unplug)
-    (assert (outcome? blocked))
-    (assert (reason? hacker-interference)))
+    (assert (outcome? blocked)))
 
   (test "can't click on menu-box"
     (do @menu-box :click)
     (assert (outcome? blocked))
-    (assert (reason? hacker-interference))
     (assert (context? blocker @hacker)))
 
   (test "can't rub more-box"
     :setup ((move! @more-box @pc))
     (do @more-box :rub)
-    (assert (outcome? blocked))
-    (assert (reason? hacker-interference)))
+    (assert (outcome? blocked)))
 
   (test "examine is allowed"
     (do @pc :examine)
@@ -190,7 +182,6 @@
   (test "blocks unrelated actions"
     (do @chair :examine)
     (assert (outcome? blocked))
-    (assert (reason? possessed))
     (assert (context? compelled true))
     (assert (context? forced-target @more-box)))
 

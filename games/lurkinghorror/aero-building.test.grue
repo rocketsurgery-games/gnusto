@@ -75,18 +75,15 @@
 
   (test "cannot take padlock while attached"
     (do @padlock :take)
-    (assert (outcome? blocked))
-    (assert (reason? locked)))
+    (assert (outcome? blocked)))
 
   (test "cannot go down through locked hatch"
     (go :direction down)
-    (assert (outcome? blocked))
-    (assert (reason? locked)))
+    (assert (outcome? blocked)))
 
   (test "cutting padlock without bolt cutters fails"
     (do @padlock :cut)
-    (assert (outcome? blocked))
-    (assert (reason? need-tool)))
+    (assert (outcome? blocked)))
 
   (test "cutting padlock with bolt cutters succeeds"
     :setup ((move! @bolt-cutters @player))

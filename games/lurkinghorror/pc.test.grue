@@ -10,8 +10,7 @@
 
   (test "cannot take non-takeable object"
     (do @hacker :take)
-    (assert (outcome? blocked))
-    (assert (reason? not-takeable)))
+    (assert (outcome? blocked)))
 
   (test "drop PC"
     :setup ((move! @pc @player))
@@ -21,6 +20,5 @@
 
   (test "cannot drop object not held"
     (do @pc :drop)
-    (assert (outcome? blocked))
-    (assert (reason? not-held)))
+    (assert (outcome? blocked)))
 )

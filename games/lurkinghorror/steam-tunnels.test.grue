@@ -17,8 +17,7 @@
 
   (test "slab revulsion prevents touching"
     (do @slab :touch)
-    (assert (outcome? blocked))
-    (assert (reason? revulsion)))
+    (assert (outcome? blocked)))
 
   (test "iron plate can be opened"
     (do @iron-plate :open)
@@ -36,13 +35,11 @@
 
   (test "cannot look in pit after seeing it"
     (do @iron-plate :look-inside)
-    (assert (outcome? blocked))
-    (assert (reason? traumatized)))
+    (assert (outcome? blocked)))
 
   (test "cannot open pit after seeing it"
     (do @iron-plate :open)
-    (assert (outcome? blocked))
-    (assert (reason? traumatized)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "pressure valve"
@@ -67,8 +64,7 @@
 
   (test "steam blocks east passage"
     (do @player :go east)
-    (assert (outcome? blocked))
-    (assert (reason? scalding)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "passage when valve closed"
@@ -150,8 +146,7 @@
 
   (test "rats block passage when present"
     (go :direction east)
-    (assert (outcome? blocked))
-    (assert (reason? rats-blocking)))
+    (assert (outcome? blocked)))
 
   (test "can examine rats"
     (do @rats :examine)

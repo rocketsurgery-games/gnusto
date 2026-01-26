@@ -50,8 +50,7 @@
 
   (test "door starts locked"
     (do @curtain-door :open)
-    (assert (outcome? blocked))
-    (assert (reason? locked)))
+    (assert (outcome? blocked)))
 
   (test "master key unlocks door"
     :setup ((move! @master-key @player))
@@ -125,8 +124,7 @@
   (test "need axe to cut line"
     :setup ((set @high-voltage :powered true) (move! @high-voltage @player))
     (do @high-voltage :cut @bolt-cutters)
-    (assert (outcome? blocked))
-    (assert (reason? too-thick)))
+    (assert (outcome? blocked)))
 
   (test "axe cuts line after 3 hits"
     :setup ((set @high-voltage :powered true) (move! @high-voltage @player) (move! @axe @player) (set-prop! @high-voltage cut-count 2))

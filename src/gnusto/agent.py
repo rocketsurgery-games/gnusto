@@ -547,7 +547,12 @@ class GameSession:
         # Build S-expression: (do @target :verb arg1 arg2 ...)
         items = [Symbol("do"), Symbol(target), Keyword(verb)]
         for arg in action_args:
-            items.append(Symbol(arg))
+            # Arguments starting with @ are object references (Symbols)
+            # Everything else is a string value
+            if arg.startswith("@"):
+                items.append(Symbol(arg))
+            else:
+                items.append(arg)  # Keep as string
 
         expr = SList(items)
         return self._eval_and_format(expr)

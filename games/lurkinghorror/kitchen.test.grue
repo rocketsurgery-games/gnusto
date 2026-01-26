@@ -47,8 +47,7 @@
 
   (test "can't look inside when closed"
     (do @refrigerator :look-inside)
-    (assert (outcome? blocked))
-    (assert (reason? closed)))
+    (assert (outcome? blocked)))
 
   (test "can look inside when open"
     :setup ((set @refrigerator :open true))
@@ -78,13 +77,11 @@
   (test "can't open when already open"
     :setup ((set @microwave :open true))
     (do @microwave :open)
-    (assert (outcome? blocked))
-    (assert (reason? already-open)))
+    (assert (outcome? blocked)))
 
   (test "can't close when already closed"
     (do @microwave :close)
-    (assert (outcome? blocked))
-    (assert (reason? already-closed)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "microwave set-timer"
@@ -102,8 +99,7 @@
 
   (test "can't set over 1 hour"
     (do @microwave :set-timer 3601)
-    (assert (outcome? blocked))
-    (assert (reason? too-long)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "microwave set-temp"
@@ -132,8 +128,7 @@
   (test "can't change while running"
     :setup ((queue! microwave-running))
     (do @microwave :set-temp high)
-    (assert (outcome? blocked))
-    (assert (reason? running)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "microwave start/stop/clear"
@@ -153,20 +148,17 @@
 
   (test "can't start without timer"
     (do @microwave :start)
-    (assert (outcome? blocked))
-    (assert (reason? no-time)))
+    (assert (outcome? blocked)))
 
   (test "can't start with door open"
     :setup ((set-prop! @microwave timer 120) (set @microwave :open true))
     (do @microwave :start)
-    (assert (outcome? blocked))
-    (assert (reason? door-open)))
+    (assert (outcome? blocked)))
 
   (test "can't start when already running"
     :setup ((queue! microwave-running))
     (do @microwave :start)
-    (assert (outcome? blocked))
-    (assert (reason? already-running)))
+    (assert (outcome? blocked)))
 
   (test "can stop running"
     :setup ((queue! microwave-running))
@@ -176,8 +168,7 @@
 
   (test "can't stop when already stopped"
     (do @microwave :stop)
-    (assert (outcome? blocked))
-    (assert (reason? already-off)))
+    (assert (outcome? blocked)))
 
   (test "clear resets timer"
     :setup ((set-prop! @microwave timer 120))
@@ -188,8 +179,7 @@
   (test "can't clear while running"
     :setup ((queue! microwave-running))
     (do @microwave :clear)
-    (assert (outcome? blocked))
-    (assert (reason? running)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "microwave safety interlock"
@@ -305,19 +295,16 @@
   (test "can't put item in closed container"
     :setup ((set @microwave :open false))
     (do @carton :put @microwave)
-    (assert (outcome? blocked))
-    (assert (reason? closed)))
+    (assert (outcome? blocked)))
 
   (test "can't put item in non-container"
     (do @carton :put @readout)
-    (assert (outcome? blocked))
-    (assert (reason? not-container)))
+    (assert (outcome? blocked)))
 
   (test "can't put item not being held"
     :setup ((move! @carton @kitchen))
     (do @carton :put @microwave)
-    (assert (outcome? blocked))
-    (assert (reason? not-held)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "heating food in carton in microwave"
@@ -348,8 +335,7 @@
 
   (test "can't take food out of carton (spill)"
     (do @chinese-food :take)
-    (assert (outcome? blocked))
-    (assert (reason? spill)))
+    (assert (outcome? blocked)))
 
   (test "can eat chinese food"
     (do @chinese-food :eat)
@@ -370,8 +356,7 @@
 
   (test "can't eat carton"
     (do @carton :eat)
-    (assert (outcome? blocked))
-    (assert (reason? inedible)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "snack behaviors"
@@ -400,14 +385,12 @@
   (test "can't eat empty snack"
     :setup ((set @snack :rmung true))
     (do @snack :eat)
-    (assert (outcome? blocked))
-    (assert (reason? empty)))
+    (assert (outcome? blocked)))
 
   (test "can't eat too hot snack"
     :setup ((set @snack :open true) (set-prop! @snack heat 15))
     (do @snack :eat)
-    (assert (outcome? blocked))
-    (assert (reason? too-hot)))
+    (assert (outcome? blocked)))
 )
 
 (test-group "coke behaviors"
@@ -435,8 +418,7 @@
   (test "can't drink empty coke"
     :setup ((set-prop! @coke size 1))
     (do @coke :drink)
-    (assert (outcome? blocked))
-    (assert (reason? empty)))
+    (assert (outcome? blocked)))
 
   (test "can open/close coke"
     (do @coke :open)

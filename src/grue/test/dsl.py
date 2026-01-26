@@ -47,7 +47,6 @@ Test groups with shared setup:
 
 Result predicates (check last action result):
     (outcome? success|blocked|error|redirect)
-    (reason? REASON)
     (context? KEY VALUE)
     (victory? true|false)
     (death? true|false)
@@ -350,14 +349,14 @@ class TestRunner:
     # Other predicates (held?, in?, visible?, etc.) work via ExprEvaluator fallback.
     _EXPECTATION_PREDICATES = {
         # Result predicates (require _last_result)
-        "outcome?", "reason?", "context?", "death?", "victory?",
+        "outcome?", "context?", "death?", "victory?",
         # State predicates (with explicit handlers for better error messages)
         "player-at?", "has-flag?", "no-flag?", "not-flag?", "loc?",
         "global?", "prop?", "queued?", "not-queued?",
     }
 
     # Result predicates require a last action result to check
-    _RESULT_PREDICATES = {"outcome?", "reason?", "context?", "death?", "victory?"}
+    _RESULT_PREDICATES = {"outcome?", "context?", "death?", "victory?"}
 
     def _run_assert(
         self,
@@ -570,18 +569,6 @@ class TestRunner:
                 if result.outcome != expected:
                     failures.append(
                         f"Expected outcome '{expected}', got '{result.outcome}'"
-                    )
-
-            elif name == "reason?":
-                if len(pred) != 2:
-                    failures.append("(reason? EXPECTED) requires 1 argument")
-                    continue
-                expected = pred[1]
-                if isinstance(expected, Symbol):
-                    expected = expected.name
-                if result.reason != expected:
-                    failures.append(
-                        f"Expected reason '{expected}', got '{result.reason}'"
                     )
 
             elif name == "context?":

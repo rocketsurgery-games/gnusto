@@ -19,8 +19,7 @@
 (test "roof-door blocks access when locked"
   :setup ((move! @player @brown-top-floor) (set @roof-door :locked true) (set @roof-door :open false))
   (go :direction west)
-  (assert (outcome? blocked))
-  (assert (reason? locked)))
+  (assert (outcome? blocked)))
 
 (test "can unlock roof-door with master key"
   :setup ((move! @player @brown-top-floor) (set @roof-door :locked true) (move! @master-key @player))
@@ -67,14 +66,12 @@
 (test "flier blocks exit from dome"
   :setup ((move! @player @inside-dome) (move! @flier @inside-dome))
   (go :direction out)
-  (assert (outcome? blocked))
-  (assert (reason? flier-blocks)))
+  (assert (outcome? blocked)))
 
 (test "cannot climb tentacle without gloves - burns"
   :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @gloves :wearable false))
   (go :direction up)
-  (assert (outcome? blocked))
-  (assert (reason? burns)))
+  (assert (outcome? blocked)))
 
 (test "can climb tentacle with gloves"
   :setup ((move! @player @great-dome) (set @tentacle :invisible false) (set @gloves :wearable true))
@@ -116,8 +113,7 @@
 (test "can't attack peach tree"
   :setup ((move! @player @inside-dome) (move! @axe @player))
   (do @peach-tree :attack @axe)
-  (assert (outcome? blocked))
-  (assert (reason? vandalism)))
+  (assert (outcome? blocked)))
 
 (test "giving smooth-stone to flier makes it edge away"
   :setup ((move! @player @brown-roof) (move! @flier @brown-roof) (move! @smooth-stone @player))

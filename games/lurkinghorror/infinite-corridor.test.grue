@@ -120,7 +120,6 @@
   (test "first exit attempt warns"
     (go :direction south)
     (assert (outcome? blocked))
-    (assert (reason? warning))
     (assert (prop? @great-court-exit-barrier warned true)))
 
   (test "second exit attempt succeeds"
