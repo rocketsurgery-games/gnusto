@@ -1,0 +1,188 @@
+/* Gnusto Web UI - Graphic Novel Style */
+
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-room: rgba(22, 33, 62, 0.95);
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666;
+  --accent-cyan: #4fc3f7;
+  --accent-green: #81c784;
+  --accent-yellow: #ffd54f;
+  --accent-magenta: #ce93d8;
+
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* Main scrollable content */
+#content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+/* Content blocks */
+.block {
+  margin-bottom: 1.5rem;
+}
+
+.block-narrative {
+  text-indent: 1.5em;
+}
+
+.block-narrative:first-of-type {
+  text-indent: 0;
+}
+
+.block-action {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  text-indent: 0;
+}
+
+.block-command {
+  color: var(--accent-green);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.95rem;
+  margin-top: 2rem;
+  text-indent: 0;
+}
+
+.block-system {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  text-indent: 0;
+}
+
+/* Sticky room headers */
+.block-room {
+  position: sticky;
+  top: 0;
+  background: var(--bg-room);
+  backdrop-filter: blur(8px);
+  margin: 2rem -1rem 1.5rem -1rem;
+  padding: 1rem;
+  z-index: 10;
+  text-indent: 0;
+}
+
+.block-room h2 {
+  color: var(--accent-cyan);
+  font-size: 1.3rem;
+  font-weight: normal;
+  margin-bottom: 0.25rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.block-room .room-desc {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.block-room .room-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.block-room .room-meta span:not(:empty)::after {
+  content: " · ";
+}
+
+.block-room .room-meta span:last-child::after {
+  content: "";
+}
+
+.block-image {
+  text-align: center;
+  margin: 2rem 0;
+  text-indent: 0;
+}
+
+.block-image img {
+  max-width: 100%;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Text styling */
+.ref {
+  color: var(--accent-magenta);
+}
+
+.dialogue {
+  color: var(--accent-yellow);
+}
+
+/* Inline input at bottom of content */
+#input-area {
+  margin-top: 3rem;
+}
+
+#command-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#command-form .prompt {
+  color: var(--accent-green);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.95rem;
+}
+
+#command-input {
+  flex: 1;
+  padding: 0;
+  font-size: 1rem;
+  font-family: 'Consolas', 'Monaco', monospace;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  outline: none;
+  caret-color: var(--accent-cyan);
+}
+
+#command-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+#command-input:disabled {
+  opacity: 0.5;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  :root {
+    font-size: 16px;
+  }
+
+  #content {
+    padding: 1rem;
+  }
+
+  .block-room {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    padding: 0.75rem;
+  }
+}

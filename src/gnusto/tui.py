@@ -6,6 +6,7 @@ just straightforward terminal output.
 """
 
 import re
+from pathlib import Path
 from rich.console import Console
 from rich.theme import Theme
 from rich.rule import Rule
@@ -13,6 +14,10 @@ from rich.rule import Rule
 from grue.save import save_game, load_game, list_saves
 
 from .agent import GameSession, TurnRecord
+from .render import (
+    ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
+    build_turn_output, build_room_block,
+)
 from .state import get_game_state
 
 
@@ -24,8 +29,9 @@ REF_PATTERN = re.compile(r'@[\w-]+')
 THEME = Theme({
     "room.name": "bold cyan",
     "room.desc": "",
-    "room.nearby": "dim",
+    "room.exits": "dim yellow",
     "room.inventory": "dim green",
+    "room.objects": "dim",
     "command": "bold green",
     "action": "dim",
     "narrative": "",
@@ -34,7 +40,6 @@ THEME = Theme({
     "error": "bold red",
     "warning": "yellow",
     "ref": "magenta",
-    "object": "bright_blue",
 })
 
 
@@ -61,67 +66,68 @@ class SimpleTUI:
 
     def __init__(self, game_path: str, debug: bool = False):
         self.game_path = game_path
+        self.game_dir = Path(game_path).resolve()
+        if self.game_dir.is_file():
+            self.game_dir = self.game_dir.parent
         self.debug = debug
         self.session: GameSession | None = None
         self.console = Console(theme=THEME, highlight=False)
         self._last_room: str | None = None
 
-    def _print_room_state(self, force: bool = False) -> None:
-        """Print room state. Only prints if room changed or forced."""
-        if not self.session:
-            return
-
-        state = get_game_state(self.session.runtime)
-
-        # Skip if room hasn't changed (unless forced)
-        if not force and state.room == self._last_room:
-            return
-        self._last_room = state.room
-
-        self.console.print()
-        self.console.rule(style="dim")
-
-        # Room name
-        if state.vehicle:
-            header = f"{state.room_name} ({state.vehicle[1]} {state.vehicle[0]})"
-        else:
-            header = state.room_name
-        self.console.print(f"[room.name]{header}[/]")
-
-        # Room description
-        if state.room_description:
-            self.console.print(f"[room.desc]{state.room_description}[/]")
-
-        # Exits
-        if state.nearby_rooms:
-            nearby_str = ", ".join(r.description for r in state.nearby_rooms)
-            self.console.print(f"[room.nearby]Exits: {nearby_str}[/]")
-
-        # Inventory
-        if state.inventory:
-            inv_str = ", ".join(obj.description for obj in state.inventory)
-            self.console.print(f"[room.inventory]Carrying: {inv_str}[/]")
-
-        # Objects with fdesc
-        objects_with_fdesc = [obj for obj in state.visible_objects if obj.fdesc]
-        if objects_with_fdesc:
+    def render_block(self, block: ContentBlock) -> None:
+        """Render a content block to the terminal."""
+        if isinstance(block, RoomEnter):
             self.console.print()
-            for obj in objects_with_fdesc:
-                styled = style_text(obj.fdesc)
-                self.console.print(f"[object]{styled}[/]")
+            self.console.rule(style="dim")
 
-        self.console.print()
+            # Room name
+            self.console.print(f"[room.name]{block.name}[/]")
 
-    def _print_action(self, result: str) -> None:
-        """Print an action result (streaming callback)."""
-        self.console.print(f"[action]{result}[/]")
+            # Room description
+            if block.description:
+                self.console.print(f"[room.desc]{block.description}[/]")
 
-    def _print_narrative(self, text: str) -> None:
-        """Print narrative response with dialogue styling."""
-        if not text:
-            return
-        styled = style_text(text)
-        self.console.print(f"[narrative]{styled}[/]")
+            # Exits (just direction names)
+            if block.exits:
+                exits_str = ", ".join(block.exits)
+                self.console.print(f"[room.exits]Exits: {exits_str}[/]")
+
+            # Inventory
+            if block.inventory:
+                inv_str = ", ".join(block.inventory)
+                self.console.print(f"[room.inventory]Carrying: {inv_str}[/]")
+
+            # Objects
+            if block.objects:
+                obj_str = ", ".join(block.objects)
+                self.console.print(f"[room.objects]You see: {obj_str}[/]")
+
+            # Image (TUI just notes it exists)
+            if block.image:
+                self.console.print(f"[dim][Image: {Path(block.image).name}][/]")
+
+            self.console.print()
+            self._last_room = block.room_id
+
+        elif isinstance(block, ActionResult):
+            self.console.print(f"[action]{block.text}[/]")
+
+        elif isinstance(block, Narrative):
+            styled = style_text(block.text)
+            self.console.print(f"[narrative]{styled}[/]")
+            self.console.print()
+
+        elif isinstance(block, Image):
+            # TUI just notes the image
+            self.console.print(f"[dim][Image: {Path(block.src).name}][/]")
+
+        elif isinstance(block, SystemMessage):
+            style = {
+                "info": "system",
+                "warning": "warning",
+                "error": "error",
+            }.get(block.level, "system")
+            self.console.print(f"[{style}]{block.text}[/]")
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""
@@ -130,16 +136,16 @@ class SimpleTUI:
         arg = parts[1] if len(parts) > 1 else ""
 
         if cmd in ("help", "h", "?"):
-            self.console.print("[system]Commands: /save [slot], /load [slot], /saves, /look, /debug, /quit[/]")
+            self.render_block(SystemMessage("Commands: /save [slot], /load [slot], /saves, /look, /debug, /quit"))
 
         elif cmd == "save":
             slot = arg or "default"
             if self.session:
                 try:
                     path = save_game(self.session.runtime, slot, self.session.turn_history)
-                    self.console.print(f"[system]Game saved to {path}[/]")
+                    self.render_block(SystemMessage(f"Game saved to {path}"))
                 except Exception as e:
-                    self.console.print(f"[error]Error saving: {e}[/]")
+                    self.render_block(SystemMessage(f"Error saving: {e}", level="error"))
 
         elif cmd == "load":
             slot = arg or "default"
@@ -147,7 +153,7 @@ class SimpleTUI:
                 try:
                     history_data, warnings = load_game(self.session.runtime, slot)
                     for w in warnings:
-                        self.console.print(f"[warning]Warning: {w}[/]")
+                        self.render_block(SystemMessage(f"Warning: {w}", level="warning"))
                     self.session.turn_history.clear()
                     for turn_data in history_data:
                         turn = TurnRecord(
@@ -158,48 +164,53 @@ class SimpleTUI:
                             narrative=turn_data.get("narrative", ""),
                         )
                         self.session.turn_history.append(turn)
-                    self.console.print(f"[system]Game loaded ({len(self.session.turn_history)} turns)[/]")
-                    self._last_room = None  # Force room display
-                    self._print_room_state(force=True)
+                    self.render_block(SystemMessage(f"Game loaded ({len(self.session.turn_history)} turns)"))
+                    # Show current room state
+                    state = get_game_state(self.session.runtime)
+                    room_block = build_room_block(state, self.session.runtime, self.game_dir)
+                    self.render_block(room_block)
                 except FileNotFoundError:
-                    self.console.print(f"[error]No save found for slot '{slot}'[/]")
+                    self.render_block(SystemMessage(f"No save found for slot '{slot}'", level="error"))
                 except Exception as e:
-                    self.console.print(f"[error]Error loading: {e}[/]")
+                    self.render_block(SystemMessage(f"Error loading: {e}", level="error"))
 
         elif cmd == "saves":
             if self.session:
                 game_name = self.session.runtime.world.name or "unknown"
                 saves = list_saves(game_name)
                 if not saves:
-                    self.console.print("[system]No saves found.[/]")
+                    self.render_block(SystemMessage("No saves found."))
                 else:
-                    self.console.print("[system]Available saves:[/]")
+                    self.render_block(SystemMessage("Available saves:"))
                     for slot, timestamp, _ in saves:
-                        self.console.print(f"[system]  {slot}: {timestamp}[/]")
+                        self.render_block(SystemMessage(f"  {slot}: {timestamp}"))
 
         elif cmd in ("look", "l"):
-            self._print_room_state(force=True)
+            if self.session:
+                state = get_game_state(self.session.runtime)
+                room_block = build_room_block(state, self.session.runtime, self.game_dir)
+                self.render_block(room_block)
 
         elif cmd in ("debug", "d"):
             if self.session:
                 context = self.session.format_debug_context()
-                self.console.print("[system]─── Debug Context ───[/]")
-                self.console.print(f"[system]{context}[/]")
-                self.console.print("[system]─────────────────────[/]")
+                self.render_block(SystemMessage("─── Debug Context ───"))
+                self.render_block(SystemMessage(context))
+                self.render_block(SystemMessage("─────────────────────"))
 
         elif cmd in ("quit", "q"):
             return False
 
         else:
-            self.console.print(f"[system]Unknown command: /{cmd}[/]")
+            self.render_block(SystemMessage(f"Unknown command: /{cmd}"))
 
         return True
 
     def run(self) -> None:
         """Run the game loop."""
-        self.console.print(f"[system]Loading game: {self.game_path}[/]")
+        self.render_block(SystemMessage(f"Loading game: {self.game_path}"))
         if self.debug:
-            self.console.print("[system]Debug mode enabled[/]")
+            self.render_block(SystemMessage("Debug mode enabled"))
 
         self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
 
@@ -208,12 +219,14 @@ class SimpleTUI:
 
         # Show intro
         if self.session.runtime.world.intro:
-            self.console.print(self.session.runtime.world.intro)
+            self.render_block(Narrative(self.session.runtime.world.intro))
 
         # Show initial room state
-        self._print_room_state(force=True)
+        state = get_game_state(self.session.runtime)
+        room_block = build_room_block(state, self.session.runtime, self.game_dir)
+        self.render_block(room_block)
 
-        self.console.print("[system]Type commands in natural language. /help for commands.[/]")
+        self.render_block(SystemMessage("Type commands in natural language. /help for commands."))
         self.console.print()
 
         # Main loop
@@ -222,7 +235,7 @@ class SimpleTUI:
                 user_input = input("> ")
             except (EOFError, KeyboardInterrupt):
                 self.console.print()
-                self.console.print("[system]Goodbye![/]")
+                self.render_block(SystemMessage("Goodbye!"))
                 break
 
             user_input = user_input.strip()
@@ -232,31 +245,49 @@ class SimpleTUI:
             # Slash commands
             if user_input.startswith("/"):
                 if not self._handle_slash_command(user_input):
-                    self.console.print("[system]Goodbye![/]")
+                    self.render_block(SystemMessage("Goodbye!"))
                     break
                 continue
 
             # Legacy quit
             if user_input.lower() in ("quit", "exit", "q"):
-                self.console.print("[system]Goodbye![/]")
+                self.render_block(SystemMessage("Goodbye!"))
                 break
 
             # Echo command
             self.console.print(f"[command]> {user_input}[/]")
             self.console.print()
 
+            # Track previous room for change detection
+            previous_room = self._last_room
+
+            # Collect action results for building blocks
+            action_results: list[str] = []
+
+            def on_action(result: str) -> None:
+                action_results.append(result)
+                # Stream action results as they happen
+                if result and result != "Done.":
+                    self.render_block(ActionResult(text=result))
+
             # Process command
-            response_text, results = self.session.process_input(
-                user_input,
-                on_action=self._print_action
+            response_text, _ = self.session.process_input(user_input, on_action=on_action)
+
+            # Build and render content blocks for the turn
+            state = get_game_state(self.session.runtime)
+            blocks = build_turn_output(
+                action_results=action_results,
+                narrative=response_text,
+                state=state,
+                runtime=self.session.runtime,
+                previous_room=previous_room,
+                game_dir=self.game_dir,
             )
 
-            # Show narrative response
-            self._print_narrative(response_text)
-            self.console.print()
-
-            # Update room state if we moved
-            self._print_room_state()
+            # Render blocks (skip ActionResults - already streamed)
+            for block in blocks:
+                if not isinstance(block, ActionResult):
+                    self.render_block(block)
 
 
 def run_tui(game_path: str, debug: bool = False) -> None:
