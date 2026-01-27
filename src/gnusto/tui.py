@@ -271,9 +271,10 @@ class SimpleTUI:
         self._move_cursor(self._header_height + 1)
 
     def _scroll_height(self) -> int:
-        """Get the height of the scroll region in lines."""
+        """Get the height of the scroll region in lines (excluding prompt line)."""
         if self.term:
-            return self.term.height - self._header_height
+            # -1 for the prompt line at the bottom
+            return self.term.height - self._header_height - 1
         return 24  # Fallback
 
     def _add_to_scroll_buffer(self, text: str, style: str = "") -> str:
@@ -383,6 +384,18 @@ class SimpleTUI:
         self._scroll_offset = 0
         self._render_scroll_region()
 
+    def _clear_scroll_buffer(self) -> None:
+        """Clear the scroll buffer and redraw screen."""
+        self._scroll_buffer.clear()
+        self._scroll_offset = 0
+        if self.term:
+            # Clear the scroll region
+            height = self._scroll_height()
+            for i in range(height):
+                row = self._header_height + 1 + i
+                print(f"\033[{row};1H\033[2K", end="", flush=True)
+            self._render_scroll_region()
+
     def _print_in_scroll_region(self, text: str, style: str = "") -> None:
         """Print text in the scroll region (or normally if not TTY)."""
         if self.is_tty and self.term:
@@ -456,8 +469,8 @@ class SimpleTUI:
         arg = parts[1] if len(parts) > 1 else ""
 
         if cmd in ("help", "h", "?"):
-            self._print_in_scroll_region("Commands: /save [slot], /load [slot], /saves, /debug, /quit", "system")
-            self._print_in_scroll_region("Scrollback: PgUp/PgDn to scroll, Home/End for top/bottom, Esc to return", "system")
+            self._print_in_scroll_region("Commands: /save [slot], /load [slot], /saves, /clear, /debug, /quit", "system")
+            self._print_in_scroll_region("Scroll: ↑/↓ line, PgUp/PgDn half-page, Home/End top/bottom, ^L clear", "system")
 
         elif cmd == "save":
             slot = arg or "default"
@@ -510,6 +523,10 @@ class SimpleTUI:
                 self._print_in_scroll_region(context, "system")
                 self._print_in_scroll_region("─────────────────────", "system")
 
+        elif cmd in ("clear", "cls"):
+            self._clear_scroll_buffer()
+            self._print_in_scroll_region("Screen cleared.", "system")
+
         elif cmd in ("quit", "q"):
             return False
 
@@ -541,18 +558,32 @@ class SimpleTUI:
                 key = self.term.inkey(timeout=None)
 
                 if key.code == self.term.KEY_PGUP:
-                    # Page Up - scroll back in history
+                    # Page Up - scroll back in history (half page)
                     self._scroll_up()
-                    # Redraw header (may have been corrupted) and prompt
                     self._draw_header()
                     self._move_cursor(self.term.height)
                     self._clear_line()
                     print(prompt + input_buffer, end="", flush=True)
 
                 elif key.code == self.term.KEY_PGDOWN:
-                    # Page Down - scroll forward
+                    # Page Down - scroll forward (half page)
                     self._scroll_down()
-                    # Redraw header and prompt
+                    self._draw_header()
+                    self._move_cursor(self.term.height)
+                    self._clear_line()
+                    print(prompt + input_buffer, end="", flush=True)
+
+                elif key.code == self.term.KEY_UP:
+                    # Arrow Up - scroll back one line
+                    self._scroll_up(1)
+                    self._draw_header()
+                    self._move_cursor(self.term.height)
+                    self._clear_line()
+                    print(prompt + input_buffer, end="", flush=True)
+
+                elif key.code == self.term.KEY_DOWN:
+                    # Arrow Down - scroll forward one line
+                    self._scroll_down(1)
                     self._draw_header()
                     self._move_cursor(self.term.height)
                     self._clear_line()
@@ -563,7 +594,6 @@ class SimpleTUI:
                     if self._scroll_buffer:
                         self._scroll_offset = max(0, len(self._scroll_buffer) - self._scroll_height())
                         self._render_scroll_region()
-                    # Redraw header and prompt
                     self._draw_header()
                     self._move_cursor(self.term.height)
                     self._clear_line()
@@ -572,7 +602,13 @@ class SimpleTUI:
                 elif key.code == self.term.KEY_END:
                     # End - scroll to bottom (live)
                     self._scroll_to_bottom()
-                    # Redraw header and prompt
+                    self._draw_header()
+                    self._move_cursor(self.term.height)
+                    self._clear_line()
+                    print(prompt + input_buffer, end="", flush=True)
+
+                elif key == "\x0c":  # Ctrl+L - clear screen
+                    self._clear_scroll_buffer()
                     self._draw_header()
                     self._move_cursor(self.term.height)
                     self._clear_line()
@@ -652,7 +688,7 @@ class SimpleTUI:
         if not self.is_tty:
             self._print_room_state()
 
-        self._print_in_scroll_region("Type commands in natural language. /help for commands. PgUp/PgDn to scroll.", "system")
+        self._print_in_scroll_region("Type commands in natural language. /help for commands. Arrows/PgUp/PgDn to scroll.", "system")
         self._print_in_scroll_region("")
 
         try:
