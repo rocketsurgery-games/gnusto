@@ -22,7 +22,6 @@
         (true (success))))
 
     ; Room-level action interception
-    ; ZIL TERMINAL-ROOM-F with RARG? BEG
     :before-action (fn (?verb ?target)
       (cond
         ; === HACKER HELPING ===
@@ -34,7 +33,6 @@
                    :context ((blocker @hacker))
                    :message "\"Who's the hacker here?\" he snarls."))
 
-        ; === COMPULSION (POSSESSION) ===
         ; When possessed, override most player actions
         ; Allow: click/rub/point/push/attack on @more-box, read @odd-paper
         ; Everything else gets redirected to touching the MORE box
@@ -52,8 +50,6 @@
         ; Default - allow action to proceed
         (true (default))))))
 
-; === Barriers ===
-
 (object @hacker-exit-barrier
   :location @terminal-room
   :description "passage"
@@ -68,15 +64,7 @@
         (true
           (success))))))
 
-; === Events ===
-
-; Room action behaviors translated to:
-; - Hacker blocks PC actions during helping: @pc :turn-off, :unplug + room :before-action
-; - Compulsion event forces player to read: compulsion event + room :before-action
-; - Exit barrier: @hacker-exit-barrier :through behavior
-; - Room entry from @platform-room: :on-enter triggers nightmare wake-up
-
-; I-HACKER-HELPS: Multi-stage cutscene when hacker helps with PC
+; hacker-helps: Multi-stage cutscene when hacker helps with PC
 ; Queued by :help behavior, advances each turn player is in terminal-room
 (event hacker-helps
   (def stage1-desc "The hacker wanders over, trying to look nonchalant. \"Losing, huh?\" he asks wittily. He glances at
@@ -99,7 +87,7 @@
     2 `((set @hacker :help-stage 3) (success :stage 3 :description ,stage3-desc))
     `((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description ,stage4-desc))))
 
-; I-FOOD-HINT: Hints about feeding the hacker (re-queues itself)
+; food-hint: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
 (event food-hint
   (def hint1 "I could stand a little snack, though.")
@@ -115,7 +103,7 @@
     4 '((set @hacker :food-hint 0) (dequeue food-hint) (success :context ((hint hint4))))
     '((dequeue food-hint) (success))))
 
-; I-COMPULSION: Possession event - player is compelled to read the odd paper
+; compulsion: Possession event - player is compelled to read the odd paper
 ; Triggered by reading @odd-paper. Advances through 4 pages of disturbing content,
 ; then teleports player to @yuggoth (nightmare realm). Player cannot resist.
 (event compulsion

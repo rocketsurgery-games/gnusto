@@ -1,4 +1,11 @@
 import './style.css'
+import { marked } from 'marked'
+
+// Configure marked for safe rendering
+marked.setOptions({
+  breaks: true,  // Convert \n to <br>
+  gfm: true,     // GitHub Flavored Markdown
+})
 
 // Content block types (matching Python render.py)
 interface RoomEnterBlock {
@@ -51,7 +58,15 @@ interface TurnCompleteMessage {
   type: 'turn_complete'
 }
 
-type ServerMessage = BlocksMessage | TurnCompleteMessage
+interface ClearMessage {
+  type: 'clear'
+}
+
+interface QuitMessage {
+  type: 'quit'
+}
+
+type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage
 
 // DOM elements
 const content = document.getElementById('content')!
@@ -96,6 +111,15 @@ function connect() {
   }
 }
 
+function clearContent() {
+  // Remove all blocks except input area
+  while (content.firstChild && content.firstChild !== inputArea) {
+    content.removeChild(content.firstChild)
+  }
+  // Clear room blocks tracking
+  roomBlocks.length = 0
+}
+
 function handleMessage(message: ServerMessage) {
   if (message.type === 'blocks') {
     for (const block of message.blocks) {
@@ -107,6 +131,15 @@ function handleMessage(message: ServerMessage) {
     // Re-enable input only after turn is complete
     commandInput.disabled = false
     commandInput.focus()
+  } else if (message.type === 'clear') {
+    clearContent()
+  } else if (message.type === 'quit') {
+    // Close connection gracefully
+    if (ws) {
+      ws.close()
+    }
+    commandInput.disabled = true
+    commandInput.placeholder = 'Game ended. Refresh to restart.'
   }
 }
 
@@ -168,7 +201,8 @@ function renderBlock(block: ContentBlock) {
       } else if (block.level === 'warning') {
         el.style.color = 'var(--accent-yellow)'
       }
-      el.innerHTML = escapeHtml(block.text)
+      // Render markdown for system messages (debug output, help, etc.)
+      el.innerHTML = marked.parse(block.text) as string
       break
 
     case 'command':
@@ -191,11 +225,18 @@ function styleText(text: string): string {
   // Escape HTML first
   let html = escapeHtml(text)
 
-  // Style @references
+  // Add line breaks before @speaker: "..." patterns (but not at start)
+  // This separates dialogue from different characters
+  html = html.replace(/(\S)\s*(@[\w-]+:\s*&quot;)/g, '$1<br><br>$2')
+
+  // Style @references (magenta)
   html = html.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
 
-  // Style "dialogue"
-  html = html.replace(/"[^"]*"/g, '<span class="dialogue">$&</span>')
+  // Style "dialogue" (escaped as &quot;) - use non-greedy match
+  html = html.replace(/&quot;.*?&quot;/g, '<span class="dialogue">$&</span>')
+
+  // Convert remaining newlines to <br> for proper display
+  html = html.replace(/\n/g, '<br>')
 
   return html
 }

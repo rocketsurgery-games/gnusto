@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from .agent import GameSession
+from .commands import handle_command as handle_slash_command
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
     build_turn_output, build_room_block,
@@ -107,15 +108,24 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                 if msg_type == "command":
                     command = message.get("text", "").strip()
                     if command:
-                        # Get room before processing
-                        state_before = get_game_state(session.runtime)
-                        last_room = state_before.room
+                        if command.startswith("/"):
+                            # Handle slash command
+                            session, should_continue = await handle_slash_command_ws(
+                                websocket, session, command,
+                                app.state.game_path, app.state.game_dir, app.state.debug
+                            )
+                            if not should_continue:
+                                break
+                        else:
+                            # Get room before processing
+                            state_before = get_game_state(session.runtime)
+                            last_room = state_before.room
 
-                        # Process and send results
-                        await handle_command(
-                            websocket, session, command,
-                            last_room, app.state.game_dir
-                        )
+                            # Process and send results
+                            await handle_game_command(
+                                websocket, session, command,
+                                last_room, app.state.game_dir
+                            )
 
         except WebSocketDisconnect:
             pass
@@ -174,7 +184,52 @@ async def send_initial_state(
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
-async def handle_command(
+async def handle_slash_command_ws(
+    websocket: WebSocket,
+    session: GameSession,
+    command: str,
+    game_path: str,
+    game_dir: Path,
+    debug: bool,
+) -> tuple[GameSession, bool]:
+    """
+    Handle a slash command via websocket.
+
+    Returns:
+        Tuple of (session, should_continue) - session may be replaced on reset
+    """
+    result = handle_slash_command(command, session, game_dir)
+
+    # Handle special actions
+    if result.action == "quit":
+        await websocket.send_text(json.dumps({"type": "quit"}))
+        return session, False
+
+    elif result.action == "clear":
+        await websocket.send_text(json.dumps({"type": "clear"}))
+
+    elif result.action == "reset":
+        # Create new session
+        session = GameSession.from_game_file(game_path, debug=debug)
+        # Send reset action first
+        await websocket.send_text(json.dumps({"type": "clear"}))
+        # Then send initial state
+        await send_initial_state(websocket, session, game_dir)
+        return session, True
+
+    # Send any blocks
+    if result.blocks:
+        await websocket.send_text(json.dumps({
+            "type": "blocks",
+            "blocks": [block_to_dict(b) for b in result.blocks],
+        }))
+
+    # Signal turn complete
+    await websocket.send_text(json.dumps({"type": "turn_complete"}))
+    return session, True
+
+
+async def handle_game_command(
     websocket: WebSocket,
     session: GameSession,
     command: str,

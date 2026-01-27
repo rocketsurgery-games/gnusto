@@ -11,9 +11,8 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.rule import Rule
 
-from grue.save import save_game, load_game, list_saves
-
-from .agent import GameSession, TurnRecord
+from .agent import GameSession
+from .commands import handle_command
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
     build_turn_output, build_room_block,
@@ -34,7 +33,7 @@ THEME = Theme({
     "room.objects": "dim",
     "command": "bold green",
     "action": "dim",
-    "narrative": "",
+    "narrative": "italic",
     "dialogue": "italic yellow",
     "system": "dim",
     "error": "bold red",
@@ -131,78 +130,26 @@ class SimpleTUI:
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""
-        parts = command[1:].split(maxsplit=1)
-        cmd = parts[0].lower() if parts else ""
-        arg = parts[1] if len(parts) > 1 else ""
+        if not self.session:
+            return True
 
-        if cmd in ("help", "h", "?"):
-            self.render_block(SystemMessage("Commands: /save [slot], /load [slot], /saves, /look, /debug, /quit"))
+        result = handle_command(command, self.session, self.game_dir)
 
-        elif cmd == "save":
-            slot = arg or "default"
-            if self.session:
-                try:
-                    path = save_game(self.session.runtime, slot, self.session.turn_history)
-                    self.render_block(SystemMessage(f"Game saved to {path}"))
-                except Exception as e:
-                    self.render_block(SystemMessage(f"Error saving: {e}", level="error"))
+        # Render all blocks
+        for block in result.blocks:
+            self.render_block(block)
 
-        elif cmd == "load":
-            slot = arg or "default"
-            if self.session:
-                try:
-                    history_data, warnings = load_game(self.session.runtime, slot)
-                    for w in warnings:
-                        self.render_block(SystemMessage(f"Warning: {w}", level="warning"))
-                    self.session.turn_history.clear()
-                    for turn_data in history_data:
-                        turn = TurnRecord(
-                            room=turn_data.get("room", ""),
-                            player_command=turn_data.get("command", ""),
-                            actions=turn_data.get("actions", []),
-                            results=turn_data.get("results", []),
-                            narrative=turn_data.get("narrative", ""),
-                        )
-                        self.session.turn_history.append(turn)
-                    self.render_block(SystemMessage(f"Game loaded ({len(self.session.turn_history)} turns)"))
-                    # Show current room state
-                    state = get_game_state(self.session.runtime)
-                    room_block = build_room_block(state, self.session.runtime, self.game_dir)
-                    self.render_block(room_block)
-                except FileNotFoundError:
-                    self.render_block(SystemMessage(f"No save found for slot '{slot}'", level="error"))
-                except Exception as e:
-                    self.render_block(SystemMessage(f"Error loading: {e}", level="error"))
-
-        elif cmd == "saves":
-            if self.session:
-                game_name = self.session.runtime.world.name or "unknown"
-                saves = list_saves(game_name)
-                if not saves:
-                    self.render_block(SystemMessage("No saves found."))
-                else:
-                    self.render_block(SystemMessage("Available saves:"))
-                    for slot, timestamp, _ in saves:
-                        self.render_block(SystemMessage(f"  {slot}: {timestamp}"))
-
-        elif cmd in ("look", "l"):
-            if self.session:
-                state = get_game_state(self.session.runtime)
-                room_block = build_room_block(state, self.session.runtime, self.game_dir)
-                self.render_block(room_block)
-
-        elif cmd in ("debug", "d"):
-            if self.session:
-                context = self.session.format_debug_context()
-                self.render_block(SystemMessage("─── Debug Context ───"))
-                self.render_block(SystemMessage(context))
-                self.render_block(SystemMessage("─────────────────────"))
-
-        elif cmd in ("quit", "q"):
+        # Handle special actions
+        if result.action == "quit":
             return False
-
-        else:
-            self.render_block(SystemMessage(f"Unknown command: /{cmd}"))
+        elif result.action == "clear":
+            self.console.clear()
+        elif result.action == "reset":
+            # Reload the game
+            self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
+            state = get_game_state(self.session.runtime)
+            room_block = build_room_block(state, self.session.runtime, self.game_dir)
+            self.render_block(room_block)
 
         return True
 
