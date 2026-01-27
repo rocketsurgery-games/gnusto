@@ -101,14 +101,16 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
   font-family: 'Segoe UI', system-ui, sans-serif;
+  clear: both;
 }
 
-.block-room .room-meta span:not(:empty)::after {
-  content: " · ";
-}
-
-.block-room .room-meta span:last-child::after {
-  content: "";
+.block-room .room-image {
+  float: right;
+  max-width: 200px;
+  max-height: 200px;
+  margin: 0 0 0.5rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .block-image {

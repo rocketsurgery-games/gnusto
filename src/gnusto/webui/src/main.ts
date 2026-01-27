@@ -118,31 +118,29 @@ function renderBlock(block: ContentBlock) {
     case 'room_enter':
       el.className += ' block-room'
 
-      // Build room meta info
-      const metaParts: string[] = []
+      // Build room meta info as separate lines
+      const metaLines: string[] = []
       if (block.exits.length > 0) {
-        metaParts.push(`<span>Exits: ${block.exits.join(', ')}</span>`)
+        metaLines.push(`<div>Exits: ${block.exits.join(', ')}</div>`)
       }
       if (block.objects.length > 0) {
-        metaParts.push(`<span>You see: ${block.objects.join(', ')}</span>`)
+        metaLines.push(`<div>You see: ${block.objects.join(', ')}</div>`)
       }
       if (block.inventory.length > 0) {
-        metaParts.push(`<span>Carrying: ${block.inventory.join(', ')}</span>`)
+        metaLines.push(`<div>Carrying: ${block.inventory.join(', ')}</div>`)
       }
+
+      // Build room content with optional image floated right
+      const imageHtml = block.image
+        ? `<img class="room-image" src="${escapeHtml(block.image)}" alt="${escapeHtml(block.name)}">`
+        : ''
 
       el.innerHTML = `
+        ${imageHtml}
         <h2>${escapeHtml(block.name)}</h2>
         <div class="room-desc">${styleText(block.description)}</div>
-        ${metaParts.length > 0 ? `<div class="room-meta">${metaParts.join('')}</div>` : ''}
+        ${metaLines.length > 0 ? `<div class="room-meta">${metaLines.join('')}</div>` : ''}
       `
-
-      // Show image if present (insert before the room block)
-      if (block.image) {
-        const imgEl = document.createElement('div')
-        imgEl.className = 'block block-image'
-        imgEl.innerHTML = `<img src="${escapeHtml(block.image)}" alt="${escapeHtml(block.name)}">`
-        content.insertBefore(imgEl, inputArea)
-      }
 
       // Track room blocks for fade effect
       roomBlocks.push(el)

@@ -72,27 +72,46 @@ def build_room_block(
     Returns:
         RoomEnter block with room info
     """
-    # Get room image if defined
-    image_path = None
-    room_def = runtime.world.rooms.get(state.room)
-    if room_def and game_dir:
-        # Look for :image property on room
+    # Get room image - check :image property first, then look for gfx/{room_id}.jpg/png
+    image_url = None
+    if game_dir:
         room_state = runtime.state.objects.get(state.room)
         if room_state:
             img = room_state.properties.get("image")
             if img:
                 full_path = game_dir / img
                 if full_path.exists():
-                    image_path = str(full_path)
+                    # Return web URL path
+                    image_url = f"/gfx/{Path(img).name}"
+
+        # If no explicit image, look for one matching room ID
+        if not image_url:
+            # Strip @ prefix from room ID to get base name
+            room_base = state.room.lstrip("@")
+            gfx_dir = game_dir / "gfx"
+            if gfx_dir.exists():
+                for ext in (".jpg", ".png", ".jpeg", ".webp"):
+                    img_path = gfx_dir / f"{room_base}{ext}"
+                    if img_path.exists():
+                        image_url = f"/gfx/{room_base}{ext}"
+                        break
+
+    # De-duplicate exits (multiple directions may lead to same room)
+    seen_exits: set[str] = set()
+    unique_exits: list[str] = []
+    for e in state.exits:
+        if e.destination_name not in seen_exits:
+            seen_exits.add(e.destination_name)
+            unique_exits.append(e.destination_name)
 
     return RoomEnter(
         room_id=state.room,
         name=state.room_name,
         description=state.room_description,
-        exits=[e.destination_name for e in state.exits],
+        exits=unique_exits,
         objects=[obj.description for obj in state.visible_objects],
         inventory=[obj.description for obj in state.inventory],
-        image=image_path,
+        image=image_url,
     )
 
 

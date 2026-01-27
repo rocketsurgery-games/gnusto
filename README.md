@@ -17,6 +17,32 @@ Gnusto is a toolkit for creating and playing text adventure games:
 pip install -e .
 ```
 
+## Development
+
+### Setup
+
+```bash
+# Install dependencies and project in editable mode
+uv sync
+
+# Run tests
+uv run python -m pytest tests/
+
+# Run a specific game's tests
+grue-test games/lurkinghorror/ -v
+```
+
+### Web UI Development
+
+The web UI uses Vite + TypeScript:
+
+```bash
+cd src/gnusto/webui
+npm install
+npm run build      # Build for production
+npm run dev        # Dev server with hot reload (proxies to Python backend)
+```
+
 ## CLI Tools
 
 ### gnusto - Play Games
@@ -24,9 +50,10 @@ pip install -e .
 Play a Grue game with an LLM-powered natural language agent:
 
 ```bash
-gnusto games/lurkinghorror/            # Simple REPL mode
-gnusto games/lurkinghorror/ --tui      # Fullscreen TUI
-gnusto games/lurkinghorror/ --debug    # Show agent tool calls
+gnusto games/lurkinghorror/             # Terminal UI (default)
+gnusto games/lurkinghorror/ --web       # Web UI at http://127.0.0.1:8000
+gnusto games/lurkinghorror/ --web -p 3000  # Web UI on custom port
+gnusto games/lurkinghorror/ --debug     # Show agent tool calls
 ```
 
 ### grue-test - Run Tests
