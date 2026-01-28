@@ -63,14 +63,16 @@ Match natural language to object IDs from the game state:
 
 ## Images
 
-Include images to enhance the narrative. Available layouts:
-- `inline`: Centered in the flow
-- `float-left` / `float-right`: Text wraps around
-- `background`: Behind text (for dramatic moments)
+Include images to enhance the narrative when focusing on specific objects or characters.
 
+**Important:**
+- Room images are already displayed in the UI header - DON'T include them
+- Only include images for objects/characters the player is examining or interacting with
+- Never include the same image twice
+- Use at most ONE image per response
+
+Layouts: `inline`, `float-left`, `float-right`, `background`
 Sizes: `small`, `medium`, `large`, `full`
-
-Use sparingly - one image per major scene change or significant moment.
 
 ## Flow
 

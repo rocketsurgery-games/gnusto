@@ -282,15 +282,19 @@ class LLMClient:
                 direction=action_data.get("direction"),
             ))
 
-        # Parse images
+        # Parse images (deduplicate by path)
         images = []
+        seen_paths: set[str] = set()
         for image_data in data.get("images", []):
-            images.append(ImageRequest(
-                path=image_data.get("path", ""),
-                alt=image_data.get("alt", ""),
-                layout=image_data.get("layout", "inline"),
-                size=image_data.get("size", "medium"),
-            ))
+            path = image_data.get("path", "")
+            if path and path not in seen_paths:
+                seen_paths.add(path)
+                images.append(ImageRequest(
+                    path=path,
+                    alt=image_data.get("alt", ""),
+                    layout=image_data.get("layout", "inline"),
+                    size=image_data.get("size", "medium"),
+                ))
 
         # Handle narrative - treat "null" string as None (LLM sometimes does this)
         narrative = data.get("narrative")
