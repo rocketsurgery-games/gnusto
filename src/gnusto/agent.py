@@ -9,6 +9,7 @@ results. The default mode uses plain text for automation compatibility.
 import json
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable
 
 from grue.parser import load_grue
@@ -17,31 +18,90 @@ from grue.runtime import ActionResult, GrueRuntime
 from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
-from .llm import LLMClient, LLMConfig, LLMResponse, ToolCall, get_game_tools
+from .images import scan_images, filter_images_for_state, format_image_catalog, ImageInfo
+from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ImageRequest
 from .state import GameState, ObjectInfo, get_game_state
 
-
 SYSTEM_PROMPT = """\
-You are a command interpreter for an interactive fiction game. Your ONLY role is to:
+You are the narrator for an interactive fiction game. You interpret the player's commands,
+execute game actions, and narrate the results.
 
-1. Parse the player's natural language into game actions
-2. Call the appropriate tools
-3. Report the results exactly as returned
+You MUST respond with valid JSON matching this schema:
+```json
+{
+  "actions": [
+    {"tool": "do_action", "target": "@object-id", "verb": "examine", "args": []},
+    {"tool": "move", "direction": "north"},
+    {"tool": "wait"}
+  ],
+  "narrative": "Your narrative text here...",
+  "images": [
+    {"path": "/gfx/image.jpg", "alt": "description", "layout": "inline", "size": "medium"}
+  ],
+  "needs_player_input": false
+}
+```
 
-Tools:
-- do_action: Interact with objects (examine, take, open, etc.)
-- move: Navigate (go north, enter building, etc.)
-- wait: Pass time
+## Actions
 
-Rules:
-- Use object IDs exactly as shown (e.g., @door, @key)
-- Match player intent to available actions on visible objects
-- If the command is unclear: ask for clarification in one short sentence
-- If action is impossible: state why briefly
+- **do_action**: Interact with objects. Requires `target` (object ID like @hacker) and `verb` (like examine, take, ask). Optional `args` for additional objects.
+- **move**: Navigate rooms. Requires `direction` (north, south, up, down, etc.)
+- **wait**: Pass time. No additional fields needed.
 
-CRITICAL: Do NOT add narrative, descriptions, atmosphere, or suggestions.
-The game provides all narrative text through tool results.
-Your final response should be minimal - just acknowledge completion or report errors.
+## Object References
+
+Match natural language to object IDs from the game state:
+- "the hacker" or "him" → @hacker
+- "his keyring" or "the keys" → @keyring
+- "the computer" or "terminal" → @pc
+
+## Narrative Guidelines
+
+- **Preserve dialogue verbatim**: Quote characters' exact words
+- **Be concise**: 1-3 sentences, don't pad with atmosphere
+- **Second person**: "You examine the terminal..."
+
+## Images
+
+Include images to enhance the narrative. Available layouts:
+- `inline`: Centered in the flow
+- `float-left` / `float-right`: Text wraps around
+- `background`: Behind text (for dramatic moments)
+
+Sizes: `small`, `medium`, `large`, `full`
+
+Use sparingly - one image per major scene change or significant moment.
+
+## Flow
+
+1. If you need to execute actions, put them in `actions` and set `needs_player_input: false`
+2. After seeing action results, narrate what happened and decide if more actions are needed
+3. Set `needs_player_input: true` when:
+   - You're done with the player's request
+   - Something unexpected happened (stop the sequence!)
+   - You need clarification
+
+## Example Response
+
+Player says "ask the hacker about his keys":
+```json
+{
+  "actions": [{"tool": "do_action", "target": "@hacker", "verb": "ask", "args": ["@keyring"]}],
+  "narrative": null,
+  "images": [],
+  "needs_player_input": false
+}
+```
+
+After seeing the result:
+```json
+{
+  "actions": [],
+  "narrative": "The hacker looks up from his terminal. \"Oh, this?\" He holds up a worn keyring. \"It's my master key. Opens every door in the building.\"",
+  "images": [{"path": "/gfx/hacker.jpg", "layout": "float-right", "size": "small"}],
+  "needs_player_input": true
+}
+```
 """
 
 
@@ -158,6 +218,8 @@ class GameSession:
     runtime: GrueRuntime
     evaluator: ReplEvaluator
     llm: LLMClient
+    game_dir: Path
+    all_images: list[ImageInfo] = field(default_factory=list)
     turn_history: list[TurnRecord] = field(default_factory=list)
     debug: bool = False
     max_history_turns: int = 20  # Keep last N turns in full detail
@@ -170,15 +232,24 @@ class GameSession:
         debug: bool = False,
     ) -> "GameSession":
         """Create a new game session from a game file."""
+        game_dir = Path(game_path).resolve()
+        if game_dir.is_file():
+            game_dir = game_dir.parent
+
         world = load_grue(game_path)
         runtime = GrueRuntime(world)
         evaluator = ReplEvaluator(runtime)
         llm = LLMClient(llm_config)
 
+        # Scan for available images
+        all_images = scan_images(game_dir)
+
         session = cls(
             runtime=runtime,
             evaluator=evaluator,
             llm=llm,
+            game_dir=game_dir,
+            all_images=all_images,
             debug=debug,
         )
         return session
@@ -252,11 +323,16 @@ class GameSession:
             messages.append({"role": "user", "content": user_content})
             messages.append({"role": "assistant", "content": assistant_content})
 
-        # Current turn: fresh state + player command
+        # Current turn: fresh state + images + player command
         state_context = current_state.to_context_string()
+
+        # Filter images relevant to current state
+        relevant_images = filter_images_for_state(self.all_images, current_state)
+        image_context = format_image_catalog(relevant_images)
+
         messages.append({
             "role": "user",
-            "content": f"{state_context}\n\n---\n\nPlayer command: {player_command}"
+            "content": f"{state_context}\n\n{image_context}\n\n---\n\nPlayer command: {player_command}"
         })
 
         return messages
@@ -323,26 +399,26 @@ class GameSession:
         self,
         user_input: str,
         max_iterations: int = 10,
-        on_action: "Callable[[str], None] | None" = None,
+        on_narrative: "Callable[[str], None] | None" = None,
+        on_image: "Callable[[ImageRequest], None] | None" = None,
     ) -> tuple[str, list[str]]:
         """
         Process natural language input and return response.
 
-        Uses an agentic loop: executes tool calls, feeds results back to the LLM,
-        and repeats until the LLM responds without tool calls or max iterations.
-
-        Context management:
-        - Fresh game state is injected at each LLM call (not persisted)
-        - Only compact TurnRecords are kept in history
-        - Working messages during the loop are ephemeral
+        Uses structured JSON output from the LLM. The loop:
+        1. Send game state + player command
+        2. LLM returns actions, narrative, images
+        3. Execute actions, collect results
+        4. If needs_player_input, stop; otherwise add results and loop
 
         Args:
             user_input: Natural language command from player
             max_iterations: Maximum number of LLM calls (default 10)
-            on_action: Optional callback for streaming action results
+            on_narrative: Optional callback for streaming narrative text
+            on_image: Optional callback for streaming image requests
 
         Returns:
-            Tuple of (response text, action results list)
+            Tuple of (final narrative, raw action results list)
         """
         # Get initial state and build base messages from history
         initial_state = self.get_state()
@@ -354,10 +430,10 @@ class GameSession:
         # Build fresh messages: history + current state + command
         working_messages = self._build_messages(initial_state, user_input)
 
-        all_results: list[str] = []  # Results returned to caller
+        all_results: list[str] = []  # Raw results for caller
         all_actions: list[str] = []  # Action summaries for TurnRecord
         all_action_results: list[str] = []  # Results paired with actions for TurnRecord
-        final_response_text = ""
+        all_narratives: list[str] = []  # LLM narratives per step
         iteration = 0
 
         while iteration < max_iterations:
@@ -366,76 +442,96 @@ class GameSession:
             if self.debug and iteration > 1:
                 _debug_log(f"Agentic Loop Iteration {iteration}", "", style="blue")
 
-            # Get agent response with tools
+            # Get structured response from LLM
             try:
-                response = self.llm.chat(
-                    messages=working_messages,
-                    tools=get_game_tools(),
-                    tool_choice="auto",
-                )
+                response = self.llm.chat_structured(messages=working_messages)
             except Exception as e:
                 error_msg = str(e)
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
                 return f"[LLM error: {error_msg}. Please try again.]", []
 
-            # If no tool calls, we're done - LLM is just responding
-            if not response.tool_calls:
-                final_response_text = response.content or ""
+            if self.debug:
+                _debug_log("Agent Response", json.dumps({
+                    "actions": [{"tool": a.tool, "target": a.target, "verb": a.verb} for a in response.actions],
+                    "narrative": response.narrative[:100] + "..." if response.narrative and len(response.narrative) > 100 else response.narrative,
+                    "images": [i.path for i in response.images],
+                    "needs_player_input": response.needs_player_input,
+                }, indent=2), style="magenta")
+
+            # Emit images first (so they appear before narrative)
+            for image in response.images:
+                if on_image:
+                    on_image(image)
+
+            # Emit narrative
+            if response.narrative:
+                all_narratives.append(response.narrative)
+                if on_narrative:
+                    on_narrative(response.narrative)
+
+            # If no actions or needs player input, we're done
+            if not response.actions or response.needs_player_input:
                 break
 
-            # Process tool calls
-            iteration_results: list[tuple[str, str]] = []  # (tool_call_id, result)
-            for tool_call in response.tool_calls:
+            # Execute actions
+            action_results: list[str] = []
+            for action in response.actions:
                 if self.debug:
-                    args_str = json.dumps(tool_call.arguments, indent=2)
-                    _debug_log(
-                        f"Agent Tool Call: {tool_call.name}",
-                        args_str,
-                        style="magenta",
-                    )
+                    _debug_log(f"Executing: {action.tool}", f"target={action.target} verb={action.verb} direction={action.direction}", style="yellow")
 
-                # Execute the action (skip streaming "Verb-ing @target..." - let LLM narrate)
-                result = self._execute_tool(tool_call)
-                iteration_results.append((tool_call.id, result))
+                result = self._execute_action(action)
+                action_results.append(result)
                 all_results.append(result)
 
-                # Stream result if callback provided (skip generic "Done.")
-                if on_action and result and result != "Done.":
-                    on_action(result)
-
-                # Track action and result for history
-                action_summary = self._summarize_tool_call(tool_call)
+                # Track for history
+                action_summary = self._summarize_action(action)
                 all_actions.append(action_summary)
                 all_action_results.append(result)
 
                 if self.debug:
-                    _debug_log("Tool Result", result, style="green")
+                    _debug_log("Action Result", result, style="green")
 
-            # Add assistant message with tool calls to working messages
-            assistant_msg = self._build_assistant_tool_message(response)
-            working_messages.append(assistant_msg)
+            # Add assistant response to messages (as JSON)
+            working_messages.append({
+                "role": "assistant",
+                "content": json.dumps({
+                    "actions": [{"tool": a.tool, "target": a.target, "verb": a.verb, "args": a.args, "direction": a.direction} for a in response.actions],
+                    "narrative": response.narrative,
+                    "images": [{"path": i.path, "layout": i.layout, "size": i.size} for i in response.images],
+                    "needs_player_input": response.needs_player_input,
+                })
+            })
 
-            # Add tool result messages
-            for tool_call_id, result in iteration_results:
-                tool_msg = {"role": "tool", "tool_call_id": tool_call_id, "content": result}
-                working_messages.append(tool_msg)
+            # Add action results
+            results_text = "\n".join(f"- {r}" for r in action_results)
+            working_messages.append({
+                "role": "user",
+                "content": f"Action results:\n{results_text}"
+            })
 
-            # Get updated game state for next iteration
+            # Add updated game state
             state = self.get_state()
             if self.debug:
                 _debug_log("LLM Context (updated state)", self._format_state_debug(state), style="cyan")
 
-            # Add fresh state update for next iteration (ephemeral)
+            # Filter images for new state
+            relevant_images = filter_images_for_state(self.all_images, state)
+            image_context = format_image_catalog(relevant_images)
+
             state_context = state.to_context_string()
-            state_update = f"[Game state after actions:]\n{state_context}"
-            working_messages.append({"role": "user", "content": state_update})
+            working_messages.append({
+                "role": "user",
+                "content": f"[Updated game state:]\n{state_context}\n\n{image_context}\n\nNarrate what happened, then continue or set needs_player_input to true if done."
+            })
 
         else:
             # Hit max iterations
             if self.debug:
                 _debug_log("Max Iterations", f"Stopped after {max_iterations} iterations", style="red")
-            final_response_text = response.content or ""
+
+        # Combine all narratives for final output
+        final_response_text = "\n\n".join(all_narratives)
 
         # Record this turn in history (compact form)
         turn_record = TurnRecord(
@@ -452,91 +548,33 @@ class GameSession:
 
         return final_response_text, all_results
 
-    def _summarize_tool_call(self, tool_call: ToolCall) -> str:
-        """Generate a compact summary of a tool call for history."""
-        name = tool_call.name
-        args = tool_call.arguments
-
-        if name == "do_action":
-            target = args.get("target", "?")
-            verb = args.get("verb", "?")
-            action_args = args.get("args", [])
-            if action_args:
-                return f"{verb} {target} with {', '.join(str(a) for a in action_args)}"
-            return f"{verb} {target}"
-        elif name == "move":
-            return f"go {args.get('direction', '?')}"
-        elif name == "wait":
-            return "wait"
-        else:
-            return f"{name}(...)"
-
-    def _describe_action(self, tool_call: ToolCall) -> str:
-        """Generate a natural language description of what the agent is doing."""
-        name = tool_call.name
-        args = tool_call.arguments
-
-        if name == "do_action":
-            target = args.get("target", "?")
-            verb = args.get("verb", "?")
-            action_args = args.get("args", [])
-            # Convert verb to present participle
-            if verb.endswith("e"):
-                verb_ing = verb[:-1] + "ing"
-            else:
-                verb_ing = verb + "ing"
-            verb_ing = verb_ing.capitalize()
-            if action_args:
-                return f"{verb_ing} {target} with {', '.join(str(a) for a in action_args)}..."
-            return f"{verb_ing} {target}..."
-        elif name == "move":
-            direction = args.get("direction", "?")
-            return f"Going {direction}..."
-        elif name == "wait":
-            return "Waiting..."
-        else:
-            return f"{name}..."
-
-    def _build_assistant_tool_message(self, response: "LLMResponse") -> dict[str, Any]:
-        """Build an assistant message with tool calls for the conversation history."""
-        msg: dict[str, Any] = {"role": "assistant"}
-        if response.content:
-            msg["content"] = response.content
-        if response.tool_calls:
-            msg["tool_calls"] = [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {
-                        "name": tc.name,
-                        "arguments": json.dumps(tc.arguments),
-                    },
-                }
-                for tc in response.tool_calls
-            ]
-        return msg
-
-    def _execute_tool(self, tool_call: ToolCall) -> str:
-        """Execute a tool call and return result string."""
-        name = tool_call.name
-        args = tool_call.arguments
-
-        if name == "do_action":
-            # Normalize args to list - LLM sometimes returns string instead of array
-            action_args = args.get("args", [])
-            if isinstance(action_args, str):
-                action_args = [action_args]
+    def _execute_action(self, action: ActionRequest) -> str:
+        """Execute a single action and return the result string."""
+        if action.tool == "do_action":
             return self._do_action(
-                target=args.get("target", ""),
-                verb=args.get("verb", ""),
-                action_args=action_args,
+                target=action.target or "",
+                verb=action.verb or "",
+                action_args=action.args or [],
             )
-        elif name == "move":
-            return self._move(args.get("direction", ""))
-        elif name == "wait":
+        elif action.tool == "move":
+            return self._move(action.direction or "")
+        elif action.tool == "wait":
             return self._wait()
         else:
-            return f"Unknown tool: {name}"
+            return f"Unknown action: {action.tool}"
+
+    def _summarize_action(self, action: ActionRequest) -> str:
+        """Generate a compact summary of an action for history."""
+        if action.tool == "do_action":
+            if action.args:
+                return f"{action.verb} {action.target} with {', '.join(action.args)}"
+            return f"{action.verb} {action.target}"
+        elif action.tool == "move":
+            return f"go {action.direction}"
+        elif action.tool == "wait":
+            return "wait"
+        else:
+            return f"{action.tool}(...)"
 
     def _do_action(self, target: str, verb: str, action_args: list[str]) -> str:
         """Execute a do action."""
@@ -864,19 +902,17 @@ def play_game(game_path: str, debug: bool = False) -> None:
             print("Goodbye!")
             break
 
-        # Process game command with streaming output
-        def on_action(result: str) -> None:
-            print(f"  {result}")
+        # Process game command with streaming narrative
+        def on_narrative(text: str) -> None:
+            if text:
+                print()
+                print(text)
 
-        response_text, results = session.process_input(user_input, on_action=on_action)
+        session.process_input(user_input, on_narrative=on_narrative)
 
         if session.debug:
             state = session.get_state()
             _debug_log("LLM Context", session._format_state_debug(state))
 
-        # Only show response (results already streamed)
-        if response_text:
-            print()
-            print(response_text)
         print()
         render_game_state(session.get_state(), debug=session.debug)

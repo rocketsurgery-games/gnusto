@@ -1,15 +1,14 @@
 """
 LLM integration for Gnusto.
 
-Provides a thin wrapper around litellm for model-agnostic LLM calls with tool use.
-This module handles the low-level details of communicating with language models,
-while the agent module handles the higher-level game-playing logic.
+Provides a thin wrapper around litellm for model-agnostic LLM calls.
+Supports structured JSON output for the agent's response schema.
 """
 
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import litellm
 
@@ -20,7 +19,7 @@ class LLMConfig:
 
     model: str = "anthropic/claude-sonnet-4-20250514"
     temperature: float = 0.7
-    max_tokens: int = 1024
+    max_tokens: int = 2048
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
@@ -32,10 +31,131 @@ class LLMConfig:
         )
 
 
+# =============================================================================
+# Structured Response Schema
+# =============================================================================
+
+@dataclass
+class ActionRequest:
+    """A game action to execute."""
+    tool: Literal["do_action", "move", "wait"]
+    target: str | None = None  # For do_action
+    verb: str | None = None    # For do_action
+    args: list[str] = field(default_factory=list)  # For do_action
+    direction: str | None = None  # For move
+
+
+@dataclass
+class ImageRequest:
+    """An image to display."""
+    path: str  # e.g., "/gfx/terminal-room.jpg"
+    alt: str = ""
+    layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
+    size: Literal["small", "medium", "large", "full"] = "medium"
+
+
+@dataclass
+class AgentResponse:
+    """Structured response from the LLM agent."""
+
+    # Actions to execute (if any)
+    actions: list[ActionRequest] = field(default_factory=list)
+
+    # Narrative text to display (if any)
+    narrative: str | None = None
+
+    # Images to show (if any)
+    images: list[ImageRequest] = field(default_factory=list)
+
+    # Should we stop and wait for player input?
+    # Set to True when something unexpected happens mid-sequence
+    needs_player_input: bool = False
+
+    # Raw response for debugging
+    raw: Any = None
+
+
+# JSON Schema for structured output
+AGENT_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "actions": {
+            "type": "array",
+            "description": "Game actions to execute. Execute these in order.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tool": {
+                        "type": "string",
+                        "enum": ["do_action", "move", "wait"],
+                        "description": "The type of action"
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "For do_action: the object ID (e.g., @hacker, @door)"
+                    },
+                    "verb": {
+                        "type": "string",
+                        "description": "For do_action: the action verb (e.g., examine, take, ask)"
+                    },
+                    "args": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "For do_action: additional arguments (object IDs)"
+                    },
+                    "direction": {
+                        "type": "string",
+                        "description": "For move: the direction (north, south, etc.)"
+                    }
+                },
+                "required": ["tool"]
+            }
+        },
+        "narrative": {
+            "type": ["string", "null"],
+            "description": "Narrative text describing what happened. Preserve dialogue verbatim. Use null if no narrative yet."
+        },
+        "images": {
+            "type": "array",
+            "description": "Images to display with the narrative.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Image path (e.g., /gfx/terminal-room.jpg)"
+                    },
+                    "alt": {
+                        "type": "string",
+                        "description": "Alt text for the image"
+                    },
+                    "layout": {
+                        "type": "string",
+                        "enum": ["inline", "float-left", "float-right", "background"],
+                        "description": "How to position the image"
+                    },
+                    "size": {
+                        "type": "string",
+                        "enum": ["small", "medium", "large", "full"],
+                        "description": "Image size"
+                    }
+                },
+                "required": ["path"]
+            }
+        },
+        "needs_player_input": {
+            "type": "boolean",
+            "description": "Set to true to stop and ask the player what to do next (e.g., something unexpected happened)"
+        }
+    },
+    "required": ["actions", "needs_player_input"]
+}
+
+
+# Legacy types for backwards compatibility
 @dataclass
 class ToolCall:
-    """A tool call from the LLM."""
-
+    """A tool call from the LLM (legacy)."""
     id: str
     name: str
     arguments: dict[str, Any]
@@ -43,11 +163,10 @@ class ToolCall:
 
 @dataclass
 class LLMResponse:
-    """Response from an LLM call."""
-
+    """Response from an LLM call (legacy)."""
     content: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
-    raw: Any = None  # Original response for debugging
+    raw: Any = None
 
 
 class LLMClient:
@@ -109,9 +228,86 @@ class LLMClient:
             raw=response,
         )
 
+    def chat_structured(self, messages: list[dict[str, str]]) -> AgentResponse:
+        """
+        Send a chat request expecting structured JSON output.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+
+        Returns:
+            AgentResponse parsed from JSON
+        """
+        kwargs: dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "agent_response",
+                    "strict": True,
+                    "schema": AGENT_RESPONSE_SCHEMA,
+                }
+            },
+        }
+
+        response = litellm.completion(**kwargs)
+        return self._parse_structured_response(response)
+
+    def _parse_structured_response(self, response: Any) -> AgentResponse:
+        """Parse structured JSON response into AgentResponse."""
+        message = response.choices[0].message
+        content = message.content
+
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            # Fall back to empty response on parse error
+            return AgentResponse(
+                narrative=f"[Error parsing response: {e}]",
+                needs_player_input=True,
+                raw=response,
+            )
+
+        # Parse actions
+        actions = []
+        for action_data in data.get("actions", []):
+            actions.append(ActionRequest(
+                tool=action_data.get("tool", "wait"),
+                target=action_data.get("target"),
+                verb=action_data.get("verb"),
+                args=action_data.get("args", []),
+                direction=action_data.get("direction"),
+            ))
+
+        # Parse images
+        images = []
+        for image_data in data.get("images", []):
+            images.append(ImageRequest(
+                path=image_data.get("path", ""),
+                alt=image_data.get("alt", ""),
+                layout=image_data.get("layout", "inline"),
+                size=image_data.get("size", "medium"),
+            ))
+
+        # Handle narrative - treat "null" string as None (LLM sometimes does this)
+        narrative = data.get("narrative")
+        if narrative == "null":
+            narrative = None
+
+        return AgentResponse(
+            actions=actions,
+            narrative=narrative,
+            images=images,
+            needs_player_input=data.get("needs_player_input", False),
+            raw=response,
+        )
+
 
 # =============================================================================
-# Tool Definitions for Game Actions
+# Tool Definitions for Game Actions (Legacy)
 # =============================================================================
 
 GAME_TOOLS: list[dict[str, Any]] = [

@@ -18,9 +18,10 @@ from fastapi.responses import FileResponse
 
 from .agent import GameSession
 from .commands import handle_command as handle_slash_command
+from .llm import ImageRequest
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
-    build_turn_output, build_room_block,
+    build_room_block,
 )
 from .state import get_game_state
 
@@ -57,6 +58,8 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "type": "image",
             "src": block.src,
             "alt": block.alt,
+            "layout": block.layout,
+            "size": block.size,
         }
     elif isinstance(block, SystemMessage):
         return {
@@ -236,17 +239,16 @@ async def handle_game_command(
     previous_room: str | None,
     game_dir: Path,
 ) -> None:
-    """Process a player command and send results, streaming action results."""
+    """Process a player command and send results, streaming LLM outputs."""
     loop = asyncio.get_running_loop()
 
-    # Track futures for streamed action results
+    # Track futures for streamed content
     send_futures: list[concurrent.futures.Future] = []
 
-    def on_action(result: str) -> None:
-        """Stream action results immediately via websocket."""
-        if result and result != "Done.":
-            block = ActionResult(text=result)
-            # Send from thread using run_coroutine_threadsafe
+    def on_narrative(text: str) -> None:
+        """Stream LLM narrative immediately via websocket."""
+        if text:
+            block = Narrative(text=text)
             future = asyncio.run_coroutine_threadsafe(
                 websocket.send_text(json.dumps({
                     "type": "blocks",
@@ -255,35 +257,43 @@ async def handle_game_command(
                 loop
             )
             send_futures.append(future)
-            # Release GIL briefly to let event loop process the send
             time.sleep(0.01)
 
-    # Run process_input in thread pool so event loop stays responsive
-    def do_process() -> str:
-        narrative, _ = session.process_input(command, on_action=on_action)
-        return narrative
+    def on_image(image: ImageRequest) -> None:
+        """Stream image immediately via websocket."""
+        block = Image(
+            src=image.path,
+            alt=image.alt,
+            layout=image.layout,
+            size=image.size,
+        )
+        future = asyncio.run_coroutine_threadsafe(
+            websocket.send_text(json.dumps({
+                "type": "blocks",
+                "blocks": [block_to_dict(block)],
+            })),
+            loop
+        )
+        send_futures.append(future)
+        time.sleep(0.01)
 
-    narrative = await loop.run_in_executor(None, do_process)
+    # Run process_input in thread pool so event loop stays responsive
+    def do_process() -> None:
+        session.process_input(command, on_narrative=on_narrative, on_image=on_image)
+
+    await loop.run_in_executor(None, do_process)
 
     # Wait for any pending sends to complete (wrap concurrent futures for asyncio)
     if send_futures:
         await asyncio.gather(*[asyncio.wrap_future(f) for f in send_futures], return_exceptions=True)
 
-    # Build final content blocks (narrative, room change)
+    # Check for room change
     state = get_game_state(session.runtime)
-    blocks: list[ContentBlock] = []
-
-    if narrative:
-        blocks.append(Narrative(text=narrative))
-
     if state.room != previous_room:
         room_block = build_room_block(state, session.runtime, game_dir)
-        blocks.append(room_block)
-
-    if blocks:
         await websocket.send_text(json.dumps({
             "type": "blocks",
-            "blocks": [block_to_dict(b) for b in blocks],
+            "blocks": [block_to_dict(room_block)],
         }))
 
     # Signal that the turn is complete

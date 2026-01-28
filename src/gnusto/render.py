@@ -43,6 +43,8 @@ class Image:
     """An image to display."""
     src: str  # Path relative to game directory
     alt: str = ""
+    layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
+    size: Literal["small", "medium", "large", "full"] = "medium"
 
 
 @dataclass

@@ -13,9 +13,10 @@ from rich.rule import Rule
 
 from .agent import GameSession
 from .commands import handle_command
+from .llm import ImageRequest
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
-    build_turn_output, build_room_block,
+    build_room_block,
 )
 from .state import get_game_state
 
@@ -201,40 +202,33 @@ class SimpleTUI:
                 self.render_block(SystemMessage("Goodbye!"))
                 break
 
-            # Echo command
-            self.console.print(f"[command]> {user_input}[/]")
+            # Add spacing before response (command already visible from input)
             self.console.print()
 
             # Track previous room for change detection
             previous_room = self._last_room
 
-            # Collect action results for building blocks
-            action_results: list[str] = []
+            # Stream LLM outputs as they arrive
+            def on_narrative(text: str) -> None:
+                if text:
+                    self.render_block(Narrative(text=text))
 
-            def on_action(result: str) -> None:
-                action_results.append(result)
-                # Stream action results as they happen
-                if result and result != "Done.":
-                    self.render_block(ActionResult(text=result))
+            def on_image(image: ImageRequest) -> None:
+                # TUI can't display images, just note they exist
+                self.render_block(Image(src=image.path, alt=image.alt))
 
-            # Process command
-            response_text, _ = self.session.process_input(user_input, on_action=on_action)
-
-            # Build and render content blocks for the turn
-            state = get_game_state(self.session.runtime)
-            blocks = build_turn_output(
-                action_results=action_results,
-                narrative=response_text,
-                state=state,
-                runtime=self.session.runtime,
-                previous_room=previous_room,
-                game_dir=self.game_dir,
+            # Process command - outputs are streamed via callbacks
+            self.session.process_input(
+                user_input,
+                on_narrative=on_narrative,
+                on_image=on_image,
             )
 
-            # Render blocks (skip ActionResults - already streamed)
-            for block in blocks:
-                if not isinstance(block, ActionResult):
-                    self.render_block(block)
+            # Check if room changed and show new room
+            state = get_game_state(self.session.runtime)
+            if state.room != previous_room:
+                room_block = build_room_block(state, self.session.runtime, self.game_dir)
+                self.render_block(room_block)
 
 
 def run_tui(game_path: str, debug: bool = False) -> None:

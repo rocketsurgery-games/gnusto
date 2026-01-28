@@ -33,6 +33,8 @@ interface ImageBlock {
   type: 'image'
   src: string
   alt: string
+  layout: 'inline' | 'float-left' | 'float-right' | 'background'
+  size: 'small' | 'medium' | 'large' | 'full'
 }
 
 interface SystemMessageBlock {
@@ -186,11 +188,12 @@ function renderBlock(block: ContentBlock) {
 
     case 'narrative':
       el.className += ' block-narrative'
-      el.innerHTML = styleText(block.text)
+      // Use marked for markdown (handles images), then apply custom styling
+      el.innerHTML = styleNarrative(block.text)
       break
 
     case 'image':
-      el.className += ' block-image'
+      el.className += ` block-image image-${block.layout} image-${block.size}`
       el.innerHTML = `<img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}">`
       break
 
@@ -237,6 +240,24 @@ function styleText(text: string): string {
 
   // Convert remaining newlines to <br> for proper display
   html = html.replace(/\n/g, '<br>')
+
+  return html
+}
+
+function styleNarrative(text: string): string {
+  // Use marked to parse markdown (handles images, paragraphs, etc.)
+  let html = marked.parse(text) as string
+
+  // Apply custom styling to text content only (between > and <)
+  // This avoids breaking HTML attributes
+  html = html.replace(/>([^<]+)</g, (_, textContent) => {
+    let styled = textContent
+    // Style @references (magenta)
+    styled = styled.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
+    // Style "dialogue" in quotes
+    styled = styled.replace(/"[^"]*"/g, '<span class="dialogue">$&</span>')
+    return '>' + styled + '<'
+  })
 
   return html
 }
