@@ -45,6 +45,10 @@ THEME = Theme({
 
 def style_text(text: str) -> str:
     """Apply Rich markup for @references and dialogue quotes."""
+    # Escape any existing brackets so Rich doesn't interpret them as markup
+    # Rich uses [[ and ]] to escape literal brackets
+    text = text.replace("[", "[[").replace("]", "]]")
+
     # Add newlines before @speaker: patterns (but not at start of text)
     text = re.sub(r'(?<=\S)(\s*)(@[\w-]+:\s*")', r'\n\n\2', text)
 
@@ -110,7 +114,8 @@ class SimpleTUI:
             self._last_room = block.room_id
 
         elif isinstance(block, ActionResult):
-            self.console.print(f"[action]{block.text}[/]")
+            escaped = block.text.replace("[", "[[").replace("]", "]]")
+            self.console.print(f"[action]{escaped}[/]")
 
         elif isinstance(block, Narrative):
             styled = style_text(block.text)
@@ -127,7 +132,8 @@ class SimpleTUI:
                 "warning": "warning",
                 "error": "error",
             }.get(block.level, "system")
-            self.console.print(f"[{style}]{block.text}[/]")
+            escaped = block.text.replace("[", "[[").replace("]", "]]")
+            self.console.print(f"[{style}]{escaped}[/]")
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""
