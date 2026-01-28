@@ -584,9 +584,12 @@ class GameSession:
         items = [Symbol("do"), Symbol(target), Keyword(verb)]
         for arg in action_args:
             # Arguments starting with @ are object references (Symbols)
-            # Everything else is a string value
+            # Numeric strings become integers
+            # Everything else stays as a string value
             if arg.startswith("@"):
                 items.append(Symbol(arg))
+            elif arg.lstrip("-").isdigit():
+                items.append(int(arg))
             else:
                 items.append(arg)  # Keep as string
 
