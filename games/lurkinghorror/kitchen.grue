@@ -88,34 +88,36 @@ counter are a refrigerator and a microwave."
     ; === LLM Interface Behaviors ===
     ; These are the primary way to interact with the microwave.
 
-    ; Set timer in seconds: (do @microwave :set-timer 120) for 2 minutes
-    ; ?value binding receives the numeric argument
-    :set-timer (fn ()
-      (cond
-        ((> ?value 3600)
-          (blocked :reason too-long
-                   :context ((description "You can't set it for that long a time."))))
-        (true
-          `((set @microwave :timer ,?value)
-            (success :context ((description ,(str "The timer display now reads " (format-timer) "."))))))))
+    ; Set timer: (do @microwave :set-timer 300) for 5 minutes (300 seconds)
+    ; Parameter is in SECONDS - 60 = 1 minute, 300 = 5 minutes
+    :set-timer (fn (?seconds)
+      (let ((mins (/ ?seconds 60))
+            (secs (mod ?seconds 60))
+            (display (str mins ":" (if (< secs 10) "0" "") secs)))
+        (cond
+          ((> ?seconds 3600)
+            (blocked :reason too-long
+                     :context ((description "You can't set it for that long a time."))))
+          (true
+            `((set @microwave :timer ,?seconds)
+              (success :context ((description ,(str "The timer display now reads " display ".")))))))))
 
     ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
-    ; ?value binding receives the temperature symbol
-    :set-temp (fn ()
+    :set-temp (fn (?level)
       (cond
         ((queued? microwave-running)
           (blocked :reason running
                    :context ((description "Nothing happens."))))
-        ((= ?value 'warm)
+        ((= ?level 'warm)
           '((set @microwave :temp 1)
             (success :context ((description "The bottom of the display now reads \"WARM\".")))))
-        ((= ?value 'low)
+        ((= ?level 'low)
           '((set @microwave :temp 2)
             (success :context ((description "The bottom of the display now reads \"LOW\".")))))
-        ((= ?value 'medium)
+        ((= ?level 'medium)
           '((set @microwave :temp 3)
             (success :context ((description "The bottom of the display now reads \"MEDIUM\".")))))
-        ((= ?value 'high)
+        ((= ?level 'high)
           '((set @microwave :temp 4)
             (success :context ((description "The bottom of the display now reads \"HIGH\".")))))
         (true
