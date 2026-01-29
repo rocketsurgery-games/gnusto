@@ -87,20 +87,25 @@ zilch path/to/zil-game/ --stdout     # Print to stdout
 
 ## filfre - Scene Generation
 
-Generate illustrations using OmniGen2. Named after the Enchanter spell that
-creates gratuitous fireworks:
+Generate illustrations using FLUX.2 Klein 4B. Named after the Enchanter spell
+that creates gratuitous fireworks:
 
 ```bash
-filfre --scene white_house --output scene.png
-filfre --scene custom --prompt "A troll under a bridge" --output troll.png
-filfre --list-scenes
-filfre --scene white_house --taylorseer --cfg-range-end 0.7  # 2.2x faster
+filfre --prompt "A troll under a bridge" --output troll.png
+filfre --prompt "A brass lantern on a stone altar" -r lantern.png -o scene.png
+
+# Multi-reference composition:
+filfre --prompt "A young man at desk showing his keyring" \
+    -r hacker.png -r desk.png -r keyring.png -o composed.png
 ```
 
-**Hardware notes:**
-- **CUDA GPU (17GB+ VRAM)**: Full speed with `--dtype bf16`
-- **NVIDIA GB10**: Works with CUDA. Requires uninstalling triton (CLI provides instructions)
-- **CPU**: Works but slow (~28s/step). Uses float32 automatically
+**Options:**
+- `--reference/-r`: Reference images for composition (can use multiple)
+- `--ref-size`: Resize references (default: 256, smaller = faster)
+- `--steps`: Inference steps (default: 4)
+- `--guidance`: Guidance scale (default: 2.0)
+
+**Performance:** ~7-10s for 512x512 with 3 references on CUDA GPU
 
 
 # Converting ZIL to Grue

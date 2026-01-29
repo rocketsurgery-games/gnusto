@@ -51,5 +51,15 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
+diffusers = { git = "https://github.com/huggingface/diffusers.git" }
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
