@@ -8,7 +8,7 @@ just straightforward terminal output.
 import re
 from pathlib import Path
 from rich.console import Console
-from rich.theme import Theme
+from rich.text import Text
 from rich.rule import Rule
 
 from .agent import GameSession
@@ -21,44 +21,32 @@ from .render import (
 from .state import get_game_state
 
 
-# Regex to find @references like @hacker, @master-key, etc.
+# Regex patterns for styling
 REF_PATTERN = re.compile(r'@[\w-]+')
+QUOTE_PATTERN = re.compile(r'"[^"]*"')
+SPEAKER_PATTERN = re.compile(r'(?<=\S)(\s*)(@[\w-]+:\s*")')
 
 
-# Custom theme for game output
-THEME = Theme({
-    "room.name": "bold cyan",
-    "room.desc": "",
-    "room.exits": "dim yellow",
-    "room.inventory": "dim green",
-    "room.objects": "dim",
-    "command": "bold green",
-    "action": "dim",
-    "narrative": "italic",
-    "dialogue": "italic yellow",
-    "system": "dim",
-    "error": "bold red",
-    "warning": "yellow",
-    "ref": "magenta",
-})
+def style_narrative(text: str) -> Text:
+    """Apply Rich styles to narrative text using Text object (no markup parsing).
 
-
-def style_text(text: str) -> str:
-    """Apply Rich markup for @references and dialogue quotes."""
+    This approach is immune to any content in the text - no escaping needed.
+    """
     # Add newlines before @speaker: patterns (but not at start of text)
-    text = re.sub(r'(?<=\S)(\s*)(@[\w-]+:\s*")', r'\n\n\2', text)
+    text = SPEAKER_PATTERN.sub(r'\n\n\2', text)
 
-    # Style quoted text (dialogue)
-    def replace_quotes(match):
-        return f"[dialogue]{match.group(0)}[/]"
-    text = re.sub(r'"[^"]*"', replace_quotes, text)
+    # Create a Text object with base italic style
+    styled = Text(text, style="italic")
 
-    # Style @references in magenta
-    def replace_ref(match):
-        return f"[ref]{match.group(0)}[/]"
-    text = REF_PATTERN.sub(replace_ref, text)
+    # Apply dialogue style to quoted text
+    for match in QUOTE_PATTERN.finditer(text):
+        styled.stylize("italic yellow", match.start(), match.end())
 
-    return text
+    # Apply ref style to @references
+    for match in REF_PATTERN.finditer(text):
+        styled.stylize("magenta", match.start(), match.end())
+
+    return styled
 
 
 class SimpleTUI:
@@ -71,63 +59,67 @@ class SimpleTUI:
             self.game_dir = self.game_dir.parent
         self.debug = debug
         self.session: GameSession | None = None
-        self.console = Console(theme=THEME, highlight=False)
+        self.console = Console(highlight=False)
         self._last_room: str | None = None
 
     def render_block(self, block: ContentBlock) -> None:
-        """Render a content block to the terminal."""
+        """Render a content block to the terminal.
+
+        Uses Rich Text objects instead of markup strings to avoid parsing issues
+        with LLM-generated content that may contain bracket characters.
+        """
         if isinstance(block, RoomEnter):
             self.console.print()
             self.console.rule(style="dim")
 
             # Room name
-            self.console.print(f"[room.name]{block.name}[/]")
+            self.console.print(Text(block.name, style="bold cyan"))
 
             # Room description
             if block.description:
-                self.console.print(f"[room.desc]{block.description}[/]")
+                self.console.print(Text(block.description))
 
             # Exits (just direction names)
             if block.exits:
                 exits_str = ", ".join(block.exits)
-                self.console.print(f"[room.exits]Exits: {exits_str}[/]")
+                self.console.print(Text(f"Exits: {exits_str}", style="dim yellow"))
 
             # Inventory
             if block.inventory:
                 inv_str = ", ".join(block.inventory)
-                self.console.print(f"[room.inventory]Carrying: {inv_str}[/]")
+                self.console.print(Text(f"Carrying: {inv_str}", style="dim green"))
 
             # Objects
             if block.objects:
                 obj_str = ", ".join(block.objects)
-                self.console.print(f"[room.objects]You see: {obj_str}[/]")
+                self.console.print(Text(f"You see: {obj_str}", style="dim"))
 
             # Image (TUI just notes it exists)
             if block.image:
-                self.console.print(f"[dim][Image: {Path(block.image).name}][/]")
+                self.console.print(Text(f"[Image: {Path(block.image).name}]", style="dim"))
 
             self.console.print()
             self._last_room = block.room_id
 
         elif isinstance(block, ActionResult):
-            self.console.print(f"[action]{block.text}[/]")
+            self.console.print(Text(block.text, style="dim"))
 
         elif isinstance(block, Narrative):
-            styled = style_text(block.text)
-            self.console.print(f"[narrative]{styled}[/]")
+            styled = style_narrative(block.text)
+            self.console.print(styled)
             self.console.print()
 
         elif isinstance(block, Image):
             # TUI just notes the image
-            self.console.print(f"[dim][Image: {Path(block.src).name}][/]")
+            self.console.print(Text(f"[Image: {Path(block.src).name}]", style="dim"))
 
         elif isinstance(block, SystemMessage):
             style = {
-                "info": "system",
-                "warning": "warning",
-                "error": "error",
-            }.get(block.level, "system")
-            self.console.print(f"[{style}]{block.text}[/]")
+                "info": "dim",
+                "warning": "yellow",
+                "error": "bold red",
+            }.get(block.level, "dim")
+            self.console.print(Text(block.text, style=style))
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""
