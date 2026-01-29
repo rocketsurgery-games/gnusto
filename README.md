@@ -105,9 +105,8 @@ Generate illustrations using OmniGen2 (requires CUDA GPU with 17GB+ VRAM).
 Named after the Enchanter spell that creates gratuitous fireworks:
 
 ```bash
-filfre --scene white_house --output scene.png
-filfre --scene custom --prompt "A troll under a bridge" --output troll.png
-filfre --list-scenes
+filfre --prompt "A white house in the woods, with a mailbox out front." --output white-house.png
+filfre --prompt "A troll under a bridge" --output troll.png
 ```
 
 See `CLAUDE.md` for hardware-specific notes.
