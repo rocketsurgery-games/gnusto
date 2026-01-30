@@ -2,9 +2,10 @@
 Entry point for running Gnusto as a module.
 
 Usage:
-  python -m gnusto <game_path> [--debug]      # Terminal UI
+  python -m gnusto <game_path> [--debug]      # Terminal UI with scene rendering
+  python -m gnusto <game_path> --no-render    # Skip scene generation
+  python -m gnusto <game_path> --plain        # Text only, no images or colors
   python -m gnusto <game_path> --web [--port] # Web UI
-  python -m gnusto <game_path> --render       # With scene generation
 """
 
 import argparse
@@ -19,8 +20,9 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  gnusto games/lurkinghorror/              # Terminal UI
-  gnusto games/lurkinghorror/ --render     # With scene generation (requires CUDA)
+  gnusto games/lurkinghorror/              # Terminal UI with scene rendering
+  gnusto games/lurkinghorror/ --no-render  # Use cached images only
+  gnusto games/lurkinghorror/ --plain      # Text only mode
   gnusto games/lurkinghorror/ --web        # Web UI at http://127.0.0.1:8000
   gnusto games/lurkinghorror/ --web -p 3000  # Web UI on custom port
 """,
@@ -36,10 +38,14 @@ Examples:
         help="Enable debug mode to show agent tool calls and Grue I/O",
     )
     parser.add_argument(
-        "--render",
-        "-r",
+        "--no-render",
         action="store_true",
-        help="Enable scene rendering using filfre (requires CUDA GPU, ~15GB VRAM)",
+        help="Disable scene generation (use frozen/cached images only)",
+    )
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="Text-only mode: no images, no colors (for automation/accessibility)",
     )
     parser.add_argument(
         "--web",
@@ -66,7 +72,12 @@ Examples:
         from .web import run_server
         run_server(args.game_path, host=args.host, port=args.port, debug=args.debug)
     else:
-        run_tui(args.game_path, debug=args.debug, render=args.render)
+        run_tui(
+            args.game_path,
+            debug=args.debug,
+            no_render=args.no_render,
+            plain=args.plain,
+        )
 
 
 if __name__ == "__main__":

@@ -4,10 +4,13 @@ Simple terminal UI for Gnusto.
 Uses Rich for formatting. No scroll regions, no cursor manipulation,
 just straightforward terminal output.
 
-Scene rendering (--render flag):
-    When enabled, generates and displays room illustrations using filfre.
+Scene rendering:
+    By default, generates and displays room illustrations using filfre.
     Requires a CUDA GPU and the filfre pipeline (~15GB VRAM).
     Images are displayed inline in supported terminals (Kitty, iTerm2, WezTerm).
+
+    Use --no-render to skip generation and use only frozen/cached images.
+    Use --plain for text-only mode (no images or colors).
 """
 
 import re
@@ -63,7 +66,8 @@ class SimpleTUI:
         self,
         game_path: str,
         debug: bool = False,
-        render: bool = False,
+        no_render: bool = False,
+        plain: bool = False,
         renders_dir: str | Path | None = None,
     ):
         self.game_path = game_path
@@ -71,13 +75,14 @@ class SimpleTUI:
         if self.game_dir.is_file():
             self.game_dir = self.game_dir.parent
         self.debug = debug
-        self.render_enabled = render
+        self.no_render = no_render  # Skip generation, use frozen/cached only
+        self.plain = plain  # Text-only mode, no images or colors
         self.session: GameSession | None = None
-        self.console = Console(highlight=False)
+        self.console = Console(highlight=False, force_terminal=not plain, no_color=plain)
         self._last_room: str | None = None
         self._scene_renderer: Optional["SceneRenderer"] = None
         self._renders_dir = renders_dir or self.game_dir / "assets" / "renders"
-        self._can_display_images = terminal_images_supported()
+        self._can_display_images = terminal_images_supported() and not plain
 
     def render_block(self, block: ContentBlock) -> None:
         """Render a content block to the terminal.
@@ -191,7 +196,7 @@ class SimpleTUI:
             # Reload the game
             self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
             # Re-init scene renderer for new session
-            if self.render_enabled:
+            if not self.no_render:
                 self._init_scene_renderer()
             state = get_game_state(self.session.runtime)
             room_block = build_room_block(state, self.session.runtime, self.game_dir)
@@ -204,8 +209,8 @@ class SimpleTUI:
         return True
 
     def _init_scene_renderer(self) -> None:
-        """Initialize the scene renderer if enabled."""
-        if not self.render_enabled or not self.session:
+        """Initialize the scene renderer unless disabled."""
+        if self.no_render or not self.session:
             return
 
         try:
@@ -222,7 +227,7 @@ class SimpleTUI:
                 f"Failed to initialize scene renderer: {e}",
                 level="warning"
             ))
-            self.render_enabled = False
+            self.no_render = True  # Fall back to no-render mode
 
     def _render_room_image(self, room_id: str) -> str | None:
         """Generate a room image if scene rendering is enabled.
@@ -268,13 +273,13 @@ class SimpleTUI:
         self.render_block(SystemMessage(f"Loading game: {self.game_path}"))
         if self.debug:
             self.render_block(SystemMessage("Debug mode enabled"))
-        if self.render_enabled:
-            self.render_block(SystemMessage("Scene rendering enabled"))
+        if self.no_render:
+            self.render_block(SystemMessage("Scene generation disabled (using cached images only)"))
 
         self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
 
         # Initialize scene renderer after session is created
-        if self.render_enabled:
+        if not self.no_render:
             self._init_scene_renderer()
 
         self.console.print()
@@ -360,13 +365,14 @@ class SimpleTUI:
                 self.render_block(room_block)
 
 
-def run_tui(game_path: str, debug: bool = False, render: bool = False) -> None:
+def run_tui(game_path: str, debug: bool = False, no_render: bool = False, plain: bool = False) -> None:
     """Run the simple TUI.
 
     Args:
         game_path: Path to the game directory or main .grue file
         debug: Enable debug mode (show LLM tool calls)
-        render: Enable scene rendering (requires CUDA GPU and filfre)
+        no_render: Skip scene generation (use frozen/cached images only)
+        plain: Text-only mode (no images, no colors)
     """
-    tui = SimpleTUI(game_path, debug=debug, render=render)
+    tui = SimpleTUI(game_path, debug=debug, no_render=no_render, plain=plain)
     tui.run()

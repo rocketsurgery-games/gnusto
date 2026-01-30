@@ -4,6 +4,9 @@
 # Render cache (working renders, not frozen)
 **/assets/renders/cache/
 
+# Experiments (temporary/scratch)
+experiments/
+
 # Python-generated files
 __pycache__/
 *.py[oc]
