@@ -48,7 +48,7 @@ class SceneRenderer:
     def __init__(
         self,
         runtime: "GrueRuntime",
-        cache_dir: str | Path = "cache/renders",
+        renders_dir: str | Path = "assets/renders",
         assets_dir: str | Path | None = None,
         model_version: str = "flux2-klein-4b",
         default_ref_size: int = 384,
@@ -58,14 +58,14 @@ class SceneRenderer:
 
         Args:
             runtime: The Grue game runtime
-            cache_dir: Directory for cached renders
+            renders_dir: Base directory for renders (frozen + cache)
             assets_dir: Directory for asset files (reference images)
             model_version: Model version for cache invalidation
             default_ref_size: Default size for reference images
             pipeline: Optional pre-loaded filfre pipeline (for performance)
         """
         self.runtime = runtime
-        self.cache = RenderCache(cache_dir, model_version=model_version)
+        self.cache = RenderCache(renders_dir, model_version=model_version)
         self.assets_dir = Path(assets_dir) if assets_dir else None
         self.default_ref_size = default_ref_size
         self._pipeline = pipeline
@@ -148,8 +148,8 @@ class SceneRenderer:
         request = self._build_request(entity_id, result)
 
         # Check cache
-        cache_key = self._compute_cache_key(request)
-        cached = self.cache.get(cache_key)
+        cache_key, ref_hashes = self._compute_cache_key(request)
+        cached = self.cache.get(cache_key, entity=entity_id)
         if cached:
             return cached
 
@@ -158,11 +158,19 @@ class SceneRenderer:
         if image is None:
             return None
 
-        # Save to cache
+        # Save to cache with logging
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             image.save(f.name)
-            return self.cache.put(cache_key, f.name, copy=False)
+            return self.cache.put(
+                cache_key,
+                entity=entity_id,
+                image_path=f.name,
+                prompt=request.prompt,
+                ref_paths=request.ref_paths,
+                ref_hashes=ref_hashes,
+                copy=False,
+            )
 
     def _build_request(self, entity_id: str, result: RenderResult) -> RenderRequest:
         """Build a RenderRequest from a RenderResult.
@@ -258,8 +266,12 @@ class SceneRenderer:
                 if obj_image:
                     request.ref_images.append(obj_image)
 
-    def _compute_cache_key(self, request: RenderRequest) -> str:
-        """Compute cache key for a render request."""
+    def _compute_cache_key(self, request: RenderRequest) -> tuple[str, list[str]]:
+        """Compute cache key for a render request.
+
+        Returns:
+            Tuple of (cache_key, ref_hashes) - ref_hashes needed for logging
+        """
         # Collect hashes for reference images
         ref_hashes = []
 
@@ -271,10 +283,11 @@ class SceneRenderer:
         for img in request.ref_images:
             ref_hashes.append(hash_pil_image(img))
 
-        return self.cache.compute_key(
+        key = self.cache.compute_key(
             prompt=request.prompt,
             ref_hashes=ref_hashes if ref_hashes else None,
         )
+        return key, ref_hashes
 
     def _generate_image(self, request: RenderRequest) -> "Image | None":
         """Generate an image using filfre.

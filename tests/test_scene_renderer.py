@@ -124,7 +124,7 @@ class TestSceneRendererUnit:
 
         renderer = SceneRenderer(
             runtime=runtime,
-            cache_dir="/tmp/test-cache",
+            renders_dir="/tmp/test-renders",
             assets_dir="/tmp/test-assets",
         )
 
@@ -142,7 +142,7 @@ class TestSceneRendererUnit:
         room.render = None  # No render spec
         runtime.world.rooms = {"@test-room": room}
 
-        renderer = SceneRenderer(runtime=runtime, cache_dir="/tmp/test-cache")
+        renderer = SceneRenderer(runtime=runtime, renders_dir="/tmp/test-renders")
         result = renderer.render_room("@test-room")
 
         assert result is None
@@ -155,7 +155,7 @@ class TestSceneRendererUnit:
         runtime.world = Mock()
         runtime.world.rooms = {}
 
-        renderer = SceneRenderer(runtime=runtime, cache_dir="/tmp/test-cache")
+        renderer = SceneRenderer(runtime=runtime, renders_dir="/tmp/test-renders")
         result = renderer.render_room("@nonexistent")
 
         assert result is None

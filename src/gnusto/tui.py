@@ -64,7 +64,7 @@ class SimpleTUI:
         game_path: str,
         debug: bool = False,
         render: bool = False,
-        render_cache_dir: str | Path | None = None,
+        renders_dir: str | Path | None = None,
     ):
         self.game_path = game_path
         self.game_dir = Path(game_path).resolve()
@@ -76,7 +76,7 @@ class SimpleTUI:
         self.console = Console(highlight=False)
         self._last_room: str | None = None
         self._scene_renderer: Optional["SceneRenderer"] = None
-        self._render_cache_dir = render_cache_dir or self.game_dir / "cache" / "renders"
+        self._renders_dir = renders_dir or self.game_dir / "assets" / "renders"
         self._can_display_images = terminal_images_supported()
 
     def render_block(self, block: ContentBlock) -> None:
@@ -213,7 +213,7 @@ class SimpleTUI:
             self.render_block(SystemMessage("Loading scene renderer (this may take a moment)..."))
             self._scene_renderer = SceneRenderer(
                 runtime=self.session.runtime,
-                cache_dir=self._render_cache_dir,
+                renders_dir=self._renders_dir,
                 assets_dir=self.game_dir / "gfx",
             )
             self.render_block(SystemMessage("Scene renderer ready."))

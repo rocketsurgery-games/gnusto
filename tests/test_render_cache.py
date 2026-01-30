@@ -82,7 +82,7 @@ class TestRenderCacheKeyComputation:
         cache = RenderCache("/tmp/cache")
         key = cache.compute_key("A brass lantern")
 
-        assert len(key) == 16  # Default hash_length
+        assert len(key) == 8  # Default hash_length is now 8
 
 
 class TestRenderCacheOperations:
@@ -92,13 +92,13 @@ class TestRenderCacheOperations:
         """has() returns False for missing keys."""
         with tempfile.TemporaryDirectory() as tmpdir:
             cache = RenderCache(tmpdir)
-            assert cache.has("nonexistent") is False
+            assert cache.has("nonexistent", "@test-entity") is False
 
     def test_get_returns_none_for_missing(self):
         """get() returns None for missing keys."""
         with tempfile.TemporaryDirectory() as tmpdir:
             cache = RenderCache(tmpdir)
-            assert cache.get("nonexistent") is None
+            assert cache.get("nonexistent", "@test-entity") is None
 
     def test_put_and_get(self):
         """put() stores image and get() retrieves it."""
@@ -109,11 +109,11 @@ class TestRenderCacheOperations:
             test_image = Path(tmpdir) / "test.png"
             test_image.write_bytes(b"fake png data")
 
-            key = "test123"
-            cache.put(key, test_image)
+            key = "test1234"
+            cache.put(key, "@test-entity", test_image, prompt="A test image")
 
-            assert cache.has(key)
-            cached_path = cache.get(key)
+            assert cache.has(key, "@test-entity")
+            cached_path = cache.get(key, "@test-entity")
             assert cached_path is not None
             assert cached_path.exists()
             assert cached_path.read_bytes() == b"fake png data"
@@ -121,16 +121,16 @@ class TestRenderCacheOperations:
     def test_put_creates_cache_dir(self):
         """put() creates cache directory if needed."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            cache_dir = Path(tmpdir) / "nested" / "cache"
-            cache = RenderCache(cache_dir)
+            renders_dir = Path(tmpdir) / "nested" / "renders"
+            cache = RenderCache(renders_dir)
 
             test_image = Path(tmpdir) / "test.png"
             test_image.write_bytes(b"fake png data")
 
-            cache.put("key123", test_image)
+            cache.put("key12345", "@test-entity", test_image, prompt="Test")
 
-            assert cache_dir.exists()
-            assert cache.has("key123")
+            assert cache.cache_dir.exists()
+            assert cache.has("key12345", "@test-entity")
 
     def test_put_copy_preserves_original(self):
         """put(copy=True) preserves the original file."""
@@ -140,21 +140,68 @@ class TestRenderCacheOperations:
             test_image = Path(tmpdir) / "original.png"
             test_image.write_bytes(b"fake png data")
 
-            cache.put("key123", test_image, copy=True)
+            cache.put("key12345", "@test-entity", test_image, prompt="Test", copy=True)
 
             assert test_image.exists()  # Original preserved
 
     def test_put_move_removes_original(self):
         """put(copy=False) moves the file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            cache = RenderCache(Path(tmpdir) / "cache")
+            cache = RenderCache(Path(tmpdir) / "renders")
 
             test_image = Path(tmpdir) / "original.png"
             test_image.write_bytes(b"fake png data")
 
-            cache.put("key123", test_image, copy=False)
+            cache.put("key12345", "@test-entity", test_image, prompt="Test", copy=False)
 
             assert not test_image.exists()  # Original moved
+
+
+class TestRenderCacheTwoTier:
+    """Test two-tier frozen/cache lookup."""
+
+    def test_frozen_takes_priority(self):
+        """Frozen renders are returned over cached."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache = RenderCache(tmpdir)
+
+            # Create both frozen and cached versions
+            frozen_path = cache._frozen_path("@test-entity", "key12345")
+            cached_path = cache._cache_path("@test-entity", "key12345")
+
+            frozen_path.parent.mkdir(parents=True, exist_ok=True)
+            cached_path.parent.mkdir(parents=True, exist_ok=True)
+
+            frozen_path.write_bytes(b"frozen data")
+            cached_path.write_bytes(b"cached data")
+
+            # get() should return frozen
+            result = cache.get("key12345", "@test-entity")
+            assert result == frozen_path
+            assert result.read_bytes() == b"frozen data"
+
+    def test_cache_used_when_no_frozen(self):
+        """Cached renders are returned when no frozen exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache = RenderCache(tmpdir)
+
+            # Create only cached version
+            cached_path = cache._cache_path("@test-entity", "key12345")
+            cached_path.parent.mkdir(parents=True, exist_ok=True)
+            cached_path.write_bytes(b"cached data")
+
+            result = cache.get("key12345", "@test-entity")
+            assert result == cached_path
+
+    def test_entity_prefixed_filename(self):
+        """Filenames include entity prefix."""
+        cache = RenderCache("/tmp/renders")
+
+        filename = cache._filename("@terminal-room", "abc12345")
+        assert filename == "terminal-room-abc12345.png"
+
+        filename = cache._filename("@hacker", "xyz98765")
+        assert filename == "hacker-xyz98765.png"
 
 
 class TestRenderCacheWithFiles:
@@ -172,7 +219,7 @@ class TestRenderCacheWithFiles:
             ref2.write_bytes(b"image data 2")
 
             key = cache.compute_key("A scene", ref_paths=[ref1, ref2])
-            assert len(key) == 16
+            assert len(key) == 8  # Default hash_length
 
     def test_file_content_change_changes_key(self):
         """Changing file content changes the key."""
@@ -200,39 +247,93 @@ class TestRenderCacheStats:
             cache = RenderCache(Path(tmpdir) / "nonexistent")
             stats = cache.stats()
 
-            assert stats["count"] == 0
-            assert stats["size_bytes"] == 0
+            assert stats["frozen_count"] == 0
+            assert stats["cache_count"] == 0
 
     def test_stats_with_files(self):
         """stats() counts files and sizes."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            cache = RenderCache(Path(tmpdir) / "cache")
+            cache = RenderCache(Path(tmpdir) / "renders")
 
             # Add some cached files
             test_image = Path(tmpdir) / "test.png"
             test_image.write_bytes(b"x" * 100)
 
-            cache.put("key1", test_image)
-            cache.put("key2", test_image)
+            cache.put("key12345", "@entity1", test_image, prompt="Test 1")
+            cache.put("key67890", "@entity2", test_image, prompt="Test 2")
 
             stats = cache.stats()
-            assert stats["count"] == 2
-            assert stats["size_bytes"] == 200
+            assert stats["cache_count"] == 2
+            assert stats["cache_size_bytes"] == 200
 
-    def test_clear_removes_all(self):
-        """clear() removes all cached files."""
+    def test_clear_cache_removes_cached_only(self):
+        """clear_cache() removes cached files but not frozen."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            cache = RenderCache(Path(tmpdir) / "cache")
+            cache = RenderCache(Path(tmpdir) / "renders")
 
             test_image = Path(tmpdir) / "test.png"
             test_image.write_bytes(b"data")
 
-            cache.put("key1", test_image)
-            cache.put("key2", test_image)
+            # Add cached file
+            cache.put("key12345", "@entity", test_image, prompt="Test")
 
-            count = cache.clear()
-            assert count == 2
-            assert cache.stats()["count"] == 0
+            # Add frozen file manually
+            frozen_path = cache._frozen_path("@entity", "frozen12")
+            frozen_path.parent.mkdir(parents=True, exist_ok=True)
+            frozen_path.write_bytes(b"frozen data")
+
+            count = cache.clear_cache()
+            assert count == 1
+
+            stats = cache.stats()
+            assert stats["cache_count"] == 0
+            assert stats["frozen_count"] == 1
+
+
+class TestRenderLog:
+    """Test render logging."""
+
+    def test_put_logs_render(self):
+        """put() appends to render log."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache = RenderCache(tmpdir)
+
+            test_image = Path(tmpdir) / "test.png"
+            test_image.write_bytes(b"data")
+
+            cache.put(
+                "key12345",
+                "@terminal-room",
+                test_image,
+                prompt="A computer lab",
+                ref_paths=["assets/bg.png"],
+                ref_hashes=["abc123"],
+            )
+
+            entries = cache.read_log()
+            assert len(entries) == 1
+            assert entries[0]["hash"] == "key12345"
+            assert entries[0]["entity"] == "@terminal-room"
+            assert entries[0]["prompt"] == "A computer lab"
+            assert entries[0]["refs"] == ["assets/bg.png"]
+            assert entries[0]["ref_hashes"] == ["abc123"]
+            assert "timestamp" in entries[0]
+
+    def test_read_log_with_limit(self):
+        """read_log() respects limit parameter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache = RenderCache(tmpdir)
+
+            test_image = Path(tmpdir) / "test.png"
+            test_image.write_bytes(b"data")
+
+            for i in range(5):
+                cache.put(f"key{i:05d}", "@entity", test_image, prompt=f"Prompt {i}")
+
+            entries = cache.read_log(limit=2)
+            assert len(entries) == 2
+            assert entries[0]["prompt"] == "Prompt 3"
+            assert entries[1]["prompt"] == "Prompt 4"
 
 
 class TestImageHashing:

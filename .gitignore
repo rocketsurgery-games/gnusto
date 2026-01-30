@@ -1,8 +1,8 @@
 # Crap
 .DS_Store
 
-# Render cache
-**/cache/renders/
+# Render cache (working renders, not frozen)
+**/assets/renders/cache/
 
 # Python-generated files
 __pycache__/
