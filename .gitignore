@@ -1,6 +1,9 @@
 # Crap
 .DS_Store
 
+# Render cache
+**/cache/renders/
+
 # Python-generated files
 __pycache__/
 *.py[oc]
