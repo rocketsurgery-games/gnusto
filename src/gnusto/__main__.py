@@ -4,6 +4,7 @@ Entry point for running Gnusto as a module.
 Usage:
   python -m gnusto <game_path> [--debug]      # Terminal UI
   python -m gnusto <game_path> --web [--port] # Web UI
+  python -m gnusto <game_path> --render       # With scene generation
 """
 
 import argparse
@@ -19,6 +20,7 @@ def main() -> None:
         epilog="""\
 Examples:
   gnusto games/lurkinghorror/              # Terminal UI
+  gnusto games/lurkinghorror/ --render     # With scene generation (requires CUDA)
   gnusto games/lurkinghorror/ --web        # Web UI at http://127.0.0.1:8000
   gnusto games/lurkinghorror/ --web -p 3000  # Web UI on custom port
 """,
@@ -32,6 +34,12 @@ Examples:
         "-d",
         action="store_true",
         help="Enable debug mode to show agent tool calls and Grue I/O",
+    )
+    parser.add_argument(
+        "--render",
+        "-r",
+        action="store_true",
+        help="Enable scene rendering using filfre (requires CUDA GPU, ~15GB VRAM)",
     )
     parser.add_argument(
         "--web",
@@ -58,7 +66,7 @@ Examples:
         from .web import run_server
         run_server(args.game_path, host=args.host, port=args.port, debug=args.debug)
     else:
-        run_tui(args.game_path, debug=args.debug)
+        run_tui(args.game_path, debug=args.debug, render=args.render)
 
 
 if __name__ == "__main__":

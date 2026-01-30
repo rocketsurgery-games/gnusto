@@ -9,6 +9,8 @@ Architecture:
 - state.py: Game state serialization for agent context
 - agent.py: Agent loop, session management, and UI
 - tui.py: Fullscreen Textual terminal interface
+- scene_renderer.py: Scene illustration generation using filfre
+- terminal_images.py: Terminal image display (Kitty/iTerm2 protocols)
 
 Submodules:
 - frotz/: State-space analyzer for winnability verification (future)
@@ -16,5 +18,16 @@ Submodules:
 
 from .agent import GameSession, play_game
 from .state import GameState, ObjectInfo, RoomInfo
+from .scene_renderer import SceneRenderer
+from .terminal_images import display_image, is_supported as terminal_images_supported
 
-__all__ = ["GameSession", "play_game", "GameState", "ObjectInfo", "RoomInfo"]
+__all__ = [
+    "GameSession",
+    "play_game",
+    "GameState",
+    "ObjectInfo",
+    "RoomInfo",
+    "SceneRenderer",
+    "display_image",
+    "terminal_images_supported",
+]

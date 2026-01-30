@@ -18,7 +18,7 @@ from grue.runtime import ActionResult, GrueRuntime
 from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
-from .images import scan_images, filter_images_for_state, format_image_catalog, ImageInfo
+from .images import scan_images, filter_images_for_state, format_image_catalog, add_renderable_entities, ImageInfo
 from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ImageRequest
 from .state import GameState, ObjectInfo, get_game_state
 
@@ -243,8 +243,9 @@ class GameSession:
         evaluator = ReplEvaluator(runtime)
         llm = LLMClient(llm_config)
 
-        # Scan for available images
+        # Scan for available images and add renderable entities
         all_images = scan_images(game_dir)
+        all_images = add_renderable_entities(all_images, runtime)
 
         session = cls(
             runtime=runtime,

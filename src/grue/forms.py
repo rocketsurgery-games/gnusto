@@ -96,6 +96,12 @@ class GrueRoom:
 
     Nested forms (def, defn) can be placed inside the room to define scoped
     bindings that are only visible within this room's behaviors.
+
+    Render spec (optional):
+        :render ["A cramped 1980s computer lab"
+                 (when (= (:power self) :off) ", dark")
+                 :ref "assets/rooms/terminal-room.png"
+                 :contents]
     """
     name: str
     description: str = ""
@@ -106,6 +112,7 @@ class GrueRoom:
     behaviors: list["GrueBehavior"] = field(default_factory=list)
     nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
     visible: list[str] = field(default_factory=list)  # Objects visible in this room (via :visible)
+    render: SExpr | None = None  # Render spec for visual composition
 
 
 @dataclass
@@ -123,6 +130,16 @@ class GrueObject:
           :description closed-desc
           :behaviors (
             :open (fn () (if (check-locked) (blocked) (success)))))
+
+    Render spec (optional):
+        :render ["A brass lantern with glass panels"
+                 :ref "assets/objects/lantern.png"]
+
+        ;; State-dependent rendering
+        :render [(if (= (:state self) :open)
+                   "An open microwave"
+                   "A closed microwave")
+                 :ref "assets/objects/microwave.png"]
     """
     name: str
     description: str = ""
@@ -133,6 +150,7 @@ class GrueObject:
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list[GrueBehavior] = field(default_factory=list)
     nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
+    render: SExpr | None = None  # Render spec for visual composition
 
 
 @dataclass
@@ -581,6 +599,9 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
             room.visible = [expect_symbol(item, "visible item") for item in visible_expr]
         else:
             raise FormParseError(f"room :visible must be a list, got {type(visible_expr)}")
+    if "render" in kwargs:
+        # Store render spec as-is for later evaluation
+        room.render = kwargs["render"]
 
     world.rooms[room.name] = room
 
@@ -618,6 +639,9 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
         obj.properties = parse_properties(kwargs["properties"])
     if "behaviors" in kwargs:
         obj.behaviors = parse_behaviors(kwargs["behaviors"], world)
+    if "render" in kwargs:
+        # Store render spec as-is for later evaluation
+        obj.render = kwargs["render"]
 
     world.objects[obj.name] = obj
 

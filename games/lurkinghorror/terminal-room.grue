@@ -3,6 +3,7 @@
   :ldesc "This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
   empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
+  :render ("A dimly lit 1980s university computer lab at night, rows of CRT monitors, old terminals, pizza boxes and empty Coke cans on desks, banners and posters on walls, fluorescent lighting, nearly deserted")
   :properties (:lit true :outside false)
   :exits
     ((south :to @cs-2nd :via @hacker-exit-barrier)

@@ -78,6 +78,21 @@ from .test import (
     run_tests_from_string,
 )
 
+from .render import (
+    RenderResult,
+    RenderError,
+    ObjectRef,
+    evaluate_render_spec,
+    has_render_spec,
+    get_render_spec,
+)
+
+from .render_cache import (
+    RenderCache,
+    hash_image_data,
+    hash_pil_image,
+)
+
 __all__ = [
     # S-expression parser
     "parse",
@@ -133,4 +148,15 @@ __all__ = [
     "TestSuiteResult",
     "run_tests",
     "run_tests_from_string",
+    # Render specs
+    "RenderResult",
+    "RenderError",
+    "ObjectRef",
+    "evaluate_render_spec",
+    "has_render_spec",
+    "get_render_spec",
+    # Render cache
+    "RenderCache",
+    "hash_image_data",
+    "hash_pil_image",
 ]

@@ -108,6 +108,59 @@ def filter_images_for_state(
     ]
 
 
+def add_renderable_entities(
+    images: list[ImageInfo],
+    runtime: "GrueRuntime",
+) -> list[ImageInfo]:
+    """
+    Add virtual image entries for entities that have render specs.
+
+    These can be generated on-the-fly by the scene renderer.
+
+    Args:
+        images: Existing list of static images
+        runtime: Game runtime to check for render specs
+
+    Returns:
+        Extended list including renderable entities
+    """
+    from grue.render import has_render_spec
+
+    # Track existing image IDs to avoid duplicates
+    existing_ids = {img.id for img in images}
+    result = list(images)
+
+    # Check rooms for render specs
+    for room_id, room in runtime.world.rooms.items():
+        stem = room_id.lstrip("@")
+        if stem not in existing_ids and has_render_spec(room):
+            result.append(ImageInfo(
+                id=stem,
+                path=f"/gfx/{stem}.png",  # Virtual path
+                subject=room_id,
+                category="room",
+                description=f"{room.description} (can be generated)",
+            ))
+
+    # Check objects for render specs
+    for obj_id, obj in runtime.world.objects.items():
+        stem = obj_id.lstrip("@")
+        if stem not in existing_ids and has_render_spec(obj):
+            result.append(ImageInfo(
+                id=stem,
+                path=f"/gfx/{stem}.png",  # Virtual path
+                subject=obj_id,
+                category="object",
+                description=f"{obj.description} (can be generated)",
+            ))
+
+    return result
+
+
+if TYPE_CHECKING:
+    from grue.runtime import GrueRuntime
+
+
 def format_image_catalog(images: list[ImageInfo]) -> str:
     """
     Format image catalog for inclusion in LLM context.
