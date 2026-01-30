@@ -277,8 +277,8 @@ class SimpleTUI:
         state = get_game_state(self.session.runtime)
         room_block = build_room_block(state, self.session.runtime, self.game_dir)
 
-        # Generate scene image if renderer is enabled and no image exists
-        if self._scene_renderer and not room_block.image:
+        # Generate scene image if renderer is enabled (prefer over static images)
+        if self._scene_renderer:
             generated_image = self._render_room_image(state.room)
             if generated_image:
                 room_block.image = generated_image
@@ -340,8 +340,8 @@ class SimpleTUI:
             if state.room != previous_room:
                 room_block = build_room_block(state, self.session.runtime, self.game_dir)
 
-                # Generate scene image if renderer is enabled and no image exists
-                if self._scene_renderer and not room_block.image:
+                # Generate scene image if renderer is enabled (prefer over static images)
+                if self._scene_renderer:
                     generated_image = self._render_room_image(state.room)
                     if generated_image:
                         room_block.image = generated_image
