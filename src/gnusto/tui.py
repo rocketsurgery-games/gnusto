@@ -174,8 +174,12 @@ class SimpleTUI:
 
         result = handle_command(command, self.session, self.game_dir)
 
-        # Render all blocks
+        # Render all blocks, applying scene rendering to RoomEnter blocks
         for block in result.blocks:
+            if isinstance(block, RoomEnter) and self._scene_renderer:
+                generated_image = self._render_room_image(block.room_id)
+                if generated_image:
+                    block.image = generated_image
             self.render_block(block)
 
         # Handle special actions
@@ -186,8 +190,15 @@ class SimpleTUI:
         elif result.action == "reset":
             # Reload the game
             self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
+            # Re-init scene renderer for new session
+            if self.render_enabled:
+                self._init_scene_renderer()
             state = get_game_state(self.session.runtime)
             room_block = build_room_block(state, self.session.runtime, self.game_dir)
+            if self._scene_renderer:
+                generated_image = self._render_room_image(state.room)
+                if generated_image:
+                    room_block.image = generated_image
             self.render_block(room_block)
 
         return True
