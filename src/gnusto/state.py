@@ -22,7 +22,7 @@ class ObjectInfo:
 
     id: str
     description: str  # Short name like "pc", "chair"
-    fdesc: str = ""  # First/look description for room listings
+    ldesc: str = ""  # Long description for room listings
     behaviors: list[str] = field(default_factory=list)  # Available verbs
     properties: dict[str, Any] = field(default_factory=dict)  # Visible properties
     contents: list["ObjectInfo"] = field(default_factory=list)  # Nested objects
@@ -228,8 +228,8 @@ def _get_object_info_with_contents(
     """Get object info including available behaviors and nested contents."""
     desc = runtime.get_object_description(obj_name)
 
-    # Get fdesc for natural room listings (evaluates dynamic :describe behavior)
-    fdesc = runtime.get_object_fdesc(obj_name)
+    # Get ldesc for natural room listings (evaluates dynamic :describe behavior)
+    ldesc = runtime.get_object_fdesc(obj_name)
 
     # Get behaviors from world definition
     # Track verb -> formatted string (with params)
@@ -260,7 +260,7 @@ def _get_object_info_with_contents(
     return ObjectInfo(
         id=obj_name,
         description=desc,
-        fdesc=fdesc,
+        ldesc=ldesc,
         behaviors=sorted(behavior_map.values()),
         contents=contents,
     )

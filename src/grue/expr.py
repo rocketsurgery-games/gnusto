@@ -207,6 +207,10 @@ class WorldState(Protocol):
         """Get entity's raw ldesc (string or fn expression)."""
         ...
 
+    def get_description(self, entity: str) -> Any:
+        """Get entity's raw description (string or fn expression)."""
+        ...
+
 
 class MutableWorldState(WorldState, Protocol):
     """Protocol for mutable world state (effects)."""
@@ -1352,16 +1356,41 @@ class ExprEvaluator:
         return self.state.get_object_property(obj, prop)
 
     def _eval_desc(self, form: SList, env: Optional[Environment] = None) -> str:
-        """(desc OBJ)
+        """(desc ENTITY)
 
-        Returns the :description property of an object.
-        Shorthand for (prop OBJ :description).
+        Returns the evaluated :description of an entity (object or room).
+        If description is a string, returns it directly.
+        If description is a (fn () ...), evaluates it with ?self bound to the entity.
         """
         if len(form) != 2:
             raise EvalError(f"'desc' expects 1 argument, got {len(form) - 1}")
-        obj = self.eval(form[1], env)
-        desc = self.state.get_object_property(obj, "description")
-        return desc if desc is not None else ""
+        entity = self.eval(form[1], env)
+        desc = self.state.get_description(entity)
+
+        if desc is None:
+            return ""
+
+        # If it's a string, return it directly
+        if isinstance(desc, str):
+            return desc
+
+        # If it's an SList starting with 'fn', it's a function - evaluate it
+        if isinstance(desc, SList) and len(desc) >= 1:
+            first = desc[0]
+            if isinstance(first, Symbol) and first.name == "fn":
+                # Parse the fn and call it with ?self bound
+                fn = self._parse_fn(desc)
+                # Create environment with self bound
+                new_env = Environment(
+                    bindings={"self": entity},
+                    parent=env
+                )
+                return self.eval(fn.body, new_env)
+
+        # Otherwise, try to evaluate it as an expression with ?self bound
+        new_env = Environment(bindings={"self": entity}, parent=env)
+        result = self.eval(desc, new_env)
+        return str(result) if result is not None else ""
 
     def _eval_ldesc(self, form: SList, env: Optional[Environment] = None) -> str:
         """(ldesc ENTITY)

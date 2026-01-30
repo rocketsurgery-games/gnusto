@@ -60,7 +60,7 @@ And an object as:
 ```grue
 (object @pc
   :description "pc"
-  :fdesc "A really whiz-bang pc"
+  :ldesc "A really whiz-bang pc"
   :properties (
     :on false
     :unplugged false

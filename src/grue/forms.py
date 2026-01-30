@@ -97,6 +97,11 @@ class GrueRoom:
     Nested forms (def, defn) can be placed inside the room to define scoped
     bindings that are only visible within this room's behaviors.
 
+    Description (:description):
+        Can be a string or a function that returns a string:
+        :description "Dusty Room"
+        :description (fn () (str (if (:lit ?self) "Bright" "Dark") " Room"))
+
     Long description (:ldesc):
         Can be a string or a function that returns a string:
         :ldesc "A dusty room with cobwebs."
@@ -109,7 +114,7 @@ class GrueRoom:
         :render ["A room" :ref "room.png" :contents]     ; List - full spec
     """
     name: str
-    description: str = ""
+    description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
@@ -136,6 +141,11 @@ class GrueObject:
           :behaviors (
             :open (fn () (if (check-locked) (blocked) (success)))))
 
+    Description (:description):
+        Can be a string or a function that returns a string:
+        :description "a brass lantern"
+        :description (fn () (str "a " (if (:lit ?self) "glowing" "dark") " lantern"))
+
     Long description (:ldesc):
         Can be a string or a function that returns a string:
         :ldesc "A brass lantern with glass panels."
@@ -148,8 +158,7 @@ class GrueObject:
         :render ["A lantern" :ref "lantern.png"]         ; List - full spec
     """
     name: str
-    description: str = ""
-    fdesc: str = ""  # First description (before object is moved)
+    description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
     location: str | None = None
     flags: list[str] = field(default_factory=list)
@@ -590,7 +599,8 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     room.nested_forms = nested_forms
 
     if "description" in kwargs:
-        room.description = expect_string(kwargs["description"], "room description")
+        # description can be string or (fn () ...) - store as-is
+        room.description = kwargs["description"]
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         room.ldesc = kwargs["ldesc"]
@@ -635,9 +645,8 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     obj.nested_forms = nested_forms
 
     if "description" in kwargs:
-        obj.description = expect_string(kwargs["description"], "object description")
-    if "fdesc" in kwargs:
-        obj.fdesc = expect_string(kwargs["fdesc"], "object fdesc")
+        # description can be string or (fn () ...) - store as-is
+        obj.description = kwargs["description"]
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         obj.ldesc = kwargs["ldesc"]

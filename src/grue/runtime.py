@@ -311,11 +311,9 @@ class GrueRuntime:
         state_props = self.state.objects[obj].properties
         if prop in state_props:
             return state_props[prop]
-        # Fall back to world definition for static properties like description
+        # Fall back to world definition properties
         if obj in self.world.objects:
             world_obj = self.world.objects[obj]
-            if prop == "description":
-                return world_obj.description
             # Check world definition properties too
             if world_obj.properties:
                 return world_obj.properties.get(prop)
@@ -710,6 +708,20 @@ class GrueRuntime:
             return self.world.objects[entity].ldesc
         return None
 
+    def get_description(self, entity: str) -> SExpr | None:
+        """Get entity's raw description (string or fn expression).
+
+        Returns the unevaluated description - caller is responsible for
+        evaluating if it's a function.
+        """
+        # Check rooms first
+        if entity in self.world.rooms:
+            return self.world.rooms[entity].description
+        # Then objects
+        if entity in self.world.objects:
+            return self.world.objects[entity].description
+        return None
+
     def _evaluate_ldesc(self, entity_name: str, ldesc: SExpr) -> str:
         """Evaluate an ldesc value (string or fn) to produce a string.
 
@@ -743,10 +755,10 @@ class GrueRuntime:
         return str(result) if result is not None else ""
 
     def get_object_fdesc(self, obj_name: str) -> str:
-        """Get an object's first/look description for room listings.
+        """Get an object's description for room listings.
 
         Checks for :describe behavior first (for dynamic descriptions),
-        then falls back to fdesc, then ldesc.
+        then falls back to ldesc.
         """
         obj = self.world.objects.get(obj_name)
         if not obj:
@@ -771,9 +783,7 @@ class GrueRuntime:
                     if key == "description":
                         return str(value)
 
-        # Fall back to fdesc, then ldesc (which may be dynamic)
-        if obj.fdesc:
-            return obj.fdesc
+        # Fall back to ldesc (which may be dynamic)
         if obj.ldesc:
             return self._evaluate_ldesc(obj_name, obj.ldesc)
         return ""

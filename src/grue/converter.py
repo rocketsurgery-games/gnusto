@@ -520,15 +520,14 @@ class ZILtoGRUEConverter:
         if desc:
             self._emit(f'  :description "{self._escape_string(str(desc))}"')
 
-        # First description (shown before object is moved/taken)
-        fdesc = obj.get_property_value("FDESC")
-        if fdesc:
-            self._emit(f'  :fdesc "{self._escape_string(str(fdesc))}"')
-
-        # Long description
+        # Long description - use LDESC, or fall back to FDESC if no LDESC
         ldesc = obj.get_property_value("LDESC")
+        fdesc = obj.get_property_value("FDESC")
         if ldesc:
             self._emit(f'  :ldesc "{self._escape_string(str(ldesc))}"')
+        elif fdesc:
+            # Convert FDESC to :ldesc (fdesc is deprecated in Grue)
+            self._emit(f'  :ldesc "{self._escape_string(str(fdesc))}"')
 
         # Location
         loc = obj.get_property_value("IN")

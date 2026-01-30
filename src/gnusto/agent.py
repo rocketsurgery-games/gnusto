@@ -124,11 +124,11 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
     print(state.room_description)
 
     # Object listings (visually separated from room description)
-    objects_with_fdesc = [obj for obj in state.visible_objects if obj.fdesc]
-    if objects_with_fdesc:
+    objects_with_ldesc = [obj for obj in state.visible_objects if obj.ldesc]
+    if objects_with_ldesc:
         print()
-        for obj in objects_with_fdesc:
-            print(obj.fdesc)
+        for obj in objects_with_ldesc:
+            print(obj.ldesc)
 
     # Exits - use nearby_rooms for player-friendly display, exits for debug
     if debug:

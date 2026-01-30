@@ -738,7 +738,7 @@ intercept and block actions based on game state (e.g., possession mechanics).
 
 #### `(object NAME :location LOC :flags (...) :behaviors (...))`
 Object definition. Objects are named entities with:
-- `:description` / `:fdesc` / `:ldesc` - Descriptions
+- `:description` / `:ldesc` - Descriptions (can be string or fn)
 - `:location` - Where the object is (room, container, or entity name)
 - `:flags` - Boolean markers (e.g., `TAKEBIT`, `LOCKED`, `PERSON`)
 - `:properties` - Key-value properties
