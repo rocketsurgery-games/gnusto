@@ -1,6 +1,7 @@
 (room @cs-2nd
   :description "Second Floor"
   :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room."
+  :render ("A 1980s university building hallway at night, elevator doors with call buttons, fluorescent lights, institutional architecture, stairs visible, empty and eerie")
   :properties (:lit true :floor 2)
   :exits
     ((north :to @terminal-room)

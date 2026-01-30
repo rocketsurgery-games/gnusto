@@ -42,6 +42,7 @@
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
 counter are a refrigerator and a microwave."
+  :render ("A grimy 1980s university break room kitchen, dirty counter, old refrigerator with notes on it, microwave oven, fluorescent lighting, coffee stains, empty and neglected")
   :properties (:lit true)
   :exits ((east :to @cs-2nd)))
 

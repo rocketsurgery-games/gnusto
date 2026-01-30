@@ -169,9 +169,14 @@ class SceneRenderer:
 
         Resolves object references recursively.
         """
+        # Prepend world render style if configured
+        prompt = result.prompt
+        if self.runtime.world.render_style:
+            prompt = f"{self.runtime.world.render_style} {prompt}"
+
         request = RenderRequest(
             entity_name=entity_id,
-            prompt=result.prompt,
+            prompt=prompt,
             ref_size=result.ref_size or self.default_ref_size,
             include_contents=result.include_contents,
         )

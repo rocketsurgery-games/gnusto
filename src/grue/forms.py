@@ -208,6 +208,7 @@ class GrueWorld:
     description: str = ""
     intro: str = ""  # Introductory text shown at game start
     player: str = ""  # Entity name of the player (e.g., "@player")
+    render_style: str = ""  # Style prefix for scene rendering prompts (e.g., "Color graphic novel style.")
     rooms: dict[str, GrueRoom] = field(default_factory=dict)
     objects: dict[str, GrueObject] = field(default_factory=dict)
     victory: GrueVictory | None = None
@@ -560,6 +561,8 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
         world.intro = expect_string(kwargs["intro"], "world intro")
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
+    if "render-style" in kwargs:
+        world.render_style = expect_string(kwargs["render-style"], "world render-style")
 
 
 @form("room")
