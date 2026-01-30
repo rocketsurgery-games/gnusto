@@ -3,34 +3,73 @@
 Named after the Enchanter spell that creates gratuitous fireworks, `filfre` generates
 illustrations for interactive fiction using FLUX.2 Klein 4B.
 
-## Quick Start
+## Commands
+
+### `filfre generate` - Direct Image Generation
+
+Generate an image from a text prompt with optional reference images:
 
 ```bash
 # Simple generation
-filfre --prompt "A brass lantern on a stone altar" -o lantern.png
+filfre generate --prompt "A brass lantern on a stone altar" -o lantern.png
 
 # With reference image for consistency
-filfre --prompt "A troll under a bridge" -r troll-ref.png -o troll-scene.png
+filfre generate --prompt "A troll under a bridge" -r troll-ref.png -o troll-scene.png
 
 # Multi-reference composition
-filfre --prompt "A young man at desk showing his keyring" \
+filfre generate --prompt "A young man at desk showing his keyring" \
     -r hacker.png -r desk.png -r keyring.png -o composed.png
 ```
 
-## Options
+### `filfre render` - Render Game Entities
+
+Render an entity (room or object) from a game using its render spec:
+
+```bash
+filfre render games/lurkinghorror @terminal-room
+filfre render games/lurkinghorror @brass-lantern
+```
+
+### `filfre list` - List Renders
+
+List frozen and cached renders for a game:
+
+```bash
+filfre list games/lurkinghorror/assets/renders
+```
+
+### `filfre log` - Show Render Log
+
+View the render log showing recent generations:
+
+```bash
+filfre log games/lurkinghorror/assets/renders
+filfre log games/lurkinghorror/assets/renders -n 50  # Show last 50 entries
+```
+
+### `filfre clear` - Clear Cache
+
+Clear the render cache (preserves frozen renders):
+
+```bash
+filfre clear games/lurkinghorror/assets/renders
+filfre clear games/lurkinghorror/assets/renders -y  # Skip confirmation
+```
+
+## Generate Options
 
 | Option | Description |
 |--------|-------------|
 | `--prompt`, `-p` | Text description of the image to generate |
 | `--reference`, `-r` | Reference image(s) for composition (can use multiple) |
 | `--output`, `-o` | Output file path (default: output.png) |
-| `--size` | Output dimensions as WxH (default: 512x512) |
+| `--width` | Image width (default: 512) |
+| `--height` | Image height (default: 512) |
 | `--ref-size` | Resize references to this dimension (default: 256) |
 | `--steps` | Inference steps (default: 4) |
 | `--guidance` | Guidance scale (default: 2.0) |
 | `--seed` | Random seed for reproducibility (default: 0) |
-| `--dtype` | Weight dtype: bf16 or fp32 (default: bf16) |
-| `--vram` | Report VRAM usage statistics |
+| `--dtype` | Weight dtype: bf16, fp16, or fp32 (default: bf16) |
 | `-v`, `--verbose` | Print detailed timing information |
 
 ## Performance

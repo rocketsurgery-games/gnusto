@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
 """
-CLI for FLUX.2 Klein text-to-image generation.
+CLI for FLUX.2 Klein text-to-image generation and game asset management.
 
 Generates illustrations for text adventure game scenes.
 
 Usage:
-    filfre --prompt "A dragon in a cave" --output dragon.png
+    # Direct generation
+    filfre generate --prompt "A dragon in a cave" --output dragon.png
 
-With reference images:
-    filfre --prompt "A brass lantern on a stone altar in a dark cave" \
+    # With reference images
+    filfre generate --prompt "A brass lantern on a stone altar" \
         --reference lantern.png --output scene.png
 
-Multi-reference composition:
-    filfre --prompt "A young man at desk showing his keyring" \
-        --reference hacker.png --reference desk.png --reference keyring.png
+    # Render a game entity
+    filfre render games/lurkinghorror @terminal-room
+
+    # List renders in cache
+    filfre list games/lurkinghorror/assets/renders
+
+    # Show render log
+    filfre log games/lurkinghorror/assets/renders
 """
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -182,110 +189,12 @@ def generate_image(
     return result.images[0]
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate illustrations using FLUX.2 Klein",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  filfre --prompt "A dragon in a cave" --seed 42 --output dragon.png
+# =============================================================================
+# Subcommand: generate
+# =============================================================================
 
-  # With reference images for composition:
-  filfre --prompt "A brass lantern on a stone altar" \\
-      --reference lantern.png --output scene.png
-
-  # Multi-reference composition:
-  filfre --prompt "A young man at desk holding a keyring" \\
-      --reference hacker.png --reference desk.png --reference keyring.png \\
-      --output composed.png
-        """,
-    )
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        required=True,
-        help="Text prompt describing the image to generate",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        default="output.png",
-        help="Output filename (default: output.png)",
-    )
-    parser.add_argument(
-        "--width",
-        type=int,
-        default=512,
-        help="Image width (default: 512)",
-    )
-    parser.add_argument(
-        "--height",
-        type=int,
-        default=512,
-        help="Image height (default: 512)",
-    )
-    parser.add_argument(
-        "--steps",
-        type=int,
-        default=4,
-        help="Number of inference steps (default: 4)",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-        help="Random seed for reproducibility (default: 0)",
-    )
-    parser.add_argument(
-        "--guidance",
-        type=float,
-        default=2.0,
-        help="Guidance scale - higher values follow prompt more closely (default: 2.0)",
-    )
-    parser.add_argument(
-        "--dtype",
-        type=str,
-        default="bf16",
-        choices=["fp32", "fp16", "bf16"],
-        help="Data type for model weights (default: bf16)",
-    )
-    parser.add_argument(
-        "--reference",
-        "-r",
-        type=str,
-        action="append",
-        dest="references",
-        metavar="IMAGE",
-        help="Reference image for composition (can be used multiple times)",
-    )
-    parser.add_argument(
-        "--ref-size",
-        type=int,
-        default=256,
-        help="Size to resize reference images to (default: 256). "
-             "Smaller = faster, larger = more detail preserved.",
-    )
-    parser.add_argument(
-        "--count",
-        "-n",
-        type=int,
-        default=1,
-        help="Number of images to generate (for timing analysis)",
-    )
-    parser.add_argument(
-        "--no-warmup",
-        action="store_true",
-        help="Skip warmup run",
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Print detailed timing information",
-    )
-
-    args = parser.parse_args()
-
+def cmd_generate(args):
+    """Generate an image from a text prompt."""
     # Load reference images if provided
     reference_images = None
     if args.references:
@@ -364,6 +273,385 @@ Examples:
     image.save(output_path)
     print(f"\nSaved to {output_path}")
     print(f"Total wall time: {time.time() - total_start:.2f}s")
+
+
+# =============================================================================
+# Subcommand: render
+# =============================================================================
+
+def cmd_render(args):
+    """Render an entity from a game using the scene renderer."""
+    from gnusto.scene_renderer import SceneRenderer
+    from grue import GrueRuntime
+
+    game_path = Path(args.game_path)
+    entity_id = args.entity_id
+
+    # Ensure entity_id starts with @
+    if not entity_id.startswith("@"):
+        entity_id = f"@{entity_id}"
+
+    print(f"Loading game: {game_path}")
+    runtime = GrueRuntime.from_game_path(game_path)
+
+    # Determine renders directory
+    game_dir = game_path if game_path.is_dir() else game_path.parent
+    renders_dir = args.renders_dir or game_dir / "assets" / "renders"
+
+    print(f"Renders directory: {renders_dir}")
+    print(f"Entity: {entity_id}")
+
+    # Initialize renderer
+    print("\n--- Initializing Scene Renderer ---")
+    renderer = SceneRenderer(
+        runtime=runtime,
+        renders_dir=renders_dir,
+        assets_dir=game_dir / "gfx",
+    )
+
+    # Determine if it's a room or object
+    is_room = entity_id in runtime.world.rooms
+    is_object = entity_id in runtime.world.objects
+
+    if not is_room and not is_object:
+        print(f"Error: Entity '{entity_id}' not found in game")
+        sys.exit(1)
+
+    # Check for render spec
+    entity = runtime.world.rooms.get(entity_id) or runtime.world.objects.get(entity_id)
+    if not entity.render:
+        print(f"Error: Entity '{entity_id}' has no render spec")
+        sys.exit(1)
+
+    print(f"\n--- Rendering {entity_id} ---")
+    start = time.time()
+
+    if is_room:
+        result = renderer.render_room(entity_id)
+    else:
+        result = renderer.render_object(entity_id)
+
+    if result:
+        print(f"\nGenerated: {result}")
+        print(f"Time: {time.time() - start:.2f}s")
+    else:
+        print(f"\nFailed to render {entity_id}")
+        sys.exit(1)
+
+
+# =============================================================================
+# Subcommand: list
+# =============================================================================
+
+def cmd_list(args):
+    """List renders in the cache/frozen directories."""
+    from grue.render_cache import RenderCache
+
+    renders_dir = Path(args.renders_dir)
+    cache = RenderCache(renders_dir)
+
+    stats = cache.stats()
+
+    print(f"Renders directory: {renders_dir}")
+    print()
+
+    # List frozen renders
+    frozen_dir = renders_dir
+    if frozen_dir.exists():
+        frozen_files = sorted(frozen_dir.glob("*.png"))
+        if frozen_files:
+            print(f"Frozen renders ({len(frozen_files)}):")
+            for f in frozen_files:
+                size_kb = f.stat().st_size / 1024
+                print(f"  {f.name:40} {size_kb:6.1f} KB")
+            print()
+
+    # List cached renders
+    cache_dir = renders_dir / "cache"
+    if cache_dir.exists():
+        cache_files = sorted(cache_dir.glob("*.png"))
+        if cache_files:
+            print(f"Cached renders ({len(cache_files)}):")
+            for f in cache_files:
+                size_kb = f.stat().st_size / 1024
+                print(f"  {f.name:40} {size_kb:6.1f} KB")
+            print()
+
+    # Summary
+    print("Summary:")
+    print(f"  Frozen: {stats['frozen_count']} files, {stats['frozen_size_bytes'] / 1024:.1f} KB")
+    print(f"  Cached: {stats['cache_count']} files, {stats['cache_size_bytes'] / 1024:.1f} KB")
+
+
+# =============================================================================
+# Subcommand: log
+# =============================================================================
+
+def cmd_log(args):
+    """Show the render log."""
+    from grue.render_cache import RenderCache
+    import json
+
+    renders_dir = Path(args.renders_dir)
+    cache = RenderCache(renders_dir)
+
+    entries = cache.read_log(limit=args.limit)
+
+    if not entries:
+        print("No render log entries found.")
+        return
+
+    print(f"Recent renders ({len(entries)} entries):")
+    print()
+
+    for entry in entries:
+        timestamp = entry.get("timestamp", "unknown")
+        entity = entry.get("entity", "unknown")
+        hash_key = entry.get("hash", "unknown")
+        prompt = entry.get("prompt", "")
+
+        # Truncate prompt for display
+        if len(prompt) > 60:
+            prompt = prompt[:57] + "..."
+
+        print(f"  {timestamp[:19]}  {entity:20}  {hash_key[:8]}")
+        print(f"    Prompt: {prompt}")
+
+        refs = entry.get("refs", [])
+        if refs:
+            print(f"    Refs: {', '.join(refs)}")
+
+        print()
+
+
+# =============================================================================
+# Subcommand: clear
+# =============================================================================
+
+def cmd_clear(args):
+    """Clear the render cache (preserves frozen renders)."""
+    from grue.render_cache import RenderCache
+
+    renders_dir = Path(args.renders_dir)
+    cache = RenderCache(renders_dir)
+
+    if not args.yes:
+        stats = cache.stats()
+        print(f"This will delete {stats['cache_count']} cached render(s).")
+        print("Frozen renders will be preserved.")
+        response = input("Continue? [y/N] ")
+        if response.lower() != "y":
+            print("Aborted.")
+            return
+
+    count = cache.clear_cache()
+    print(f"Cleared {count} cached render(s).")
+
+
+# =============================================================================
+# Main entry point
+# =============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate illustrations using FLUX.2 Klein and manage game renders",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # ---------------------------------------------------------------------
+    # generate subcommand
+    # ---------------------------------------------------------------------
+    gen_parser = subparsers.add_parser(
+        "generate",
+        aliases=["gen"],
+        help="Generate an image from a text prompt",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+Examples:
+  filfre generate --prompt "A dragon in a cave" --seed 42 --output dragon.png
+
+  # With reference images for composition:
+  filfre generate --prompt "A brass lantern on a stone altar" \\
+      --reference lantern.png --output scene.png
+        """,
+    )
+    gen_parser.add_argument(
+        "--prompt", "-p",
+        type=str,
+        required=True,
+        help="Text prompt describing the image to generate",
+    )
+    gen_parser.add_argument(
+        "--output", "-o",
+        type=str,
+        default="output.png",
+        help="Output filename (default: output.png)",
+    )
+    gen_parser.add_argument(
+        "--width",
+        type=int,
+        default=512,
+        help="Image width (default: 512)",
+    )
+    gen_parser.add_argument(
+        "--height",
+        type=int,
+        default=512,
+        help="Image height (default: 512)",
+    )
+    gen_parser.add_argument(
+        "--steps",
+        type=int,
+        default=4,
+        help="Number of inference steps (default: 4)",
+    )
+    gen_parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed for reproducibility (default: 0)",
+    )
+    gen_parser.add_argument(
+        "--guidance",
+        type=float,
+        default=2.0,
+        help="Guidance scale - higher values follow prompt more closely (default: 2.0)",
+    )
+    gen_parser.add_argument(
+        "--dtype",
+        type=str,
+        default="bf16",
+        choices=["fp32", "fp16", "bf16"],
+        help="Data type for model weights (default: bf16)",
+    )
+    gen_parser.add_argument(
+        "--reference", "-r",
+        type=str,
+        action="append",
+        dest="references",
+        metavar="IMAGE",
+        help="Reference image for composition (can be used multiple times)",
+    )
+    gen_parser.add_argument(
+        "--ref-size",
+        type=int,
+        default=256,
+        help="Size to resize reference images to (default: 256)",
+    )
+    gen_parser.add_argument(
+        "--count", "-n",
+        type=int,
+        default=1,
+        help="Number of images to generate (for timing analysis)",
+    )
+    gen_parser.add_argument(
+        "--no-warmup",
+        action="store_true",
+        help="Skip warmup run",
+    )
+    gen_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print detailed timing information",
+    )
+    gen_parser.set_defaults(func=cmd_generate)
+
+    # ---------------------------------------------------------------------
+    # render subcommand
+    # ---------------------------------------------------------------------
+    render_parser = subparsers.add_parser(
+        "render",
+        help="Render an entity from a game",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+Examples:
+  filfre render games/lurkinghorror @terminal-room
+  filfre render games/lurkinghorror @brass-lantern
+        """,
+    )
+    render_parser.add_argument(
+        "game_path",
+        type=str,
+        help="Path to the game directory or .grue file",
+    )
+    render_parser.add_argument(
+        "entity_id",
+        type=str,
+        help="Entity ID to render (e.g., @terminal-room, @brass-lantern)",
+    )
+    render_parser.add_argument(
+        "--renders-dir",
+        type=str,
+        help="Override renders directory (default: <game>/assets/renders)",
+    )
+    render_parser.set_defaults(func=cmd_render)
+
+    # ---------------------------------------------------------------------
+    # list subcommand
+    # ---------------------------------------------------------------------
+    list_parser = subparsers.add_parser(
+        "list",
+        aliases=["ls"],
+        help="List renders in cache and frozen directories",
+    )
+    list_parser.add_argument(
+        "renders_dir",
+        type=str,
+        help="Path to renders directory (e.g., games/lurkinghorror/assets/renders)",
+    )
+    list_parser.set_defaults(func=cmd_list)
+
+    # ---------------------------------------------------------------------
+    # log subcommand
+    # ---------------------------------------------------------------------
+    log_parser = subparsers.add_parser(
+        "log",
+        help="Show the render log",
+    )
+    log_parser.add_argument(
+        "renders_dir",
+        type=str,
+        help="Path to renders directory",
+    )
+    log_parser.add_argument(
+        "-n", "--limit",
+        type=int,
+        default=20,
+        help="Maximum number of entries to show (default: 20)",
+    )
+    log_parser.set_defaults(func=cmd_log)
+
+    # ---------------------------------------------------------------------
+    # clear subcommand
+    # ---------------------------------------------------------------------
+    clear_parser = subparsers.add_parser(
+        "clear",
+        help="Clear the render cache (preserves frozen renders)",
+    )
+    clear_parser.add_argument(
+        "renders_dir",
+        type=str,
+        help="Path to renders directory",
+    )
+    clear_parser.add_argument(
+        "-y", "--yes",
+        action="store_true",
+        help="Skip confirmation prompt",
+    )
+    clear_parser.set_defaults(func=cmd_clear)
+
+    # ---------------------------------------------------------------------
+    # Parse and dispatch
+    # ---------------------------------------------------------------------
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    args.func(args)
 
 
 if __name__ == "__main__":
