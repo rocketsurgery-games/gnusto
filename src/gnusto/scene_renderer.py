@@ -180,7 +180,7 @@ class SceneRenderer:
         # Prepend world render style if configured
         prompt = result.prompt
         if self.runtime.world.render_style:
-            prompt = f"{self.runtime.world.render_style} {prompt}"
+            prompt = f"STYLE: {self.runtime.world.render_style}\n{prompt}"
 
         request = RenderRequest(
             entity_name=entity_id,
@@ -347,7 +347,7 @@ class SceneRenderer:
 
         try:
             from filfre.cli import get_pipeline
-            self._pipeline, _ = get_pipeline(dtype="bf16", verbose=False)
+            self._pipeline, _ = get_pipeline(dtype="bf16", quiet=True)
             return self._pipeline
         except Exception as e:
             print(f"Warning: Failed to load filfre pipeline: {e}")

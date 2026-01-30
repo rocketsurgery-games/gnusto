@@ -72,32 +72,33 @@ def clone_parameters_in_place(module):
         buf.data = buf.data.clone()
 
 
-def get_pipeline(dtype: str = "bf16", verbose: bool = False):
+def get_pipeline(dtype: str = "bf16", verbose: bool = False, quiet: bool = False):
     """Load the FLUX.2 Klein pipeline.
 
     Args:
         dtype: Data type for model weights ("bf16", "fp16", or "fp32").
         verbose: If True, print detailed timing information.
+        quiet: If True, suppress all output (for embedding in TUI).
 
     Returns:
         Tuple of (pipeline, device).
     """
-    with timed("import torch"):
-        import torch
-    with timed("import diffusers"):
-        from diffusers import Flux2KleinPipeline
+    import torch
+    from diffusers import Flux2KleinPipeline
 
     # Determine device
     if torch.cuda.is_available():
         device = "cuda"
     else:
         device = "cpu"
-        print("WARNING: No CUDA GPU detected. Running on CPU will be slow.")
+        if not quiet:
+            print("WARNING: No CUDA GPU detected. Running on CPU will be slow.")
 
     # Determine weight dtype
     if device == "cpu":
         weight_dtype = torch.float32
-        print("NOTE: Using float32 on CPU")
+        if not quiet:
+            print("NOTE: Using float32 on CPU")
     elif dtype == "fp16":
         weight_dtype = torch.float16
     elif dtype == "bf16":
@@ -105,11 +106,18 @@ def get_pipeline(dtype: str = "bf16", verbose: bool = False):
     else:
         weight_dtype = torch.float32
 
-    print(f"Loading FLUX.2 Klein 4B...")
-    print(f"Device: {device}, dtype: {weight_dtype}")
+    if not quiet:
+        print(f"Loading FLUX.2 Klein 4B...")
+        print(f"Device: {device}, dtype: {weight_dtype}")
 
     # Load pipeline to CPU first
-    with timed("from_pretrained (CPU)"):
+    if not quiet:
+        with timed("from_pretrained (CPU)"):
+            pipeline = Flux2KleinPipeline.from_pretrained(
+                "black-forest-labs/FLUX.2-klein-4B",
+                torch_dtype=weight_dtype,
+            )
+    else:
         pipeline = Flux2KleinPipeline.from_pretrained(
             "black-forest-labs/FLUX.2-klein-4B",
             torch_dtype=weight_dtype,
@@ -118,16 +126,23 @@ def get_pipeline(dtype: str = "bf16", verbose: bool = False):
     if device == "cuda":
         # Fast CUDA transfer: clone parameters first to break mmap links
         # mmap'd tensors transfer to CUDA ~100x slower than regular tensors
-        with timed("clone parameters"):
+        if not quiet:
+            with timed("clone parameters"):
+                for name, component in pipeline.components.items():
+                    if hasattr(component, 'parameters'):
+                        clone_parameters_in_place(component)
+
+            with timed("pipeline.to(cuda)"):
+                pipeline = pipeline.to(device)
+                torch.cuda.synchronize()
+        else:
             for name, component in pipeline.components.items():
                 if hasattr(component, 'parameters'):
                     clone_parameters_in_place(component)
-
-        with timed("pipeline.to(cuda)"):
             pipeline = pipeline.to(device)
             torch.cuda.synchronize()
 
-    if verbose:
+    if verbose and not quiet:
         with timed("torch.cuda.synchronize"):
             torch.cuda.synchronize()
 
@@ -291,6 +306,12 @@ def cmd_generate(args):
     print(f"\nSaved to {output_path}")
     print(f"Total wall time: {time.time() - total_start:.2f}s")
 
+    # Display in terminal if supported
+    from gnusto.terminal_images import display_image, is_supported
+    if is_supported():
+        print()
+        display_image(output_path, width=60)
+
 
 # =============================================================================
 # Subcommand: render
@@ -303,7 +324,8 @@ def cmd_render(args):
     state rendering during gameplay, use gnusto's built-in scene renderer.
     """
     from gnusto.scene_renderer import SceneRenderer
-    from grue import GrueRuntime
+    from grue.parser import load_grue
+    from grue.runtime import GrueRuntime
 
     game_dir, renders_dir, assets_dir = get_game_dirs(args.game_path)
     entity_id = args.entity_id
@@ -313,7 +335,8 @@ def cmd_render(args):
         entity_id = f"@{entity_id}"
 
     print(f"Loading game: {game_dir}")
-    runtime = GrueRuntime.from_game_path(game_dir)
+    world = load_grue(game_dir)
+    runtime = GrueRuntime(world)
 
     print(f"Renders directory: {renders_dir}")
     print(f"Entity: {entity_id}")
@@ -352,6 +375,12 @@ def cmd_render(args):
     if result:
         print(f"\nGenerated: {result}")
         print(f"Time: {time.time() - start:.2f}s")
+
+        # Display in terminal if supported
+        from gnusto.terminal_images import display_image, is_supported
+        if is_supported():
+            print()
+            display_image(result, width=60)
     else:
         print(f"\nFailed to render {entity_id}")
         sys.exit(1)
