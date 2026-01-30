@@ -74,8 +74,14 @@ def evaluate_render_spec(
 ) -> RenderResult:
     """Evaluate a render spec to produce a RenderResult.
 
+    Render spec can be:
+    - None: No render spec
+    - String: Prompt-only (no refs)
+    - (fn () ...): Function that returns a render spec (string or list)
+    - List: Full render spec with prompt strings, refs, and options
+
     Args:
-        spec: The render spec SExpr (typically an SList)
+        spec: The render spec SExpr
         entity_name: The object/room being rendered (bound to `self`)
         state: WorldState for property access and expression evaluation
         functions: User-defined functions available during evaluation
@@ -89,8 +95,22 @@ def evaluate_render_spec(
     if spec is None:
         return RenderResult()
 
+    # String: treat as prompt-only
+    if isinstance(spec, str):
+        return RenderResult(prompt=spec)
+
+    # Function: evaluate it first, then process the result
+    if isinstance(spec, SList) and len(spec) >= 1:
+        first = spec[0]
+        if isinstance(first, Symbol) and first.name == "fn":
+            # It's a (fn () ...) - evaluate it
+            evaluated = _evaluate_fn_spec(spec, entity_name, state, functions)
+            # Recursively process the result (could be string or list)
+            return evaluate_render_spec(evaluated, entity_name, state, functions)
+
+    # Must be a list at this point
     if not isinstance(spec, SList):
-        raise RenderError(f"Render spec must be a list, got {type(spec).__name__}")
+        raise RenderError(f"Render spec must be a string, fn, or list, got {type(spec).__name__}")
 
     result = RenderResult()
     prompt_parts: list[str] = []
@@ -219,6 +239,63 @@ def _evaluate_expression(
     evaluator._env = env
 
     return evaluator.eval(expr, env)
+
+
+def _evaluate_fn_spec(
+    fn_expr: SList,
+    entity_name: str,
+    state: Any,
+    functions: dict[str, GrueFn] | None,
+) -> Any:
+    """Evaluate a (fn () body) expression with `self` bound.
+
+    Returns the result of calling the function, which should be
+    a string or list suitable for further render spec processing.
+    """
+    # Parse the fn: (fn (params) body)
+    if len(fn_expr) < 3:
+        raise RenderError(f"fn requires params and body, got {fn_expr}")
+
+    params_expr = fn_expr[1]
+    body = fn_expr[2]
+
+    # Validate params (should be empty for render fns, but allow any)
+    params = []
+    if isinstance(params_expr, SList):
+        for p in params_expr.items:
+            if isinstance(p, Symbol):
+                name = p.name[1:] if p.name.startswith("?") else p.name
+                params.append(name)
+
+    # Evaluate body with self bound
+    evaluator = ExprEvaluator(state, functions or {})
+    env = Environment(bindings={"self": entity_name})
+
+    result = evaluator.eval(body, env)
+
+    # If result is a Python list (from quote), convert to SList for further processing
+    if isinstance(result, list):
+        # Recursively convert Python list to SList
+        return _list_to_sexpr(result)
+
+    return result
+
+
+def _list_to_sexpr(lst: list) -> SExpr:
+    """Convert a Python list back to SExpr for render spec processing."""
+    items = []
+    for item in lst:
+        if isinstance(item, list):
+            items.append(_list_to_sexpr(item))
+        elif isinstance(item, str) and item.startswith(":"):
+            # Keyword
+            items.append(Keyword(item[1:]))
+        elif isinstance(item, str) and item.startswith("@"):
+            # Symbol (object ref)
+            items.append(Symbol(item))
+        else:
+            items.append(item)
+    return SList(items)
 
 
 def has_render_spec(entity: Any) -> bool:

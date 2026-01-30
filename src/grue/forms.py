@@ -97,15 +97,20 @@ class GrueRoom:
     Nested forms (def, defn) can be placed inside the room to define scoped
     bindings that are only visible within this room's behaviors.
 
-    Render spec (optional):
-        :render ["A cramped 1980s computer lab"
-                 (when (= (:power self) :off) ", dark")
-                 :ref "assets/rooms/terminal-room.png"
-                 :contents]
+    Long description (:ldesc):
+        Can be a string or a function that returns a string:
+        :ldesc "A dusty room with cobwebs."
+        :ldesc (fn () (str "The door is " (if (:open @door) "open" "closed") "."))
+
+    Render spec (:render):
+        Can be a function, string, or list:
+        :render "A dusty room"                           ; String - prompt only
+        :render (fn () (str "Room with " ...))           ; Function - returns spec
+        :render ["A room" :ref "room.png" :contents]     ; List - full spec
     """
     name: str
     description: str = ""
-    ldesc: str = ""  # Long description
+    ldesc: SExpr | None = None  # Long description: string or (fn () ...)
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -131,20 +136,21 @@ class GrueObject:
           :behaviors (
             :open (fn () (if (check-locked) (blocked) (success)))))
 
-    Render spec (optional):
-        :render ["A brass lantern with glass panels"
-                 :ref "assets/objects/lantern.png"]
+    Long description (:ldesc):
+        Can be a string or a function that returns a string:
+        :ldesc "A brass lantern with glass panels."
+        :ldesc (fn () (str "The lantern is " (if (:lit ?self) "glowing" "dark") "."))
 
-        ;; State-dependent rendering
-        :render [(if (= (:state self) :open)
-                   "An open microwave"
-                   "A closed microwave")
-                 :ref "assets/objects/microwave.png"]
+    Render spec (:render):
+        Can be a function, string, or list:
+        :render "A brass lantern"                        ; String - prompt only
+        :render (fn () (str "Lantern, " ...))            ; Function - returns spec
+        :render ["A lantern" :ref "lantern.png"]         ; List - full spec
     """
     name: str
     description: str = ""
     fdesc: str = ""  # First description (before object is moved)
-    ldesc: str = ""  # Long description
+    ldesc: SExpr | None = None  # Long description: string or (fn () ...)
     location: str | None = None
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -586,7 +592,8 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     if "description" in kwargs:
         room.description = expect_string(kwargs["description"], "room description")
     if "ldesc" in kwargs:
-        room.ldesc = expect_string(kwargs["ldesc"], "room ldesc")
+        # ldesc can be string or (fn () ...) - store as-is
+        room.ldesc = kwargs["ldesc"]
     if "flags" in kwargs:
         room.flags = parse_flags(kwargs["flags"])
     if "exits" in kwargs:
@@ -632,7 +639,8 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "fdesc" in kwargs:
         obj.fdesc = expect_string(kwargs["fdesc"], "object fdesc")
     if "ldesc" in kwargs:
-        obj.ldesc = expect_string(kwargs["ldesc"], "object ldesc")
+        # ldesc can be string or (fn () ...) - store as-is
+        obj.ldesc = kwargs["ldesc"]
     if "location" in kwargs:
         loc = expect_symbol(kwargs["location"], "object location")
         obj.location = None if loc == "nil" else loc

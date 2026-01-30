@@ -3,6 +3,7 @@
 
 # Render cache (working renders, not frozen)
 **/assets/renders/cache/
+**/assets/renders/render-log.jsonl
 
 # Experiments (temporary/scratch)
 experiments/

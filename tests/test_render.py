@@ -190,10 +190,17 @@ class TestRenderSpecEvaluation:
 class TestRenderSpecErrors:
     """Test error handling in render spec evaluation."""
 
+    def test_string_as_prompt_only(self):
+        """String spec is valid as prompt-only render."""
+        result = evaluate_render_spec("A brass lantern", "@obj", MockState())
+        assert result.prompt == "A brass lantern"
+        assert result.ref_paths == []
+        assert result.object_refs == []
+
     def test_invalid_spec_type(self):
-        """Non-list spec raises RenderError."""
-        with pytest.raises(RenderError, match="must be a list"):
-            evaluate_render_spec("not a list", "@obj", MockState())
+        """Non-list, non-string spec raises RenderError."""
+        with pytest.raises(RenderError, match="must be a string, fn, or list"):
+            evaluate_render_spec(123, "@obj", MockState())
 
     def test_ref_without_path(self):
         """:ref without path raises error."""

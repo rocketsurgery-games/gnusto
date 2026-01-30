@@ -119,6 +119,17 @@
 
 (room @cs-elevator-room
   :description "Elevator"
+
+  :ldesc (fn ()
+    (str "This is a battered, rather dirty elevator. The fake wood walls are scratched and marred "
+         "with graffiti. The elevator doors are " (if (:open @elevator-door) "open" "closed")
+         ". To the right of the doors is an area with floor buttons (B and 1 through 3), "
+         "an open button, a close button, a stop switch, and an alarm button. Below these is "
+         "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
+
+  :render (fn ()
+    (ldesc self))
+
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
                :direction 1                               ; Direction (1=up, -1=down)
@@ -126,14 +137,12 @@
                :go-buttons (false false false false)      ; Interior floor buttons
                :up-buttons (false false false false)      ; Exterior up buttons
                :down-buttons (false false false false))   ; Exterior down buttons
+
   :exits
     ((north :to @cs-elevator-room :via @elevator-exit)
      (out :to @cs-elevator-room :via @elevator-exit))
 
-  :behaviors (
-    :look (fn ()
-      (let ((?door-state (if (:open @elevator-door) "open" "closed")))
-        (success :message (str "This is a battered, rather dirty elevator. The fake wood walls are scratched and marred with graffiti. The elevator doors are " ?door-state ". To the right of the doors is an area with floor buttons (B and 1 through 3), an open button, a close button, a stop switch, and an alarm button. Below these is an access panel which is " (if (:open @access-panel) "open" "closed") "."))))))
+  :behaviors ())
 
 ; Virtual barrier for exiting elevator
 (object @elevator-exit

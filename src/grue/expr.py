@@ -203,6 +203,10 @@ class WorldState(Protocol):
         """Check if an event is currently queued."""
         ...
 
+    def get_ldesc(self, entity: str) -> Any:
+        """Get entity's raw ldesc (string or fn expression)."""
+        ...
+
 
 class MutableWorldState(WorldState, Protocol):
     """Protocol for mutable world state (effects)."""
@@ -949,6 +953,7 @@ class ExprEvaluator:
             "loc": self._eval_loc,
             "prop": self._eval_prop,
             "desc": self._eval_desc,
+            "ldesc": self._eval_ldesc,
 
             # Convenience predicates
             # NOTE: held?, here?, in?, held-by?, at?, loc? are now defined in builtins.grue
@@ -1357,6 +1362,63 @@ class ExprEvaluator:
         obj = self.eval(form[1], env)
         desc = self.state.get_object_property(obj, "description")
         return desc if desc is not None else ""
+
+    def _eval_ldesc(self, form: SList, env: Optional[Environment] = None) -> str:
+        """(ldesc ENTITY)
+
+        Returns the evaluated :ldesc (long description) of an entity.
+        If ldesc is a string, returns it directly.
+        If ldesc is a (fn () ...), evaluates it with ?self bound to the entity.
+        """
+        if len(form) != 2:
+            raise EvalError(f"'ldesc' expects 1 argument, got {len(form) - 1}")
+        entity = self.eval(form[1], env)
+        ldesc = self.state.get_ldesc(entity)
+
+        if ldesc is None:
+            return ""
+
+        # If it's a string, return it directly
+        if isinstance(ldesc, str):
+            return ldesc
+
+        # If it's an SList starting with 'fn', it's a function - evaluate it
+        if isinstance(ldesc, SList) and len(ldesc) >= 1:
+            first = ldesc[0]
+            if isinstance(first, Symbol) and first.name == "fn":
+                # Parse the fn and call it with ?self bound
+                fn = self._parse_fn(ldesc)
+                # Create environment with self bound
+                new_env = Environment(
+                    bindings={"self": entity},
+                    parent=env
+                )
+                return self.eval(fn.body, new_env)
+
+        # Otherwise, try to evaluate it as an expression with ?self bound
+        new_env = Environment(bindings={"self": entity}, parent=env)
+        result = self.eval(ldesc, new_env)
+        return str(result) if result is not None else ""
+
+    def _parse_fn(self, form: SList) -> GrueFn:
+        """Parse a (fn (params) body) form into a GrueFn."""
+        if len(form) < 3:
+            raise EvalError(f"'fn' requires params and body, got {form}")
+
+        params_expr = form[1]
+        body = form[2]
+
+        params = []
+        if isinstance(params_expr, SList):
+            for p in params_expr.items:
+                if isinstance(p, Symbol):
+                    # Strip ? prefix if present
+                    name = p.name[1:] if p.name.startswith("?") else p.name
+                    params.append(name)
+                else:
+                    raise EvalError(f"fn parameter must be a symbol, got {p}")
+
+        return GrueFn(params=params, body=body)
 
     # === Convenience predicates ===
 

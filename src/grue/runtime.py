@@ -684,9 +684,9 @@ class GrueRuntime:
                     if key == "description":
                         return str(value)
 
-        # Fall back to static description
+        # Fall back to ldesc (may be static string or dynamic fn)
         if room.ldesc:
-            return room.ldesc
+            return self._evaluate_ldesc(room_name, room.ldesc)
         return room.description
 
     def get_object_description(self, obj_name: str) -> str:
@@ -695,6 +695,52 @@ class GrueRuntime:
         if obj:
             return obj.description
         return ""
+
+    def get_ldesc(self, entity: str) -> SExpr | None:
+        """Get entity's raw ldesc (string or fn expression).
+
+        Returns the unevaluated ldesc - caller is responsible for
+        evaluating if it's a function.
+        """
+        # Check rooms first
+        if entity in self.world.rooms:
+            return self.world.rooms[entity].ldesc
+        # Then objects
+        if entity in self.world.objects:
+            return self.world.objects[entity].ldesc
+        return None
+
+    def _evaluate_ldesc(self, entity_name: str, ldesc: SExpr) -> str:
+        """Evaluate an ldesc value (string or fn) to produce a string.
+
+        Args:
+            entity_name: The entity whose ldesc this is (for ?self binding)
+            ldesc: The ldesc value - either a string or (fn () body)
+
+        Returns:
+            The evaluated description string
+        """
+        # String: return directly
+        if isinstance(ldesc, str):
+            return ldesc
+
+        # Function: evaluate with ?self bound
+        if isinstance(ldesc, SList) and len(ldesc) >= 1:
+            first = ldesc[0]
+            if isinstance(first, Symbol) and first.name == "fn":
+                # Parse and evaluate the fn
+                if len(ldesc) >= 3:
+                    body = ldesc[2]
+                    evaluator = ExprEvaluator(self, self._functions)
+                    env = Environment(bindings={"self": entity_name})
+                    result = evaluator.eval(body, env)
+                    return str(result) if result is not None else ""
+
+        # Other expression: try to evaluate it
+        evaluator = ExprEvaluator(self, self._functions)
+        env = Environment(bindings={"self": entity_name})
+        result = evaluator.eval(ldesc, env)
+        return str(result) if result is not None else ""
 
     def get_object_fdesc(self, obj_name: str) -> str:
         """Get an object's first/look description for room listings.
@@ -725,8 +771,12 @@ class GrueRuntime:
                     if key == "description":
                         return str(value)
 
-        # Fall back to static description
-        return obj.fdesc or obj.ldesc or ""
+        # Fall back to fdesc, then ldesc (which may be dynamic)
+        if obj.fdesc:
+            return obj.fdesc
+        if obj.ldesc:
+            return self._evaluate_ldesc(obj_name, obj.ldesc)
+        return ""
 
     def get_visible_objects(self, for_description: bool = True) -> list[str]:
         """Get objects visible to the player.
