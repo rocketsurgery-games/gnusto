@@ -23,7 +23,10 @@ filfre generate --prompt "A young man at desk showing his keyring" \
 
 ### `filfre render` - Render Game Entities
 
-Render an entity (room or object) from a game using its render spec:
+Render an entity (room or object) from a game using its render spec.
+**Note:** This renders the entity in its initial game state, useful for testing
+render specs and pre-caching initial images. For dynamic state rendering during
+gameplay, gnusto's built-in scene renderer handles this automatically.
 
 ```bash
 filfre render games/lurkinghorror @terminal-room
@@ -35,7 +38,7 @@ filfre render games/lurkinghorror @brass-lantern
 List frozen and cached renders for a game:
 
 ```bash
-filfre list games/lurkinghorror/assets/renders
+filfre list games/lurkinghorror
 ```
 
 ### `filfre log` - Show Render Log
@@ -43,8 +46,8 @@ filfre list games/lurkinghorror/assets/renders
 View the render log showing recent generations:
 
 ```bash
-filfre log games/lurkinghorror/assets/renders
-filfre log games/lurkinghorror/assets/renders -n 50  # Show last 50 entries
+filfre log games/lurkinghorror
+filfre log games/lurkinghorror -n 50  # Show last 50 entries
 ```
 
 ### `filfre clear` - Clear Cache
@@ -52,8 +55,8 @@ filfre log games/lurkinghorror/assets/renders -n 50  # Show last 50 entries
 Clear the render cache (preserves frozen renders):
 
 ```bash
-filfre clear games/lurkinghorror/assets/renders
-filfre clear games/lurkinghorror/assets/renders -y  # Skip confirmation
+filfre clear games/lurkinghorror
+filfre clear games/lurkinghorror -y  # Skip confirmation
 ```
 
 ## Generate Options

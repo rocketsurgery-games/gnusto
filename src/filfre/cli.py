@@ -12,20 +12,37 @@ Usage:
     filfre generate --prompt "A brass lantern on a stone altar" \
         --reference lantern.png --output scene.png
 
-    # Render a game entity
+    # Render a game entity (uses initial game state)
     filfre render games/lurkinghorror @terminal-room
 
     # List renders in cache
-    filfre list games/lurkinghorror/assets/renders
+    filfre list games/lurkinghorror
 
     # Show render log
-    filfre log games/lurkinghorror/assets/renders
+    filfre log games/lurkinghorror
 """
 
 import argparse
 import sys
 import time
 from pathlib import Path
+
+
+def get_game_dirs(game_path: str | Path) -> tuple[Path, Path, Path]:
+    """Get standard directories for a game.
+
+    Args:
+        game_path: Path to game directory or .grue file
+
+    Returns:
+        Tuple of (game_dir, renders_dir, assets_dir)
+    """
+    game_dir = Path(game_path)
+    if game_dir.is_file():
+        game_dir = game_dir.parent
+    renders_dir = game_dir / "assets" / "renders"
+    assets_dir = game_dir / "gfx"
+    return game_dir, renders_dir, assets_dir
 
 
 def timed(label: str):
@@ -280,33 +297,34 @@ def cmd_generate(args):
 # =============================================================================
 
 def cmd_render(args):
-    """Render an entity from a game using the scene renderer."""
+    """Render an entity from a game using the scene renderer.
+
+    Note: This renders the entity in its initial game state. For dynamic
+    state rendering during gameplay, use gnusto's built-in scene renderer.
+    """
     from gnusto.scene_renderer import SceneRenderer
     from grue import GrueRuntime
 
-    game_path = Path(args.game_path)
+    game_dir, renders_dir, assets_dir = get_game_dirs(args.game_path)
     entity_id = args.entity_id
 
     # Ensure entity_id starts with @
     if not entity_id.startswith("@"):
         entity_id = f"@{entity_id}"
 
-    print(f"Loading game: {game_path}")
-    runtime = GrueRuntime.from_game_path(game_path)
-
-    # Determine renders directory
-    game_dir = game_path if game_path.is_dir() else game_path.parent
-    renders_dir = args.renders_dir or game_dir / "assets" / "renders"
+    print(f"Loading game: {game_dir}")
+    runtime = GrueRuntime.from_game_path(game_dir)
 
     print(f"Renders directory: {renders_dir}")
     print(f"Entity: {entity_id}")
+    print("Note: Rendering with initial game state")
 
     # Initialize renderer
     print("\n--- Initializing Scene Renderer ---")
     renderer = SceneRenderer(
         runtime=runtime,
         renders_dir=renders_dir,
-        assets_dir=game_dir / "gfx",
+        assets_dir=assets_dir,
     )
 
     # Determine if it's a room or object
@@ -347,18 +365,18 @@ def cmd_list(args):
     """List renders in the cache/frozen directories."""
     from grue.render_cache import RenderCache
 
-    renders_dir = Path(args.renders_dir)
+    game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
 
     stats = cache.stats()
 
-    print(f"Renders directory: {renders_dir}")
+    print(f"Game: {game_dir}")
+    print(f"Renders: {renders_dir}")
     print()
 
     # List frozen renders
-    frozen_dir = renders_dir
-    if frozen_dir.exists():
-        frozen_files = sorted(frozen_dir.glob("*.png"))
+    if renders_dir.exists():
+        frozen_files = sorted(renders_dir.glob("*.png"))
         if frozen_files:
             print(f"Frozen renders ({len(frozen_files)}):")
             for f in frozen_files:
@@ -390,17 +408,17 @@ def cmd_list(args):
 def cmd_log(args):
     """Show the render log."""
     from grue.render_cache import RenderCache
-    import json
 
-    renders_dir = Path(args.renders_dir)
+    game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
 
     entries = cache.read_log(limit=args.limit)
 
     if not entries:
-        print("No render log entries found.")
+        print(f"No render log entries found in {renders_dir}")
         return
 
+    print(f"Game: {game_dir}")
     print(f"Recent renders ({len(entries)} entries):")
     print()
 
@@ -432,12 +450,13 @@ def cmd_clear(args):
     """Clear the render cache (preserves frozen renders)."""
     from grue.render_cache import RenderCache
 
-    renders_dir = Path(args.renders_dir)
+    game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
 
     if not args.yes:
         stats = cache.stats()
-        print(f"This will delete {stats['cache_count']} cached render(s).")
+        print(f"Game: {game_dir}")
+        print(f"This will delete {stats['cache_count']} cached render(s) from {renders_dir / 'cache'}")
         print("Frozen renders will be preserved.")
         response = input("Continue? [y/N] ")
         if response.lower() != "y":
@@ -563,9 +582,15 @@ Examples:
     # ---------------------------------------------------------------------
     render_parser = subparsers.add_parser(
         "render",
-        help="Render an entity from a game",
+        help="Render an entity from a game (initial state)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
+Renders an entity using its render spec in the initial game state.
+Useful for testing render specs and pre-caching initial images.
+
+For dynamic state rendering during gameplay, use gnusto's built-in
+scene renderer which has access to live game state.
+
 Examples:
   filfre render games/lurkinghorror @terminal-room
   filfre render games/lurkinghorror @brass-lantern
@@ -574,17 +599,12 @@ Examples:
     render_parser.add_argument(
         "game_path",
         type=str,
-        help="Path to the game directory or .grue file",
+        help="Path to the game directory",
     )
     render_parser.add_argument(
         "entity_id",
         type=str,
         help="Entity ID to render (e.g., @terminal-room, @brass-lantern)",
-    )
-    render_parser.add_argument(
-        "--renders-dir",
-        type=str,
-        help="Override renders directory (default: <game>/assets/renders)",
     )
     render_parser.set_defaults(func=cmd_render)
 
@@ -597,9 +617,9 @@ Examples:
         help="List renders in cache and frozen directories",
     )
     list_parser.add_argument(
-        "renders_dir",
+        "game_path",
         type=str,
-        help="Path to renders directory (e.g., games/lurkinghorror/assets/renders)",
+        help="Path to the game directory",
     )
     list_parser.set_defaults(func=cmd_list)
 
@@ -611,9 +631,9 @@ Examples:
         help="Show the render log",
     )
     log_parser.add_argument(
-        "renders_dir",
+        "game_path",
         type=str,
-        help="Path to renders directory",
+        help="Path to the game directory",
     )
     log_parser.add_argument(
         "-n", "--limit",
@@ -631,9 +651,9 @@ Examples:
         help="Clear the render cache (preserves frozen renders)",
     )
     clear_parser.add_argument(
-        "renders_dir",
+        "game_path",
         type=str,
-        help="Path to renders directory",
+        help="Path to the game directory",
     )
     clear_parser.add_argument(
         "-y", "--yes",

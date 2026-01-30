@@ -95,13 +95,13 @@ that creates gratuitous fireworks. See `docs/filfre.md` for detailed documentati
 filfre generate --prompt "A troll under a bridge" --output troll.png
 filfre generate --prompt "A scene" -r lantern.png -r table.png -o scene.png
 
-# Render game entities
+# Render game entities (initial state)
 filfre render games/lurkinghorror @terminal-room
 
 # Manage render cache
-filfre list games/lurkinghorror/assets/renders
-filfre log games/lurkinghorror/assets/renders
-filfre clear games/lurkinghorror/assets/renders
+filfre list games/lurkinghorror
+filfre log games/lurkinghorror
+filfre clear games/lurkinghorror
 ```
 
 **Performance:** ~7-10s for 512x512 with 3 references on CUDA GPU
