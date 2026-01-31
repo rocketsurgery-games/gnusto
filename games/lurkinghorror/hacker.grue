@@ -8,7 +8,22 @@
 (object @hacker
   :description "hacker"
   :location @terminal-room
-  :properties (:searchable true :person true :open true :container true :trade false :lair-cnt 0 :help-stage 0 :food-hint 0 :comp-cnt 0)
+
+  :properties (
+    :searchable true 
+    :person true 
+    :open true 
+    :container true 
+    :trade false 
+    :lair-cnt 0 
+    :help-stage 0 
+    :food-hint 0 
+    :comp-cnt 0
+  )
+
+  :render "A scruffy, innocent looking young hacker in his 20s. Blue jeans, old work shirt, worn running shoes.
+           A large ring of keys hangs from his belt. He looks like he needs a bath.
+           No background."
 
   (def hacker-desc "The hacker sits comfortably on an office chair facing a terminal table,
     or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly,

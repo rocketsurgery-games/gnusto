@@ -53,6 +53,7 @@ class SceneRenderer:
         model_version: str = "flux2-klein-4b",
         default_ref_size: int = 384,
         pipeline: Optional[Callable] = None,
+        verbose: bool = False,
     ):
         """Initialize the scene renderer.
 
@@ -63,14 +64,22 @@ class SceneRenderer:
             model_version: Model version for cache invalidation
             default_ref_size: Default size for reference images
             pipeline: Optional pre-loaded filfre pipeline (for performance)
+            verbose: Print render request details (prompt, refs, etc.)
         """
         self.runtime = runtime
         self.cache = RenderCache(renders_dir, model_version=model_version)
         self.assets_dir = Path(assets_dir) if assets_dir else None
+        self.verbose = verbose
         self.default_ref_size = default_ref_size
         self._pipeline = pipeline
         self._render_depth = 0  # Track recursion depth
         self._max_depth = 3  # Max composition layers
+
+    def _log(self, msg: str, indent: int = 0) -> None:
+        """Print verbose log message if verbose mode enabled."""
+        if self.verbose:
+            prefix = "  " * indent
+            print(f"{prefix}{msg}")
 
     def render_room(self, room_id: str) -> Path | None:
         """Render an illustration for a room.
@@ -102,6 +111,21 @@ class SceneRenderer:
 
         return self._render_entity(object_id, obj)
 
+    def render_reference(self, ref_id: str) -> Path | None:
+        """Render an illustration for a static reference.
+
+        Args:
+            ref_id: The reference identifier (e.g., "@terminal-room-bg")
+
+        Returns:
+            Path to the rendered image, or None if no render spec or rendering failed
+        """
+        ref = self.runtime.world.references.get(ref_id)
+        if not ref or not has_render_spec(ref):
+            return None
+
+        return self._render_entity(ref_id, ref)
+
     def render_current_room(self) -> Path | None:
         """Render the player's current room.
 
@@ -121,13 +145,20 @@ class SceneRenderer:
         Returns:
             Path to the rendered image, or None on failure
         """
+        depth_indent = self._render_depth
+
         # Check recursion depth
         if self._render_depth >= self._max_depth:
+            self._log(f"Max depth reached for {entity_id}", depth_indent)
             return None
 
         spec = get_render_spec(entity)
         if spec is None:
+            self._log(f"No render spec for {entity_id}", depth_indent)
             return None
+
+        self._log(f"Evaluating render spec for {entity_id}", depth_indent)
+        self._log(f"Raw spec: {spec}", depth_indent + 1)
 
         # Evaluate the render spec
         try:
@@ -141,17 +172,43 @@ class SceneRenderer:
             print(f"Warning: Failed to evaluate render spec for {entity_id}: {e}")
             return None
 
+        self._log(f"Evaluated result:", depth_indent + 1)
+        self._log(f"  prompt: {result.prompt[:100] + '...' if len(result.prompt) > 100 else result.prompt}", depth_indent + 1)
+        self._log(f"  ref_paths: {result.ref_paths}", depth_indent + 1)
+        self._log(f"  object_refs: {[r.name for r in result.object_refs]}", depth_indent + 1)
+        self._log(f"  include_contents: {result.include_contents}", depth_indent + 1)
+
+        # If no prompt but has object refs, inherit prompt from first object ref
+        if not result.prompt and result.object_refs:
+            first_ref = result.object_refs[0].name
+            self._log(f"No prompt, inheriting from {first_ref}", depth_indent + 1)
+            inherited_prompt = self._get_entity_prompt(first_ref)
+            if inherited_prompt:
+                result.prompt = inherited_prompt
+                self._log(f"Inherited prompt: {inherited_prompt[:100]}...", depth_indent + 1)
+
         if not result.prompt:
+            print(f"Warning: No prompt in render spec for {entity_id}")
+            print(f"  Render spec evaluated to: object_refs={[r.name for r in result.object_refs]}, include_contents={result.include_contents}")
+            print(f"  Hint: Add a prompt string to the render spec, e.g., :render (\"Scene prompt\" @ref :contents)")
             return None
 
         # Build the render request
         request = self._build_request(entity_id, result)
 
+        self._log(f"Built request:", depth_indent + 1)
+        self._log(f"  final prompt: {request.prompt[:200]}{'...' if len(request.prompt) > 200 else ''}", depth_indent + 1)
+        self._log(f"  ref_paths: {request.ref_paths}", depth_indent + 1)
+        self._log(f"  ref_images: {len(request.ref_images)} image(s)", depth_indent + 1)
+
         # Check cache
         cache_key, ref_hashes = self._compute_cache_key(request)
         cached = self.cache.get(cache_key, entity=entity_id)
         if cached:
+            self._log(f"Cache hit: {cached}", depth_indent + 1)
             return cached
+
+        self._log(f"Cache miss, generating...", depth_indent + 1)
 
         # Generate the image
         image = self._generate_image(request)
@@ -162,7 +219,7 @@ class SceneRenderer:
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             image.save(f.name)
-            return self.cache.put(
+            result_path = self.cache.put(
                 cache_key,
                 entity=entity_id,
                 image_path=f.name,
@@ -171,6 +228,8 @@ class SceneRenderer:
                 ref_hashes=ref_hashes,
                 copy=False,
             )
+            self._log(f"Saved to cache: {result_path}", depth_indent + 1)
+            return result_path
 
     def _build_request(self, entity_id: str, result: RenderResult) -> RenderRequest:
         """Build a RenderRequest from a RenderResult.
@@ -217,6 +276,39 @@ class SceneRenderer:
 
         return request
 
+    def _get_entity_prompt(self, entity_id: str) -> str | None:
+        """Get the prompt from an entity's render spec without rendering it.
+
+        Used for prompt inheritance when a render spec references another entity
+        but provides no explicit prompt.
+
+        Args:
+            entity_id: The entity identifier (e.g., "@terminal-room-bg")
+
+        Returns:
+            The prompt string, or None if not found
+        """
+        # Check objects first, then references, then rooms
+        entity = (
+            self.runtime.world.objects.get(entity_id) or
+            self.runtime.world.references.get(entity_id) or
+            self.runtime.world.rooms.get(entity_id)
+        )
+        if not entity or not has_render_spec(entity):
+            return None
+
+        spec = get_render_spec(entity)
+        try:
+            result = evaluate_render_spec(
+                spec,
+                entity_id,
+                self.runtime,
+                functions=self.runtime._functions if hasattr(self.runtime, '_functions') else None,
+            )
+            return result.prompt if result.prompt else None
+        except Exception:
+            return None
+
     def _resolve_ref_path(self, ref_path: str) -> Path | None:
         """Resolve a reference path to an absolute path."""
         if self.assets_dir:
@@ -232,7 +324,8 @@ class SceneRenderer:
     def _resolve_object_ref(self, object_id: str) -> "Image | None":
         """Resolve an object reference to a PIL Image.
 
-        This may trigger recursive rendering if the object has a render spec.
+        This may trigger recursive rendering if the object/reference has a render spec.
+        Checks objects first, then references, then falls back to static assets.
         """
         from PIL import Image
 
@@ -240,6 +333,13 @@ class SceneRenderer:
         obj = self.runtime.world.objects.get(object_id)
         if obj and has_render_spec(obj):
             rendered_path = self._render_entity(object_id, obj)
+            if rendered_path:
+                return Image.open(rendered_path).convert("RGB")
+
+        # Try to render a reference (static render asset)
+        ref = self.runtime.world.references.get(object_id)
+        if ref and has_render_spec(ref):
+            rendered_path = self._render_entity(object_id, ref)
             if rendered_path:
                 return Image.open(rendered_path).convert("RGB")
 

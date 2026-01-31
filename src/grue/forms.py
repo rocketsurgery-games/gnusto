@@ -215,6 +215,25 @@ class GrueFunction:
 
 
 @dataclass
+class GrueReference:
+    """A static render reference - visual asset without game logic.
+
+    References are used to create reusable background renders that can be
+    composed into room and object scenes. They have no runtime state and
+    cannot access ?self properties.
+
+    Example:
+        (reference @terminal-room-bg
+          :render "A large 1980s computer lab with CRT monitors, empty of people")
+
+        (room @terminal-room
+          :render (:ref @terminal-room-bg :contents))
+    """
+    name: str
+    render: SExpr  # Render spec (same syntax as object/room :render)
+
+
+@dataclass
 class GrueWorld:
     """
     Complete GRUE world definition.
@@ -232,6 +251,7 @@ class GrueWorld:
     constants: dict[str, Any] = field(default_factory=dict)  # immutable constants from (def name value)
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
     functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
+    references: dict[str, GrueReference] = field(default_factory=dict)  # name -> static render reference
 
 
 # === Helper functions for form handlers ===
@@ -850,6 +870,33 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
 
     value = expr[2]
     world.constants[name] = value
+
+
+@form("reference")
+def _parse_reference(expr: SList, world: GrueWorld) -> None:
+    """Parse (reference NAME :render SPEC).
+
+    Static render references for reusable background images.
+    Uses the same :render syntax as objects/rooms but has no runtime state.
+
+    Example:
+        (reference @terminal-room-bg
+          :render "A large 1980s computer lab, CRT monitors, empty of people")
+
+        (reference @hallway-bg
+          :render ("A dimly lit hallway" :ref @door))
+    """
+    if len(expr) < 2:
+        raise FormParseError("reference requires a name")
+
+    name = expect_symbol(expr[1], "reference name")
+    kwargs = parse_kwargs(list(expr.items[2:]))
+
+    if "render" not in kwargs:
+        raise FormParseError(f"reference {name} requires :render spec")
+
+    ref = GrueReference(name=name, render=kwargs["render"])
+    world.references[ref.name] = ref
 
 
 # === Form Dispatcher ===

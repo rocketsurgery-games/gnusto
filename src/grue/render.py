@@ -127,7 +127,7 @@ def evaluate_render_spec(
             kw_name = item.name
 
             if kw_name == "ref":
-                # :ref "path/to/image.png"
+                # :ref "path/to/image.png" - external file reference only
                 if i + 1 >= len(items):
                     raise RenderError(":ref requires a path argument")
                 path = items[i + 1]

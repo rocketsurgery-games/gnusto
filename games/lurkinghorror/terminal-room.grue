@@ -1,13 +1,27 @@
+; Static background reference for the terminal room (empty, no people)
+(reference @terminal-room-bg
+  :render "A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
+           Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
+           Dim fluorescent lighting. The room is completely empty of people - no one is here.")
+
 (room @terminal-room
   :description "Terminal Room"
+
   :ldesc "This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
-  empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
-  :render ("A dimly lit 1980s university computer lab at night, rows of CRT monitors, old terminals, pizza boxes and empty Coke cans on desks, banners and posters on walls, fluorescent lighting, nearly deserted")
-  :properties (:lit true :outside false)
-  :exits
-    ((south :to @cs-2nd :via @hacker-exit-barrier)
-     (out :to @cs-2nd :via @hacker-exit-barrier))
+  empty Coke cans. There are usually a lot of people here, but tonight it's deserted."
+
+  :render (@terminal-room-bg :contents)
+
+  :properties (
+    :lit true
+    :outside false
+  )
+
+  :exits (
+    (south :to @cs-2nd :via @hacker-exit-barrier)
+    (out :to @cs-2nd :via @hacker-exit-barrier)
+  )
 
   :behaviors (
     ; Room entry handler - ZIL TERMINAL-ROOM-F with RARG? ENTER
@@ -49,7 +63,8 @@
                             feels oddly cold."))
 
         ; Default - allow action to proceed
-        (true (default))))))
+        (true (default))))
+  ))
 
 (object @hacker-exit-barrier
   :location @terminal-room

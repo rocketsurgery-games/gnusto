@@ -348,27 +348,36 @@ def cmd_render(args):
         runtime=runtime,
         renders_dir=renders_dir,
         assets_dir=assets_dir,
+        verbose=args.verbose,
     )
 
-    # Determine if it's a room or object
+    # Determine if it's a room, object, or reference
     is_room = entity_id in runtime.world.rooms
     is_object = entity_id in runtime.world.objects
+    is_reference = entity_id in runtime.world.references
 
-    if not is_room and not is_object:
+    if not is_room and not is_object and not is_reference:
         print(f"Error: Entity '{entity_id}' not found in game")
         sys.exit(1)
 
     # Check for render spec
-    entity = runtime.world.rooms.get(entity_id) or runtime.world.objects.get(entity_id)
+    entity = (
+        runtime.world.rooms.get(entity_id) or
+        runtime.world.objects.get(entity_id) or
+        runtime.world.references.get(entity_id)
+    )
     if not entity.render:
         print(f"Error: Entity '{entity_id}' has no render spec")
         sys.exit(1)
 
-    print(f"\n--- Rendering {entity_id} ---")
+    entity_type = "room" if is_room else "reference" if is_reference else "object"
+    print(f"\n--- Rendering {entity_id} ({entity_type}) ---")
     start = time.time()
 
     if is_room:
         result = renderer.render_room(entity_id)
+    elif is_reference:
+        result = renderer.render_reference(entity_id)
     else:
         result = renderer.render_object(entity_id)
 
@@ -634,6 +643,11 @@ Examples:
         "entity_id",
         type=str,
         help="Entity ID to render (e.g., @terminal-room, @brass-lantern)",
+    )
+    render_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show full prompt and render parameters",
     )
     render_parser.set_defaults(func=cmd_render)
 
