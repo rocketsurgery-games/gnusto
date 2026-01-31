@@ -141,11 +141,11 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
             return FileResponse(index_path)
         return {"error": "Web UI not built. Run: cd src/gnusto/webui && npm run build"}
 
-    # Serve game images
-    @app.get("/gfx/{path:path}")
-    async def serve_game_image(path: str):
-        """Serve images from the game's gfx directory."""
-        img_path = app.state.game_dir / "gfx" / path
+    # Serve rendered images
+    @app.get("/renders/{path:path}")
+    async def serve_rendered_image(path: str):
+        """Serve images from the game's renders directory."""
+        img_path = app.state.game_dir / "assets" / "renders" / "cache" / path
         if img_path.exists():
             return FileResponse(img_path)
         return {"error": "Image not found"}

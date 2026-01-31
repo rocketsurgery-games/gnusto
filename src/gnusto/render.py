@@ -74,29 +74,9 @@ def build_room_block(
     Returns:
         RoomEnter block with room info
     """
-    # Get room image - check :image property first, then look for gfx/{room_id}.jpg/png
+    # Room images are now generated on-demand from render specs by the scene renderer.
+    # The TUI and web UI handle image generation separately.
     image_url = None
-    if game_dir:
-        room_state = runtime.state.objects.get(state.room)
-        if room_state:
-            img = room_state.properties.get("image")
-            if img:
-                full_path = game_dir / img
-                if full_path.exists():
-                    # Return web URL path
-                    image_url = f"/gfx/{Path(img).name}"
-
-        # If no explicit image, look for one matching room ID
-        if not image_url:
-            # Strip @ prefix from room ID to get base name
-            room_base = state.room.lstrip("@")
-            gfx_dir = game_dir / "gfx"
-            if gfx_dir.exists():
-                for ext in (".jpg", ".png", ".jpeg", ".webp"):
-                    img_path = gfx_dir / f"{room_base}{ext}"
-                    if img_path.exists():
-                        image_url = f"/gfx/{room_base}{ext}"
-                        break
 
     # De-duplicate exits (multiple directions may lead to same room)
     seen_exits: set[str] = set()

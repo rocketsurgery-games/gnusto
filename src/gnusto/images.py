@@ -2,13 +2,8 @@
 Image catalog for Gnusto games.
 
 Provides a simple structure for discovering and filtering available images
-that the LLM can use when narrating. This is a chokepoint for layering in
-more sophisticated image selection logic later.
-
-Current naming convention:
-- {room}.jpg - Room illustration
-- {object}.jpg - Object illustration
-- Future: {subject}-{state}.jpg for state-dependent variants
+that the LLM can use when narrating. Images are generated on-demand from
+render specs defined in .grue files.
 """
 
 from dataclasses import dataclass
@@ -24,7 +19,7 @@ class ImageInfo:
     """Metadata about an available image."""
 
     id: str  # Unique identifier (filename without extension)
-    path: str  # Web URL path (e.g., "/gfx/terminal-room.jpg")
+    path: str  # Web URL path (e.g., "/renders/terminal-room.png")
     subject: str  # What the image depicts (room ID, object ID, or description)
     category: str  # "room", "object", or "scene"
     description: str  # Human-readable description for LLM context
@@ -32,45 +27,19 @@ class ImageInfo:
 
 def scan_images(game_dir: Path) -> list[ImageInfo]:
     """
-    Scan the game's gfx/ directory for available images.
+    Scan for available images.
+
+    Note: Static gfx/ scanning has been removed. Images are now generated
+    on-demand from render specs. Use add_renderable_entities() to discover
+    entities that can be rendered.
 
     Args:
         game_dir: Path to the game directory
 
     Returns:
-        List of ImageInfo for all discovered images
+        Empty list (static images no longer used)
     """
-    gfx_dir = game_dir / "gfx"
-    if not gfx_dir.exists():
-        return []
-
-    images = []
-    extensions = {".jpg", ".jpeg", ".png", ".webp"}
-
-    for img_path in gfx_dir.iterdir():
-        if img_path.suffix.lower() not in extensions:
-            continue
-
-        stem = img_path.stem
-        web_path = f"/gfx/{img_path.name}"
-
-        # Infer category and description from filename
-        # Convention: rooms use room-id names, objects use object-id names
-        # For now, just use the stem as both subject and description
-        # TODO: Load from metadata file if present
-
-        # Convert filename to readable description
-        description = stem.replace("-", " ").replace("_", " ").title()
-
-        images.append(ImageInfo(
-            id=stem,
-            path=web_path,
-            subject=f"@{stem}",  # Assume it maps to a game entity
-            category="scene",  # Default; could be inferred or specified
-            description=description,
-        ))
-
-    return images
+    return []
 
 
 def filter_images_for_state(
@@ -136,7 +105,7 @@ def add_renderable_entities(
         if stem not in existing_ids and has_render_spec(room):
             result.append(ImageInfo(
                 id=stem,
-                path=f"/gfx/{stem}.png",  # Virtual path
+                path=f"/renders/{stem}.png",  # Generated on demand
                 subject=room_id,
                 category="room",
                 description=f"{room.description} (can be generated)",
@@ -148,7 +117,7 @@ def add_renderable_entities(
         if stem not in existing_ids and has_render_spec(obj):
             result.append(ImageInfo(
                 id=stem,
-                path=f"/gfx/{stem}.png",  # Virtual path
+                path=f"/renders/{stem}.png",  # Generated on demand
                 subject=obj_id,
                 category="object",
                 description=f"{obj.description} (can be generated)",

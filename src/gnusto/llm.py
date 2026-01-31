@@ -48,7 +48,7 @@ class ActionRequest:
 @dataclass
 class ImageRequest:
     """An image to display."""
-    path: str  # e.g., "/gfx/terminal-room.jpg"
+    path: str  # e.g., "/renders/terminal-room.png"
     alt: str = ""
     layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
     size: Literal["small", "medium", "large", "full"] = "medium"
@@ -123,7 +123,7 @@ AGENT_RESPONSE_SCHEMA = {
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Image path (e.g., /gfx/terminal-room.jpg)"
+                        "description": "Image path (e.g., /renders/terminal-room.png)"
                     },
                     "alt": {
                         "type": "string",

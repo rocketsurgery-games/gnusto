@@ -41,7 +41,7 @@ def get_game_dirs(game_path: str | Path) -> tuple[Path, Path, Path]:
     if game_dir.is_file():
         game_dir = game_dir.parent
     renders_dir = game_dir / "assets" / "renders"
-    assets_dir = game_dir / "gfx"
+    assets_dir = game_dir / "assets"
     return game_dir, renders_dir, assets_dir
 
 

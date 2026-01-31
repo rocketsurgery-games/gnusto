@@ -36,7 +36,7 @@ You MUST respond with valid JSON matching this schema:
   ],
   "narrative": "Your narrative text here...",
   "images": [
-    {"path": "/gfx/image.jpg", "alt": "description", "layout": "inline", "size": "medium"}
+    {"path": "/renders/image.png", "alt": "description", "layout": "inline", "size": "medium"}
   ],
   "needs_player_input": false
 }
@@ -100,7 +100,7 @@ After seeing the result:
 {
   "actions": [],
   "narrative": "The hacker looks up from his terminal. \"Oh, this?\" He holds up a worn keyring. \"It's my master key. Opens every door in the building.\"",
-  "images": [{"path": "/gfx/hacker.jpg", "layout": "float-right", "size": "small"}],
+  "images": [{"path": "/renders/hacker.png", "layout": "float-right", "size": "small"}],
   "needs_player_input": true
 }
 ```

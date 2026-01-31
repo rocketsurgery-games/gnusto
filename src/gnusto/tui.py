@@ -143,14 +143,14 @@ class SimpleTUI:
 
         elif isinstance(block, Image):
             # Display image if terminal supports it
-            # Handle paths like "/gfx/foo.jpg" or "gfx/foo.jpg"
+            # Handle paths like "/renders/foo.png" or "renders/foo.png"
             image_path = Path(block.src.lstrip("/"))
             if not image_path.is_absolute():
                 image_path = self.game_dir / image_path
 
             # If image doesn't exist, try to generate it
             if not image_path.exists() and self._scene_renderer:
-                # Extract entity ID from path (e.g., "/gfx/lantern.jpg" -> "@lantern")
+                # Extract entity ID from path (e.g., "/renders/lantern.png" -> "@lantern")
                 entity_id = f"@{image_path.stem}"
                 # Try room first, then object
                 generated = self._render_room_image(entity_id) or self._render_object_image(entity_id)
@@ -219,7 +219,7 @@ class SimpleTUI:
             self._scene_renderer = SceneRenderer(
                 runtime=self.session.runtime,
                 renders_dir=self._renders_dir,
-                assets_dir=self.game_dir / "gfx",
+                assets_dir=self.game_dir / "assets",
             )
             self.render_block(SystemMessage("Scene renderer ready."))
         except Exception as e:
