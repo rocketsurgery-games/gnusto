@@ -33,39 +33,13 @@
     an old work shirt, and what might once have been running shoes. Hanging from his belt is an
     enormous ring of keys. He is in need of a bath.")
 
-  ; Translated from ZIL HACKER-F and HACKER-DESC routines.
-  ; See games/lurkinghorror/source/hacker.zil for full ZIL source.
-  ;
-  ; IMPLEMENTED:
-  ; - hacker-trade global: Set when player offers trade for master key
-  ; - lair-cnt global: Possessed state check (> 6 = possessed, responds "Meld!")
-  ; - :describe, :examine, :smell, :listen, :thank - sensory behaviors
-  ; - :show - show object to hacker
-  ; - :give - give items (food trade puzzle)
-  ; - :trade - propose trades (sets hacker-trade flag)
-  ; - :ask-for - "give me X" requests
-  ; - :hello - greeting
-  ; - :ask-about - conversation topics (keyring reveals master key)
-  ; - :tell-about - tell hacker about topics
-  ; - :follow - follow hacker (busy/location-dependent)
-  ; - :attack, :kill - hostile actions (blocked)
-  ;
-  ; TURN-BASED EVENTS (implemented in events section above):
-  ; - hacker-help global: Help stage counter (0-4)
-  ; - hacker-helps event: 4-stage cutscene when helping with PC
-  ; - food-hint event: Progressive hints about feeding hacker
-  ; - :help behavior: Queues hacker-helps event
-
   :behaviors (
-    ; === ROOM DESCRIPTION ===
-    ; HACKER-DESC function - varies by location
     :describe (fn () (cond
       ((here? @terminal-room) '((success "Sitting at a terminal is a hacker whom you recognize.")))
       ((here? @inner-lair)    '((success "A muddy, scratched-up hacker stands tiredly here.")))
       (true '((success "A hacker is here.")))))
 
-    ; === EXAMINE ===
-    ; Note: Full implementation would check global lair-cnt for possessed state
+    ; TODO: Full implementation would check global lair-cnt for possessed state
     ; and global hacker-help for helping state. Simplified for basic translation.
     :examine (fn () (cond
       ((here? @inner-lair) '((success "He's muddy, wet, and tired looking.")))
@@ -74,12 +48,10 @@
     :smell (fn () '((success "Either the hacker, his clothing, or both are in need of cleaning.")))
     :listen (fn () '((success "He is humming something. It sounds classical, perhaps Bach?")))
 
-    ; === THANK ===
     :thank (fn () (cond
       ((held? @master-key) '((narrate "He blushes.") (success "player has master key")))
       (true                '((success)))))
 
-    ; === SHOW ===
     ; ?item is the object being shown to the hacker
     :show (fn (?item) (cond
       ; Show food
@@ -91,7 +63,6 @@
       ((= ?item @dead-rat)      '((say @hacker "I have enough of those in my basement. Get rid of it!") (success "shown rat")))
       (true                     '((narrate "He more or less grunts at you, but shows little interest in it.") (success "shown item")))))
 
-    ; === GIVE ===
     ; ?item is the object being given to the hacker
     :give (fn (?item) (cond
       ; Give overcooked chinese food
@@ -151,7 +122,6 @@
       ; Default give
       (true '((say @hacker "No thanks, keep it for now.") (blocked "hacker not interested")))))
 
-    ; === TRADE ===
     ; "trade food for key" - sets up the trade, food must be given afterward
     ; ?offer is what player is offering, ?want is what player wants
     :trade (fn (?offer ?want) (cond
@@ -167,7 +137,6 @@
       ; Invalid trade
       (true '((say @hacker "That's not a good trade.") (blocked "bad trade")))))
 
-    ; === ASK-FOR (give me X) ===
     ; Player asking hacker for things
     ; ?item is the object being requested
     :ask-for (fn (?item) (cond
@@ -210,13 +179,10 @@
       ; Ask for anything else
       (true '((say @hacker "I don't have that.") (blocked "hacker doesn't have item")))))
 
-    ; === HELLO ===
     :hello (fn () (cond
       ((here? @terminal-room) '((say @hacker "Greetingage.") (narrate "He turns back to his hacking.") (success "greeted")))
       (true                   '((say @hacker "Greetingage.") (success "greeted")))))
 
-    ; === ASK-ABOUT (ask hacker about X) ===
-    ; ZIL: TELL-ME-ABOUT / WHAT verbs with WINNER=HACKER
     ; ?topic is the thing being asked about
     :ask-about (fn (?topic) (cond
       ; Possessed state (lair-cnt > 6) - he's not himself
@@ -277,19 +243,14 @@
       ; Default - doesn't know
       (true '((narrate "The hacker studiously ignores you, loath to admit there is something he doesn't know about.") (success "asked about unknown")))))
 
-    ; === TELL-ABOUT (tell hacker about X) ===
-    ; ZIL: same as ASK-ABOUT for most topics
     :tell-about (fn (?topic)
       (redirect :action (do @hacker :ask-about ?topic)))
 
-    ; === FOLLOW ===
     :follow (fn () (cond
       ((here? @inner-lair) '((say @hacker "I'm here, aren't I?") (success "already here")))
       (true                '((say @hacker "I haven't got time. I have new versions of the system, the assembler, the editor, and the debugger to finish hacking.")
                              (blocked "hacker is busy")))))
 
-    ; === HELP (ask hacker for help with PC) ===
-    ; ZIL: VERB? HELP with various state checks
     :help (fn () (cond
       ; Already helping
       ((queued? hacker-helps)
@@ -311,6 +272,6 @@
       ; Not in terminal room
       (true '((say @hacker "Help? I'm not a T.A. I've got work to do.") (blocked "hacker is busy")))))
 
-    ; === HOSTILE ACTIONS ===
     :attack (fn () '((narrate "The hacker retreats.") (say @hacker "I know karate!") (narrate "he says, somewhat unconvincingly.") (blocked "hacker retreats")))
     :kill (fn () '((narrate "The hacker retreats.") (say @hacker "I know karate!") (narrate "he says, somewhat unconvincingly.") (blocked "hacker retreats")))))
+

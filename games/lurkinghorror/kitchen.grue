@@ -2,6 +2,13 @@
 ; The player must heat the chinese food in the microwave to trade with the hacker.
 ; See hacker.grue for the trade logic.
 
+; Static background reference (empty kitchen, no people or objects)
+(reference @kitchen-bg
+  :description "A grimy 1980s university break room kitchen"
+  :render "A grimy 1980s university break room kitchen, dirty counter, old refrigerator with notes on it,
+           microwave oven mounted above counter, fluorescent lighting, coffee stains, empty and neglected,
+           no people present")
+
 ; Microwave state is stored as properties on @microwave:
 ;   :timer - Countdown in seconds (decrements by 60 per turn)
 ;   :temp  - Temperature setting: 0=off, 1=warm, 2=low, 3=med, 4=high
@@ -41,8 +48,10 @@
 (room @kitchen
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
-counter are a refrigerator and a microwave."
-  :render ("A grimy 1980s university break room kitchen, dirty counter, old refrigerator with notes on it, microwave oven, fluorescent lighting, coffee stains, empty and neglected")
+          counter are a refrigerator and a microwave."
+
+  :render (@kitchen-bg "containing:" :contents)
+
   :properties (:lit true)
   :exits ((east :to @cs-2nd)))
 
@@ -54,6 +63,15 @@ counter are a refrigerator and a microwave."
   :description "microwave oven"
   :location @kitchen
   :properties (:nodesc true :searchable true :container true :transparent true :openable true :capacity 30 :timer 0 :temp 0)
+
+  :render (fn ()
+    (cond
+      ((:open self)
+        "A 1980s microwave oven with door open, mounted above a counter")
+      ((queued? microwave-running)
+        "A 1980s microwave oven running, interior light on, turntable spinning, mounted above a counter")
+      (true
+        "A 1980s microwave oven with door closed, mounted above a counter")))
 
   :behaviors (
     :examine (fn ()
@@ -229,6 +247,11 @@ counter are a refrigerator and a microwave."
   :description "refrigerator"
   :location @kitchen
   :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
+
+  :render (fn ()
+    (if (:open self)
+      "An old white refrigerator with door open, revealing cluttered shelves with soggy lunch bags and old food containers"
+      "An old white refrigerator with notes and papers stuck to the front, door closed"))
 
   :behaviors (
     :examine (fn ()
