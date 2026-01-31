@@ -26,6 +26,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 
 def get_game_dirs(game_path: str | Path) -> tuple[Path, Path, Path]:
@@ -317,6 +318,49 @@ def cmd_generate(args):
 # Subcommand: render
 # =============================================================================
 
+def parse_set_arg(set_arg: str) -> tuple[str, str, Any]:
+    """Parse a --set argument using Grue syntax: '@entity :prop value'.
+
+    Examples:
+        --set '@refrigerator :open true'
+        --set '@microwave :timer 120'
+        --set '@player :score 100'
+
+    Returns:
+        Tuple of (entity_id, property_name, value)
+    """
+    from grue.sexpr import parse_all, Symbol, Keyword
+    from grue.expr import quote_to_data
+
+    try:
+        parts = parse_all(set_arg)
+    except Exception as e:
+        raise ValueError(f"Invalid --set syntax: '{set_arg}'. Error: {e}")
+
+    if len(parts) != 3:
+        raise ValueError(
+            f"Invalid --set format: '{set_arg}'. "
+            f"Expected '@entity :prop value' (got {len(parts)} parts)"
+        )
+
+    entity_expr, prop_expr, value_expr = parts
+
+    # Entity must be a symbol starting with @
+    if not isinstance(entity_expr, Symbol) or not entity_expr.name.startswith('@'):
+        raise ValueError(f"First argument must be an entity (@symbol), got: {entity_expr}")
+    entity_id = entity_expr.name
+
+    # Property must be a keyword
+    if not isinstance(prop_expr, Keyword):
+        raise ValueError(f"Second argument must be a keyword (:prop), got: {prop_expr}")
+    prop = prop_expr.name  # Keyword.name is without the colon
+
+    # Value is converted via quote_to_data (handles bools, numbers, strings, etc.)
+    value = quote_to_data(value_expr)
+
+    return entity_id, prop, value
+
+
 def cmd_render(args):
     """Render an entity from a game using the scene renderer.
 
@@ -338,9 +382,27 @@ def cmd_render(args):
     world = load_grue(game_dir)
     runtime = GrueRuntime(world)
 
+    # Apply --set overrides to state
+    if args.set_props:
+        print("State overrides:")
+        for set_arg in args.set_props:
+            try:
+                target_entity, prop, value = parse_set_arg(set_arg)
+                runtime.set_object_property(target_entity, prop, value)
+                print(f"  {target_entity}:{prop} = {value!r}")
+            except ValueError as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+            except Exception as e:
+                print(f"Error setting {set_arg}: {e}")
+                sys.exit(1)
+
     print(f"Renders directory: {renders_dir}")
     print(f"Entity: {entity_id}")
-    print("Note: Rendering with initial game state")
+    if args.set_props:
+        print("Note: Rendering with modified state")
+    else:
+        print("Note: Rendering with initial game state")
 
     # Initialize renderer
     print("\n--- Initializing Scene Renderer ---")
@@ -632,6 +694,10 @@ scene renderer which has access to live game state.
 Examples:
   filfre render games/lurkinghorror @terminal-room
   filfre render games/lurkinghorror @brass-lantern
+
+  # Render with modified state (uses Grue syntax):
+  filfre render games/lurkinghorror @refrigerator --set '@refrigerator :open true'
+  filfre render games/lurkinghorror @kitchen -s '@microwave :timer 120'
         """,
     )
     render_parser.add_argument(
@@ -643,6 +709,14 @@ Examples:
         "entity_id",
         type=str,
         help="Entity ID to render (e.g., @terminal-room, @brass-lantern)",
+    )
+    render_parser.add_argument(
+        "--set", "-s",
+        type=str,
+        action="append",
+        dest="set_props",
+        metavar="'@ENTITY :PROP VALUE'",
+        help="Set object property before rendering using Grue syntax (can be repeated)",
     )
     render_parser.add_argument(
         "-v", "--verbose",

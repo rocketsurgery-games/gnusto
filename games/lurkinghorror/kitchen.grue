@@ -2,16 +2,14 @@
 ; The player must heat the chinese food in the microwave to trade with the hacker.
 ; See hacker.grue for the trade logic.
 
-; Static background reference (empty kitchen, no people or objects)
+; Static background with appliances baked in (closed state by default)
+; When rendering @kitchen, :contents adds current-state appliances as additional refs
 (reference @kitchen-bg
   :description "A grimy 1980s university break room kitchen"
-  :render "A grimy 1980s university break room kitchen, dirty counter, old refrigerator with notes on it,
-           microwave oven mounted above counter, fluorescent lighting, coffee stains, empty and neglected,
-           no people present")
-
-; Microwave state is stored as properties on @microwave:
-;   :timer - Countdown in seconds (decrements by 60 per turn)
-;   :temp  - Temperature setting: 0=off, 1=warm, 2=low, 3=med, 4=high
+  :render (@refrigerator @microwave
+           "A 1980s university break room kitchen with these appliances, dirty counter,
+            fluorescent lighting, NO WINDOWS, no people present,
+            wide angle view showing full room"))
 
 ; Shared definitions for microwave display
 (def temp-names '("off" "warm" "low" "medium" "high"))

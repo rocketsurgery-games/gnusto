@@ -1,7 +1,3 @@
-; === Puzzle Objects ===
-; These are stub definitions for testing the hacker trade puzzle.
-; Full definitions would come from converted/objects.grue
-
 ; Helper: temperature description for heated food
 (defn heat-desc (?obj)
   (let ((?h (prop ?obj heat)))
