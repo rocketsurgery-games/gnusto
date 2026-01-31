@@ -2,6 +2,22 @@
 ; The CS building elevator serves 4 floors: basement (0), first (1), second (2), third (3).
 ; The elevator has a complex state machine handling movement, door opening/closing, and call buttons.
 
+; === Shared Visual References ===
+; One reference for all elevator doors to ensure visual consistency across rooms.
+
+(reference @elevator-door-ref
+  :description "1980s elevator doors"
+  :render "Brushed metal 1980s elevator doors, floor indicator panel above,
+           institutional building style, slightly worn and scratched,
+           no people, straight-on view")
+
+(reference @elevator-bg
+  :description "Battered 1980s elevator interior"
+  :render (@elevator-door-ref
+           "Dirty 1980s elevator interior with fake wood panel walls, scratched and graffitied,
+            fluorescent light, control panel with buttons visible on the right wall,
+            these elevator doors straight ahead, no people"))
+
 ; === Elevator State ===
 ; All elevator state is stored as properties on @cs-elevator-room:
 ;   :floor 1          - current floor (0=basement, 1-3=floors)
@@ -127,8 +143,12 @@
          "an open button, a close button, a stop switch, and an alarm button. Below these is "
          "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
 
+  ; For testing with @cs-2nd, hardcode the through-view target
+  ; TODO: Generalize to use (nth floor-rooms (:floor self)) once :through supports expressions
   :render (fn ()
-    (ldesc self))
+    (if (:open @elevator-door)
+      '(@elevator-bg "with doors open" (:through @elevator-door @cs-2nd))
+      @elevator-bg))
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -165,6 +185,12 @@
   :description "elevator doors"
   :location @cs-elevator-room
   :properties (:nodesc true :door true :openable true)
+
+  :render (fn ()
+    (if (:open self)
+      "1980s elevator doors slid open, revealing a hallway beyond"
+      @elevator-door-ref))
+
   :behaviors (
     :examine (fn ()
       (success :message (str "The elevator doors are " (if (:open ?self) "open" "closed") ".")))
@@ -439,6 +465,12 @@
   :description "elevator doors"
   :location @cs-2nd
   :properties (:door true :openable true :searchable true :container true :floor 2)
+
+  :render (fn ()
+    (if (:open self)
+      "1980s elevator doors slid open, revealing the elevator interior"
+      @elevator-door-ref))
+
   :behaviors elevator-door-behaviors)
 
 (object @elevator-door-3

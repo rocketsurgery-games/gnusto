@@ -1,8 +1,33 @@
+; Background reference includes elevator doors in closed state for consistency
+(reference @cs-2nd-bg
+  :description "Second floor hallway with elevator"
+  :render (@elevator-door-ref
+           "1980s university building hallway at night, this elevator with doors,
+            fluorescent lights, institutional architecture, stairs visible in background,
+            empty and eerie, wide angle view, no people"))
+
 (room @cs-2nd
   :description "Second Floor"
-  :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room."
-  :render ("A 1980s university building hallway at night, elevator doors with call buttons, fluorescent lights, institutional architecture, stairs visible, empty and eerie")
-  :properties (:lit true :floor 2)
+  :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the
+          hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller
+          room."
+
+  :render (fn ()
+    (if (:open @elevator-door-2)
+      '(@cs-2nd-bg
+        "visible to the north is" @terminal-room
+        "and to the west is" @kitchen
+        :contents
+        (:through @elevator-door-2 @cs-elevator-room))
+      '(@cs-2nd-bg
+        "visible to the north is" @terminal-room
+        "and to the west is" @kitchen
+        :contents)))
+
+  :properties (
+    :lit true
+    :floor 2)
+
   :exits
     ((north :to @terminal-room)
      (west :to @kitchen)
@@ -10,5 +35,6 @@
      (down :to @comp-center)
      (south :to @cs-elevator-room :via @elevator-door-2)
      (in :to @cs-elevator-room :via @elevator-door-2))
+
   :visible (@up-button @down-button))
 

@@ -16,6 +16,7 @@
     @terminal-room-bg
     "with the following objects:"
     :contents
+    "The hacker is sitting at a desk, typing furiously"
   )
 
   :properties (

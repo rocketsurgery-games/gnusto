@@ -69,8 +69,22 @@ class ContentsMarker:
     pass
 
 
+@dataclass
+class ThroughMarker:
+    """Marker for (:through @portal @room) in a render spec.
+
+    When the portal is open, contributes:
+    - Descriptive text about what's visible through the portal
+    - The target room's rendered image as a reference
+
+    When the portal is closed, contributes nothing.
+    """
+    portal: str      # Entity ID of the door/portal
+    target: str      # Entity ID of the room to show
+
+
 # Type alias for prompt parts
-PromptPart = Union[str, ObjectRef, ContentsMarker]
+PromptPart = Union[str, ObjectRef, ContentsMarker, ThroughMarker]
 
 
 @dataclass
@@ -118,9 +132,21 @@ def evaluate_render_spec(
     if spec is None:
         return RenderResult()
 
-    # String: treat as prompt-only
+    # String: check if it's an object reference (starts with @)
     if isinstance(spec, str):
+        if spec.startswith("@"):
+            # Object reference returned from expression evaluation
+            return RenderResult(prompt_parts=[ObjectRef(name=spec)])
         return RenderResult(prompt_parts=[spec])
+
+    # Symbol: treat as object reference (e.g., returned from a conditional render fn)
+    if isinstance(spec, Symbol):
+        name = spec.name
+        if name.startswith("@"):
+            return RenderResult(prompt_parts=[ObjectRef(name=name)])
+        else:
+            # Other symbols - try to evaluate
+            return RenderResult(prompt_parts=[str(spec)])
 
     # Function: evaluate it first, then process the result
     if isinstance(spec, SList) and len(spec) >= 1:
@@ -221,8 +247,24 @@ def evaluate_render_spec(
             i += 1
             continue
 
-        # Expressions (SList) - evaluate with self binding
+        # Expressions (SList) - check for special forms first, then evaluate
         if isinstance(item, SList):
+            # Check for (:through @portal @target) form
+            if len(item) >= 3:
+                first = item[0]
+                if isinstance(first, Keyword) and first.name == "through":
+                    portal = item[1]
+                    target = item[2]
+                    if isinstance(portal, Symbol) and isinstance(target, Symbol):
+                        result.prompt_parts.append(ThroughMarker(portal.name, target.name))
+                        i += 1
+                        continue
+                    else:
+                        raise RenderError(
+                            f":through requires two @symbols, got {type(portal).__name__} and {type(target).__name__}"
+                        )
+
+            # Generic expression - evaluate with self binding
             try:
                 value = _evaluate_expression(item, entity_name, state, functions)
                 # None or empty results are skipped (for (when ...) that returns nil)

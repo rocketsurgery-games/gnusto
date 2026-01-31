@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Callable
 import hashlib
 
-from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult, ObjectRef, ContentsMarker
+from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult, ObjectRef, ContentsMarker, ThroughMarker
 from grue.render_cache import RenderCache, hash_pil_image
 
 if TYPE_CHECKING:
@@ -229,6 +229,8 @@ class SceneRenderer:
                 formatted.append(part.name)
             elif isinstance(part, ContentsMarker):
                 formatted.append(":contents")
+            elif isinstance(part, ThroughMarker):
+                formatted.append(f"(:through {part.portal} {part.target})")
             else:
                 formatted.append(str(part))
         return "[" + ", ".join(formatted) + "]"
@@ -279,6 +281,25 @@ class SceneRenderer:
                     if content_descs:
                         prompt_texts.append(", ".join(content_descs))
                     request.ref_images.extend(content_images)
+
+                elif isinstance(part, ThroughMarker):
+                    # Check if portal is open (use runtime state, not world definition)
+                    portal_state = self.runtime.state.objects.get(part.portal)
+                    if portal_state and portal_state.properties.get("open", False):
+                        # Get descriptions for context
+                        portal_desc = self._get_entity_description(part.portal) or "opening"
+                        target_desc = self._get_entity_description(part.target) or part.target
+
+                        prompt_texts.append(f"through the open {portal_desc} you can see {target_desc}")
+
+                        # Render target room and include as reference
+                        target_entity = (self.runtime.world.rooms.get(part.target) or
+                                         self.runtime.world.objects.get(part.target) or
+                                         self.runtime.world.references.get(part.target))
+                        if target_entity and has_render_spec(target_entity):
+                            target_image = self._resolve_object_ref(part.target)
+                            if target_image:
+                                request.ref_images.append(target_image)
 
         finally:
             self._render_depth -= 1
@@ -403,11 +424,18 @@ class SceneRenderer:
         """Resolve an object reference to a PIL Image.
 
         This may trigger recursive rendering if the object/reference has a render spec.
-        Checks objects first, then references, then falls back to static assets.
+        Checks rooms first, then objects, then references, then falls back to static assets.
         """
         from PIL import Image
 
-        # First, try to render the object (recursive)
+        # First, try to render a room (recursive)
+        room = self.runtime.world.rooms.get(object_id)
+        if room and has_render_spec(room):
+            rendered_path = self._render_entity(object_id, room)
+            if rendered_path:
+                return Image.open(rendered_path).convert("RGB")
+
+        # Try to render an object (recursive)
         obj = self.runtime.world.objects.get(object_id)
         if obj and has_render_spec(obj):
             rendered_path = self._render_entity(object_id, obj)
