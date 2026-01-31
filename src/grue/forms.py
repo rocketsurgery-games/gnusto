@@ -222,15 +222,25 @@ class GrueReference:
     composed into room and object scenes. They have no runtime state and
     cannot access ?self properties.
 
+    The :description is a brief label used when the reference appears in
+    a composition prompt. The :render is the detailed prompt used to
+    actually generate the reference image.
+
     Example:
         (reference @terminal-room-bg
+          :description "An empty computer lab"
           :render "A large 1980s computer lab with CRT monitors, empty of people")
 
         (room @terminal-room
-          :render (:ref @terminal-room-bg :contents))
+          :render (@terminal-room-bg "with the following objects:" :contents))
+
+    When @terminal-room is rendered, the prompt becomes:
+        "An empty computer lab with the following objects: hacker, pc"
+    with the rendered images of @terminal-room-bg, @hacker, @pc as references.
     """
     name: str
-    render: SExpr  # Render spec (same syntax as object/room :render)
+    description: str  # Brief label used when referenced in compositions
+    render: SExpr  # Detailed render spec for generating this reference's image
 
 
 @dataclass
@@ -874,17 +884,18 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
 
 @form("reference")
 def _parse_reference(expr: SList, world: GrueWorld) -> None:
-    """Parse (reference NAME :render SPEC).
+    """Parse (reference NAME :description "..." :render SPEC).
 
     Static render references for reusable background images.
     Uses the same :render syntax as objects/rooms but has no runtime state.
 
+    The :description is a brief label used when this reference appears in
+    a composition prompt. The :render is the detailed prompt for generation.
+
     Example:
         (reference @terminal-room-bg
+          :description "An empty computer lab"
           :render "A large 1980s computer lab, CRT monitors, empty of people")
-
-        (reference @hallway-bg
-          :render ("A dimly lit hallway" :ref @door))
     """
     if len(expr) < 2:
         raise FormParseError("reference requires a name")
@@ -892,10 +903,13 @@ def _parse_reference(expr: SList, world: GrueWorld) -> None:
     name = expect_symbol(expr[1], "reference name")
     kwargs = parse_kwargs(list(expr.items[2:]))
 
+    if "description" not in kwargs:
+        raise FormParseError(f"reference {name} requires :description")
     if "render" not in kwargs:
         raise FormParseError(f"reference {name} requires :render spec")
 
-    ref = GrueReference(name=name, render=kwargs["render"])
+    description = expect_string(kwargs["description"], f"reference {name} :description")
+    ref = GrueReference(name=name, description=description, render=kwargs["render"])
     world.references[ref.name] = ref
 
 

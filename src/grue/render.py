@@ -1,34 +1,41 @@
 """
 Render spec evaluation for visual composition.
 
-A render spec is a mixed list that produces a prompt string and reference
-images when evaluated:
+A render spec is a mixed list that produces a prompt and reference images
+when evaluated. The prompt is assembled from interleaved text and entity
+references, where each @entity contributes its :description to the prompt
+and its rendered image as a reference.
 
-    :render ["A brass lantern with glass panels"
-             :ref "assets/objects/lantern.png"]
+    :render ("A brass lantern with glass panels"
+             :ref "assets/objects/lantern.png")
 
-    :render ["A " @microwave " door "
-             (if (= (:state self) :open) "open" "closed")
-             :ref "assets/microwave.png"
-             :ref-size 384]
-
-    :render ["A brass lantern on a wooden table in a stone cellar"
-             :ref "assets/rooms/cellar.png"
-             :contents]  ; Include rendered images of objects at this location
+    :render (@terminal-room-bg "with the following objects:" :contents)
 
 Render spec elements:
-    Strings         - Concatenated to form the prompt
-    @obj refs       - Resolved recursively, their rendered images become input references
+    Strings         - Literal text added to prompt
+    @obj refs       - Contributes :description to prompt + rendered image as reference
     Expressions     - Evaluated with `self` bound to the entity being rendered
-    :ref "path"     - Base reference image file path
+    :ref "path"     - Static file reference image (no prompt contribution)
     :ref-size N     - Override reference size for this render (default 384)
     :anchor @obj    - Re-include atomic ref to reduce drift in deep compositions
-    :contents       - Include rendered images of objects at this location (rooms only)
+    :contents       - Contributes contained objects' :descriptions + rendered images
+
+Example:
+    (reference @terminal-room-bg
+      :description "An empty computer lab"
+      :render "A large 1980s computer lab...")
+
+    (room @terminal-room
+      :render (@terminal-room-bg "with the following objects:" :contents))
+
+    When @terminal-room is rendered, if it contains @hacker and @pc:
+    - Prompt: "An empty computer lab with the following objects: hacker, pc"
+    - Refs: [rendered @terminal-room-bg, rendered @hacker, rendered @pc]
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from .sexpr import SExpr, Symbol, Keyword, SList
 from .expr import ExprEvaluator, Environment, GrueFn
@@ -41,9 +48,29 @@ class RenderError(Exception):
 
 @dataclass
 class ObjectRef:
-    """Reference to another object to render."""
+    """Reference to another object/reference to render.
+
+    When encountered in a render spec, contributes:
+    - The entity's :description to the prompt
+    - The entity's rendered image as a reference
+    """
     name: str
     ref_size: int | None = None  # Override ref-size for this reference
+
+
+@dataclass
+class ContentsMarker:
+    """Marker for :contents in a render spec.
+
+    When encountered, contributes:
+    - The :descriptions of objects at this location to the prompt
+    - The rendered images of those objects as references
+    """
+    pass
+
+
+# Type alias for prompt parts
+PromptPart = Union[str, ObjectRef, ContentsMarker]
 
 
 @dataclass
@@ -51,18 +78,14 @@ class RenderResult:
     """Result of evaluating a render spec.
 
     Attributes:
-        prompt: The text prompt for image generation (concatenated strings/expressions)
-        ref_paths: List of file paths to reference images (:ref values)
-        object_refs: List of object references (@obj) to render recursively
+        prompt_parts: Ordered list of prompt components (strings, ObjectRefs, ContentsMarker)
+        ref_paths: List of file paths to static reference images (:ref values)
         anchors: List of object names to re-include as anchors
-        include_contents: Whether to include rendered images of contained objects
         ref_size: Override reference size (from :ref-size)
     """
-    prompt: str = ""
+    prompt_parts: list[PromptPart] = field(default_factory=list)
     ref_paths: list[str] = field(default_factory=list)
-    object_refs: list[ObjectRef] = field(default_factory=list)
     anchors: list[str] = field(default_factory=list)
-    include_contents: bool = False
     ref_size: int | None = None
 
 
@@ -87,7 +110,7 @@ def evaluate_render_spec(
         functions: User-defined functions available during evaluation
 
     Returns:
-        RenderResult containing prompt, references, and options
+        RenderResult containing prompt_parts, references, and options
 
     Raises:
         RenderError: If the spec is malformed or evaluation fails
@@ -97,7 +120,7 @@ def evaluate_render_spec(
 
     # String: treat as prompt-only
     if isinstance(spec, str):
-        return RenderResult(prompt=spec)
+        return RenderResult(prompt_parts=[spec])
 
     # Function: evaluate it first, then process the result
     if isinstance(spec, SList) and len(spec) >= 1:
@@ -113,7 +136,6 @@ def evaluate_render_spec(
         raise RenderError(f"Render spec must be a string, fn, or list, got {type(spec).__name__}")
 
     result = RenderResult()
-    prompt_parts: list[str] = []
     current_ref_size: int | None = None
 
     items = list(spec.items)
@@ -127,7 +149,7 @@ def evaluate_render_spec(
             kw_name = item.name
 
             if kw_name == "ref":
-                # :ref "path/to/image.png" - external file reference only
+                # :ref "path/to/image.png" - static file reference (no prompt contribution)
                 if i + 1 >= len(items):
                     raise RenderError(":ref requires a path argument")
                 path = items[i + 1]
@@ -161,8 +183,8 @@ def evaluate_render_spec(
                 continue
 
             elif kw_name == "contents":
-                # :contents (standalone keyword, no value)
-                result.include_contents = True
+                # :contents - contributes contained objects' descriptions + images
+                result.prompt_parts.append(ContentsMarker())
                 i += 1
                 continue
 
@@ -171,29 +193,29 @@ def evaluate_render_spec(
                 # Pass through to expression evaluation below
                 pass
 
-        # String literals - add to prompt
+        # String literals - add to prompt parts
         if isinstance(item, str):
-            prompt_parts.append(item)
+            result.prompt_parts.append(item)
             i += 1
             continue
 
-        # Object references (@obj) - add to object refs
+        # Object references (@obj) - add to prompt parts as ObjectRef
         if isinstance(item, Symbol):
             name = item.name
             if name.startswith("@"):
-                result.object_refs.append(ObjectRef(name=name, ref_size=current_ref_size))
+                result.prompt_parts.append(ObjectRef(name=name, ref_size=current_ref_size))
                 i += 1
                 continue
             elif name == "self":
                 # `self` in prompt context - resolve to entity name
-                prompt_parts.append(entity_name)
+                result.prompt_parts.append(entity_name)
                 i += 1
                 continue
             # Other symbols - try to evaluate as expression
             try:
                 value = _evaluate_expression(item, entity_name, state, functions)
                 if value is not None:
-                    prompt_parts.append(str(value))
+                    result.prompt_parts.append(str(value))
             except Exception as e:
                 raise RenderError(f"Failed to evaluate symbol {name}: {e}")
             i += 1
@@ -207,20 +229,17 @@ def evaluate_render_spec(
                 if value is not None and value != "" and value != []:
                     if isinstance(value, list):
                         # Join list results
-                        prompt_parts.append(" ".join(str(v) for v in value if v))
+                        result.prompt_parts.append(" ".join(str(v) for v in value if v))
                     else:
-                        prompt_parts.append(str(value))
+                        result.prompt_parts.append(str(value))
             except Exception as e:
                 raise RenderError(f"Failed to evaluate expression: {e}")
             i += 1
             continue
 
         # Other types - convert to string
-        prompt_parts.append(str(item))
+        result.prompt_parts.append(str(item))
         i += 1
-
-    # Join prompt parts, collapsing multiple spaces
-    result.prompt = " ".join(part.strip() for part in prompt_parts if part.strip())
 
     return result
 

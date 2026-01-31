@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Callable
 import hashlib
 
-from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult
+from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult, ObjectRef, ContentsMarker
 from grue.render_cache import RenderCache, hash_pil_image
 
 if TYPE_CHECKING:
@@ -39,7 +39,6 @@ class RenderRequest:
     ref_paths: list[str] = field(default_factory=list)
     ref_images: list["Image"] = field(default_factory=list)  # PIL images from recursive renders
     ref_size: int = 384
-    include_contents: bool = False
 
 
 class SceneRenderer:
@@ -173,28 +172,16 @@ class SceneRenderer:
             return None
 
         self._log(f"Evaluated result:", depth_indent + 1)
-        self._log(f"  prompt: {result.prompt[:100] + '...' if len(result.prompt) > 100 else result.prompt}", depth_indent + 1)
+        self._log(f"  prompt_parts: {self._format_prompt_parts(result.prompt_parts)}", depth_indent + 1)
         self._log(f"  ref_paths: {result.ref_paths}", depth_indent + 1)
-        self._log(f"  object_refs: {[r.name for r in result.object_refs]}", depth_indent + 1)
-        self._log(f"  include_contents: {result.include_contents}", depth_indent + 1)
 
-        # If no prompt but has object refs, inherit prompt from first object ref
-        if not result.prompt and result.object_refs:
-            first_ref = result.object_refs[0].name
-            self._log(f"No prompt, inheriting from {first_ref}", depth_indent + 1)
-            inherited_prompt = self._get_entity_prompt(first_ref)
-            if inherited_prompt:
-                result.prompt = inherited_prompt
-                self._log(f"Inherited prompt: {inherited_prompt[:100]}...", depth_indent + 1)
-
-        if not result.prompt:
-            print(f"Warning: No prompt in render spec for {entity_id}")
-            print(f"  Render spec evaluated to: object_refs={[r.name for r in result.object_refs]}, include_contents={result.include_contents}")
-            print(f"  Hint: Add a prompt string to the render spec, e.g., :render (\"Scene prompt\" @ref :contents)")
-            return None
-
-        # Build the render request
+        # Build the render request (assembles prompt from parts)
         request = self._build_request(entity_id, result)
+
+        if not request.prompt:
+            print(f"Warning: No prompt assembled for {entity_id}")
+            print(f"  Hint: Ensure referenced entities have :description fields")
+            return None
 
         self._log(f"Built request:", depth_indent + 1)
         self._log(f"  final prompt: {request.prompt[:200]}{'...' if len(request.prompt) > 200 else ''}", depth_indent + 1)
@@ -231,36 +218,68 @@ class SceneRenderer:
             self._log(f"Saved to cache: {result_path}", depth_indent + 1)
             return result_path
 
+    def _format_prompt_parts(self, parts: list) -> str:
+        """Format prompt_parts for verbose logging."""
+        formatted = []
+        for part in parts:
+            if isinstance(part, str):
+                text = part[:30] + "..." if len(part) > 30 else part
+                formatted.append(f'"{text}"')
+            elif isinstance(part, ObjectRef):
+                formatted.append(part.name)
+            elif isinstance(part, ContentsMarker):
+                formatted.append(":contents")
+            else:
+                formatted.append(str(part))
+        return "[" + ", ".join(formatted) + "]"
+
     def _build_request(self, entity_id: str, result: RenderResult) -> RenderRequest:
         """Build a RenderRequest from a RenderResult.
 
-        Resolves object references recursively.
+        Assembles the prompt from prompt_parts by resolving:
+        - Strings: added directly to prompt
+        - ObjectRefs: contribute :description to prompt + rendered image as ref
+        - ContentsMarker: contributes contained objects' :descriptions + images
         """
-        # Prepend world render style if configured
-        prompt = result.prompt
-        if self.runtime.world.render_style:
-            prompt = f"STYLE: {self.runtime.world.render_style}\n{prompt}"
-
         request = RenderRequest(
             entity_name=entity_id,
-            prompt=prompt,
+            prompt="",  # Will be assembled below
             ref_size=result.ref_size or self.default_ref_size,
-            include_contents=result.include_contents,
         )
 
-        # Resolve static reference paths
+        # Resolve static reference paths (these don't contribute to prompt)
         for ref_path in result.ref_paths:
             full_path = self._resolve_ref_path(ref_path)
             if full_path and full_path.exists():
                 request.ref_paths.append(str(full_path))
 
-        # Resolve object references recursively
+        # Assemble prompt from parts and collect reference images
+        prompt_texts: list[str] = []
+
         self._render_depth += 1
         try:
-            for obj_ref in result.object_refs:
-                ref_image = self._resolve_object_ref(obj_ref.name)
-                if ref_image:
-                    request.ref_images.append(ref_image)
+            for part in result.prompt_parts:
+                if isinstance(part, str):
+                    # Literal text
+                    prompt_texts.append(part)
+
+                elif isinstance(part, ObjectRef):
+                    # Get :description and render image
+                    desc = self._get_entity_description(part.name)
+                    if desc:
+                        prompt_texts.append(desc)
+
+                    ref_image = self._resolve_object_ref(part.name)
+                    if ref_image:
+                        request.ref_images.append(ref_image)
+
+                elif isinstance(part, ContentsMarker):
+                    # Get contained objects' descriptions and images
+                    content_descs, content_images = self._resolve_contents(entity_id)
+                    if content_descs:
+                        prompt_texts.append(", ".join(content_descs))
+                    request.ref_images.extend(content_images)
+
         finally:
             self._render_depth -= 1
 
@@ -270,44 +289,103 @@ class SceneRenderer:
             if anchor_image:
                 request.ref_images.append(anchor_image)
 
-        # Include contents if requested (for rooms)
-        if result.include_contents:
-            self._add_contents(entity_id, request)
+        # Join prompt parts
+        prompt = " ".join(text.strip() for text in prompt_texts if text.strip())
 
+        # Prepend world render style if configured
+        if prompt and self.runtime.world.render_style:
+            prompt = f"STYLE: {self.runtime.world.render_style}\n{prompt}"
+
+        request.prompt = prompt
         return request
 
-    def _get_entity_prompt(self, entity_id: str) -> str | None:
-        """Get the prompt from an entity's render spec without rendering it.
+    def _get_entity_description(self, entity_id: str) -> str | None:
+        """Get the :description from an entity.
 
-        Used for prompt inheritance when a render spec references another entity
-        but provides no explicit prompt.
+        For objects/rooms, uses their :description field.
+        For references, uses their :description field.
 
         Args:
             entity_id: The entity identifier (e.g., "@terminal-room-bg")
 
         Returns:
-            The prompt string, or None if not found
+            The description string, or None if not found
         """
-        # Check objects first, then references, then rooms
-        entity = (
-            self.runtime.world.objects.get(entity_id) or
-            self.runtime.world.references.get(entity_id) or
-            self.runtime.world.rooms.get(entity_id)
-        )
-        if not entity or not has_render_spec(entity):
-            return None
+        # Check objects first
+        obj = self.runtime.world.objects.get(entity_id)
+        if obj and obj.description:
+            # Evaluate if it's a function
+            desc = self._eval_description(obj.description, entity_id)
+            if desc:
+                return desc
 
-        spec = get_render_spec(entity)
-        try:
-            result = evaluate_render_spec(
-                spec,
-                entity_id,
-                self.runtime,
-                functions=self.runtime._functions if hasattr(self.runtime, '_functions') else None,
-            )
-            return result.prompt if result.prompt else None
-        except Exception:
-            return None
+        # Check references
+        ref = self.runtime.world.references.get(entity_id)
+        if ref and ref.description:
+            return ref.description
+
+        # Check rooms
+        room = self.runtime.world.rooms.get(entity_id)
+        if room and room.description:
+            desc = self._eval_description(room.description, entity_id)
+            if desc:
+                return desc
+
+        return None
+
+    def _eval_description(self, desc_expr, entity_id: str) -> str | None:
+        """Evaluate a description expression (might be string or fn)."""
+        if isinstance(desc_expr, str):
+            return desc_expr
+
+        # If it's a function expression, evaluate it
+        from grue.sexpr import SList, Symbol
+        if isinstance(desc_expr, SList) and len(desc_expr) >= 1:
+            first = desc_expr[0]
+            if isinstance(first, Symbol) and first.name == "fn":
+                from grue.expr import ExprEvaluator, Environment
+                evaluator = ExprEvaluator(
+                    self.runtime,
+                    self.runtime._functions if hasattr(self.runtime, '_functions') else {}
+                )
+                env = Environment(bindings={"self": entity_id})
+                try:
+                    result = evaluator.eval(desc_expr, env)
+                    # Result should be a callable, call it with no args
+                    if callable(result):
+                        return str(result())
+                    return str(result) if result else None
+                except Exception:
+                    return None
+
+        return str(desc_expr) if desc_expr else None
+
+    def _resolve_contents(self, location_id: str) -> tuple[list[str], list["Image"]]:
+        """Resolve contained objects to descriptions and images.
+
+        Args:
+            location_id: The location (room) ID
+
+        Returns:
+            Tuple of (descriptions, images)
+        """
+        descriptions: list[str] = []
+        images: list["Image"] = []
+
+        for obj_name, obj in self.runtime.world.objects.items():
+            if obj.location == location_id:
+                # Get description
+                desc = self._get_entity_description(obj_name)
+                if desc:
+                    descriptions.append(desc)
+
+                # Render object
+                if has_render_spec(obj):
+                    ref_image = self._resolve_object_ref(obj_name)
+                    if ref_image:
+                        images.append(ref_image)
+
+        return descriptions, images
 
     def _resolve_ref_path(self, ref_path: str) -> Path | None:
         """Resolve a reference path to an absolute path."""
@@ -354,17 +432,6 @@ class SceneRenderer:
                         return Image.open(path).convert("RGB")
 
         return None
-
-    def _add_contents(self, room_id: str, request: RenderRequest) -> None:
-        """Add rendered images of objects in a room to the request."""
-        from PIL import Image
-
-        # Get objects at this location
-        for obj_name, obj in self.runtime.world.objects.items():
-            if obj.location == room_id:
-                obj_image = self._resolve_object_ref(obj_name)
-                if obj_image:
-                    request.ref_images.append(obj_image)
 
     def _compute_cache_key(self, request: RenderRequest) -> tuple[str, list[str]]:
         """Compute cache key for a render request.

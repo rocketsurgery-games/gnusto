@@ -1,5 +1,6 @@
 ; Static background reference for the terminal room (empty, no people)
 (reference @terminal-room-bg
+  :description "An empty computer lab"
   :render "A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
            Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
            Dim fluorescent lighting. The room is completely empty of people - no one is here.")
@@ -9,9 +10,13 @@
 
   :ldesc "This is a large room crammed with computer terminals, small computers, and printers. An exit leads south.
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
-  empty Coke cans. There are usually a lot of people here, but tonight it's deserted."
+  empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
 
-  :render (@terminal-room-bg :contents)
+  :render (
+    @terminal-room-bg
+    "with the following objects:"
+    :contents
+  )
 
   :properties (
     :lit true

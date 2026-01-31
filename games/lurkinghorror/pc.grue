@@ -6,7 +6,7 @@
   (some (fn (?o) (if (in? ?o @pc) ?o nil)) screen-objects))
 
 (object @pc
-  :description "pc"
+  :description "PC"
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
   ; Login state: logged-in becomes true after valid password, username is set to login ID (or true for invalid)
