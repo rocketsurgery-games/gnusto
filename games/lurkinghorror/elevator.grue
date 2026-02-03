@@ -5,28 +5,7 @@
 ; === Shared Visual References ===
 ; One reference for all elevator doors to ensure visual consistency across rooms.
 
-(reference @elevator-door-ref
-  :description "1980s elevator doors"
-  :render "Brushed metal 1980s elevator doors, floor indicator panel above,
-           institutional building style, slightly worn and scratched,
-           no people, straight-on view")
-
-(reference @elevator-bg
-  :description "Battered 1980s elevator interior"
-  :render (@elevator-door-ref
-           "Dirty 1980s elevator interior with fake wood panel walls, scratched and graffitied,
-            fluorescent light, control panel with buttons visible on the right wall,
-            these elevator doors straight ahead, no people"))
-
 ; === Elevator State ===
-; All elevator state is stored as properties on @cs-elevator-room:
-;   :floor 1          - current floor (0=basement, 1-3=floors)
-;   :direction 1      - direction (1=up, -1=down)
-;   :stopped true     - whether elevator is stopped
-;   :go-buttons       - list of 4 booleans for interior floor buttons
-;   :up-buttons       - list of 4 booleans for exterior up call buttons
-;   :down-buttons     - list of 4 booleans for exterior down call buttons
-
 (def floor-names '("basement" "first floor" "second floor" "third floor"))
 
 ; Lookup tables for floor dispatch
@@ -132,7 +111,6 @@
               (set-prop! @cs-elevator-room direction -1))))))))
 
 ; === Elevator Room ===
-
 (room @cs-elevator-room
   :description "Elevator"
 
@@ -143,12 +121,18 @@
          "an open button, a close button, a stop switch, and an alarm button. Below these is "
          "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
 
+  ; cs-elevator-room.jpg:
+  ;   Dirty 1980s elevator interior with fake wood panel walls, scratched and graffitied,
+  ;   fluorescent light, control panel with buttons visible on the right wall, elevator 
+  ;   doors straight ahead, no people.
+  ; refs: @access-panel
+  ;
   ; For testing with @cs-2nd, hardcode the through-view target
   ; TODO: Generalize to use (nth floor-rooms (:floor self)) once :through supports expressions
   :render (fn ()
     (if (:open @elevator-door)
-      '(@elevator-bg "with doors open" (:through @elevator-door @cs-2nd))
-      @elevator-bg))
+      '(:ref "refs/cs-elevator-room.jpg" "with doors open" (:through @elevator-door @cs-2nd))
+      '(:ref "refs/cs-elevator-room.jpg")))
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -189,7 +173,7 @@
   :render (fn ()
     (if (:open self)
       "1980s elevator doors slid open, revealing a hallway beyond"
-      @elevator-door-ref))
+      :ref "refs/elevator-doors.jpg"))
 
   :behaviors (
     :examine (fn ()
@@ -468,8 +452,9 @@
 
   :render (fn ()
     (if (:open self)
-      "1980s elevator doors slid open, revealing the elevator interior"
-      @elevator-door-ref))
+      '("Open elevator doors, revealing the elevator interior"
+        :ref "refs/elevator-doors.jpg")
+      '(:ref "refs/elevator-doors.jpg")))
 
   :behaviors elevator-door-behaviors)
 

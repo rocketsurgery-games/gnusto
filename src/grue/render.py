@@ -3,8 +3,8 @@ Render spec evaluation for visual composition.
 
 A render spec is a mixed list that produces a prompt and reference images
 when evaluated. The prompt is assembled from interleaved text and entity
-references, where each @entity contributes its :description to the prompt
-and its rendered image as a reference.
+references. Objects/rooms contribute their :description to the prompt;
+references contribute only their rendered image (no text).
 
     :render ("A brass lantern with glass panels"
              :ref "assets/objects/lantern.png")
@@ -13,23 +13,29 @@ and its rendered image as a reference.
 
 Render spec elements:
     Strings         - Literal text added to prompt
-    @obj refs       - Contributes :description to prompt + rendered image as reference
+    @room/@object   - Contributes :description to prompt + rendered image as reference
+    @reference      - Contributes only rendered image (no text) - caller wraps with text
     Expressions     - Evaluated with `self` bound to the entity being rendered
-    :ref "path"     - Static file reference image (no prompt contribution)
+    :ref "path"     - Static file reference image (path relative to assets dir)
     :ref-size N     - Override reference size for this render (default 384)
     :anchor @obj    - Re-include atomic ref to reduce drift in deep compositions
     :contents       - Contributes contained objects' :descriptions + rendered images
 
 Example:
+    ; Reference - just a named render spec (no :description)
     (reference @terminal-room-bg
-      :description "An empty computer lab"
       :render "A large 1980s computer lab...")
 
+    ; Reference using static image
+    (reference @hacker-portrait
+      :render (:ref "refs/hacker.jpg"))
+
+    ; Room composing references with descriptive text
     (room @terminal-room
-      :render (@terminal-room-bg "with the following objects:" :contents))
+      :render ("In the" @terminal-room-bg "with the following objects:" :contents))
 
     When @terminal-room is rendered, if it contains @hacker and @pc:
-    - Prompt: "An empty computer lab with the following objects: hacker, pc"
+    - Prompt: "In the with the following objects: hacker, pc"
     - Refs: [rendered @terminal-room-bg, rendered @hacker, rendered @pc]
 """
 
@@ -48,11 +54,11 @@ class RenderError(Exception):
 
 @dataclass
 class ObjectRef:
-    """Reference to another object/reference to render.
+    """Reference to another entity to render.
 
-    When encountered in a render spec, contributes:
-    - The entity's :description to the prompt
-    - The entity's rendered image as a reference
+    When encountered in a render spec:
+    - Objects/rooms: contribute :description to prompt + rendered image
+    - References: contribute only rendered image (no text contribution)
     """
     name: str
     ref_size: int | None = None  # Override ref-size for this reference

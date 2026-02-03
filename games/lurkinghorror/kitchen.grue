@@ -5,7 +5,6 @@
 ; Static background with appliances baked in (closed state by default)
 ; When rendering @kitchen, :contents adds current-state appliances as additional refs
 (reference @kitchen-bg
-  :description "A grimy 1980s university break room kitchen"
   :render (@refrigerator @microwave
            "A 1980s university break room kitchen with these appliances, dirty counter,
             fluorescent lighting, NO WINDOWS, no people present,

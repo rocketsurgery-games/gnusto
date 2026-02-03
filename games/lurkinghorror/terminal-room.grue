@@ -1,10 +1,3 @@
-; Static background reference for the terminal room (empty, no people)
-(reference @terminal-room-bg
-  :description "An empty computer lab"
-  :render "A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
-           Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
-           Dim fluorescent lighting. The room is completely empty of people - no one is here.")
-
 (room @terminal-room
   :description "Terminal Room"
 
@@ -12,22 +5,22 @@
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
   empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
 
+  ; terminal-room.jpg:
+  ; A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
+  ; Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
+  ; Dim fluorescent lighting. The room is completely empty of people - no one is here.
   :render (
-    @terminal-room-bg
-    "with the following objects:"
-    :contents
-    "The hacker is sitting at a desk, typing furiously"
-  )
+    "A terminal room" :ref "refs/terminal-room.jpg"
+    "with the following objects:" :contents
+    ". The hacker is sitting at one of the PCs.") ; TODO: Hack!
 
   :properties (
     :lit true
-    :outside false
-  )
+    :outside false)
 
   :exits (
     (south :to @cs-2nd :via @hacker-exit-barrier)
-    (out :to @cs-2nd :via @hacker-exit-barrier)
-  )
+    (out :to @cs-2nd :via @hacker-exit-barrier))
 
   :behaviors (
     ; Room entry handler - ZIL TERMINAL-ROOM-F with RARG? ENTER
@@ -69,12 +62,11 @@
                             feels oddly cold."))
 
         ; Default - allow action to proceed
-        (true (default))))
-  ))
+        (true (default))))))
 
 (object @hacker-exit-barrier
   :location @terminal-room
-  :description "passage"
+  :description "terminal room door"
   :properties (:invisible true)
   :behaviors (
     :through (fn ()

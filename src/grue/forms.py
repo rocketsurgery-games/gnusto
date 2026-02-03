@@ -216,31 +216,29 @@ class GrueFunction:
 
 @dataclass
 class GrueReference:
-    """A static render reference - visual asset without game logic.
+    """A named render spec for reusable visual assets.
 
-    References are used to create reusable background renders that can be
+    References are render spec "bags" - named render specs that can be
     composed into room and object scenes. They have no runtime state and
     cannot access ?self properties.
 
-    The :description is a brief label used when the reference appears in
-    a composition prompt. The :render is the detailed prompt used to
-    actually generate the reference image.
+    When a reference is used in another render spec (e.g., @terminal-room-bg),
+    it contributes its rendered image as a reference but no text to the prompt.
+    The caller wraps the reference with descriptive text as needed.
 
     Example:
         (reference @terminal-room-bg
-          :description "An empty computer lab"
           :render "A large 1980s computer lab with CRT monitors, empty of people")
 
         (room @terminal-room
-          :render (@terminal-room-bg "with the following objects:" :contents))
+          :render ("In the" @terminal-room-bg "with the following objects:" :contents))
 
-    When @terminal-room is rendered, the prompt becomes:
-        "An empty computer lab with the following objects: hacker, pc"
-    with the rendered images of @terminal-room-bg, @hacker, @pc as references.
+    References can also use :ref for static images (path relative to assets dir):
+        (reference @hacker-portrait
+          :render (:ref "refs/hacker.jpg"))
     """
     name: str
-    description: str  # Brief label used when referenced in compositions
-    render: SExpr  # Detailed render spec for generating this reference's image
+    render: SExpr  # Render spec (text prompt, composition, or :ref for static)
 
 
 @dataclass
@@ -884,18 +882,21 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
 
 @form("reference")
 def _parse_reference(expr: SList, world: GrueWorld) -> None:
-    """Parse (reference NAME :description "..." :render SPEC).
+    """Parse (reference NAME :render SPEC).
 
-    Static render references for reusable background images.
-    Uses the same :render syntax as objects/rooms but has no runtime state.
+    Named render specs for reusable visual assets. References are "render bags"
+    that can be composed into room and object scenes. They have no runtime state.
 
-    The :description is a brief label used when this reference appears in
-    a composition prompt. The :render is the detailed prompt for generation.
+    When used in another render spec, references contribute their rendered image
+    but no text to the prompt. The caller wraps references with descriptive text.
 
     Example:
         (reference @terminal-room-bg
-          :description "An empty computer lab"
           :render "A large 1980s computer lab, CRT monitors, empty of people")
+
+        ; Static image reference (path relative to assets dir)
+        (reference @hacker-portrait
+          :render (:ref "refs/hacker.jpg"))
     """
     if len(expr) < 2:
         raise FormParseError("reference requires a name")
@@ -903,13 +904,10 @@ def _parse_reference(expr: SList, world: GrueWorld) -> None:
     name = expect_symbol(expr[1], "reference name")
     kwargs = parse_kwargs(list(expr.items[2:]))
 
-    if "description" not in kwargs:
-        raise FormParseError(f"reference {name} requires :description")
     if "render" not in kwargs:
-        raise FormParseError(f"reference {name} requires :render spec")
+        raise FormParseError(f"reference {name} requires :render")
 
-    description = expect_string(kwargs["description"], f"reference {name} :description")
-    ref = GrueReference(name=name, description=description, render=kwargs["render"])
+    ref = GrueReference(name=name, render=kwargs["render"])
     world.references[ref.name] = ref
 
 

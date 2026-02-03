@@ -2,7 +2,17 @@
   :description "chair"
   :fdesc "Nearby is one of those ugly molded plastic chairs."
   :location @terminal-room
-  :properties (:takeable true :vehicle true :searchable true :container true :open true :furniture true :surface true :size 100)
+  :render (:ref "refs/chair.jpg")
+
+  :properties (
+    :takeable true 
+    :vehicle true 
+    :searchable true 
+    :container true 
+    :open true 
+    :furniture true 
+    :surface true 
+    :size 100)
 
   :behaviors (
     :examine (fn ()

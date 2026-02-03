@@ -25,6 +25,7 @@ import hashlib
 
 from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult, ObjectRef, ContentsMarker, ThroughMarker
 from grue.render_cache import RenderCache, hash_pil_image
+from gnusto.terminal_images import display_image, display_pil_image, is_supported as terminal_images_supported
 
 if TYPE_CHECKING:
     from grue.runtime import GrueRuntime
@@ -72,13 +73,51 @@ class SceneRenderer:
         self.default_ref_size = default_ref_size
         self._pipeline = pipeline
         self._render_depth = 0  # Track recursion depth
-        self._max_depth = 3  # Max composition layers
+        self._max_depth = 5  # Max composition layers (room -> through -> room -> contents -> object)
 
     def _log(self, msg: str, indent: int = 0) -> None:
         """Print verbose log message if verbose mode enabled."""
         if self.verbose:
             prefix = "  " * indent
             print(f"{prefix}{msg}")
+
+    def _log_render_request(self, entity_id: str, request: "RenderRequest", indent: int = 0) -> None:
+        """Log a render request in a clean, readable format with image previews."""
+        if not self.verbose:
+            return
+
+        prefix = "  " * indent
+
+        # Truncate prompt for display
+        prompt = request.prompt
+        if len(prompt) > 300:
+            prompt = prompt[:300] + "..."
+
+        print(f"{prefix}{entity_id}:")
+        print(f"{prefix}  prompt: {prompt}")
+
+        # Show reference images with previews
+        has_refs = request.ref_paths or request.ref_images
+        if has_refs:
+            print(f"{prefix}  refs:")
+
+            # Show static ref paths with thumbnails
+            for path in request.ref_paths:
+                name = Path(path).name
+                print(f"{prefix}    - {name}")
+                if terminal_images_supported():
+                    display_image(path, width=20)
+
+            # Show rendered ref images with thumbnails
+            for i, img in enumerate(request.ref_images):
+                print(f"{prefix}    - [rendered #{i+1}]")
+                if terminal_images_supported():
+                    # Resize to half for preview
+                    thumb = img.copy()
+                    thumb.thumbnail((256, 256))
+                    display_pil_image(thumb, width=20)
+        else:
+            print(f"{prefix}  refs: none")
 
     def render_room(self, room_id: str) -> Path | None:
         """Render an illustration for a room.
@@ -153,11 +192,7 @@ class SceneRenderer:
 
         spec = get_render_spec(entity)
         if spec is None:
-            self._log(f"No render spec for {entity_id}", depth_indent)
             return None
-
-        self._log(f"Evaluating render spec for {entity_id}", depth_indent)
-        self._log(f"Raw spec: {spec}", depth_indent + 1)
 
         # Evaluate the render spec
         try:
@@ -171,31 +206,34 @@ class SceneRenderer:
             print(f"Warning: Failed to evaluate render spec for {entity_id}: {e}")
             return None
 
-        self._log(f"Evaluated result:", depth_indent + 1)
-        self._log(f"  prompt_parts: {self._format_prompt_parts(result.prompt_parts)}", depth_indent + 1)
-        self._log(f"  ref_paths: {result.ref_paths}", depth_indent + 1)
-
         # Build the render request (assembles prompt from parts)
         request = self._build_request(entity_id, result)
+
+        # Handle pure :ref specs (static image, no generation needed)
+        if not request.prompt and request.ref_paths:
+            # The entity's "render" is just a static file reference
+            static_path = Path(request.ref_paths[0])
+            if static_path.exists():
+                self._log(f"{entity_id}: static {static_path.name}", depth_indent)
+                return static_path
+            else:
+                print(f"Warning: Static ref not found for {entity_id}: {request.ref_paths[0]}")
+                return None
 
         if not request.prompt:
             print(f"Warning: No prompt assembled for {entity_id}")
             print(f"  Hint: Ensure referenced entities have :description fields")
             return None
 
-        self._log(f"Built request:", depth_indent + 1)
-        self._log(f"  final prompt: {request.prompt[:200]}{'...' if len(request.prompt) > 200 else ''}", depth_indent + 1)
-        self._log(f"  ref_paths: {request.ref_paths}", depth_indent + 1)
-        self._log(f"  ref_images: {len(request.ref_images)} image(s)", depth_indent + 1)
-
         # Check cache
         cache_key, ref_hashes = self._compute_cache_key(request)
         cached = self.cache.get(cache_key, entity=entity_id)
         if cached:
-            self._log(f"Cache hit: {cached}", depth_indent + 1)
+            self._log(f"{entity_id}: cached", depth_indent)
             return cached
 
-        self._log(f"Cache miss, generating...", depth_indent + 1)
+        # Log the render request
+        self._log_render_request(entity_id, request, depth_indent)
 
         # Generate the image
         image = self._generate_image(request)
@@ -215,25 +253,8 @@ class SceneRenderer:
                 ref_hashes=ref_hashes,
                 copy=False,
             )
-            self._log(f"Saved to cache: {result_path}", depth_indent + 1)
+            self._log(f"{entity_id}: saved {result_path.name}", depth_indent)
             return result_path
-
-    def _format_prompt_parts(self, parts: list) -> str:
-        """Format prompt_parts for verbose logging."""
-        formatted = []
-        for part in parts:
-            if isinstance(part, str):
-                text = part[:30] + "..." if len(part) > 30 else part
-                formatted.append(f'"{text}"')
-            elif isinstance(part, ObjectRef):
-                formatted.append(part.name)
-            elif isinstance(part, ContentsMarker):
-                formatted.append(":contents")
-            elif isinstance(part, ThroughMarker):
-                formatted.append(f"(:through {part.portal} {part.target})")
-            else:
-                formatted.append(str(part))
-        return "[" + ", ".join(formatted) + "]"
 
     def _build_request(self, entity_id: str, result: RenderResult) -> RenderRequest:
         """Build a RenderRequest from a RenderResult.
@@ -324,7 +345,7 @@ class SceneRenderer:
         """Get the :description from an entity.
 
         For objects/rooms, uses their :description field.
-        For references, uses their :description field.
+        References have no description - they contribute only images, not text.
 
         Args:
             entity_id: The entity identifier (e.g., "@terminal-room-bg")
@@ -340,10 +361,8 @@ class SceneRenderer:
             if desc:
                 return desc
 
-        # Check references
-        ref = self.runtime.world.references.get(entity_id)
-        if ref and ref.description:
-            return ref.description
+        # References have no description - they contribute only images
+        # The caller wraps references with descriptive text as needed
 
         # Check rooms
         room = self.runtime.world.rooms.get(entity_id)
@@ -400,11 +419,10 @@ class SceneRenderer:
                 if desc:
                     descriptions.append(desc)
 
-                # Render object
-                if has_render_spec(obj):
-                    ref_image = self._resolve_object_ref(obj_name)
-                    if ref_image:
-                        images.append(ref_image)
+                # Get object image (render spec or static asset)
+                ref_image = self._resolve_object_ref(obj_name)
+                if ref_image:
+                    images.append(ref_image)
 
         return descriptions, images
 
@@ -423,41 +441,32 @@ class SceneRenderer:
     def _resolve_object_ref(self, object_id: str) -> "Image | None":
         """Resolve an object reference to a PIL Image.
 
-        This may trigger recursive rendering if the object/reference has a render spec.
-        Checks rooms first, then objects, then references, then falls back to static assets.
+        This may trigger recursive rendering if the entity has a render spec.
+        Checks rooms, objects, then references. No implicit fallback - entities
+        must have explicit :render specs (which can use :ref for static images).
         """
         from PIL import Image
 
-        # First, try to render a room (recursive)
+        # Try to render a room
         room = self.runtime.world.rooms.get(object_id)
         if room and has_render_spec(room):
             rendered_path = self._render_entity(object_id, room)
             if rendered_path:
                 return Image.open(rendered_path).convert("RGB")
 
-        # Try to render an object (recursive)
+        # Try to render an object
         obj = self.runtime.world.objects.get(object_id)
         if obj and has_render_spec(obj):
             rendered_path = self._render_entity(object_id, obj)
             if rendered_path:
                 return Image.open(rendered_path).convert("RGB")
 
-        # Try to render a reference (static render asset)
+        # Try to render a reference (references always have render specs)
         ref = self.runtime.world.references.get(object_id)
-        if ref and has_render_spec(ref):
+        if ref:
             rendered_path = self._render_entity(object_id, ref)
             if rendered_path:
                 return Image.open(rendered_path).convert("RGB")
-
-        # Fall back to static asset
-        if self.assets_dir:
-            # Try common naming conventions
-            base_name = object_id.lstrip("@")
-            for ext in (".png", ".jpg", ".jpeg"):
-                for subdir in ("objects", "atomics", ""):
-                    path = self.assets_dir / subdir / f"{base_name}{ext}"
-                    if path.exists():
-                        return Image.open(path).convert("RGB")
 
         return None
 

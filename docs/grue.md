@@ -681,7 +681,7 @@ GRUE has three categories of constructs, each with different evaluation semantic
 
 | Category | Examples | Evaluation |
 |----------|----------|------------|
-| **Declarative Forms** | `world`, `room`, `object`, `victory`, `defeat`, `default` | Data definitions, not evaluated at runtime |
+| **Declarative Forms** | `world`, `room`, `object`, `reference`, `victory`, `defeat`, `default`, `event` | Data definitions, not evaluated at runtime |
 | **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `fn`, `let` | Custom evaluation rules |
 | **Functions** | `loc`, `held?`, `visible?`, `move!`, `set` | Uniform evaluation (all arguments evaluated) |
 
@@ -704,6 +704,7 @@ Room definition. Rooms are named entities with:
 - `:exits` - List of exit forms `(DIRECTION :to ROOM [:via OBJECT] [:when EXPR])`
 - `:properties` - Key-value properties
 - `:behaviors` - Room-level action handlers (see Room Hooks below)
+- `:render` - Render spec for illustration (see [filfre.md](filfre.md))
 
 **Room Hooks:**
 
@@ -743,6 +744,7 @@ Object definition. Objects are named entities with:
 - `:flags` - Boolean markers (e.g., `TAKEBIT`, `LOCKED`, `PERSON`)
 - `:properties` - Key-value properties
 - `:behaviors` - Verb-to-handler mappings (see Behaviors section)
+- `:render` - Render spec for illustration (see [filfre.md](filfre.md))
 
 #### `(victory :when EXPR :context (...))`
 Win condition. The `:when` expression is evaluated each turn.
@@ -759,6 +761,31 @@ Turn-based event handler. Events fire each turn while queued.
 - `:on-turn` - A `cond` form evaluated each turn
 
 See [Turn-Based Events](#turn-based-events) for detailed documentation.
+
+#### `(reference NAME :render SPEC)`
+Named render spec for reusable visual assets. References are "render bags" that can
+be composed into room and object scenes. They have no runtime state and cannot access
+`?self` properties.
+
+When used in another render spec (e.g., `@terminal-room-bg`), references contribute
+their rendered image but no text to the prompt. The caller wraps references with
+descriptive text as needed.
+
+```scheme
+; Reference with generated image
+(reference @terminal-room-bg
+  :render "A large 1980s computer lab with CRT monitors, empty of people")
+
+; Reference with static image (path relative to assets dir)
+(reference @hacker-portrait
+  :render (:ref "refs/hacker.jpg"))
+
+; Using a reference in a room render
+(room @terminal-room
+  :render ("In the" @terminal-room-bg "with:" :contents))
+```
+
+See [filfre.md](filfre.md) for detailed render spec documentation.
 
 #### `(globals :name value ...)` *(Removed)*
 > **Note:** The `(globals)` form has been removed. Use object properties instead.

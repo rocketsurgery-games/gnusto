@@ -1,29 +1,23 @@
-; Hacker state is stored as properties on @hacker:
-;   :trade - Set when player proposes food-for-key trade
-;   :lair-cnt - Possession counter (0-7+) - affects hacker responses
-;   :help-stage - Help stage counter (0-4) for I-HACKER-HELPS
-;   :food-hint - Food hint counter for I-FOOD-HINT
-;   :comp-cnt - Compulsion page counter (0-4) for I-COMPULSION
-
 (object @hacker
   :description "hacker"
   :location @terminal-room
 
+  ; TODO: Deal with different states the hacker can be in.
+  :render (
+    "The hacker sits comfortably on an office chair. Solid white background."
+    :ref "refs/hacker.jpg" :ref "refs/office-chair.jpg")
+
   :properties (
-    :searchable true 
-    :person true 
-    :open true 
-    :container true 
-    :trade false 
-    :lair-cnt 0 
-    :help-stage 0 
-    :food-hint 0 
+    :searchable true
+    :person true
+    :open true
+    :container true
+    :trade false
+    :lair-cnt 0
+    :help-stage 0
+    :food-hint 0
     :comp-cnt 0
   )
-
-  :render "A scruffy, innocent looking young hacker in his 20s. Blue jeans, old work shirt, worn running shoes.
-           A large ring of keys hangs from his belt. He looks like he needs a bath.
-           No background."
 
   (def hacker-desc "The hacker sits comfortably on an office chair facing a terminal table,
     or perhaps it's just a pile of old listings as tall as a terminal table. He is typing madly,
@@ -39,8 +33,6 @@
       ((here? @inner-lair)    '((success "A muddy, scratched-up hacker stands tiredly here.")))
       (true '((success "A hacker is here.")))))
 
-    ; TODO: Full implementation would check global lair-cnt for possessed state
-    ; and global hacker-help for helping state. Simplified for basic translation.
     :examine (fn () (cond
       ((here? @inner-lair) '((success "He's muddy, wet, and tired looking.")))
       (true                `((success ,hacker-desc))))) ; Normal state - at his own terminal

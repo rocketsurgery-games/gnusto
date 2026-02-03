@@ -1,28 +1,19 @@
-; Background reference includes elevator doors in closed state for consistency
-(reference @cs-2nd-bg
-  :description "Second floor hallway with elevator"
-  :render (@elevator-door-ref
-           "1980s university building hallway at night, this elevator with doors,
-            fluorescent lights, institutional architecture, stairs visible in background,
-            empty and eerie, wide angle view, no people"))
-
 (room @cs-2nd
   :description "Second Floor"
   :ldesc "This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the
           hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller
           room."
 
+  ; cs-2nd.jpg:
+  ; University building hallway at night, fluorescent lights, institutional architecture,
+  ; stairs leading up and down visible in background, empty and eerie, wide angle view, no people.
+  ; A forward doorway leads into the kitchen. To the right a door leads to the computer lab.
+  ; To the left, an elevator with call buttons.
   :render (fn ()
-    (if (:open @elevator-door-2)
-      '(@cs-2nd-bg
-        "visible to the north is" @terminal-room
-        "and to the west is" @kitchen
-        :contents
-        (:through @elevator-door-2 @cs-elevator-room))
-      '(@cs-2nd-bg
-        "visible to the north is" @terminal-room
-        "and to the west is" @kitchen
-        :contents)))
+    '(:ref "refs/cs-2nd.jpg"
+      "visible to the right is" @terminal-room
+      "to the left is" @elevator-door-2
+      "and ahead beyond the stairs is the" @kitchen))
 
   :properties (
     :lit true

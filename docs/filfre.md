@@ -109,65 +109,110 @@ The composition system has three layers:
 
 ## Render Specs in Grue
 
-Render specifications live alongside textual descriptions in game definitions:
+Render specifications live alongside textual descriptions in game definitions.
 
-```grue
-;; Atomic - hand-drawn reference, prompt describes it
-(object @brass-lantern
-  :name "brass lantern"
-  :description "A battery-powered lantern. It's currently off."
-  :render ["A brass lantern with glass panels and a metal handle"
-           :ref "assets/objects/lantern.png"])
-
-;; Atomic with state-dependent prompt
-(object @microwave
-  :name "microwave"
-  :render [(if (= (:state self) :open)
-             "An institutional white microwave, door open"
-             "An institutional white microwave, door closed")
-           :ref "assets/objects/microwave.png"])
-
-;; Composite - references other objects
-(object @desk-setup
-  :render ["A cluttered computer desk with "
-           @pc-tower " tower underneath, "
-           @monitor " on top, "
-           @keyboard " and papers scattered about"])
-
-;; Scene layer - room with dynamic contents
-(room @terminal-room
-  :render ["A cramped 1980s university computer lab"
-           (when (= (:power self) :off) ", dark with emergency lighting")
-           :ref "assets/rooms/terminal-room.png"
-           :contents])  ; auto-include objects in room
-```
-
-### Render Spec Format
+### Render Spec Elements
 
 A render spec is a list containing:
 - **Strings**: Concatenated to form the prompt
-- **Object refs** (`@foo`): Resolved recursively, their rendered images become input references
-- **Expressions**: Evaluated with `self` bound to the object being rendered
+- **Object/room refs** (`@foo`): Contribute `:description` to prompt + rendered image as reference
+- **Reference refs** (`@ref`): Contribute only rendered image (no text) - caller wraps with text
+- **Expressions**: Evaluated with `self` bound to the entity being rendered
 - **Keywords**:
-  - `:ref "path"` - Base reference image file
+  - `:ref "path"` - Static file reference image (path relative to assets dir)
   - `:contents` - Include rendered images of objects at this location
   - `:ref-size N` - Override reference size for this render
   - `:anchor @obj` - Re-include atomic ref to reduce drift
+  - `:through @portal @target` - Include target room when portal is open
+
+### References (Named Render Specs)
+
+References are reusable "render bags" - named render specs that contribute only their
+image (no text) when used in other render specs. The caller provides descriptive text.
+
+```grue
+;; Reference with generated image
+(reference @terminal-room-bg
+  :render "A large 1980s computer lab with CRT monitors, empty of people")
+
+;; Reference with static image (path relative to assets dir)
+(reference @hacker-portrait
+  :render (:ref "refs/hacker.jpg"))
+
+;; Room composing references - note how text wraps the reference
+(room @terminal-room
+  :render ("In the" @terminal-room-bg "with:" :contents))
+```
+
+### Objects with Render Specs
+
+```grue
+;; Object with generated render
+(object @brass-lantern
+  :description "A battery-powered lantern."
+  :render "A brass lantern with glass panels and a metal handle")
+
+;; Object with static image
+(object @hacker
+  :description "hacker"
+  :render (:ref "refs/hacker.jpg"))
+
+;; State-dependent render
+(object @microwave
+  :render (fn ()
+    (if (:open ?self)
+      "An institutional white microwave, door open"
+      "An institutional white microwave, door closed")))
+
+;; Composite with other object references
+(object @desk-setup
+  :render ("A cluttered computer desk with "
+           @pc-tower " tower underneath, "
+           @monitor " on top"))
+```
+
+### Scene Composition
+
+```grue
+;; Room with dynamic contents
+(room @terminal-room
+  :render (@terminal-room-bg
+           "with the following objects:"
+           :contents
+           "The hacker is typing furiously"))
+
+;; Room with cross-room visibility through portal
+(room @cs-2nd
+  :render (fn ()
+    (if (:open @elevator-door-2)
+      '(@cs-2nd-bg
+        "visible to the north is" @terminal-room
+        :contents
+        (:through @elevator-door-2 @cs-elevator-room))
+      '(@cs-2nd-bg
+        "visible to the north is" @terminal-room
+        :contents))))
+```
 
 ## Render Resolution
 
 ```
-render(obj, game-state) → image:
-  1. Evaluate render spec with self=obj
-  2. Collect prompt (concatenated strings)
-  3. Collect refs:
-     - :ref paths → load from file
-     - @object refs → render(ref, game-state) recursively
-     - :contents → render each object at obj's location
-  4. Compute cache key = hash(prompt, sorted(ref-hashes))
-  5. If cached, return cached image
-  6. Call filfre with prompt + ref images
-  7. Cache result and return
+render(entity, game-state) → image:
+  1. Evaluate render spec with self=entity
+  2. Collect prompt (concatenated strings from text + object/room descriptions)
+     - Objects/rooms contribute their :description
+     - References contribute no text (caller wraps with descriptive text)
+  3. Collect reference images:
+     - :ref paths → load static file from assets dir
+     - @object/@room refs → render recursively, use rendered image
+     - @reference refs → render recursively, use rendered image
+     - :contents → render each object at entity's location
+     - :through @portal @target → if portal open, render target room
+  4. For pure :ref specs (no prompt): return static file directly (no generation)
+  5. Compute cache key = hash(prompt, sorted(ref-hashes))
+  6. If cached, return cached image
+  7. Call filfre with prompt + ref images
+  8. Cache result and return
 ```
 
 ## Caching Strategy
@@ -190,14 +235,14 @@ Each composition layer introduces drift from original references. Mitigation:
 
 1. **Anchoring**: Re-include atomic refs at deeper layers
    ```grue
-   :render ["Scene with " @composite-obj
-            :anchor @atomic-obj]  ; re-anchor to original
+   :render ("Scene with " @composite-obj
+            :anchor @atomic-obj)  ; re-anchor to original
    ```
 
 2. **Ref-size scaling**: Use larger ref-size for important/early refs
    ```grue
-   :render [@important-char :ref-size 384
-            @background-obj :ref-size 128]
+   :render (@important-char :ref-size 384
+            @background-obj :ref-size 128)
    ```
 
 3. **Layer limits**: Keep composition depth ≤ 3 layers where possible
