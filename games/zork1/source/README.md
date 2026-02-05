@@ -1,10 +1,8 @@
-# Zork I: The Great Underground Empire
-
-## The Game
+# Zork I Source Code Collection
 
 Zork I is a 1980 interactive fiction game written by Marc Blank, Dave Lebling, Bruce Daniels and Tim Anderson and published by Infocom.
 
-The following sources provide further information on Zork I.
+Further information on Zork I:
 
 * [Wikipedia](https://en.wikipedia.org/wiki/Zork_I)
 * [The Digital Antiquarian](https://www.filfre.net/2012/01/selling-zork/)
@@ -12,52 +10,24 @@ The following sources provide further information on Zork I.
 * [The Infocom Gallery](http://gallery.guetech.org/zork1/zork1.html)
 * [IFWiki](http://www.ifwiki.org/index.php/Zork_I)
 
-## Resources
+__What is this Repository?__
 
-* [Zork I on The Obsessively Complete Infocom Catalog](https://eblong.com/infocom/#zork1)
-* [Zork I on Historical Source (GitHub)](https://github.com/historicalsource/zork1)
-* [Infocom Fact Sheet](http://pdd.if-legends.org/infocom/fact-sheet.txt)
+This repository is a directory of source code for the Infocom game "Zork I", including a variety of files both used and discarded in the production of the game. It is written in ZIL (Zork Implementation Language), a refactoring of MDL (Muddle), itself a dialect of LISP created by MIT students and staff.
 
-## Version History
+The source code was contributed anonymously and represents a snapshot of the Infocom development system at time of shutdown - there is no remaining way to compare it against any official version as of this writing, and so it should be considered canonical, but not necessarily the exact source code arrangement for production.
 
-| Release | Serial | Type | Story File              | Obsessive Sources | Historical Sources |
-| -------:|:------:|:----:|:-----------------------:|:-----------------:|:------------------:|
-|       2 | AS000C |  PUB |   [zork1-r2-sAS000C.z1] |                 - |                  - |
-|       5 |      - |  PUB |   [zork1-r5-sXXXXXX.z1] |                 - |                  - |
-|      15 | UG3AU5 |  PUB |  [zork1-r15-sUG3AU5.z2] |                 - |                  - |
-|      20 |      - |  PUB |  [zork1-r20-sXXXXXX.z3] |                 - |                  - |
-|      23 | 820428 |  PUB |  [zork1-r23-s820428.z3] |                 - |                  - |
-|      25 | 820515 |  PUB |  [zork1-r25-s820515.z3] |                 - |                  - |
-|      26 | 820803 |  PUB |  [zork1-r26-s820803.z3] |                 - |                  - |
-|      28 | 821013 |  PUB |  [zork1-r28-s821013.z3] |                 - |                  - |
-|      30 | 830330 |  PUB |  [zork1-r30-s830330.z3] |                 - |                  - |
-|      75 | 830929 |  PUB |  [zork1-r75-s830929.z3] |                 - |                  - |
-|      76 | 840509 |  PUB |  [zork1-r76-s840509.z3] |                 - |                  - |
-|      88 | 840726 |  PUB |  [zork1-r88-s840726.z3] |   [zork1-r88.zip] |      [revision 88] |
-|     119 | 880429 |  FIN | [zork1-r119-s880429.z3] |  [zork1-r119.zip] |   [final revision] |
+__Basic Information on the Contents of This Repository__
 
-[zork1-r2-sAS000C.z1]: https://eblong.com/infocom/gamefiles/zork1-r2-sAS000C.z1
-[zork1-r5-sXXXXXX.z1]: https://eblong.com/infocom/gamefiles/zork1-r5-sXXXXXX.z1
-[zork1-r15-sUG3AU5.z2]: https://eblong.com/infocom/gamefiles/zork1-r15-sUG3AU5.z2
-[zork1-r20-sXXXXXX.z3]: https://eblong.com/infocom/gamefiles/zork1-r20-sXXXXXX.z3
-[zork1-r23-s820428.z3]: https://eblong.com/infocom/gamefiles/zork1-r23-s820428.z3
-[zork1-r25-s820515.z3]: https://eblong.com/infocom/gamefiles/zork1-r25-s820515.z3
-[zork1-r26-s820803.z3]: https://eblong.com/infocom/gamefiles/zork1-r26-s820803.z3
-[zork1-r28-s821013.z3]: https://eblong.com/infocom/gamefiles/zork1-r28-s821013.z3
-[zork1-r30-s830330.z3]: https://eblong.com/infocom/gamefiles/zork1-r30-s830330.z3
-[zork1-r75-s830929.z3]: https://eblong.com/infocom/gamefiles/zork1-r75-s830929.z3
-[zork1-r76-s840509.z3]: https://eblong.com/infocom/gamefiles/zork1-r76-s840509.z3
+It is mostly important to note that there is currently no known way to compile the source code in this repository into a final "Z-machine Interpreter Program" (ZIP) file using an official Infocom-built compiler. There is a user-maintained compiler named [ZILF](http://zilf.io) that has been shown to successfully compile these .ZIL files with minor issues. There are .ZIP files in some of the Infocom Source Code repositories but they were there as of final spin-down of the Infocom Drive and the means to create them is currently lost.
 
-[zork1-r88-s840726.z3]: https://eblong.com/infocom/gamefiles/zork1-r88-s840726.z3
-[zork1-r88.zip]: https://eblong.com/infocom/sources/zork1-r88.zip
-[revision 88]: https://github.com/historicalsource/zork1/tree/34cc828c4fa3b5e2581ea24c43bb8acb386d25d0
+Throughout its history, Infocom used a TOPS20 mainframe with a compiler (ZILCH) to create and edit language files - this repository is a mirror of the source code directory archive of Infocom but could represent years of difference from what was originally released.
 
-[zork1-r119-s880429.z3]: https://eblong.com/infocom/gamefiles/zork1-r119-s880429.z3
-[zork1-r119.zip]: https://eblong.com/infocom/sources/zork1-r119.zip
-[final revision]: https://github.com/historicalsource/zork1/tree/87a3b787d166a441cab8d89d87f9a3753d40daa8
+In general, Infocom games were created by taking previous Infocom source code, copying the directory, and making changes until the game worked the way the current Implementor needed. Structure, therefore, tended to follow from game to game and may or may not accurately reflect the actual function of the code.
 
-## Future Development
+There are also multiple versions of the "Z-Machine" and code did change notably between the first years of Infocom and a decade later. Addition of graphics, sound and memory expansion are all slowly implemented over time.
 
-Version 119/880429 has been selected as the starting point for future development.
+__What is the Purpose of this Repository__
 
-Compilation issues are recorded [here](https://github.com/the-infocom-files/zork1/issues/2).
+This collection is meant for education, discussion, and historical work, allowing researchers and students to study how code was made for these interactive fiction games and how the system dealt with input and processing.
+
+Researchers are encouraged to share their discoveries about the information in this source code and the history of Infocom and its many innovative employees.

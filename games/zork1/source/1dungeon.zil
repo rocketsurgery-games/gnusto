@@ -401,7 +401,7 @@ sceptre is ornamented with colored enamel, and tapers to a sharp point.")
 	(ACTION DAM-FUNCTION)>
 
 <OBJECT TRAP-DOOR
-	(IN LOCAL-GLOBALS)
+	(IN LIVING-ROOM)
 	(SYNONYM DOOR TRAPDOOR TRAP-DOOR COVER)
 	(ADJECTIVE TRAP DUSTY)
 	(DESC "trap door")
@@ -903,11 +903,11 @@ Zorkers were obscure." )>
 	(ACTION MSWITCH-FUNCTION)>
 
 <OBJECT WOODEN-DOOR
-	(IN LOCAL-GLOBALS)
+	(IN LIVING-ROOM)
 	(SYNONYM DOOR LETTERING WRITING)
 	(ADJECTIVE WOODEN GOTHIC STRANGE WEST)
 	(DESC "wooden door")
-	(FLAGS DOORBIT NDESCBIT TRANSBIT)
+	(FLAGS READBIT DOORBIT NDESCBIT TRANSBIT)
 	(ACTION FRONT-DOOR-FCN)
 	(TEXT
 "The engravings translate to \"This space intentionally left blank.\"")>
@@ -1071,7 +1071,7 @@ out of the room.")
 	(SIZE 5)
 	(TEXT
 "---> Frobozz Magic Gunk Company <---|
-          All-Purpose Gunk")>
+	  All-Purpose Gunk")>
 
 <OBJECT PUTTY
 	(IN TUBE)
@@ -1231,7 +1231,7 @@ have, as the mainspring seems sprung.")>
 <GLOBAL MAGIC-FLAG <>>
 <GLOBAL RAINBOW-FLAG <>>
 <GLOBAL TROLL-FLAG <>>
-;<GLOBAL WON-FLAG <>>
+<GLOBAL WON-FLAG <>>
 <GLOBAL COFFIN-CURE <>>
 
 "SUBTITLE FOREST AND OUTSIDE OF HOUSE"
@@ -1456,7 +1456,7 @@ extends to the east and west.")
       (DOWN PER TRAP-DOOR-EXIT)
       (ACTION LIVING-ROOM-FCN)
       (FLAGS RLANDBIT ONBIT SACREDBIT)
-      (GLOBAL WOODEN-DOOR TRAP-DOOR STAIRS)
+      (GLOBAL STAIRS)
       (PSEUDO "NAILS" NAILS-PSEUDO "NAIL" NAILS-PSEUDO)>
 
 \
@@ -1747,8 +1747,7 @@ cyclops sized).")
       (WEST TO CYCLOPS-ROOM)
       (IN TO CYCLOPS-ROOM)
       (EAST TO LIVING-ROOM)
-      (FLAGS RLANDBIT)
-      (GLOBAL WOODEN-DOOR)>
+      (FLAGS RLANDBIT)>
 
 <ROOM TREASURE-ROOM
       (IN ROOMS)
