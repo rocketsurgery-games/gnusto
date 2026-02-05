@@ -48,18 +48,18 @@
       (blocked :reason inedible
         :message "You might find the contents more agreeable than the carton itself."))))
 
-(object @chinese-food
-  ; Helper: temperature description for heated food
-  (defn heat-desc (?obj)
-    (let ((?h (prop ?obj heat)))
-      (cond
-        ((>= ?h 20) "radioactive")
-        ((>= ?h 16) "volcanic")
-        ((>= ?h 12) "hot")
-        ((>= ?h 8) "warm")
-        ((>= ?h 4) "lukewarm")
-        (true "cold"))))
+; Helper: temperature description for heated food/drink
+(defn heat-desc (?obj)
+  (let ((?h (prop ?obj heat)))
+    (cond
+      ((>= ?h 20) "radioactive")
+      ((>= ?h 16) "volcanic")
+      ((>= ?h 12) "hot")
+      ((>= ?h 8) "warm")
+      ((>= ?h 4) "lukewarm")
+      (true "cold"))))
 
+(object @chinese-food
   :description "Chinese food"
   :location @carton  ; Inside the carton
   :properties (:food true :heat 0 :rmung false)  ; 0=cold, 12+=hot, higher=overcooked

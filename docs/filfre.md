@@ -200,7 +200,7 @@ image (no text) when used in other render specs. The caller provides descriptive
 render(entity, game-state) → image:
   1. Evaluate render spec with self=entity
   2. Collect prompt (concatenated strings from text + object/room descriptions)
-     - Objects/rooms contribute their :description
+     - Objects/rooms contribute their :rdesc (or :description as fallback)
      - References contribute no text (caller wraps with descriptive text)
   3. Collect reference images:
      - :ref paths → load static file from assets dir
@@ -246,6 +246,22 @@ Each composition layer introduces drift from original references. Mitigation:
    ```
 
 3. **Layer limits**: Keep composition depth ≤ 3 layers where possible
+
+### State-Aware Descriptions (`:rdesc`)
+
+When composing scenes, the text prompt must describe the current visual state of objects.
+The `:rdesc` field on entities provides this - separate from the player-facing `:description`.
+
+For example, a microwave's `:description` might be "microwave oven" for all states, but
+its `:rdesc` can be:
+- `"open microwave oven"` when open
+- `"running microwave oven with turntable spinning"` when running
+- `"closed microwave oven"` otherwise
+
+This ensures the generated image matches the game state, even when reference images
+(which provide visual consistency) might show a different state.
+
+See [grue.md](grue.md#render-descriptions-rdesc) for syntax details.
 
 ### Lighting Consistency
 

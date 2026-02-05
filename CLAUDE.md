@@ -135,6 +135,12 @@ IMPORTANT: As you convert to Grue, always look for opportunities to improve the 
 
 We're keeping the bead "Language & runtime design tweaks" (frotzlm-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
 
+**Documentation:** When adding new language features, entity fields, or changing behavior, update the relevant docs:
+- `docs/grue.md` - Language reference (syntax, semantics, entity fields)
+- `docs/filfre.md` - Scene rendering and illustration
+- `docs/frotz.md` - Static analysis tools
+- `docs/gnusto.md` - Game runtime and LLM interface
+
 
 # Session Completion Workflow
 
