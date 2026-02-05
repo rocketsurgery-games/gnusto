@@ -79,8 +79,8 @@
   :on-turn
     (cond
       ((= (loc @player) @yuggoth)
+        ; bowl-room's on-enter re-queues yuggoth-advance
         '((move @player @bowl-room)
-          (queue yuggoth-advance 2)
           (success :context ((description "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise.")))))
       ((= (loc @player) @bowl-room)
         '((move @player @platform-room)

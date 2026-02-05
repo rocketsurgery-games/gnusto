@@ -449,6 +449,7 @@
           (?in-corridor (or (= ?player-loc @inf-1) (= ?player-loc @inf-2) (= ?player-loc @inf-3)
                             (= ?player-loc @inf-4) (= ?player-loc @inf-5))))
       `((move @maintenance-man nil)
+        (dequeue maint-dissolves)
         (dequeue maint-attack)
         (success :context
           ,(if ?in-corridor
