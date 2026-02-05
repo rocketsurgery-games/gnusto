@@ -39,18 +39,19 @@ class RenderRequest:
     prompt: str
     ref_paths: list[str] = field(default_factory=list)
     ref_images: list["Image"] = field(default_factory=list)  # PIL images from recursive renders
+    ref_image_names: list[str] = field(default_factory=list)  # Entity IDs for ref_images
     ref_size: int = 384
 
 
 class SceneRenderer:
-    """Renders scenes from Grue render specs using filfre."""
+    """Renders scenes from Grue render specs using image generation backends."""
 
     def __init__(
         self,
         runtime: "GrueRuntime",
         renders_dir: str | Path = "assets/renders",
         assets_dir: str | Path | None = None,
-        model_version: str = "flux2-klein-4b",
+        model: str = "nanobanana",
         default_ref_size: int = 384,
         pipeline: Optional[Callable] = None,
         verbose: bool = False,
@@ -61,12 +62,15 @@ class SceneRenderer:
             runtime: The Grue game runtime
             renders_dir: Base directory for renders (frozen + cache)
             assets_dir: Directory for asset files (reference images)
-            model_version: Model version for cache invalidation
+            model: Image generation model ("flux" or "nanobanana")
             default_ref_size: Default size for reference images
-            pipeline: Optional pre-loaded filfre pipeline (for performance)
+            pipeline: Optional pre-loaded filfre pipeline (for flux)
             verbose: Print render request details (prompt, refs, etc.)
         """
+        from filfre.cli import MODEL_VERSIONS
         self.runtime = runtime
+        self.model = model
+        model_version = MODEL_VERSIONS.get(model, model)
         self.cache = RenderCache(renders_dir, model_version=model_version)
         self.assets_dir = Path(assets_dir) if assets_dir else None
         self.verbose = verbose
@@ -88,9 +92,9 @@ class SceneRenderer:
 
         prefix = "  " * indent
 
-        # Truncate prompt for display
+        # Show full prompt for top-level, truncated for sub-renders
         prompt = request.prompt
-        if len(prompt) > 300:
+        if indent > 0 and len(prompt) > 300:
             prompt = prompt[:300] + "..."
 
         print(f"{prefix}{entity_id}:")
@@ -110,7 +114,8 @@ class SceneRenderer:
 
             # Show rendered ref images with thumbnails
             for i, img in enumerate(request.ref_images):
-                print(f"{prefix}    - [rendered #{i+1}]")
+                name = request.ref_image_names[i] if i < len(request.ref_image_names) else f"[rendered #{i+1}]"
+                print(f"{prefix}    - {name}")
                 if terminal_images_supported():
                     # Resize to half for preview
                     thumb = img.copy()
@@ -225,6 +230,10 @@ class SceneRenderer:
             print(f"  Hint: Ensure referenced entities have :description fields")
             return None
 
+        # Always log the top-level render request (before cache check)
+        if self._render_depth == 0:
+            self._log_render_request(entity_id, request, depth_indent)
+
         # Check cache
         cache_key, ref_hashes = self._compute_cache_key(request)
         cached = self.cache.get(cache_key, entity=entity_id)
@@ -232,8 +241,9 @@ class SceneRenderer:
             self._log(f"{entity_id}: cached", depth_indent)
             return cached
 
-        # Log the render request
-        self._log_render_request(entity_id, request, depth_indent)
+        # Log the render request (sub-entities, on cache miss only)
+        if self._render_depth > 0:
+            self._log_render_request(entity_id, request, depth_indent)
 
         # Generate the image
         image = self._generate_image(request)
@@ -295,13 +305,15 @@ class SceneRenderer:
                     ref_image = self._resolve_object_ref(part.name)
                     if ref_image:
                         request.ref_images.append(ref_image)
+                        request.ref_image_names.append(part.name)
 
                 elif isinstance(part, ContentsMarker):
                     # Get contained objects' descriptions and images
-                    content_descs, content_images = self._resolve_contents(entity_id)
+                    content_descs, content_images, content_names = self._resolve_contents(entity_id)
                     if content_descs:
                         prompt_texts.append(", ".join(content_descs))
                     request.ref_images.extend(content_images)
+                    request.ref_image_names.extend(content_names)
 
                 elif isinstance(part, ThroughMarker):
                     # Check if portal is open (use runtime state, not world definition)
@@ -321,6 +333,7 @@ class SceneRenderer:
                             target_image = self._resolve_object_ref(part.target)
                             if target_image:
                                 request.ref_images.append(target_image)
+                                request.ref_image_names.append(part.target)
 
         finally:
             self._render_depth -= 1
@@ -330,6 +343,7 @@ class SceneRenderer:
             anchor_image = self._resolve_object_ref(anchor)
             if anchor_image:
                 request.ref_images.append(anchor_image)
+                request.ref_image_names.append(anchor)
 
         # Join prompt parts
         prompt = " ".join(text.strip() for text in prompt_texts if text.strip())
@@ -342,9 +356,12 @@ class SceneRenderer:
         return request
 
     def _get_entity_description(self, entity_id: str) -> str | None:
-        """Get the :description from an entity.
+        """Get render description from an entity, for use in image generation prompts.
 
-        For objects/rooms, uses their :description field.
+        Prefers :rdesc (render description) over :description. This allows entities
+        to have state-aware visual descriptions separate from player-facing text.
+
+        For objects/rooms, checks :rdesc first, then falls back to :description.
         References have no description - they contribute only images, not text.
 
         Args:
@@ -355,21 +372,32 @@ class SceneRenderer:
         """
         # Check objects first
         obj = self.runtime.world.objects.get(entity_id)
-        if obj and obj.description:
-            # Evaluate if it's a function
-            desc = self._eval_description(obj.description, entity_id)
-            if desc:
-                return desc
+        if obj:
+            # Prefer :rdesc over :description for render prompts
+            if obj.rdesc:
+                desc = self._eval_description(obj.rdesc, entity_id)
+                if desc:
+                    return desc
+            if obj.description:
+                desc = self._eval_description(obj.description, entity_id)
+                if desc:
+                    return desc
 
         # References have no description - they contribute only images
         # The caller wraps references with descriptive text as needed
 
         # Check rooms
         room = self.runtime.world.rooms.get(entity_id)
-        if room and room.description:
-            desc = self._eval_description(room.description, entity_id)
-            if desc:
-                return desc
+        if room:
+            # Prefer :rdesc over :description for render prompts
+            if room.rdesc:
+                desc = self._eval_description(room.rdesc, entity_id)
+                if desc:
+                    return desc
+            if room.description:
+                desc = self._eval_description(room.description, entity_id)
+                if desc:
+                    return desc
 
         return None
 
@@ -380,37 +408,41 @@ class SceneRenderer:
 
         # If it's a function expression, evaluate it
         from grue.sexpr import SList, Symbol
+        from grue.expr import ExprEvaluator, Environment, GrueFn
+
         if isinstance(desc_expr, SList) and len(desc_expr) >= 1:
             first = desc_expr[0]
             if isinstance(first, Symbol) and first.name == "fn":
-                from grue.expr import ExprEvaluator, Environment
                 evaluator = ExprEvaluator(
                     self.runtime,
                     self.runtime._functions if hasattr(self.runtime, '_functions') else {}
                 )
                 env = Environment(bindings={"self": entity_id})
                 try:
-                    result = evaluator.eval(desc_expr, env)
-                    # Result should be a callable, call it with no args
-                    if callable(result):
-                        return str(result())
-                    return str(result) if result else None
+                    # Evaluate the (fn ...) expression to get a GrueFn
+                    fn = evaluator.eval(desc_expr, env)
+                    if isinstance(fn, GrueFn):
+                        # Call the function with no args
+                        result = evaluator.call_fn(fn, [])
+                        return str(result) if result else None
+                    return str(fn) if fn else None
                 except Exception:
                     return None
 
         return str(desc_expr) if desc_expr else None
 
-    def _resolve_contents(self, location_id: str) -> tuple[list[str], list["Image"]]:
+    def _resolve_contents(self, location_id: str) -> tuple[list[str], list["Image"], list[str]]:
         """Resolve contained objects to descriptions and images.
 
         Args:
             location_id: The location (room) ID
 
         Returns:
-            Tuple of (descriptions, images)
+            Tuple of (descriptions, images, image_names)
         """
         descriptions: list[str] = []
         images: list["Image"] = []
+        names: list[str] = []
 
         for obj_name, obj in self.runtime.world.objects.items():
             if obj.location == location_id:
@@ -423,8 +455,9 @@ class SceneRenderer:
                 ref_image = self._resolve_object_ref(obj_name)
                 if ref_image:
                     images.append(ref_image)
+                    names.append(obj_name)
 
-        return descriptions, images
+        return descriptions, images, names
 
     def _resolve_ref_path(self, ref_path: str) -> Path | None:
         """Resolve a reference path to an absolute path."""
@@ -494,7 +527,7 @@ class SceneRenderer:
         return key, ref_hashes
 
     def _generate_image(self, request: RenderRequest) -> "Image | None":
-        """Generate an image using filfre.
+        """Generate an image using the configured model backend.
 
         Args:
             request: The render request
@@ -502,7 +535,38 @@ class SceneRenderer:
         Returns:
             PIL Image or None on failure
         """
-        from PIL import Image
+        from filfre.cli import MODEL_NANOBANANA
+
+        if self.model == MODEL_NANOBANANA:
+            return self._generate_image_nanobanana(request)
+        else:
+            return self._generate_image_flux(request)
+
+    def _generate_image_nanobanana(self, request: RenderRequest) -> "Image | None":
+        """Generate an image using NanoBanana (Gemini cloud API)."""
+        from PIL import Image as PILImage
+
+        # Collect all reference images (no resizing needed for API)
+        refs = []
+        for path in request.ref_paths:
+            img = PILImage.open(path).convert("RGB")
+            refs.append(img)
+        for img in request.ref_images:
+            refs.append(img)
+
+        try:
+            from filfre.cli import generate_image_nanobanana
+            return generate_image_nanobanana(
+                prompt=request.prompt,
+                reference_images=refs if refs else None,
+            )
+        except Exception as e:
+            print(f"Warning: NanoBanana image generation failed: {e}")
+            return None
+
+    def _generate_image_flux(self, request: RenderRequest) -> "Image | None":
+        """Generate an image using FLUX.2 Klein (local pipeline)."""
+        from PIL import Image as PILImage
         import torch
 
         # Get or load the pipeline
@@ -515,13 +579,13 @@ class SceneRenderer:
 
         # Load static refs
         for path in request.ref_paths:
-            img = Image.open(path).convert("RGB")
-            img = img.resize((request.ref_size, request.ref_size), Image.LANCZOS)
+            img = PILImage.open(path).convert("RGB")
+            img = img.resize((request.ref_size, request.ref_size), PILImage.LANCZOS)
             refs.append(img)
 
         # Resize dynamic refs
         for img in request.ref_images:
-            resized = img.resize((request.ref_size, request.ref_size), Image.LANCZOS)
+            resized = img.resize((request.ref_size, request.ref_size), PILImage.LANCZOS)
             refs.append(resized)
 
         # Generate
@@ -541,11 +605,11 @@ class SceneRenderer:
             return result.images[0]
 
         except Exception as e:
-            print(f"Warning: Image generation failed: {e}")
+            print(f"Warning: Flux image generation failed: {e}")
             return None
 
     def _get_pipeline(self):
-        """Get or lazily load the filfre pipeline."""
+        """Get or lazily load the filfre pipeline (flux only)."""
         if self._pipeline is not None:
             return self._pipeline
 
@@ -558,5 +622,5 @@ class SceneRenderer:
             return None
 
     def set_pipeline(self, pipeline) -> None:
-        """Set a pre-loaded pipeline (for sharing across renders)."""
+        """Set a pre-loaded pipeline (for sharing across renders with flux)."""
         self._pipeline = pipeline

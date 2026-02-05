@@ -65,6 +65,7 @@ class SimpleTUI:
     def __init__(
         self,
         game_path: str,
+        model: str = "nanobanana",
         debug: bool = False,
         no_render: bool = False,
         plain: bool = False,
@@ -74,6 +75,7 @@ class SimpleTUI:
         self.game_dir = Path(game_path).resolve()
         if self.game_dir.is_file():
             self.game_dir = self.game_dir.parent
+        self.model = model
         self.debug = debug
         self.no_render = no_render  # Skip generation, use frozen/cached only
         self.plain = plain  # Text-only mode, no images or colors
@@ -215,11 +217,12 @@ class SimpleTUI:
 
         try:
             from .scene_renderer import SceneRenderer
-            self.render_block(SystemMessage("Loading scene renderer (this may take a moment)..."))
+            self.render_block(SystemMessage(f"Loading scene renderer (model: {self.model})..."))
             self._scene_renderer = SceneRenderer(
                 runtime=self.session.runtime,
                 renders_dir=self._renders_dir,
                 assets_dir=self.game_dir / "assets",
+                model=self.model,
             )
             self.render_block(SystemMessage("Scene renderer ready."))
         except Exception as e:
@@ -365,14 +368,15 @@ class SimpleTUI:
                 self.render_block(room_block)
 
 
-def run_tui(game_path: str, debug: bool = False, no_render: bool = False, plain: bool = False) -> None:
+def run_tui(game_path: str, model: str = "nanobanana", debug: bool = False, no_render: bool = False, plain: bool = False) -> None:
     """Run the simple TUI.
 
     Args:
         game_path: Path to the game directory or main .grue file
+        model: Image generation model ("flux" or "nanobanana")
         debug: Enable debug mode (show LLM tool calls)
         no_render: Skip scene generation (use frozen/cached images only)
         plain: Text-only mode (no images, no colors)
     """
-    tui = SimpleTUI(game_path, debug=debug, no_render=no_render, plain=plain)
+    tui = SimpleTUI(game_path, model=model, debug=debug, no_render=no_render, plain=plain)
     tui.run()

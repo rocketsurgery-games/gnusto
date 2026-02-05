@@ -9,6 +9,9 @@
   :description "PC"
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
+
+  ; pc.jpg:
+  ; A late 80s workstation PC with mouse and keyboard. Windows with vague text overlap on the screen.
   :render (:ref "refs/pc.jpg")
 
   ; Login state: logged-in becomes true after valid password, username is set to login ID (or true for invalid)

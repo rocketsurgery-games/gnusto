@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-CLI for FLUX.2 Klein text-to-image generation and game asset management.
+CLI for image generation and game asset management.
 
-Generates illustrations for text adventure game scenes.
+Supports multiple backends:
+  - flux: FLUX.2 Klein 4B (local, requires CUDA GPU)
+  - nanobanana: Google Gemini 2.5 Flash Image (cloud API, requires GEMINI_API_KEY)
 
 Usage:
     # Direct generation
-    filfre generate --prompt "A dragon in a cave" --output dragon.png
+    filfre generate --model nanobanana --prompt "A dragon in a cave" --output dragon.png
 
     # With reference images
-    filfre generate --prompt "A brass lantern on a stone altar" \
+    filfre generate --model flux --prompt "A brass lantern on a stone altar" \
         --reference lantern.png --output scene.png
 
     # Render a game entity (uses initial game state)
-    filfre render games/lurkinghorror @terminal-room
+    filfre render --model nanobanana games/lurkinghorror @terminal-room
 
     # List renders in cache
     filfre list games/lurkinghorror
@@ -222,79 +224,182 @@ def generate_image(
     return result.images[0]
 
 
+# Model name constants
+MODEL_FLUX = "flux"
+MODEL_NANOBANANA = "nanobanana"
+VALID_MODELS = [MODEL_FLUX, MODEL_NANOBANANA]
+
+# Map model names to cache version strings
+MODEL_VERSIONS = {
+    MODEL_FLUX: "flux2-klein-4b",
+    MODEL_NANOBANANA: "nanobanana-gemini-2.5-flash",
+}
+
+# Gemini model ID for NanoBanana
+NANOBANANA_MODEL_ID = "gemini-2.5-flash-image"
+
+
+def generate_image_nanobanana(
+    prompt: str,
+    reference_images=None,
+    aspect_ratio: str = "1:1",
+    seed: int = 0,
+):
+    """Generate an image using Google's NanoBanana (Gemini 2.5 Flash Image).
+
+    Requires GEMINI_API_KEY or GOOGLE_API_KEY environment variable.
+
+    Args:
+        prompt: Text prompt describing the image.
+        reference_images: Optional list of PIL Images for guided generation.
+        aspect_ratio: Output aspect ratio (default "1:1").
+        seed: Random seed (used in prompt for reproducibility hint).
+
+    Returns:
+        Generated PIL Image.
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client()
+
+    # Build contents: prompt text + optional reference images
+    contents = []
+    if reference_images:
+        contents.append(
+            f"Generate an image based on the following description, using the "
+            f"provided reference images for visual consistency and composition. "
+            f"Seed: {seed}.\n\n{prompt}"
+        )
+        for img in reference_images:
+            contents.append(img)
+    else:
+        contents.append(f"{prompt}")
+
+    response = client.models.generate_content(
+        model=NANOBANANA_MODEL_ID,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio=aspect_ratio,
+            ),
+        ),
+    )
+
+    # Extract the generated image from response parts
+    for part in response.parts:
+        if part.inline_data is not None:
+            return part.as_image()
+
+    raise RuntimeError(
+        f"NanoBanana returned no image. Response: {response.text if hasattr(response, 'text') else response}"
+    )
+
+
 # =============================================================================
 # Subcommand: generate
 # =============================================================================
 
 def cmd_generate(args):
     """Generate an image from a text prompt."""
+    model = args.model
+
     # Load reference images if provided
     reference_images = None
     if args.references:
-        print(f"Loading {len(args.references)} reference image(s) at {args.ref_size}x{args.ref_size}...")
-        reference_images = load_reference_images(args.references, size=args.ref_size)
+        ref_size = args.ref_size if model == MODEL_FLUX else None
+        size_info = f" at {args.ref_size}x{args.ref_size}" if ref_size else ""
+        print(f"Loading {len(args.references)} reference image(s){size_info}...")
+        reference_images = load_reference_images(args.references, size=ref_size)
 
     print("=" * 60)
+    print(f"Model: {model}")
     print(f"Output: {args.output}")
-    print(f"Size: {args.width}x{args.height}")
-    print(f"Steps: {args.steps}")
+    if model == MODEL_FLUX:
+        print(f"Size: {args.width}x{args.height}")
+        print(f"Steps: {args.steps}")
+        print(f"Guidance: {args.guidance}")
+    else:
+        print(f"Aspect ratio: {args.aspect_ratio}")
     print(f"Seed: {args.seed}")
-    print(f"Guidance: {args.guidance}")
     if reference_images:
-        print(f"References: {len(reference_images)} image(s) at {args.ref_size}x{args.ref_size}")
+        print(f"References: {len(reference_images)} image(s)")
     print("=" * 60)
     print(f"\nPrompt:\n{args.prompt[:200]}{'...' if len(args.prompt) > 200 else ''}\n")
     print("=" * 60)
 
-    # Load pipeline
-    print("\n--- Loading Pipeline ---")
     total_start = time.time()
-    pipeline, device = get_pipeline(dtype=args.dtype, verbose=args.verbose)
-    print(f"  [total load] {time.time() - total_start:.2f}s")
 
-    import torch
+    if model == MODEL_NANOBANANA:
+        # NanoBanana: cloud API, no pipeline to load
+        print(f"\n--- Generating {args.count} image(s) via NanoBanana ---")
+        gen_times = []
 
-    # Warmup run for consistent timing
-    if not args.no_warmup:
-        print("\n--- Warmup ---")
-        with timed("warmup generation"):
-            _ = pipeline(
-                prompt="test",
-                height=256,
-                width=256,
-                num_inference_steps=1,
-                generator=torch.Generator(device=device).manual_seed(0),
+        for i in range(args.count):
+            seed = args.seed + i
+            start = time.time()
+
+            image = generate_image_nanobanana(
+                prompt=args.prompt,
+                reference_images=reference_images,
+                aspect_ratio=args.aspect_ratio,
+                seed=seed,
             )
-        if args.verbose:
-            with timed("cuda.synchronize after warmup"):
+
+            elapsed = time.time() - start
+            gen_times.append(elapsed)
+            print(f"  [image {i+1}] {elapsed:.2f}s (seed={seed})")
+
+    else:
+        # Flux: local pipeline
+        print("\n--- Loading Pipeline ---")
+        pipeline, device = get_pipeline(dtype=args.dtype, verbose=args.verbose)
+        print(f"  [total load] {time.time() - total_start:.2f}s")
+
+        import torch
+
+        # Warmup run for consistent timing
+        if not args.no_warmup:
+            print("\n--- Warmup ---")
+            with timed("warmup generation"):
+                _ = pipeline(
+                    prompt="test",
+                    height=256,
+                    width=256,
+                    num_inference_steps=1,
+                    generator=torch.Generator(device=device).manual_seed(0),
+                )
+            if args.verbose:
+                with timed("cuda.synchronize after warmup"):
+                    torch.cuda.synchronize()
+
+        # Generate image(s)
+        print(f"\n--- Generating {args.count} image(s) ---")
+        gen_times = []
+
+        for i in range(args.count):
+            seed = args.seed + i
+            start = time.time()
+
+            image = generate_image(
+                pipeline,
+                device,
+                prompt=args.prompt,
+                reference_images=reference_images,
+                width=args.width,
+                height=args.height,
+                num_steps=args.steps,
+                guidance_scale=args.guidance,
+                seed=seed,
+            )
+
+            if args.verbose:
                 torch.cuda.synchronize()
 
-    # Generate image(s)
-    print(f"\n--- Generating {args.count} image(s) ---")
-    gen_times = []
-
-    for i in range(args.count):
-        seed = args.seed + i
-        start = time.time()
-
-        image = generate_image(
-            pipeline,
-            device,
-            prompt=args.prompt,
-            reference_images=reference_images,
-            width=args.width,
-            height=args.height,
-            num_steps=args.steps,
-            guidance_scale=args.guidance,
-            seed=seed,
-        )
-
-        if args.verbose:
-            torch.cuda.synchronize()
-
-        elapsed = time.time() - start
-        gen_times.append(elapsed)
-        print(f"  [image {i+1}] {elapsed:.2f}s (seed={seed})")
+            elapsed = time.time() - start
+            gen_times.append(elapsed)
+            print(f"  [image {i+1}] {elapsed:.2f}s (seed={seed})")
 
     if args.count > 1:
         avg = sum(gen_times) / len(gen_times)
@@ -405,11 +510,13 @@ def cmd_render(args):
         print("Note: Rendering with initial game state")
 
     # Initialize renderer
-    print("\n--- Initializing Scene Renderer ---")
+    model = args.model
+    print(f"\n--- Initializing Scene Renderer (model: {model}) ---")
     renderer = SceneRenderer(
         runtime=runtime,
         renders_dir=renders_dir,
         assets_dir=assets_dir,
+        model=model,
         verbose=args.verbose,
     )
 
@@ -573,7 +680,7 @@ def cmd_clear(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate illustrations using FLUX.2 Klein and manage game renders",
+        description="Generate illustrations and manage game renders (supports flux and nanobanana models)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -589,12 +696,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  filfre generate --prompt "A dragon in a cave" --seed 42 --output dragon.png
+  filfre generate --model nanobanana --prompt "A dragon in a cave" --output dragon.png
+  filfre generate --model flux --prompt "A brass lantern" --output lantern.png
 
   # With reference images for composition:
-  filfre generate --prompt "A brass lantern on a stone altar" \\
+  filfre generate --model nanobanana --prompt "A brass lantern on a stone altar" \\
       --reference lantern.png --output scene.png
         """,
+    )
+    gen_parser.add_argument(
+        "--model", "-m",
+        type=str,
+        required=True,
+        choices=VALID_MODELS,
+        help="Image generation model: flux (local CUDA) or nanobanana (Google cloud API)",
     )
     gen_parser.add_argument(
         "--prompt", "-p",
@@ -621,10 +736,16 @@ Examples:
         help="Image height (default: 512)",
     )
     gen_parser.add_argument(
+        "--aspect-ratio",
+        type=str,
+        default="1:1",
+        help="Aspect ratio for nanobanana model (default: 1:1)",
+    )
+    gen_parser.add_argument(
         "--steps",
         type=int,
         default=4,
-        help="Number of inference steps (default: 4)",
+        help="Number of inference steps for flux model (default: 4)",
     )
     gen_parser.add_argument(
         "--seed",
@@ -692,13 +813,19 @@ For dynamic state rendering during gameplay, use gnusto's built-in
 scene renderer which has access to live game state.
 
 Examples:
-  filfre render games/lurkinghorror @terminal-room
-  filfre render games/lurkinghorror @brass-lantern
+  filfre render --model nanobanana games/lurkinghorror @terminal-room
+  filfre render --model flux games/lurkinghorror @brass-lantern
 
   # Render with modified state (uses Grue syntax):
-  filfre render games/lurkinghorror @refrigerator --set '@refrigerator :open true'
-  filfre render games/lurkinghorror @kitchen -s '@microwave :timer 120'
+  filfre render --model nanobanana games/lurkinghorror @refrigerator --set '@refrigerator :open true'
         """,
+    )
+    render_parser.add_argument(
+        "--model", "-m",
+        type=str,
+        required=True,
+        choices=VALID_MODELS,
+        help="Image generation model: flux (local CUDA) or nanobanana (Google cloud API)",
     )
     render_parser.add_argument(
         "game_path",

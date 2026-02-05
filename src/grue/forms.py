@@ -112,10 +112,18 @@ class GrueRoom:
         :render "A dusty room"                           ; String - prompt only
         :render (fn () (str "Room with " ...))           ; Function - returns spec
         :render ["A room" :ref "room.png" :contents]     ; List - full spec
+
+    Render description (:rdesc):
+        State-aware text for image generation prompts, separate from player-facing
+        :description. Used when this entity is referenced in another render spec.
+        Can be a string or function:
+        :rdesc "cluttered kitchen with fluorescent lighting"
+        :rdesc (fn () (if (:lit ?self) "brightly lit kitchen" "dark kitchen"))
     """
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
+    rdesc: SExpr | None = None  # Render description: string or (fn () ...)
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -156,10 +164,18 @@ class GrueObject:
         :render "A brass lantern"                        ; String - prompt only
         :render (fn () (str "Lantern, " ...))            ; Function - returns spec
         :render ["A lantern" :ref "lantern.png"]         ; List - full spec
+
+    Render description (:rdesc):
+        State-aware text for image generation prompts, separate from player-facing
+        :description. Used when this entity is referenced in another render spec.
+        Can be a string or function:
+        :rdesc "brass lantern"
+        :rdesc (fn () (if (:open ?self) "open microwave oven" "closed microwave"))
     """
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
+    rdesc: SExpr | None = None  # Render description: string or (fn () ...)
     location: str | None = None
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
@@ -632,6 +648,9 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         room.ldesc = kwargs["ldesc"]
+    if "rdesc" in kwargs:
+        # rdesc can be string or (fn () ...) - store as-is
+        room.rdesc = kwargs["rdesc"]
     if "flags" in kwargs:
         room.flags = parse_flags(kwargs["flags"])
     if "exits" in kwargs:
@@ -678,6 +697,9 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         obj.ldesc = kwargs["ldesc"]
+    if "rdesc" in kwargs:
+        # rdesc can be string or (fn () ...) - store as-is
+        obj.rdesc = kwargs["rdesc"]
     if "location" in kwargs:
         loc = expect_symbol(kwargs["location"], "object location")
         obj.location = None if loc == "nil" else loc

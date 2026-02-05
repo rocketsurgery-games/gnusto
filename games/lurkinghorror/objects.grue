@@ -1,28 +1,37 @@
-; Helper: temperature description for heated food
-(defn heat-desc (?obj)
-  (let ((?h (prop ?obj heat)))
-    (cond
-      ((>= ?h 20) "radioactive")
-      ((>= ?h 16) "volcanic")
-      ((>= ?h 12) "hot")
-      ((>= ?h 8) "warm")
-      ((>= ?h 4) "lukewarm")
-      (true "cold"))))
-
 (object @master-key
   :description "master key"
   :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
-  :properties (:takeable true :key true :touched false))
+  :properties (
+    :takeable true 
+    :key true 
+    :touched false))
 
 (object @keyring
   :description "keyring"
   :location @hacker
-  :properties (:container true :nodesc true :searchable true))  ; nodesc hides from room listing; searchable makes it searchable
+  :properties (
+    :container true 
+    :nodesc true   ; nodesc hides from room listing; searchable makes it searchable
+    :searchable true)
+
+  ; keyring.jpg:
+  ; Normal keyring with many keys hanging from it. Solid white background.
+  :render (:ref "refs/keyring.jpg"))
 
 (object @carton
   :description "white carton"
   :location @refrigerator  ; In the kitchen refrigerator
-  :properties (:takeable true :container true :open true :heat 0)  ; Heatable object - can be warmed in microwave
+  :properties (
+    :takeable true 
+    :container true 
+    :open true 
+    :heat 0)  ; Heatable object - can be warmed in microwave
+
+  ; carton.jpg:
+  ; A Chinese food carton with a symbol on the front. The symbol doesn't look like Chinese, English,
+  ; or any other language you know. It looks more like an occult symbol. This is a carton of
+  ; Szechuan shrimp. Lovely red peppers poke out of the sauce.
+  :render (:ref "refs/carton.jpg")
 
   :behaviors (
     :examine (fn ()
@@ -40,6 +49,17 @@
         :message "You might find the contents more agreeable than the carton itself."))))
 
 (object @chinese-food
+  ; Helper: temperature description for heated food
+  (defn heat-desc (?obj)
+    (let ((?h (prop ?obj heat)))
+      (cond
+        ((>= ?h 20) "radioactive")
+        ((>= ?h 16) "volcanic")
+        ((>= ?h 12) "hot")
+        ((>= ?h 8) "warm")
+        ((>= ?h 4) "lukewarm")
+        (true "cold"))))
+
   :description "Chinese food"
   :location @carton  ; Inside the carton
   :properties (:food true :heat 0 :rmung false)  ; 0=cold, 12+=hot, higher=overcooked

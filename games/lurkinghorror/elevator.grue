@@ -172,8 +172,9 @@
 
   :render (fn ()
     (if (:open self)
-      "1980s elevator doors slid open, revealing a hallway beyond"
-      :ref "refs/elevator-doors.jpg"))
+      '("1980s elevator doors slid open, revealing a hallway beyond"
+        :ref "refs/cs-elevator-room.jpg" @cs-2nd)
+      '(:ref "refs/cs-elevator-room.jpg")))
 
   :behaviors (
     :examine (fn ()
@@ -316,7 +317,18 @@
 (object @access-panel
   :description "access panel"
   :location @cs-elevator-room
-  :properties (:nodesc true :container true :searchable true :openable true :capacity 20)
+  :properties (
+    :nodesc true 
+    :container true 
+    :searchable true 
+    :openable true 
+    :capacity 20)
+
+  ; access-panel.jpg:
+  ;   Elevator control panel with floor buttons (B and 1 through 3), an open button, a close button,
+  ;   a stop switch, and an alarm button. Below these is a closed access panel.
+  :render (:ref "refs/access-panel.jpg")
+
   :behaviors (
     :examine (fn ()
       (success :message (str "A small access panel in the wall. It is " (if (:open ?self) "open" "closed") ".")))))
@@ -448,12 +460,17 @@
 (object @elevator-door-2
   :description "elevator doors"
   :location @cs-2nd
-  :properties (:door true :openable true :searchable true :container true :floor 2)
+  :properties (
+    :door true 
+    :openable true 
+    :searchable true 
+    :container true 
+    :floor 2)
 
   :render (fn ()
     (if (:open self)
-      '("Open elevator doors, revealing the elevator interior"
-        :ref "refs/elevator-doors.jpg")
+      '("Open elevator doors, revealing the back of the elevator"
+        :ref "refs/elevator-doors.jpg" @cs-elevator-room)
       '(:ref "refs/elevator-doors.jpg")))
 
   :behaviors elevator-door-behaviors)

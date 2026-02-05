@@ -71,7 +71,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
         return {"type": "unknown", "text": str(block)}
 
 
-def create_app(game_path: str, debug: bool = False) -> FastAPI:
+def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -> FastAPI:
     """Create the FastAPI application for a game."""
     app = FastAPI(title="Gnusto", debug=debug)
 
@@ -81,6 +81,7 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
         game_dir = game_dir.parent
     app.state.game_path = game_path
     app.state.game_dir = game_dir
+    app.state.model = model
     app.state.debug = debug
 
     @app.websocket("/ws")
@@ -94,9 +95,14 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
             debug=app.state.debug
         )
 
+        # Create scene renderer for image generation
+        scene_renderer = _create_scene_renderer(
+            session, app.state.game_dir, app.state.model
+        )
+
         try:
             # Send initial game state
-            await send_initial_state(websocket, session, app.state.game_dir)
+            await send_initial_state(websocket, session, app.state.game_dir, scene_renderer)
 
             # Track current room for change detection
             last_room: str | None = None
@@ -127,7 +133,8 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                             # Process and send results
                             await handle_game_command(
                                 websocket, session, command,
-                                last_room, app.state.game_dir
+                                last_room, app.state.game_dir,
+                                scene_renderer,
                             )
 
         except WebSocketDisconnect:
@@ -144,23 +151,91 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
     # Serve rendered images
     @app.get("/renders/{path:path}")
     async def serve_rendered_image(path: str):
-        """Serve images from the game's renders directory."""
-        img_path = app.state.game_dir / "assets" / "renders" / "cache" / path
-        if img_path.exists():
-            return FileResponse(img_path)
+        """Serve images from the game's renders or refs directories.
+
+        Handles:
+        - Exact filenames (e.g., terminal-room-a1b2c3d4.png)
+        - Hash-suffixed stems (e.g., terminal-room.png -> terminal-room-a1b2.png)
+        - Ref fallback with flexible extension (e.g., pc.png -> refs/pc.jpg)
+        """
+        renders_dir = app.state.game_dir / "assets" / "renders"
+        refs_dir = app.state.game_dir / "assets" / "refs"
+        render_dirs = [renders_dir, renders_dir / "cache"]
+
+        # Try exact match in renders
+        for subdir in render_dirs:
+            img_path = subdir / path
+            if img_path.exists():
+                return FileResponse(img_path)
+
+        stem = Path(path).stem
+        suffix = Path(path).suffix
+
+        # Try stem-based match in renders (hash-suffixed files)
+        for subdir in render_dirs:
+            matches = sorted(subdir.glob(f"{stem}-*{suffix}"))
+            if matches:
+                return FileResponse(matches[-1])
+
+        # Fall back to refs directory (any extension)
+        if refs_dir.exists():
+            # Exact match first
+            ref_path = refs_dir / path
+            if ref_path.exists():
+                return FileResponse(ref_path)
+            # Flexible extension (e.g., pc.png -> pc.jpg)
+            for match in refs_dir.glob(f"{stem}.*"):
+                if match.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                    return FileResponse(match)
+
         return {"error": "Image not found"}
 
-    # Mount static files (must be after specific routes)
+    # Serve game assets (refs, renders, etc.) at /assets/
+    assets_dir = game_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    # Mount web UI static files (must be last)
     if WEBUI_DIR.exists():
         app.mount("/", StaticFiles(directory=WEBUI_DIR), name="static")
 
     return app
 
 
+def _create_scene_renderer(session: GameSession, game_dir: Path, model: str):
+    """Create a SceneRenderer for the session, or None on failure."""
+    try:
+        from .scene_renderer import SceneRenderer
+        renders_dir = game_dir / "assets" / "renders"
+        return SceneRenderer(
+            runtime=session.runtime,
+            renders_dir=renders_dir,
+            assets_dir=game_dir / "assets",
+            model=model,
+        )
+    except Exception as e:
+        print(f"Warning: Failed to create scene renderer: {e}")
+        return None
+
+
+def _render_room_image(scene_renderer, room_id: str) -> str | None:
+    """Render a room image and return a web-serveable URL, or None."""
+    if not scene_renderer:
+        return None
+    try:
+        image_path = scene_renderer.render_room(room_id)
+        if image_path:
+            return f"/renders/{Path(image_path).name}"
+    except Exception as e:
+        print(f"Warning: Scene render failed for {room_id}: {e}")
+    return None
+
+
 async def send_initial_state(
     websocket: WebSocket,
     session: GameSession,
     game_dir: Path,
+    scene_renderer=None,
 ) -> None:
     """Send initial game state to the client."""
     blocks: list[ContentBlock] = []
@@ -172,6 +247,12 @@ async def send_initial_state(
     # Add initial room state
     state = get_game_state(session.runtime)
     room_block = build_room_block(state, session.runtime, game_dir)
+
+    # Generate room image if renderer available
+    image_url = _render_room_image(scene_renderer, state.room)
+    if image_url:
+        room_block.image = image_url
+
     blocks.append(room_block)
 
     # Add system message
@@ -238,6 +319,7 @@ async def handle_game_command(
     command: str,
     previous_room: str | None,
     game_dir: Path,
+    scene_renderer=None,
 ) -> None:
     """Process a player command and send results, streaming LLM outputs."""
     loop = asyncio.get_running_loop()
@@ -291,6 +373,10 @@ async def handle_game_command(
     state = get_game_state(session.runtime)
     if state.room != previous_room:
         room_block = build_room_block(state, session.runtime, game_dir)
+        # Generate room image
+        image_url = _render_room_image(scene_renderer, state.room)
+        if image_url:
+            room_block.image = image_url
         await websocket.send_text(json.dumps({
             "type": "blocks",
             "blocks": [block_to_dict(room_block)],
@@ -300,11 +386,11 @@ async def handle_game_command(
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
-def run_server(game_path: str, host: str = "127.0.0.1", port: int = 8000, debug: bool = False) -> None:
+def run_server(game_path: str, model: str = "nanobanana", host: str = "127.0.0.1", port: int = 8000, debug: bool = False) -> None:
     """Run the web server."""
     import uvicorn
 
-    app = create_app(game_path, debug=debug)
+    app = create_app(game_path, model=model, debug=debug)
 
     print(f"Starting Gnusto web server...")
     print(f"Game: {game_path}")
