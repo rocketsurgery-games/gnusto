@@ -294,8 +294,7 @@ class ReplEvaluator:
         """Create a LocationResult from current state."""
         room = self.runtime.get_player_room()  # Use room, not immediate location
         desc = self._base_eval.eval(parse("(room-description)"))
-        inv_set = set(self._base_eval.eval(parse("(inventory)")))
-        visible = [obj for obj in self._base_eval.eval(parse("(visible)")) if obj not in inv_set]
+        visible = self.runtime.get_room_level_objects()
         exits = self._base_eval.eval(parse("(exits)"))
         vehicle = self.runtime.get_player_vehicle()
         return LocationResult(room=room, description=desc, visible=visible, exits=exits, vehicle=vehicle)

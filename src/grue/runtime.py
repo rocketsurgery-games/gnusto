@@ -791,6 +791,10 @@ class GrueRuntime:
     def get_visible_objects(self, for_description: bool = True) -> list[str]:
         """Get objects visible to the player.
 
+        Returns a flat list of ALL visible objects, including container contents.
+        For room-level display (excluding inventory and nested contents), use
+        get_room_level_objects() instead.
+
         Args:
             for_description: If True, exclude NDESCBIT objects (for room listings).
                             If False, include all visible objects (for interaction).
@@ -806,6 +810,39 @@ class GrueRuntime:
                 if obj_state.properties.get("nodesc"):
                     continue
             result.append(name)
+        return result
+
+    def get_room_level_objects(self, for_description: bool = True) -> list[str]:
+        """Get objects visible at room level, excluding inventory and nested contents.
+
+        Follows ZIL's DESCRIBE-OBJECTS pattern: only objects directly in the room,
+        in the player's vehicle, or in the room's :visible list. Contents of held
+        containers are NOT included (they belong to the inventory tree).
+
+        Args:
+            for_description: If True, exclude NDESCBIT objects (for room listings).
+                            If False, include all visible objects (for interaction).
+        """
+        room = self.get_player_room()
+        player_loc = self.get_player_location()
+        top_level_locs = {room}
+        if player_loc and player_loc != room:
+            top_level_locs.add(player_loc)
+
+        room_def = self.world.rooms.get(room)
+        room_visible = set(room_def.visible) if room_def else set()
+
+        inventory = set(self.get_inventory())
+
+        result = []
+        for name in self.get_visible_objects(for_description=for_description):
+            if name in inventory:
+                continue
+            obj_state = self.state.objects.get(name)
+            if not obj_state:
+                continue
+            if obj_state.location in top_level_locs or name in room_visible:
+                result.append(name)
         return result
 
     def get_exits(self) -> dict[str, str]:
