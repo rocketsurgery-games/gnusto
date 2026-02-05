@@ -19,8 +19,8 @@ String semantics (ZIL-style for IF prose):
 Examples:
     (has-flag obj TAKEBIT)
     (and (visible? obj) (not (held? obj)))
-    (move! obj PLAYER)
-    (set-prop! obj :locked false)
+    (move obj PLAYER)
+    (set obj :locked false)
 """
 
 from dataclasses import dataclass

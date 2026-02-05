@@ -38,12 +38,12 @@
 
 ; Test assert works
 (test "assert-passes"
-  :setup ((move! @player @terminal-room))
+  :setup ((move @player @terminal-room))
   (assert (loc? @player @terminal-room)))
 
 ; Test until loop - the waxer scenario
 (test "until-waxer-movement"
-  :setup ((move! @player @inf-1))
+  :setup ((move @player @inf-1))
   ; Keep trying to go east until we reach inf-5
   ; The waxer may block us, but wait/process-events should let it pass
   (until (loc? @player @inf-5)
@@ -134,7 +134,7 @@
     (do @crowbar :take)))
 
 (test "walkthrough-phase3-basement-equipment"
-  :setup ((move! @player @temporary-basement))
+  :setup ((move @player @temporary-basement))
 
   ; Get basement equipment
   (run walkthrough/get-basement-equipment)
@@ -145,10 +145,10 @@
 ; NOTE: Vehicle movement (driving forklift between rooms) requires runtime support
 ; This test verifies the forklift/junk interaction works when in position
 (test "walkthrough-phase3-forklift"
-  :setup ((move! @forklift @dead-storage)  ; Pre-position forklift at dead-storage
-          (move! @player @forklift)         ; Player starts on forklift
+  :setup ((move @forklift @dead-storage)  ; Pre-position forklift at dead-storage
+          (move @player @forklift)         ; Player starts on forklift
           (set @forklift :powered true)       ; Forklift already running
-          (set-prop! @junk moved 0))              ; Reset junk counter
+          (set @junk :moved 0))              ; Reset junk counter
 
   ; Verify initial state
   (assert (in? @player @forklift))
@@ -163,8 +163,8 @@
 
 ; Open manhole in storage-room
 (test "walkthrough-phase3-manhole"
-  :setup ((move! @player @storage-room)
-          (move! @crowbar @player))
+  :setup ((move @player @storage-room)
+          (move @crowbar @player))
 
   ; Pry open manhole cover with crowbar
   (do @manhole-cover :pry @crowbar)
@@ -184,10 +184,10 @@
   '((do @power-cord :cut)))
 
 (test "walkthrough-phase4-maintenance-waxer"
-  :setup ((move! @player @inf-1)
-          (move! @floor-waxer @inf-2)
-          (move! @maintenance-man @floor-waxer)
-          (set-prop! @floor-waxer patrol-started true))
+  :setup ((move @player @inf-1)
+          (move @floor-waxer @inf-2)
+          (move @maintenance-man @floor-waxer)
+          (set @floor-waxer :patrol-started true))
 
   ; Get floor wax container
   (run walkthrough/get-floor-wax)
@@ -199,10 +199,10 @@
     (wait)))
 
 (test "walkthrough-phase4-cut-cord"
-  :setup ((move! @player @inf-3)
-          (move! @floor-waxer @inf-3)
-          (move! @axe @player)
-          (set-prop! @power-cord severed false))
+  :setup ((move @player @inf-3)
+          (move @floor-waxer @inf-3)
+          (move @axe @player)
+          (set @power-cord :severed false))
 
   ; Cut the power cord to disable waxer
   (do @power-cord :cut)
@@ -214,9 +214,9 @@
 
 ; Test knocking on door gets professor to answer
 (test "walkthrough-phase5-knock-door"
-  :setup ((move! @player @chemistry-bldg)
-          (set-prop! @professor dead false)
-          (set-prop! @professor visited false))
+  :setup ((move @player @chemistry-bldg)
+          (set @professor :dead false)
+          (set @professor :visited false))
 
   ; Knock and wait for answer
   (do @alchemy-door :knock)
@@ -229,11 +229,11 @@
 
 ; Test showing note to professor
 (test "walkthrough-phase5-show-note"
-  :setup ((move! @player @alchemy-dept)
-          (move! @professor @alchemy-dept)
-          (move! @note @player)
-          (set-prop! @professor seen-note false)
-          (set-prop! @professor mad false))
+  :setup ((move @player @alchemy-dept)
+          (move @professor @alchemy-dept)
+          (move @note @player)
+          (set @professor :seen-note false)
+          (set @professor :mad false))
 
   ; Show note to professor
   (do @professor :give @note)
@@ -241,10 +241,10 @@
 
 ; Test entering lab - professor escorts us
 (test "walkthrough-phase5-enter-lab"
-  :setup ((move! @player @alchemy-dept)
-          (move! @professor @alchemy-dept)
-          (set-prop! @professor seen-note true)
-          (set-prop! @professor ritual-stage 0))
+  :setup ((move @player @alchemy-dept)
+          (move @professor @alchemy-dept)
+          (set @professor :seen-note true)
+          (set @professor :ritual-stage 0))
 
   ; Enter lab - professor escorts and triggers ritual
   (do @movement :go south)
@@ -253,11 +253,11 @@
 
 ; Test escaping the ritual
 (test "walkthrough-phase5-escape-ritual"
-  :setup ((move! @player @pentagram)  ; Trapped in pentagram
-          (move! @professor @alchemy-lab)
-          (move! @knife @player)
-          (set-prop! @professor ritual-stage 3)  ; Ritual in progress
-          (set-prop! @lab-bench moved false)
+  :setup ((move @player @pentagram)  ; Trapped in pentagram
+          (move @professor @alchemy-lab)
+          (move @knife @player)
+          (set @professor :ritual-stage 3)  ; Ritual in progress
+          (set @lab-bench :moved false)
           (set @pentagram :rmung false)
           (set @alchemy-trap-door :open false))
 
@@ -285,9 +285,9 @@
 ; NOTE: The professor-ritual event has :location @alchemy-lab which restricts
 ; where it runs. This test verifies the final state can be set directly.
 (test "walkthrough-phase5-ritual-complete"
-  :setup ((move! @player @under-alchemy-lab)
-          (set-prop! @professor dead true)  ; Simulate ritual completion
-          (set-prop! @professor ritual-stage 0))
+  :setup ((move @player @under-alchemy-lab)
+          (set @professor :dead true)  ; Simulate ritual completion
+          (set @professor :ritual-stage 0))
 
   ; Professor should be dead after ritual
   (assert (:dead @professor))
@@ -295,11 +295,11 @@
 
 ; Test getting ring after professor dies
 (test "walkthrough-phase5-get-ring"
-  :setup ((move! @player @under-alchemy-lab)
-          (set-prop! @professor dead true)
-          (set-prop! @lab-bench moved true)
+  :setup ((move @player @under-alchemy-lab)
+          (set @professor :dead true)
+          (set @lab-bench :moved true)
           (set @alchemy-trap-door :open true)
-          (move! @ring @alchemy-lab))  ; Ring left behind
+          (move @ring @alchemy-lab))  ; Ring left behind
 
   ; Go back up to lab
   (do @movement :go up)
@@ -311,12 +311,12 @@
 
 ; Test animating the mummified hand
 (test "walkthrough-phase5-animate-hand"
-  :setup ((move! @player @alchemy-lab)
-          (move! @mummified-hand @player)
-          (move! @vat @lab-bench)
-          (move! @elixir @vat)
+  :setup ((move @player @alchemy-lab)
+          (move @mummified-hand @player)
+          (move @vat @lab-bench)
+          (move @elixir @vat)
           (set @mummified-hand :person false)
-          (set-prop! @mummified-hand animation-count 0))
+          (set @mummified-hand :animation-count 0))
 
   ; Dip hand in vat (put INTO vat)
   (do @vat :put @mummified-hand)
@@ -330,9 +330,9 @@
 
 ; Test putting ring on animated hand
 (test "walkthrough-phase5-ring-on-hand"
-  :setup ((move! @player @alchemy-lab)
-          (move! @mummified-hand @player)
-          (move! @ring @player)
+  :setup ((move @player @alchemy-lab)
+          (move @mummified-hand @player)
+          (move @ring @player)
           (set @mummified-hand :person true))
 
   ; Put ring on animated hand
@@ -345,16 +345,16 @@
 
 ; Test urchin barrier blocks passage until freed
 (test "walkthrough-phase6-urchin-barrier"
-  :setup ((move! @player @large-chamber)
-          (set-prop! @urchins freed false))
+  :setup ((move @player @large-chamber)
+          (set @urchins :freed false))
 
   ; Try to go down - should be blocked by urchins
   (do @movement :go down)
   (assert (loc? @player @large-chamber)))  ; Still here, blocked
 
 (test "walkthrough-phase6-urchins-freed"
-  :setup ((move! @player @large-chamber)
-          (set-prop! @urchins freed true))
+  :setup ((move @player @large-chamber)
+          (set @urchins :freed true))
 
   ; Can now pass through to lair
   (do @movement :go down)
@@ -362,11 +362,11 @@
 
 ; Test showing animated hand to urchin - he drops bolt cutters
 (test "walkthrough-phase6-show-hand"
-  :setup ((move! @player @aero-lobby)
-          (move! @urchin @aero-lobby)
-          (move! @mummified-hand @player)
+  :setup ((move @player @aero-lobby)
+          (move @urchin @aero-lobby)
+          (move @mummified-hand @player)
           (set @mummified-hand :person true)  ; Hand is animated
-          (move! @bolt-cutters @urchin)
+          (move @bolt-cutters @urchin)
           (set @bolt-cutters :invisible true))
 
   ; Show animated hand to urchin
@@ -378,8 +378,8 @@
 
 ; Test taking bolt cutters after urchin drops them
 (test "walkthrough-phase6-get-bolt-cutters"
-  :setup ((move! @player @aero-lobby)
-          (move! @bolt-cutters @aero-lobby)
+  :setup ((move @player @aero-lobby)
+          (move @bolt-cutters @aero-lobby)
           (set @bolt-cutters :invisible false))
 
   ; Take the bolt cutters
@@ -388,10 +388,10 @@
 
 ; Test cutting urchin wire to free them
 (test "walkthrough-phase6-cut-wire"
-  :setup ((move! @player @large-chamber)
-          (move! @bolt-cutters @player)
-          (move! @urchin-wire @large-chamber)
-          (set-prop! @urchins freed false))
+  :setup ((move @player @large-chamber)
+          (move @bolt-cutters @player)
+          (move @urchin-wire @large-chamber)
+          (set @urchins :freed false))
 
   ; Cut the wire with bolt cutters
   (do @urchin-wire :cut @bolt-cutters)
@@ -403,10 +403,10 @@
 
 ; Test basic lair navigation
 (test "walkthrough-phase7-lair-entry"
-  :setup ((move! @player @lair-1)
-          (move! @mummified-hand @player)
+  :setup ((move @player @lair-1)
+          (move @mummified-hand @player)
           (set @mummified-hand :person true)
-          (move! @ring @mummified-hand))
+          (move @ring @mummified-hand))
 
   ; Hand should help navigate - for now just test we can move
   (do @movement :go north)  ; lair-2
@@ -415,10 +415,10 @@
 ; Test freezing slime curtain with nitrogen (final pour)
 ; NOTE: In the real game, you pour 3 times. This test verifies the final pour works.
 (test "walkthrough-phase7-freeze-curtain"
-  :setup ((move! @player @outer-lair)
-          (move! @slime-curtain @outer-lair)
-          (move! @nitrogen @player)
-          (set-prop! @slime-curtain nitrogen-count 2))  ; Already poured 2 times
+  :setup ((move @player @outer-lair)
+          (move @slime-curtain @outer-lair)
+          (move @nitrogen @player)
+          (set @slime-curtain :nitrogen-count 2))  ; Already poured 2 times
 
   ; Final pour destroys curtain
   (do @slime-curtain :pour @nitrogen)
@@ -428,12 +428,12 @@
 
 ; Test unlocking and opening the ancient door
 (test "walkthrough-phase7-unlock-door"
-  :setup ((move! @player @outer-lair)
-          (move! @slime-curtain nil)  ; Curtain destroyed
+  :setup ((move @player @outer-lair)
+          (move @slime-curtain nil)  ; Curtain destroyed
           (set @curtain-door :invisible false)
           (set @curtain-door :locked true)
           (set @curtain-door :open false)
-          (move! @master-key @player))
+          (move @master-key @player))
 
   ; Unlock door with master key
   (do @curtain-door :unlock @master-key)
@@ -446,16 +446,16 @@
 ; Test entering inner lair - direct move for simplicity
 ; The full barrier mechanics are tested in lair.test.grue
 (test "walkthrough-phase7-enter-lair"
-  :setup ((move! @player @inner-lair))
+  :setup ((move @player @inner-lair))
 
   ; Verify we're in inner lair
   (assert (loc? @player @inner-lair)))
 
 ; Test finding power line in pool
 (test "walkthrough-phase7-find-powerline"
-  :setup ((move! @player @inner-lair)
-          (move! @high-voltage nil)
-          (queue! hand-dives))
+  :setup ((move @player @inner-lair)
+          (move @high-voltage nil)
+          (queue hand-dives))
 
   ; Search pool to find power line
   (do @pool :reach-in)
@@ -463,12 +463,12 @@
 
 ; Test cutting power line with axe
 (test "walkthrough-phase7-cut-powerline"
-  :setup ((move! @player @inner-lair)
-          (move! @high-voltage @player)
+  :setup ((move @player @inner-lair)
+          (move @high-voltage @player)
           (set @high-voltage :powered true)  ; Pulled out of water
           (set @high-voltage :rmung false)
-          (move! @axe @player)
-          (set-prop! @high-voltage cut-count 0))
+          (move @axe @player)
+          (set @high-voltage :cut-count 0))
 
   ; Cut power line 3 times with axe
   (do @high-voltage :cut @axe)
@@ -482,12 +482,12 @@
 ; NOTE: The plug action has complex logic tested elsewhere.
 ; This test verifies the final state where power line is plugged in.
 (test "walkthrough-phase7-plug-powerline"
-  :setup ((move! @player @inner-lair)
-          (move! @high-voltage @input-socket)  ; Already plugged in
+  :setup ((move @player @inner-lair)
+          (move @high-voltage @input-socket)  ; Already plugged in
           (set @high-voltage :rmung true)
           (set @output-cable :rmung true)
-          (move! @frob @inner-lair)
-          (set-prop! @frob count 1))  ; Frob has appeared
+          (move @frob @inner-lair)
+          (set @frob :count 1))  ; Frob has appeared
 
   ; Verify power line is in socket and frob is present
   (assert (in? @high-voltage @input-socket))
@@ -495,10 +495,10 @@
 
 ; Test throwing stone at frob for victory
 (test "walkthrough-phase7-victory"
-  :setup ((move! @player @inner-lair)
-          (move! @frob @inner-lair)
-          (move! @smooth-stone @player)
-          (set-prop! @frob count 2))  ; Stone is glowing hot
+  :setup ((move @player @inner-lair)
+          (move @frob @inner-lair)
+          (move @smooth-stone @player)
+          (set @frob :count 2))  ; Stone is glowing hot
 
   ; Throw stone at frob
   (do @frob :attack @smooth-stone)

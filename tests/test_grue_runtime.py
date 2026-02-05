@@ -424,7 +424,7 @@ class TestEventQueue:
         assert runtime.get_queue_countdown("LANTERN") == 200
 
     def test_queue_in_behavior(self):
-        """Behaviors can use queue! and queued? predicates."""
+        """Behaviors can use queue and queued? predicates."""
         source = """
         (world :player PLAYER)
         (room LOBBY :description "A lobby")

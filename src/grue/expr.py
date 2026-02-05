@@ -28,18 +28,18 @@ Built-in Predicates:
     (exit-via ACTOR DIR)      - Get door object for exit (if any)
     (queued? EVENT)           - Check if event is currently queued
 
-Built-in Effects:
-    (move! OBJ DEST)          - Move object to destination
-    (set-prop! OBJ PROP VAL)  - Set property on object
-    (set! GLOBAL VAL)         - Set global variable
-    (inc! GLOBAL)             - Increment global by 1
-    (inc! GLOBAL AMT)         - Increment global by amount
+Built-in Effects (for test :setup and REPL debugging):
+    (move OBJ DEST)           - Move object to destination
+    (set OBJ :PROP VAL)       - Set property on object
+    (inc OBJ :PROP)           - Increment property by 1
+    (inc OBJ :PROP AMT)       - Increment property by amount
     (seq EFFECT ...)          - Execute effects in order
     (when COND EFFECT)        - Conditional effect
     (defn NAME (PARAMS) BODY) - Define user function
-    (queue! EVENT)            - Queue an event (indefinite)
-    (queue! EVENT N)          - Queue an event with countdown
-    (dequeue! EVENT)          - Remove event from queue
+    (queue EVENT)             - Queue an event (indefinite)
+    (queue EVENT N)           - Queue an event with countdown
+    (dequeue EVENT)           - Remove event from queue
+    (take OBJ)                - Move object to player inventory
 """
 
 from dataclasses import dataclass, field
@@ -1040,10 +1040,9 @@ class ExprEvaluator:
             # Side effects - controlled by allow_mutations flag
             # In behavior bodies (pure), these raise errors directing users to effect system
             # In EffectExecutor context (allow_mutations=True), these work normally
-            "set!": self._eval_mutation_dispatch,
-            "inc!": self._eval_mutation_dispatch,
-            "set-prop!": self._eval_mutation_dispatch,
-            "move!": self._eval_mutation_dispatch,
+            "move": self._eval_mutation_dispatch,
+            "set": self._eval_mutation_dispatch,
+            "inc": self._eval_mutation_dispatch,
         }
 
     def eval(self, expr: SExpr, env: Optional[Environment] = None) -> Any:
@@ -1698,7 +1697,7 @@ class ExprEvaluator:
 
         Examples:
             (when (held? @key) (print "has key") (success))
-            (when (> heat 20) (set-prop! @food :ruined true))
+            (when (> heat 20) (set @food :ruined true))
         """
         if len(form) < 3:
             raise EvalError(f"'when' expects at least 2 arguments, got {len(form) - 1}")
@@ -2585,7 +2584,7 @@ class ExprEvaluator:
         Like Clojure's do. Useful for side effects.
 
         Examples:
-            (do (set! x 1) (set! y 2) (+ x y))
+            (do (print "step 1") (print "step 2") 42)
             (do (print "hello") 42)
         """
         result = None
@@ -2998,7 +2997,7 @@ class ExprEvaluator:
         """(doseq (BINDING SEQ ...) BODY) - iterate for side effects.
 
         Like for, but doesn't collect results. Returns nil.
-        Useful when body has side effects like print or move!.
+        Useful when body has side effects like print.
 
         Examples:
             (doseq (?obj (contents @player)) (print (desc ?obj)))
@@ -3059,10 +3058,10 @@ class ExprEvaluator:
     # However, functions called from EffectExecutor (during effect application)
     # ARE allowed to use mutations - that's the runtime applying effects.
     #
-    # Instead of:
-    #     :examine (fn () (move! @key @player) (success :message "Got it!"))
+    # Instead of direct mutation in behaviors:
+    #     :examine (fn () (move @key @player) (success :message "Got it!"))
     #
-    # Write:
+    # Return effect lists:
     #     :examine (fn () '((move @key @player) (success :message "Got it!")))
     #
     # The runtime interprets the effect list and applies mutations.
@@ -3071,13 +3070,11 @@ class ExprEvaluator:
         """Dispatch mutation primitives - allowed if allow_mutations=True, error otherwise."""
         if not self._allow_mutations:
             effect_name = form[0].name if isinstance(form[0], Symbol) else str(form[0])
-            # Map old syntax to new effect syntax
-            new_name = effect_name.rstrip("!")  # "set!" -> "set", "move!" -> "move"
             raise EvalError(
                 f"'{effect_name}' is not allowed in behavior bodies (behaviors must be pure). "
-                f"Use the effect system instead: return a quoted list with ({new_name} ...) "
+                f"Use the effect system instead: return a quoted list with ({effect_name} ...) "
                 f"followed by a terminator like (success ...). "
-                f"Example: '(({new_name} ...) (success :message \"...\"))"
+                f"Example: '(({effect_name} ...) (success :message \"...\"))"
             )
 
         # Dispatch to the actual mutation handler
@@ -3091,16 +3088,15 @@ class ExprEvaluator:
     def _init_mutation_handlers(self) -> dict[str, Callable[..., Any]]:
         """Initialize mutation handlers (used when allow_mutations=True)."""
         return {
-            "set!": self._eval_set_global_impl,
-            "inc!": self._eval_inc_global_impl,
-            "set-prop!": self._eval_set_prop_impl,
-            "move!": self._eval_move_impl,
+            "move": self._eval_move_impl,
+            "set": self._eval_set_impl,
+            "inc": self._eval_inc_impl,
         }
 
     def _eval_move_impl(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(move! OBJ DEST) - Move object to destination."""
+        """(move OBJ DEST) - Move object to destination."""
         if len(form) != 3:
-            raise EvalError(f"'move!' expects 2 arguments, got {len(form) - 1}")
+            raise EvalError(f"'move' expects 2 arguments, got {len(form) - 1}")
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
@@ -3108,68 +3104,49 @@ class ExprEvaluator:
         if isinstance(dest, Symbol):
             dest = dest.name
         if not hasattr(self.state, "move_object"):
-            raise EvalError("'move!' requires mutable state")
+            raise EvalError("'move' requires mutable state")
         self.state.move_object(obj, dest)
         return None
 
-    def _eval_set_global_impl(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set! GLOBAL VALUE) - Set a global variable."""
-        if len(form) != 3:
-            raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
-        if not isinstance(form[1], Symbol):
-            raise EvalError("'set!' first argument must be a symbol")
-        global_name = form[1].name
-        if env is not None and env.has(global_name):
-            raise EvalError(
-                f"'set!' cannot modify let-bound variable '{global_name}'. "
-                "Use a helper function or pass the computed value directly to effects."
-            )
-        value = self.eval(form[2], env)
-        if not hasattr(self.state, "set_global"):
-            raise EvalError("'set!' requires mutable state")
-        self.state.set_global(global_name, value)
-        return None
-
-    def _eval_inc_global_impl(self, form: SList, env: Optional[Environment] = None) -> int:
-        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Increment a global."""
-        if len(form) < 2 or len(form) > 3:
-            raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
-        if not isinstance(form[1], Symbol):
-            raise EvalError("'inc!' first argument must be a symbol")
-        global_name = form[1].name
-        if env is not None and env.has(global_name):
-            raise EvalError(
-                f"'inc!' cannot modify let-bound variable '{global_name}'. "
-                "Use a helper function or pass the computed value directly."
-            )
-        amount = 1
-        if len(form) == 3:
-            amount = self.eval(form[2], env)
-        current = self.state.get_global(global_name)
-        new_value = current + amount
-        if not hasattr(self.state, "set_global"):
-            raise EvalError("'inc!' requires mutable state")
-        self.state.set_global(global_name, new_value)
-        return new_value
-
-    def _eval_set_prop_impl(self, form: SList, env: Optional[Environment] = None) -> None:
-        """(set-prop! OBJ PROP VALUE) - Set an object property."""
+    def _eval_set_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(set @obj :prop value) - Set an object property."""
         if len(form) != 4:
-            raise EvalError(f"'set-prop!' expects 3 arguments, got {len(form) - 1}")
+            raise EvalError(f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}")
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
         prop_arg = form[2]
-        if isinstance(prop_arg, Symbol):
+        if isinstance(prop_arg, Keyword):
             prop = prop_arg.name
-        elif isinstance(prop_arg, Keyword):
+        elif isinstance(prop_arg, Symbol):
             prop = prop_arg.name
         else:
             prop = self.eval(prop_arg, env)
         value = self.eval(form[3], env)
         if not hasattr(self.state, "set_object_property"):
-            raise EvalError("'set-prop!' requires mutable state")
+            raise EvalError("'set' requires mutable state")
         self.state.set_object_property(obj, prop, value)
+        return None
+
+    def _eval_inc_impl(self, form: SList, env: Optional[Environment] = None) -> None:
+        """(inc @obj :prop) or (inc @obj :prop amount) - Increment an entity property."""
+        if len(form) < 3 or len(form) > 4:
+            raise EvalError(f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}")
+        obj = self.eval(form[1], env)
+        if isinstance(obj, Symbol):
+            obj = obj.name
+        prop_arg = form[2]
+        if isinstance(prop_arg, Keyword):
+            prop = prop_arg.name
+        elif isinstance(prop_arg, Symbol):
+            prop = prop_arg.name
+        else:
+            prop = self.eval(prop_arg, env)
+        amount = 1
+        if len(form) == 4:
+            amount = self.eval(form[3], env)
+        current = self.state.get_object_property(obj, prop) or 0
+        self.state.set_object_property(obj, prop, current + amount)
         return None
 
     # === Quantifiers ===
@@ -3268,17 +3245,15 @@ class EffectExecutor:
             self._functions = {}
         self._predicates = ExprEvaluator(state, self._functions, allow_mutations=True)
         self._effects: dict[str, Callable[..., None]] = {
-            "move!": self._exec_move,
-            "set-prop!": self._exec_set_prop,
+            "move": self._exec_move,
             "set": self._exec_set,  # (set @obj :prop value)
-            "set!": self._exec_set_global,
-            "inc!": self._exec_inc,
+            "inc": self._exec_inc,
             "seq": self._exec_seq,
             "when": self._exec_when,
             "defn": self._exec_defn,
-            "queue!": self._exec_queue,
-            "dequeue!": self._exec_dequeue,
-            "take!": self._exec_take,
+            "queue": self._exec_queue,
+            "dequeue": self._exec_dequeue,
+            "take": self._exec_take,
         }
         # Current environment for variable lookups (set by execute())
         self._env: Optional[Environment] = None
@@ -3317,13 +3292,13 @@ class EffectExecutor:
         return self._predicates.eval(expr, self._env)
 
     def _exec_move(self, form: SList) -> None:
-        """(move! OBJ DEST)
+        """(move OBJ DEST)
 
         When moving the player to a room, this also triggers the room's
         :on-enter behavior (if any), mirroring the behavior of "go" movement.
         """
         if len(form) != 3:
-            raise EvalError(f"'move!' expects 2 arguments, got {len(form) - 1}")
+            raise EvalError(f"'move' expects 2 arguments, got {len(form) - 1}")
         obj = self._eval(form[1])
         dest = self._eval(form[2])
 
@@ -3345,25 +3320,6 @@ class EffectExecutor:
         if from_room is not None and check_enter:
             check_enter(dest, from_room, player_name)
 
-    def _exec_set_prop(self, form: SList) -> None:
-        """(set-prop! OBJ PROP VALUE)
-
-        Property name is implicitly quoted if it's a symbol.
-        """
-        if len(form) != 4:
-            raise EvalError(f"'set-prop!' expects 3 arguments, got {len(form) - 1}")
-        obj = self._eval(form[1])
-        # Implicitly quote symbol property names
-        prop_arg = form[2]
-        if isinstance(prop_arg, Symbol):
-            prop = prop_arg.name
-        elif isinstance(prop_arg, Keyword):
-            prop = prop_arg.name
-        else:
-            prop = self._eval(prop_arg)
-        value = self._eval(form[3])
-        self.state.set_object_property(obj, prop, value)
-
     def _exec_set(self, form: SList) -> None:
         """(set @obj :prop value) - Set an object property.
 
@@ -3383,47 +3339,26 @@ class EffectExecutor:
         value = self._eval(form[3])
         self.state.set_object_property(obj, prop, value)
 
-    def _exec_set_global(self, form: SList) -> None:
-        """(set! GLOBAL VALUE) - Only works on globals, not let-bound variables."""
-        if len(form) != 3:
-            raise EvalError(f"'set!' expects 2 arguments, got {len(form) - 1}")
-        # Don't evaluate the global name - use it as-is
-        if not isinstance(form[1], Symbol):
-            raise EvalError("'set!' first argument must be a symbol")
-        global_name = form[1].name
-
-        # Error if trying to set! a let-bound variable
-        if self._env is not None and self._env.has(global_name):
-            raise EvalError(
-                f"'set!' cannot modify let-bound variable '{global_name}'. "
-                "Use a helper function or pass the computed value directly to effects."
-            )
-
-        value = self._eval(form[2])
-        self.state.set_global(global_name, value)
-
     def _exec_inc(self, form: SList) -> None:
-        """(inc! GLOBAL) or (inc! GLOBAL AMOUNT) - Only works on globals."""
-        if len(form) < 2 or len(form) > 3:
-            raise EvalError(f"'inc!' expects 1-2 arguments, got {len(form) - 1}")
+        """(inc @obj :prop) or (inc @obj :prop amount)
 
-        if not isinstance(form[1], Symbol):
-            raise EvalError("'inc!' first argument must be a symbol")
-        global_name = form[1].name
+        Increment an entity property. Property must be a keyword.
+        """
+        if len(form) < 3 or len(form) > 4:
+            raise EvalError(f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}")
 
-        # Error if trying to inc! a let-bound variable
-        if self._env is not None and self._env.has(global_name):
-            raise EvalError(
-                f"'inc!' cannot modify let-bound variable '{global_name}'. "
-                "Use a helper function or pass the computed value directly."
-            )
+        obj = self._eval(form[1])
+        prop_arg = form[2]
+        if not isinstance(prop_arg, Keyword):
+            raise EvalError(f"'inc' property must be a keyword, got: {prop_arg}")
+        prop = prop_arg.name
 
         amount = 1
-        if len(form) == 3:
-            amount = self._eval(form[2])
+        if len(form) == 4:
+            amount = self._eval(form[3])
 
-        current = self.state.get_global(global_name)
-        self.state.set_global(global_name, current + amount)
+        current = self.state.get_object_property(obj, prop)
+        self.state.set_object_property(obj, prop, current + amount)
 
     def _exec_seq(self, form: SList) -> None:
         """(seq EFFECT ...)"""
@@ -3479,12 +3414,12 @@ class EffectExecutor:
         self._functions[name] = GrueFn(params=params, body=body)
 
     def _exec_queue(self, form: SList) -> None:
-        """(queue! EVENT) or (queue! EVENT COUNTDOWN)
+        """(queue EVENT) or (queue EVENT COUNTDOWN)
 
         Event name is implicitly quoted if it's a symbol.
         """
         if len(form) < 2 or len(form) > 3:
-            raise EvalError(f"'queue!' expects 1-2 arguments, got {len(form) - 1}")
+            raise EvalError(f"'queue' expects 1-2 arguments, got {len(form) - 1}")
 
         # Implicitly quote symbol event names
         event_arg = form[1]
@@ -3500,12 +3435,12 @@ class EffectExecutor:
         self.state.queue_event(event, countdown)
 
     def _exec_dequeue(self, form: SList) -> None:
-        """(dequeue! EVENT)
+        """(dequeue EVENT)
 
         Event name is implicitly quoted if it's a symbol.
         """
         if len(form) != 2:
-            raise EvalError(f"'dequeue!' expects 1 argument, got {len(form) - 1}")
+            raise EvalError(f"'dequeue' expects 1 argument, got {len(form) - 1}")
 
         # Implicitly quote symbol event names
         event_arg = form[1]
@@ -3517,9 +3452,9 @@ class EffectExecutor:
         self.state.dequeue_event(event)
 
     def _exec_take(self, form: SList) -> None:
-        """(take! OBJ) - Move object to player's inventory."""
+        """(take OBJ) - Move object to player's inventory."""
         if len(form) != 2:
-            raise EvalError(f"'take!' expects 1 argument, got {len(form) - 1}")
+            raise EvalError(f"'take' expects 1 argument, got {len(form) - 1}")
 
         obj = self._eval(form[1])
         # Move to player - state is the runtime which has player_name

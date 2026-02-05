@@ -4,7 +4,7 @@
 
 
 (test-group "cave altar objects"
-  :setup ((move! @player @cave-altar))
+  :setup ((move @player @cave-altar))
 
   (test "knife can be examined"
     (do @knife :examine)
@@ -31,7 +31,7 @@
 )
 
 (test-group "cave altar after seeing pit"
-  :setup ((move! @player @cave-altar) (set-prop! @iron-plate pit-seen true))
+  :setup ((move @player @cave-altar) (set @iron-plate :pit-seen true))
 
   (test "cannot look in pit after seeing it"
     (do @iron-plate :look-inside)
@@ -43,7 +43,7 @@
 )
 
 (test-group "pressure valve"
-  :setup ((move! @player @tunnel-east) (set @pressure-valve :open false) (set @steam-pipes :hot false))
+  :setup ((move @player @tunnel-east) (set @pressure-valve :open false) (set @steam-pipes :hot false))
 
   (test "valve can be turned on"
     (do @pressure-valve :turn)
@@ -60,7 +60,7 @@
 )
 
 (test-group "steam blocking"
-  :setup ((move! @player @tunnel) (set @pressure-valve :open true) (set @steam-pipes :hot true))
+  :setup ((move @player @tunnel) (set @pressure-valve :open true) (set @steam-pipes :hot true))
 
   (test "steam blocks east passage"
     (do @player :go east)
@@ -68,7 +68,7 @@
 )
 
 (test-group "passage when valve closed"
-  :setup ((move! @player @tunnel) (set @pressure-valve :open false) (set @steam-pipes :hot false))
+  :setup ((move @player @tunnel) (set @pressure-valve :open false) (set @steam-pipes :hot false))
 
   (test "can pass when valve closed"
     (do @player :go east)
@@ -77,7 +77,7 @@
 )
 
 (test-group "brick wall"
-  :setup ((move! @player @steam-tunnel-east) (set-prop! @brick-wall broken false))
+  :setup ((move @player @steam-tunnel-east) (set @brick-wall :broken false))
 
   (test "wall can be pushed through"
     (do @brick-wall :push)
@@ -90,7 +90,7 @@
 )
 
 (test-group "cable climbing"
-  :setup ((move! @player @tunnel) (set-prop! @cable mounted false))
+  :setup ((move @player @tunnel) (set @cable :mounted false))
 
   (test "can climb onto cable"
     (do @cable :climb)
@@ -98,14 +98,14 @@
     (assert (prop? @cable mounted true)))
 
   (test "can drop from cable"
-    :setup ((set-prop! @cable mounted true))
+    :setup ((set @cable :mounted true))
     (do @cable :climb)
     (assert (outcome? success))
     (assert (prop? @cable mounted false)))
 )
 
 (test-group "access hatch"
-  :setup ((move! @player @tunnel) (set @access-hatch :open false))
+  :setup ((move @player @tunnel) (set @access-hatch :open false))
 
   (test "hatch can be opened"
     (do @access-hatch :open)
@@ -123,26 +123,26 @@
   :setup ()
 
   (test "brick tunnel connects north to cave"
-    :setup ((move! @player @brick-tunnel))
+    :setup ((move @player @brick-tunnel))
     (do @player :go north)
     (assert (outcome? success))
     (assert (loc? @player @cave-room)))
 
   (test "cave room connects down to altar"
-    :setup ((move! @player @cave-room))
+    :setup ((move @player @cave-room))
     (do @player :go down)
     (assert (outcome? success))
     (assert (loc? @player @cave-altar)))
 
   (test "cave altar connects up to cave room"
-    :setup ((move! @player @cave-altar))
+    :setup ((move @player @cave-altar))
     (do @player :go up)
     (assert (outcome? success))
     (assert (loc? @player @cave-room)))
 )
 
 (test-group "rats blocking"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set-prop! @cable mounted false))
+  :setup ((move @player @tunnel-west) (move @rats @tunnel-west) (set @cable :mounted false))
 
   (test "rats block passage when present"
     (go :direction east)
@@ -154,7 +154,7 @@
 )
 
 (test-group "throw food at rats"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (move! @chinese-food @player))
+  :setup ((move @player @tunnel-west) (move @rats @tunnel-west) (move @chinese-food @player))
 
   (test "can throw food at rats"
     (do @rats :give @chinese-food)
@@ -163,7 +163,7 @@
 )
 
 (test-group "steam kills rats"
-  :setup ((move! @player @tunnel-west) (move! @rats @tunnel-west) (set @pressure-valve :open false) (queue! rats-go-away))
+  :setup ((move @player @tunnel-west) (move @rats @tunnel-west) (set @pressure-valve :open false) (queue rats-go-away))
 
   (test "valve kills rats and spawns dead rat"
     :setup ((set @pressure-valve :open true))
@@ -174,7 +174,7 @@
 )
 
 (test-group "dead rat behaviors"
-  :setup ((move! @player @tunnel-west) (move! @dead-rat @tunnel-west) (set @dead-rat :touched false))
+  :setup ((move @player @tunnel-west) (move @dead-rat @tunnel-west) (set @dead-rat :touched false))
 
   (test "can examine dead rat"
     (do @dead-rat :examine)
@@ -187,18 +187,18 @@
     (assert (held? @dead-rat)))
 
   (test "can step on dead rat"
-    :setup ((move! @dead-rat @tunnel-west))
+    :setup ((move @dead-rat @tunnel-west))
     (do @dead-rat :step-on)
     (assert (outcome? success)))
 
   (test "can try to eat dead rat"
-    :setup ((move! @dead-rat @player))
+    :setup ((move @dead-rat @player))
     (do @dead-rat :eat)
     (assert (outcome? success)))
 )
 
 (test-group "rat symbol"
-  :setup ((move! @player @tunnel-west) (move! @dead-rat @player))
+  :setup ((move @player @tunnel-west) (move @dead-rat @player))
 
   (test "can examine rat symbol"
     (do @rat-symbol :examine)
@@ -210,7 +210,7 @@
 )
 
 (test-group "dead rat in elixir"
-  :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (move! @dead-rat @player) (move! @elixir @vat))
+  :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (move @dead-rat @player) (move @elixir @vat))
 
   (test "dead rat in elixir comes to life"
     (do @vat :put @dead-rat)

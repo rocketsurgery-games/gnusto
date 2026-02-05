@@ -31,7 +31,7 @@ not imperative mutations. An action transforms state:
 State × Action → State'
 ```
 
-The "mutative" syntax (`set`, `move!`) is notation for describing the delta,
+The "mutative" syntax (`set`, `move`) is notation for describing the delta,
 not actual mutation. This enables:
 - State space exploration (branching without rollback complexity)
 - Deterministic replay
@@ -484,9 +484,9 @@ Event queues track ongoing situations that affect behavior. They map to ZIL's
 (queued? COMPULSION)          ; is player under compulsion?
 
 ; Activate/deactivate events in effects
-(queue! HACKER-HELPS)         ; start the event (indefinite)
-(queue! LANTERN 200)          ; start with 200-turn countdown
-(dequeue! HACKER-HELPS)       ; end the event
+(queue HACKER-HELPS)          ; start the event (indefinite)
+(queue LANTERN 200)           ; start with 200-turn countdown
+(dequeue HACKER-HELPS)        ; end the event
 ```
 
 **Use in behaviors:**
@@ -683,7 +683,7 @@ GRUE has three categories of constructs, each with different evaluation semantic
 |----------|----------|------------|
 | **Declarative Forms** | `world`, `room`, `object`, `reference`, `victory`, `defeat`, `default`, `event` | Data definitions, not evaluated at runtime |
 | **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `fn`, `let` | Custom evaluation rules |
-| **Functions** | `loc`, `held?`, `visible?`, `move!`, `set` | Uniform evaluation (all arguments evaluated) |
+| **Functions** | `loc`, `held?`, `visible?`, `move`, `set` | Uniform evaluation (all arguments evaluated) |
 
 ### Declarative Forms (Data Definitions)
 
@@ -848,7 +848,7 @@ When `:rdesc` is not specified, the scene renderer falls back to `:description`.
 ```
 
 `score` and `moves` are stored as properties on the player object. Access them with
-`(:score @player)` and `(:moves @player)`, or use `(inc! score)` as shorthand.
+`(:score @player)` and `(:moves @player)`, or use `(inc @player :score)` as an effect.
 
 ### Special Forms (Custom Evaluation)
 
@@ -1054,13 +1054,13 @@ Conditional effect. Only executes EFFECT if COND is truthy.
 ```scheme
 (when (:firsttime ?self)
   (seq (set ?self :firsttime false)
-       (inc! score 10)))
+       (inc @player :score 10)))
 ```
 
 #### `(seq EFFECT ...)`
 Sequential effect execution. Effects are executed in order.
 ```scheme
-(seq (move! ?self ?actor)
+(seq (move ?self ?actor)
      (set ?self :moved true))
 ```
 
@@ -1123,7 +1123,7 @@ For writing properties, use the `(set @obj :prop value)` effect in a quoted list
 ### Functions (Uniform Evaluation)
 
 Functions have uniform evaluation: all arguments are evaluated before the function
-is called. Functions are pure (no side effects) unless their name ends with `!`.
+is called. Functions are pure (no side effects).
 
 #### Predicates (Return Boolean or Value)
 
@@ -1223,17 +1223,17 @@ Examples:
 
 #### Effects (State Mutations)
 
-Effects describe state changes. By convention, their names end with `!`.
+Effects describe state changes. They use the same syntax in game code (quoted effect lists),
+test `:setup` blocks, and the REPL (for debugging).
 
 | Effect | Arguments | Description |
 |--------|-----------|-------------|
-| `move!` | OBJ DEST | Move object to destination |
-| `take!` | OBJ | Move object to player's inventory (shorthand for `(move! OBJ @player)`) |
+| `move` | OBJ DEST | Move object to destination |
+| `take` | OBJ | Move object to player's inventory (shorthand for `(move OBJ @player)`) |
 | `set` | OBJ :PROP VAL | Set property on object (use `:prop true` for boolean flags) |
-| `set-prop!` | OBJ PROP VAL | Set property on object (legacy syntax) |
-| `inc!` | score [AMOUNT] | Increment score (player property) |
-| `queue!` | EVENT [COUNT] | Queue event (indefinite or countdown) |
-| `dequeue!` | EVENT | Remove event from queue |
+| `inc` | OBJ :PROP [AMOUNT] | Increment numeric property (default: 1) |
+| `queue` | EVENT [COUNT] | Queue event (indefinite or countdown) |
+| `dequeue` | EVENT | Remove event from queue |
 
 ### Binding Model
 
@@ -1337,7 +1337,7 @@ Tests use a sequential style with explicit actions and assertions:
   (assert (player-at? @cs-2nd)))
 
 (test "blocked when carrying PC"
-  :setup ((move! @pc @player))
+  :setup ((move @pc @player))
   (go :direction south)
   (assert (outcome? blocked))
   (assert (reason? tech-property)))
@@ -1360,10 +1360,11 @@ Tests use a sequential style with explicit actions and assertions:
 | `(wait)` | Pass time and process queued events |
 | `(run ACTION-LIST)` | Execute a named list of actions |
 | `(set @obj :prop VAL)` | Set property on object (inline setup) |
-| `(set-prop! @obj PROP VAL)` | Set property (legacy syntax) |
-| `(move! @obj @loc)` | Move object to location (inline setup) |
-| `(queue! EVENT [DELAY])` | Queue an event (inline setup) |
-| `(dequeue! EVENT)` | Remove event from queue (inline setup) |
+| `(move @obj @loc)` | Move object to location (inline setup) |
+| `(inc @obj :prop [AMT])` | Increment property (inline setup) |
+| `(queue EVENT [DELAY])` | Queue an event (inline setup) |
+| `(dequeue EVENT)` | Remove event from queue (inline setup) |
+| `(take @obj)` | Move object to player (inline setup) |
 
 **Inline setup** allows manipulating game state mid-test without using `:setup` blocks.
 This is useful for full walkthrough tests that need to skip unimplemented mechanics:
@@ -1373,14 +1374,14 @@ This is useful for full walkthrough tests that need to skip unimplemented mechan
   ; ... earlier actions ...
 
   ; SKIP: Forklift puzzle - pre-set junk state
-  (set-prop! @junk-pile moved 4)
+  (set @junk-pile :moved 4)
 
   ; Continue with navigation
   (go :direction east)
   (assert (loc? @player @storage-room))
 
   ; SKIP: Complex ritual state - position for escape
-  (move! @player @pentagram)
+  (move @player @pentagram)
   (set @pentagram :rmung true)
 
   ; ... continue test ...)
@@ -1433,7 +1434,7 @@ the same initial state.
 
 ```scheme
 (test-group "microwave set-timer"
-  :setup ((move! @player @kitchen))
+  :setup ((move @player @kitchen))
 
   (test "set to 2 minutes"
     (do @microwave :set-timer 120)
@@ -1485,7 +1486,7 @@ works in `(assert ...)` via the evaluator fallback.
 
 ### Test Effects
 
-Setup can use any standard effect: `move!`, `set`, `set-prop!`, `queue!`, etc.
+Setup can use any standard effect: `move`, `set`, `inc`, `queue`, `dequeue`, `take`.
 
 ## Open Questions
 

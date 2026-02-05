@@ -122,9 +122,9 @@ class TestParser:
         assert isinstance(expr[2], SList)
 
     def test_mixed_types(self):
-        expr = parse('(set-prop! obj :locked false)')
+        expr = parse('(set obj :locked false)')
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("set-prop!")
+        assert expr[0] == Symbol("set")
         assert expr[1] == Symbol("obj")
         assert isinstance(expr[2], Keyword)
         assert expr[2].name == "locked"
@@ -155,9 +155,9 @@ class TestRealWorldExamples:
         assert len(expr) == 3
 
     def test_effect_move(self):
-        expr = parse("(move! OBJ PLAYER)")
+        expr = parse("(move OBJ PLAYER)")
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("move!")
+        assert expr[0] == Symbol("move")
 
     def test_effect_set_property(self):
         """Set property syntax."""
@@ -169,10 +169,10 @@ class TestRealWorldExamples:
         assert expr[3] is True
 
     def test_effect_inc(self):
-        expr = parse("(inc! SCORE 5)")
+        expr = parse("(inc PLAYER :score 5)")
         assert isinstance(expr, SList)
-        assert expr[0] == Symbol("inc!")
-        assert expr[2] == 5
+        assert expr[0] == Symbol("inc")
+        assert expr[3] == 5
 
     def test_complex_precondition(self):
         """Test the TAKE precondition from the design doc."""
@@ -188,7 +188,7 @@ class TestRealWorldExamples:
         assert len(expr) == 4
 
     def test_conditional_effect(self):
-        expr = parse("(when (= score 100) (set! GAME_WON true))")
+        expr = parse("(when (= score 100) (set PLAYER :won true))")
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("when")
 
@@ -250,7 +250,7 @@ class TestToString:
         assert to_string(expr) == original
 
     def test_roundtrip_complex(self):
-        original = '(set-prop! obj :locked false)'
+        original = '(set obj :locked false)'
         expr = parse(original)
         assert to_string(expr) == original
 

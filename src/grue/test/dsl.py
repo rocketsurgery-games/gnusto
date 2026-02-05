@@ -7,7 +7,7 @@ Tests are S-expressions that exercise the full Grue stack.
 
 Sequential test (standard style):
     (test "complete puzzle"
-      :setup ((move! @player @room))    ; optional setup
+      :setup ((move @player @room))      ; optional setup
       (do @door :unlock @key)           ; actions
       (do @door :open)
       (assert (has-flag? @door open))
@@ -24,7 +24,7 @@ Action lists for walkthroughs:
 
 Test groups with shared setup:
     (test-group "door tests"
-      :setup ((move! @player @room))
+      :setup ((move @player @room))
 
       (test "opens"
         (do @door :open)
@@ -255,8 +255,7 @@ class TestRunner:
                 return []
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
-        elif form_type in ("set!", "move!", "set-flag!", "clear-flag!", "queue!", "dequeue!",
-                           "set-prop!", "inc!", "dec!"):
+        elif form_type in ("move", "set", "inc", "queue", "dequeue", "take"):
             # Setup operations - execute directly as effects
             try:
                 from ..runtime import EffectExecutor

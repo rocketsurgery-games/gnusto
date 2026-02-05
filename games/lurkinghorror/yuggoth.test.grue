@@ -5,24 +5,24 @@
 
 
 (test "yuggoth connects to bowl-room"
-  :setup ((move! @player @yuggoth))
+  :setup ((move @player @yuggoth))
   (go :direction down)
   (assert (outcome? success))
   (assert (player-at? @bowl-room)))
 
 (test "bowl-room connects to platform-room"
-  :setup ((move! @player @bowl-room))
+  :setup ((move @player @bowl-room))
   (go :direction in)
   (assert (outcome? success))
   (assert (player-at? @platform-room)))
 
 (test "smooth-stone appears in platform-room"
-  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room))
+  :setup ((move @player @platform-room) (move @smooth-stone @platform-room))
   (do @smooth-stone :examine)
   (assert (outcome? success)))
 
 (test "taking smooth-stone works"
-  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (set @smooth-stone :touched false))
+  :setup ((move @player @platform-room) (move @smooth-stone @platform-room) (set @smooth-stone :touched false))
   (do @smooth-stone :take)
   (assert (outcome? success))
   (assert (loc? @smooth-stone @player)))
@@ -33,12 +33,12 @@
   (assert (loc? @stone-symbol @smooth-stone)))
 
 (test "platform can be examined from bowl-room"
-  :setup ((move! @player @bowl-room))
+  :setup ((move @player @bowl-room))
   (do @platform :examine)
   (assert (outcome? success)))
 
 (test "platform enter redirects to movement"
-  :setup ((move! @player @bowl-room))
+  :setup ((move @player @bowl-room))
   (do @platform :enter)
   (assert (outcome? success))
   (assert (player-at? @platform-room)))

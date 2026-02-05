@@ -290,7 +290,7 @@ class TestEffects:
 
     def test_move(self):
         state = MockWorldState()
-        execute_effect("(move! CHAIR PLAYER)", state)
+        execute_effect("(move CHAIR PLAYER)", state)
         assert state.locations["CHAIR"] == "PLAYER"
 
     def test_set_flag(self):
@@ -305,56 +305,19 @@ class TestEffects:
         execute_effect("(set DOOR :locked false)", state)
         assert state.properties["DOOR"]["locked"] is False
 
-    def test_set_prop(self):
-        state = MockWorldState()
-        execute_effect("(set-prop! DOOR locked false)", state)
-        assert state.properties["DOOR"]["locked"] is False
-
-    def test_set_global(self):
-        state = MockWorldState()
-        execute_effect("(set! SCORE 10)", state)
-        assert state.properties["PLAYER"]["score"] == 10
-
     def test_inc(self):
         state = MockWorldState()
-        execute_effect("(inc! SCORE)", state)
+        execute_effect("(inc PLAYER :score)", state)
         assert state.properties["PLAYER"]["score"] == 1
-        execute_effect("(inc! SCORE 5)", state)
+        execute_effect("(inc PLAYER :score 5)", state)
         assert state.properties["PLAYER"]["score"] == 6
-
-    def test_set_rejects_let_bound_variable(self):
-        """set! should error when targeting a let-bound variable."""
-        state = MockWorldState()
-        env = Environment(bindings={"?local-var": 42})
-        executor = EffectExecutor(state)
-
-        with pytest.raises(EvalError, match="cannot modify let-bound variable"):
-            executor.execute(parse("(set! ?local-var 100)"), env)
-
-    def test_inc_rejects_let_bound_variable(self):
-        """inc! should error when targeting a let-bound variable."""
-        state = MockWorldState()
-        env = Environment(bindings={"?counter": 0})
-        executor = EffectExecutor(state)
-
-        with pytest.raises(EvalError, match="cannot modify let-bound variable"):
-            executor.execute(parse("(inc! ?counter)"), env)
-
-    def test_set_works_on_score_when_no_local_shadow(self):
-        """set! should work fine on score even when an env is present."""
-        state = MockWorldState()
-        env = Environment(bindings={"?other-var": 42})  # Different variable
-        executor = EffectExecutor(state)
-
-        executor.execute(parse("(set! SCORE 999)"), env)
-        assert state.properties["PLAYER"]["score"] == 999
 
     def test_seq(self):
         state = MockWorldState()
         expr = """
         (seq
-          (move! CHAIR PLAYER)
-          (inc! SCORE 5)
+          (move CHAIR PLAYER)
+          (inc PLAYER :score 5)
           (set CHAIR :touchbit true))
         """
         execute_effect(expr, state)
@@ -364,13 +327,13 @@ class TestEffects:
 
     def test_when_true(self):
         state = MockWorldState()
-        execute_effect("(when (= score 0) (inc! SCORE 10))", state)
+        execute_effect("(when (= score 0) (inc PLAYER :score 10))", state)
         assert state.properties["PLAYER"]["score"] == 10
 
     def test_when_false(self):
         state = MockWorldState()
         state.properties["PLAYER"]["score"] = 50
-        execute_effect("(when (= score 0) (inc! SCORE 10))", state)
+        execute_effect("(when (= score 0) (inc PLAYER :score 10))", state)
         assert state.properties["PLAYER"]["score"] == 50  # unchanged
 
 
@@ -404,7 +367,7 @@ class TestRealWorldScenarios:
         state = MockWorldState()
 
         # Execute take
-        execute_effect("(move! CHAIR PLAYER)", state)
+        execute_effect("(move CHAIR PLAYER)", state)
 
         # Verify post-conditions
         assert eval_predicate("(held? CHAIR)", state) is True
@@ -622,10 +585,10 @@ class TestErrorHandling:
             eval_predicate("(not)", state)
         assert "expects 1 argument" in str(excinfo.value)
 
-    def test_invalid_effect_target(self):
+    def test_invalid_effect_name(self):
         state = MockWorldState()
         with pytest.raises(EvalError):
-            execute_effect("(set! 123 456)", state)
+            execute_effect("(frobnicate @door)", state)
 
 
 class TestHigherOrderFunctions:

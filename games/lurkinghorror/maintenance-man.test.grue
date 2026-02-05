@@ -4,7 +4,7 @@
 
 
 (test-group "floor waxer initial state"
-  :setup ((move! @player @inf-2))
+  :setup ((move @player @inf-2))
 
   (test "waxer starts at inf-2"
     (do @floor-waxer :examine)
@@ -18,7 +18,7 @@
 )
 
 (test-group "waxer blocking"
-  :setup ((move! @player @inf-2) (move! @floor-waxer @inf-2) (move! @maintenance-man @floor-waxer) (set-prop! @power-cord severed false))
+  :setup ((move @player @inf-2) (move @floor-waxer @inf-2) (move @maintenance-man @floor-waxer) (set @power-cord :severed false))
 
   (test "waxer blocks east passage when present"
     (go :direction east)
@@ -31,7 +31,7 @@
 )
 
 (test-group "power cord"
-  :setup ((move! @player @inf-1) (move! @axe @player) (set-prop! @power-cord severed false))
+  :setup ((move @player @inf-1) (move @axe @player) (set @power-cord :severed false))
 
   (test "can examine cord"
     (do @power-cord :examine)
@@ -42,7 +42,7 @@
     (assert (outcome? blocked)))
 
   (test "cannot cut cord without axe"
-    :setup ((move! @axe @inf-1))
+    :setup ((move @axe @inf-1))
     (do @power-cord :cut)
     (assert (outcome? blocked)))
 
@@ -53,7 +53,7 @@
 )
 
 (test-group "plastic container"
-  :setup ((move! @player @inf-1) (move! @plastic-container @inf-1))
+  :setup ((move @player @inf-1) (move @plastic-container @inf-1))
 
   (test "container starts in inf-1"
     (do @plastic-container :examine)
@@ -75,7 +75,7 @@
 )
 
 (test-group "floor wax"
-  :setup ((move! @player @inf-3) (move! @plastic-container @player) (move! @floor-wax @plastic-container) (set @plastic-container :open true))
+  :setup ((move @player @inf-3) (move @plastic-container @player) (move @floor-wax @plastic-container) (set @plastic-container :open true))
 
   (test "wax starts in container"
     (do @plastic-container :examine)
@@ -93,7 +93,7 @@
 )
 
 (test-group "emergency cabinet"
-  :setup ((move! @player @inf-4) (set @emergency-cabinet :rmung false) (set @emergency-cabinet :open false) (move! @axe @emergency-cabinet))
+  :setup ((move @player @inf-4) (set @emergency-cabinet :rmung false) (set @emergency-cabinet :open false) (move @axe @emergency-cabinet))
 
   (test "cabinet in inf-4"
     (do @emergency-cabinet :examine)
@@ -117,14 +117,14 @@
     (assert (outcome? blocked)))
 
   (test "can break cabinet with gloves"
-    :setup ((move! @gloves @player))
+    :setup ((move @gloves @player))
     (do @emergency-cabinet :break)
     (assert (outcome? success))
     (assert (:rmung @emergency-cabinet)))
 )
 
 (test-group "axe"
-  :setup ((move! @player @inf-4) (move! @axe @emergency-cabinet) (set @emergency-cabinet :rmung false))
+  :setup ((move @player @inf-4) (move @axe @emergency-cabinet) (set @emergency-cabinet :rmung false))
 
   (test "cannot take axe through glass"
     (do @axe :take)
@@ -138,10 +138,10 @@
 )
 
 (test-group "maintenance man combat"
-  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-3) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (move! @axe @player))
+  :setup ((move @player @inf-3) (move @floor-waxer @inf-3) (move @maintenance-man @inf-3) (set @power-cord :severed true) (move @axe @player))
 
   (test "cannot attack with hands"
-    :setup ((move! @axe @inf-1))
+    :setup ((move @axe @inf-1))
     (do @maintenance-man :attack)
     (assert (outcome? blocked)))
 
@@ -152,14 +152,14 @@
 )
 
 (test-group "loose maintenance man blocking"
-  :setup ((move! @player @inf-3) (move! @floor-waxer @inf-5) (move! @maintenance-man @inf-3) (set-prop! @power-cord severed true) (set @maintenance-man :person true))
+  :setup ((move @player @inf-3) (move @floor-waxer @inf-5) (move @maintenance-man @inf-3) (set @power-cord :severed true) (set @maintenance-man :person true))
 
   (test "loose maintenance man blocks passage"
     (go :direction east)
     (assert (outcome? blocked)))
 
   (test "can pass if floor wax present"
-    :setup ((move! @floor-wax @inf-3))
+    :setup ((move @floor-wax @inf-3))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-4)))

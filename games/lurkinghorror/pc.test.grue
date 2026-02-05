@@ -13,7 +13,7 @@
     (assert (outcome? blocked)))
 
   (test "drop PC"
-    :setup ((move! @pc @player))
+    :setup ((move @pc @player))
     (do @pc :drop)
     (assert (outcome? success))
     (assert (loc? @pc @terminal-room)))

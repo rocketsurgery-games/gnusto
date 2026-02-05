@@ -23,7 +23,7 @@
     (assert (outcome? success)))
 
   (test "when possessed - responds with Meld"
-    :setup ((set-prop! @hacker lair-cnt 7))
+    :setup ((set @hacker :lair-cnt 7))
     (do @hacker :ask-about @keys)
     (assert (outcome? success)))
 )
@@ -31,13 +31,13 @@
 (test-group "give items"
 
   (test "give snack - accepted"
-    :setup ((move! @snack @player))
+    :setup ((move @snack @player))
     (do @hacker :give @snack)
     (assert (outcome? success))
     (assert (loc? @snack @hacker)))
 
   (test "give coke - rejected"
-    :setup ((move! @coke @player))
+    :setup ((move @coke @player))
     (do @hacker :give @coke)
     (assert (outcome? blocked)))
 )

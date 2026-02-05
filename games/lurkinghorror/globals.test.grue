@@ -3,12 +3,12 @@
 ; Test: Global objects are visible from any location
 
 (test "globals are visible from terminal-room"
-  :setup ((move! @player @terminal-room))
+  :setup ((move @player @terminal-room))
   (do @me :examine)
   (assert (outcome? success)))
 
 (test "globals are visible from cs-basement"
-  :setup ((move! @player @cs-basement))
+  :setup ((move @player @cs-basement))
   (do @hands :examine)
   (assert (outcome? success)))
 
@@ -116,13 +116,13 @@
   (assert (outcome? blocked)))
 
 (test "examine snow outside"
-  :setup ((move! @player @courtyard))
+  :setup ((move @player @courtyard))
   (do @snow :examine)
   (assert (outcome? success))
   (assert (context? message "It's still coming down.")))
 
 (test "examine snow inside"
-  :setup ((move! @player @terminal-room) (set @terminal-room :outside false))
+  :setup ((move @player @terminal-room) (set @terminal-room :outside false))
   (do @snow :examine)
   (assert (outcome? success))
   (assert (context? message "You are inside.")))

@@ -4,7 +4,7 @@ Grue REPL - Execute Grue S-expressions directly.
 This REPL accepts raw Grue syntax for precise game logic validation.
 No natural language parsing - just S-expressions.
 
-Commands (meta):
+Meta:
     (look)                    - Describe current location
     (inventory)               - Show player inventory
     (state)                   - Show full game state
@@ -13,7 +13,7 @@ Commands (meta):
     (help)                    - Show this help
     (quit)                    - Exit REPL
 
-Actions:
+Game Actions (what the gameplay agent uses):
     (do TARGET :verb)                     - Perform action on target
     (do TARGET :verb ARG1 ARG2 ...)       - Action with arguments
     (go DIRECTION)                        - Move in direction
@@ -36,9 +36,14 @@ Queries (return values):
     (exits)                               - Get exits as map
     (room-description)                    - Get current room description
 
-Effects (modify state directly):
-    (move! OBJ DEST)                      - Move object
-    (set OBJ :prop VAL)                   - Set property
+Debug Effects (direct state mutation for testing/debugging):
+    (move OBJ DEST)                       - Move object to location
+    (set OBJ :prop VAL)                   - Set object property
+    (inc OBJ :prop)                       - Increment property by 1
+    (inc OBJ :prop N)                     - Increment property by N
+    (queue EVENT)                         - Queue an event
+    (dequeue EVENT)                       - Dequeue an event
+    (take OBJ)                            - Move object to player inventory
 
 Usage:
     grue-repl game.grue
@@ -219,8 +224,8 @@ class ReplEvaluator:
             "wait": self._cmd_wait,
         }
 
-        # Effect commands
-        self._effects = {"move!", "set-flag!", "clear-flag!", "set-prop!", "set!", "inc!"}
+        # Effect commands (direct state mutation for testing/debugging)
+        self._effects = {"move", "set", "inc", "queue", "dequeue", "take"}
 
     def eval(self, expr: SExpr) -> Any:
         """Evaluate an expression and return a result."""

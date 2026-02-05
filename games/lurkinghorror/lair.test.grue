@@ -4,23 +4,23 @@
 
 
 (test-group "lair maze structure"
-  :setup ((move! @floor-waxer @inf-5) (set-prop! @urchins freed true))
+  :setup ((move @floor-waxer @inf-5) (set @urchins :freed true))
 
   (test "lair-1 up exits to large-chamber"
-    :setup ((move! @player @lair-1))
+    :setup ((move @player @lair-1))
     (go :direction up)
     (assert (outcome? success))
     (assert (player-at? @large-chamber)))
 
   (test "lair-5 down exits to outer-lair"
-    :setup ((move! @player @lair-5))
+    :setup ((move @player @lair-5))
     (go :direction down)
     (assert (outcome? success))
     (assert (player-at? @outer-lair)))
 )
 
 (test-group "slime curtain"
-  :setup ((move! @player @outer-lair) (move! @slime-curtain @outer-lair) (set @curtain-door :invisible true))
+  :setup ((move @player @outer-lair) (move @slime-curtain @outer-lair) (set @curtain-door :invisible true))
 
   (test "can examine curtain"
     (do @slime-curtain :examine)
@@ -31,14 +31,14 @@
     (assert (outcome? success)))
 
   (test "nitrogen partial freeze keeps nitrogen"
-    :setup ((move! @nitrogen @flask) (set-prop! @slime-curtain nitrogen-count 0))
+    :setup ((move @nitrogen @flask) (set @slime-curtain :nitrogen-count 0))
     (do @slime-curtain :pour @nitrogen)
     (assert (outcome? success))
     (assert (in? @slime-curtain @outer-lair))  ; Curtain still there
     (assert (in? @nitrogen @flask)))            ; Nitrogen NOT consumed
 
   (test "nitrogen destroys curtain on third pour"
-    :setup ((move! @nitrogen @flask) (set-prop! @slime-curtain nitrogen-count 2))
+    :setup ((move @nitrogen @flask) (set @slime-curtain :nitrogen-count 2))
     (do @slime-curtain :pour @nitrogen)
     (assert (outcome? success))
     (assert (loc? @slime-curtain nil))    ; Curtain destroyed
@@ -46,14 +46,14 @@
 )
 
 (test-group "curtain door"
-  :setup ((move! @player @outer-lair) (move! @slime-curtain nil) (set @curtain-door :invisible false) (set @curtain-door :locked true) (set @curtain-door :open false))
+  :setup ((move @player @outer-lair) (move @slime-curtain nil) (set @curtain-door :invisible false) (set @curtain-door :locked true) (set @curtain-door :open false))
 
   (test "door starts locked"
     (do @curtain-door :open)
     (assert (outcome? blocked)))
 
   (test "master key unlocks door"
-    :setup ((move! @master-key @player))
+    :setup ((move @master-key @player))
     (do @curtain-door :unlock @master-key)
     (assert (outcome? success))
     (assert (not-flag? @curtain-door LOCKED)))
@@ -72,7 +72,7 @@
 )
 
 (test-group "inner lair mass"
-  :setup ((move! @player @inner-lair) (move! @mass @inner-lair))
+  :setup ((move @player @inner-lair) (move @mass @inner-lair))
 
   (test "can examine mass"
     (do @mass :examine)
@@ -89,7 +89,7 @@
 )
 
 (test-group "repeater puzzle"
-  :setup ((move! @player @inner-lair) (move! @repeater @inner-lair) (move! @input-cable @input-socket) (set @repeater :open false))
+  :setup ((move @player @inner-lair) (move @repeater @inner-lair) (move @input-cable @input-socket) (set @repeater :open false))
 
   (test "can examine repeater"
     (do @repeater :examine)
@@ -107,14 +107,14 @@
     (assert (loc? @input-cable @repeater)))
 
   (test "can cut output cable with axe"
-    :setup ((set @repeater :open true) (move! @axe @player))
+    :setup ((set @repeater :open true) (move @axe @player))
     (do @output-cable :cut @axe)
     (assert (outcome? success))
     (assert (:rmung @output-cable)))
 )
 
 (test-group "power line"
-  :setup ((move! @player @inner-lair) (move! @high-voltage @inner-lair) (set @high-voltage :powered false) (set @high-voltage :rmung false))
+  :setup ((move @player @inner-lair) (move @high-voltage @inner-lair) (set @high-voltage :powered false) (set @high-voltage :rmung false))
 
   (test "can take power line (pulls it up)"
     (do @high-voltage :take)
@@ -122,19 +122,19 @@
     (assert (:powered @high-voltage)))
 
   (test "need axe to cut line"
-    :setup ((set @high-voltage :powered true) (move! @high-voltage @player))
+    :setup ((set @high-voltage :powered true) (move @high-voltage @player))
     (do @high-voltage :cut @bolt-cutters)
     (assert (outcome? blocked)))
 
   (test "axe cuts line after 3 hits"
-    :setup ((set @high-voltage :powered true) (move! @high-voltage @player) (move! @axe @player) (set-prop! @high-voltage cut-count 2))
+    :setup ((set @high-voltage :powered true) (move @high-voltage @player) (move @axe @player) (set @high-voltage :cut-count 2))
     (do @high-voltage :cut @axe)
     (assert (outcome? success))
     (assert (:rmung @high-voltage)))
 )
 
 (test-group "rubber boots"
-  :setup ((move! @player @brown-basement))
+  :setup ((move @player @brown-basement))
 
   (test "boots start in brown-basement"
     (do @boots :examine)
@@ -147,14 +147,14 @@
     (assert (held? @boots)))
 
   (test "can wear boots"
-    :setup ((move! @boots @player))
+    :setup ((move @boots @player))
     (do @boots :wear)
     (assert (outcome? success))
     (assert (:wearable @boots)))
 )
 
 (test-group "frob battle"
-  :setup ((move! @player @inner-lair) (move! @frob @inner-lair) (move! @smooth-stone @player) (set-prop! @frob count 2))
+  :setup ((move @player @inner-lair) (move @frob @inner-lair) (move @smooth-stone @player) (set @frob :count 2))
 
   (test "throwing stone at frob wins"
     (do @frob :attack @smooth-stone)
@@ -163,7 +163,7 @@
     (assert (loc? @frob nil)))
 
   (test "first stone hit at stage 1"
-    :setup ((set-prop! @frob count 1))
+    :setup ((set @frob :count 1))
     (do @frob :attack @smooth-stone)
     (assert (outcome? success))
     (assert (loc? @smooth-stone nil)))

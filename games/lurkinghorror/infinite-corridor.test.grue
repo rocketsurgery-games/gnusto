@@ -7,40 +7,40 @@
 
 
 (test-group "corridor navigation east-west"
-  :setup ((move! @floor-waxer @inf-5))
+  :setup ((move @floor-waxer @inf-5))
 
   (test "inf-1 to inf-2 east"
-    :setup ((move! @player @inf-1))
+    :setup ((move @player @inf-1))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-2)))
 
   (test "inf-2 to inf-3 east"
-    :setup ((move! @player @inf-2))
+    :setup ((move @player @inf-2))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-3)))
 
   (test "inf-3 to inf-4 east"
-    :setup ((move! @player @inf-3))
+    :setup ((move @player @inf-3))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-4)))
 
   (test "inf-4 to inf-5 east"
-    :setup ((move! @player @inf-4))
+    :setup ((move @player @inf-4))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-5)))
 
   (test "inf-5 to inf-4 west"
-    :setup ((move! @player @inf-5))
+    :setup ((move @player @inf-5))
     (go :direction west)
     (assert (outcome? success))
     (assert (player-at? @inf-4)))
 
   (test "inf-2 to inf-1 west"
-    :setup ((move! @player @inf-2))
+    :setup ((move @player @inf-2))
     (go :direction west)
     (assert (outcome? success))
     (assert (player-at? @inf-1)))
@@ -50,37 +50,37 @@
   :setup ()
 
   (test "inf-1 north to aero-lobby"
-    :setup ((move! @player @inf-1))
+    :setup ((move @player @inf-1))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @aero-lobby)))
 
   (test "inf-1 south to engineering-bldg"
-    :setup ((move! @player @inf-1))
+    :setup ((move @player @inf-1))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @engineering-bldg)))
 
   (test "inf-1 west to mass-ave"
-    :setup ((move! @player @inf-1))
+    :setup ((move @player @inf-1))
     (go :direction west)
     (assert (outcome? success))
     (assert (player-at? @mass-ave)))
 
   (test "inf-3 up to great-dome"
-    :setup ((move! @player @inf-3))
+    :setup ((move @player @inf-3))
     (go :direction up)
     (assert (outcome? success))
     (assert (player-at? @great-dome)))
 
   (test "inf-5 north to nutrition-bldg"
-    :setup ((move! @player @inf-5))
+    :setup ((move @player @inf-5))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @nutrition-bldg)))
 
   (test "inf-5 south to chemistry-bldg"
-    :setup ((move! @player @inf-5))
+    :setup ((move @player @inf-5))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @chemistry-bldg)))
@@ -90,32 +90,32 @@
   :setup ()
 
   (test "engineering-bldg north to inf-1"
-    :setup ((move! @player @engineering-bldg))
+    :setup ((move @player @engineering-bldg))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @inf-1)))
 
   (test "mass-ave east to inf-1"
-    :setup ((move! @player @mass-ave))
+    :setup ((move @player @mass-ave))
     (go :direction east)
     (assert (outcome? success))
     (assert (player-at? @inf-1)))
 
   (test "nutrition-bldg south to inf-5"
-    :setup ((move! @player @nutrition-bldg))
+    :setup ((move @player @nutrition-bldg))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @inf-5)))
 
   (test "chemistry-bldg north to inf-5"
-    :setup ((move! @player @chemistry-bldg))
+    :setup ((move @player @chemistry-bldg))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @inf-5)))
 )
 
 (test-group "great court door warning"
-  :setup ((move! @player @inf-3) (set-prop! @great-court-exit-barrier warned false))
+  :setup ((move @player @inf-3) (set @great-court-exit-barrier :warned false))
 
   (test "first exit attempt warns"
     (go :direction south)
@@ -123,7 +123,7 @@
     (assert (prop? @great-court-exit-barrier warned true)))
 
   (test "second exit attempt succeeds"
-    :setup ((set-prop! @great-court-exit-barrier warned true))
+    :setup ((set @great-court-exit-barrier :warned true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @great-court)))

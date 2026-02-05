@@ -5,19 +5,19 @@
 
 
 (test "cs-basement connects to temporary-basement east"
-  :setup ((move! @player @cs-basement))
+  :setup ((move @player @cs-basement))
   (go :direction east)
   (assert (outcome? success))
   (assert (player-at? @temporary-basement)))
 
 (test "cs-basement connects to aero-basement west"
-  :setup ((move! @player @cs-basement))
+  :setup ((move @player @cs-basement))
   (go :direction west)
   (assert (outcome? success))
   (assert (player-at? @aero-basement)))
 
 (test "temporary-basement connects to dead-storage east"
-  :setup ((move! @player @temporary-basement))
+  :setup ((move @player @temporary-basement))
   (go :direction east)
   (assert (outcome? success))
   (assert (player-at? @dead-storage)))
@@ -28,12 +28,12 @@
   (assert (loc? @crowbar @temporary-basement)))
 
 (test "cannot go east from dead-storage initially - junk blocks"
-  :setup ((move! @player @dead-storage) (set-prop! @junk moved 0))
+  :setup ((move @player @dead-storage) (set @junk :moved 0))
   (go :direction east)
   (assert (outcome? blocked)))
 
 (test "junk cannot be moved by hand"
-  :setup ((move! @player @dead-storage))
+  :setup ((move @player @dead-storage))
   (do @junk :move)
   (assert (outcome? blocked)))
 
@@ -43,18 +43,18 @@
   (assert (loc? @forklift @aero-basement)))
 
 (test "forklift must be turned on to move junk"
-  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (set @forklift :powered false) (set-prop! @junk moved 0))
+  :setup ((move @forklift @dead-storage) (move @player @forklift) (set @forklift :powered false) (set @junk :moved 0))
   (do @forklift :use @junk)
   (assert (outcome? blocked)))
 
 (test "forklift can move junk when running"
-  :setup ((move! @forklift @dead-storage) (move! @player @forklift) (set @forklift :powered true) (set-prop! @junk moved 0))
+  :setup ((move @forklift @dead-storage) (move @player @forklift) (set @forklift :powered true) (set @junk :moved 0))
   (do @forklift :use @junk)
   (assert (outcome? success))
   (assert (prop? @junk moved 1)))
 
 (test "can reach storage-room after clearing junk"
-  :setup ((move! @player @dead-storage) (set-prop! @junk moved 4))
+  :setup ((move @player @dead-storage) (set @junk :moved 4))
   (go :direction east)
   (assert (outcome? success))
   (assert (player-at? @storage-room)))
@@ -65,64 +65,64 @@
   (assert (loc? @manhole-cover @manhole)))
 
 (test "cannot take manhole cover - too heavy"
-  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole))
+  :setup ((move @player @storage-room) (move @manhole-cover @manhole))
   (do @manhole-cover :take)
   (assert (outcome? blocked)))
 
 (test "cannot go down through covered manhole"
-  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole))
+  :setup ((move @player @storage-room) (move @manhole-cover @manhole))
   (go :direction down)
   (assert (outcome? blocked)))
 
 (test "can pry manhole cover with crowbar"
-  :setup ((move! @player @storage-room) (move! @manhole-cover @manhole) (move! @crowbar @player))
+  :setup ((move @player @storage-room) (move @manhole-cover @manhole) (move @crowbar @player))
   (do @manhole-cover :pry @crowbar)
   (assert (outcome? success))
   (assert (loc? @manhole-cover @storage-room)))
 
 (test "can go down after prying manhole open"
-  :setup ((move! @player @storage-room) (move! @manhole-cover @storage-room))
+  :setup ((move @player @storage-room) (move @manhole-cover @storage-room))
   (go :direction down)
   (assert (outcome? success)))
 
 (test "can close manhole by putting cover back"
-  :setup ((move! @player @storage-room) (move! @manhole-cover @storage-room))
+  :setup ((move @player @storage-room) (move @manhole-cover @storage-room))
   (do @manhole :close)
   (assert (outcome? success))
   (assert (loc? @manhole-cover @manhole)))
 
 (test "can enter forklift"
-  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement))
+  :setup ((move @forklift @aero-basement) (move @player @aero-basement))
   (do @forklift :enter)
   (assert (outcome? success))
   (assert (player-at? @forklift)))
 
 (test "can exit forklift"
-  :setup ((move! @forklift @aero-basement) (move! @player @forklift))
+  :setup ((move @forklift @aero-basement) (move @player @forklift))
   (do @forklift :exit)
   (assert (outcome? success))
   (assert (player-at? @aero-basement)))
 
 (test "can turn on forklift when aboard"
-  :setup ((move! @forklift @aero-basement) (move! @player @forklift) (set @forklift :powered false))
+  :setup ((move @forklift @aero-basement) (move @player @forklift) (set @forklift :powered false))
   (do @forklift :turn-on)
   (assert (outcome? success))
   (assert (:powered @forklift)))
 
 (test "cannot turn on forklift when not aboard"
-  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (set @forklift :powered false))
+  :setup ((move @forklift @aero-basement) (move @player @aero-basement) (set @forklift :powered false))
   (do @forklift :turn-on)
   (assert (outcome? blocked)))
 
 (test "can drive forklift east"
-  :setup ((move! @forklift @aero-basement) (move! @player @forklift))
+  :setup ((move @forklift @aero-basement) (move @player @forklift))
   (go :direction east)
   (assert (outcome? success))
   (assert (loc? @forklift @cs-basement))  ; aero-basement -> cs-basement
   (assert (in? @player @forklift)))
 
 (test "forklift full puzzle from start"
-  :setup ((move! @forklift @aero-basement) (move! @player @aero-basement) (set @forklift :powered false) (set-prop! @junk moved 0))
+  :setup ((move @forklift @aero-basement) (move @player @aero-basement) (set @forklift :powered false) (set @junk :moved 0))
   ; Enter forklift
   (do @forklift :enter)
   (assert (in? @player @forklift))

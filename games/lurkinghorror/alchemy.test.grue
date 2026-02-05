@@ -10,31 +10,31 @@
 (test-group "room connectivity"
 
   (test "inf-5 connects to chemistry-bldg"
-    :setup ((move! @player @inf-5))
+    :setup ((move @player @inf-5))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @chemistry-bldg)))
 
   (test "chemistry-bldg connects to inf-5"
-    :setup ((move! @player @chemistry-bldg))
+    :setup ((move @player @chemistry-bldg))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @inf-5)))
 
   (test "alchemy-dept connects to alchemy-lab when door open"
-    :setup ((move! @player @alchemy-dept) (move! @professor nil) (set-prop! @professor dead true))
+    :setup ((move @player @alchemy-dept) (move @professor nil) (set @professor :dead true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab)))
 
   (test "under-alchemy-lab connects to brick-tunnel"
-    :setup ((move! @player @under-alchemy-lab))
+    :setup ((move @player @under-alchemy-lab))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @brick-tunnel)))
 
   (test "brick-tunnel connects back to under-alchemy-lab"
-    :setup ((move! @player @brick-tunnel))
+    :setup ((move @player @brick-tunnel))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @under-alchemy-lab)))
@@ -43,28 +43,28 @@
 (test-group "alchemy door mechanics"
 
   (test "door is locked by default"
-    :setup ((move! @player @chemistry-bldg))
+    :setup ((move @player @chemistry-bldg))
     (go :direction south)
     (assert (outcome? blocked)))
 
   (test "can read department of alchemy on door"
-    :setup ((move! @player @chemistry-bldg))
+    :setup ((move @player @chemistry-bldg))
     (do @alchemy-door :read)
     (assert (outcome? success)))
 
   (test "can examine door from chemistry bldg"
-    :setup ((move! @player @chemistry-bldg))
+    :setup ((move @player @chemistry-bldg))
     (do @alchemy-door :examine)
     (assert (outcome? success)))
 
   (test "wrong key doesn't work"
-    :setup ((move! @player @chemistry-bldg) (move! @key-1 @player))
+    :setup ((move @player @chemistry-bldg) (move @key-1 @player))
     (do @alchemy-door :unlock @key-1)
     (assert (outcome? blocked)))
 )
 
 (test "knock on door"
-  :setup ((move! @player @chemistry-bldg) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor visited false))
+  :setup ((move @player @chemistry-bldg) (move @professor @alchemy-dept) (set @professor :dead false) (set @professor :visited false))
   (do @alchemy-door :knock)
   (assert (outcome? success))
   (assert (queued? answer-door))
@@ -79,36 +79,36 @@
 (test-group "professor interactions"
 
   (test "can examine professor"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (set @professor :dead false))
     (do @professor :examine)
     (assert (outcome? success)))
 
   (test "professor blocks lab entry without note"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (set @professor :dead false) (set @professor :seen-note false))
     (go :direction south)
     (assert (outcome? blocked)))
 
   (test "showing note to professor sets flag"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (move! @note @player) (set-prop! @professor dead false) (set-prop! @professor seen-note false))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (move @note @player) (set @professor :dead false) (set @professor :seen-note false))
     (do @professor :show @note)
     (assert (outcome? success))
     (assert (prop? @professor seen-note true))
     (assert (prop? @professor mad true)))
 
   (test "professor allows lab entry after seeing note"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor seen-note true))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (set @professor :dead false) (set @professor :seen-note true))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab))
     (assert (loc? @professor @alchemy-lab)))
 
   (test "can ask professor about lovecraft computer"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (set @professor :dead false))
     (do @professor :ask @lovecraft)
     (assert (outcome? success)))
 
   (test "attacking professor makes him mad"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept) (set-prop! @professor dead false) (set-prop! @professor mad false))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept) (set @professor :dead false) (set @professor :mad false))
     (do @professor :attack nil)
     (assert (outcome? success))
     (assert (prop? @professor mad true)))
@@ -117,12 +117,12 @@
 (test-group "sign-up sheet"
 
   (test "can examine sign-up sheet"
-    :setup ((move! @player @alchemy-dept))
+    :setup ((move @player @alchemy-dept))
     (do @signup :examine)
     (assert (outcome? success)))
 
   (test "can't take sign-up sheet when professor present"
-    :setup ((move! @player @alchemy-dept) (move! @professor @alchemy-dept))
+    :setup ((move @player @alchemy-dept) (move @professor @alchemy-dept))
     (do @signup :take)
     (assert (outcome? blocked)))
 )
@@ -130,45 +130,45 @@
 (test-group "lab bench and trapdoor"
 
   (test "can examine lab bench"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @professor dead true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @professor :dead true))
     (do @lab-bench :examine)
     (assert (outcome? success)))
 
   (test "can look under lab bench"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved false))
     (do @lab-bench :look-under)
     (assert (outcome? success)))
 
   (test "moving bench reveals trapdoor"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved false))
     (do @lab-bench :move)
     (assert (outcome? success))
     (assert (prop? @lab-bench moved true)))
 
   (test "can't go down without moving bench"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved false))
     (go :direction down)
     (assert (outcome? blocked)))
 
   (test "can't go down with closed trapdoor"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved true) (set @alchemy-trap-door :open false))
     (go :direction down)
     (assert (outcome? blocked)))
 
   (test "can open trapdoor after moving bench"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved true) (set @alchemy-trap-door :open false))
     (do @alchemy-trap-door :open)
     (assert (outcome? success))
     (assert (:open @alchemy-trap-door)))
 
   (test "can go down through open trapdoor"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lab-bench :moved true) (set @alchemy-trap-door :open true))
     (go :direction down)
     (assert (outcome? success))
     (assert (player-at? @under-alchemy-lab)))
 
   (test "can go up through open trapdoor"
-    :setup ((move! @player @under-alchemy-lab) (set-prop! @lab-bench moved true) (set @alchemy-trap-door :open true))
+    :setup ((move @player @under-alchemy-lab) (set @lab-bench :moved true) (set @alchemy-trap-door :open true))
     (go :direction up)
     (assert (outcome? success))
     (assert (player-at? @alchemy-lab)))
@@ -177,27 +177,27 @@
 (test-group "vat and elixir"
 
   (test "can examine vat"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @vat :examine)
     (assert (outcome? success)))
 
   (test "can read vat label"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @vat :read)
     (assert (outcome? success)))
 
   (test "can examine elixir"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @elixir :examine)
     (assert (outcome? success)))
 
   (test "can't take elixir"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @elixir :take)
     (assert (outcome? blocked)))
 
   (test "can't drink elixir"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @elixir :drink)
     (assert (outcome? blocked)))
 )
@@ -205,35 +205,35 @@
 (test-group "pentagram"
 
   (test "can examine pentagram"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @pentagram :examine)
     (assert (outcome? success)))
 
   (test "can enter pentagram"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @professor ritual-stage 0))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @professor :ritual-stage 0))
     (do @pentagram :enter)
     (assert (outcome? success))
     (assert (loc? @player @pentagram)))
 
   (test "can exit pentagram when not tied up"
-    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 0))
+    :setup ((move @player @pentagram) (set @professor :ritual-stage 0))
     (do @pentagram :exit)
     (assert (outcome? success))
     (assert (loc? @player @alchemy-lab)))
 
   (test "can't exit pentagram when tied up without scuffing"
-    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 3) (set @pentagram :rmung false))
+    :setup ((move @player @pentagram) (set @professor :ritual-stage 3) (set @pentagram :rmung false))
     (do @pentagram :exit)
     (assert (outcome? blocked)))
 
   (test "can scuff pentagram with knife"
-    :setup ((move! @player @pentagram) (move! @knife @player) (set-prop! @professor ritual-stage 3) (set @pentagram :rmung false))
+    :setup ((move @player @pentagram) (move @knife @player) (set @professor :ritual-stage 3) (set @pentagram :rmung false))
     (do @pentagram :rub @knife)
     (assert (outcome? success))
     (assert (:rmung @pentagram)))
 
   (test "can exit pentagram after scuffing"
-    :setup ((move! @player @pentagram) (set-prop! @professor ritual-stage 3) (set @pentagram :rmung true))
+    :setup ((move @player @pentagram) (set @professor :ritual-stage 3) (set @pentagram :rmung true))
     (do @pentagram :exit)
     (assert (outcome? success))
     (assert (loc? @player @alchemy-lab)))
@@ -242,30 +242,30 @@
 (test-group "flask and nitrogen"
 
   (test "flask is in temporary-lab"
-    :setup ((move! @player @temporary-lab))
+    :setup ((move @player @temporary-lab))
     (do @flask :examine)
     (assert (outcome? success))
     (assert (loc? @flask @temporary-lab)))
 
   (test "nitrogen is in flask"
-    :setup ((move! @player @temporary-lab))
+    :setup ((move @player @temporary-lab))
     (do @nitrogen :examine)
     (assert (outcome? success))
     (assert (loc? @nitrogen @flask)))
 
   (test "can take flask"
-    :setup ((move! @player @temporary-lab))
+    :setup ((move @player @temporary-lab))
     (do @flask :take)
     (assert (outcome? success))
     (assert (held? @flask)))
 
   (test "can't take nitrogen directly"
-    :setup ((move! @player @temporary-lab))
+    :setup ((move @player @temporary-lab))
     (do @nitrogen :take)
     (assert (outcome? blocked)))
 
   (test "opening flask creates mist"
-    :setup ((move! @player @temporary-lab) (set @flask :open false) (move! @nitrogen @flask))
+    :setup ((move @player @temporary-lab) (set @flask :open false) (move @nitrogen @flask))
     (do @flask :open)
     (assert (outcome? success))
     (assert (:open @flask))
@@ -273,7 +273,7 @@
     (assert (queued? nitrogen-evaporates)))
 
   (test "closing flask schedules mist dissipation"
-    :setup ((move! @player @temporary-lab) (set @flask :open true) (queue! nitrogen-evaporates))
+    :setup ((move @player @temporary-lab) (set @flask :open true) (queue nitrogen-evaporates))
     (do @flask :close)
     (assert (outcome? success))
     (assert (not-queued? nitrogen-evaporates))
@@ -283,24 +283,24 @@
 (test-group "lovecraft computer"
 
   (test "can examine lovecraft"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @lovecraft :examine)
     (assert (outcome? success)))
 
   (test "can read lovecraft"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true))
     (do @lovecraft :read)
     (assert (outcome? success)))
 
   (test "can turn on lovecraft"
-    :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lovecraft :powered false))
+    :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @lovecraft :powered false))
     (do @lovecraft :turn-on)
     (assert (outcome? success))
     (assert (:powered @lovecraft)))
 )
 
 (test "dip hand in vat"
-  :setup ((move! @player @alchemy-lab) (set @alchemy-lab :lit true) (set-prop! @professor dead true) (move! @mummified-hand @player) (set @mummified-hand :person false) (set-prop! @mummified-hand animation-count 0))
+  :setup ((move @player @alchemy-lab) (set @alchemy-lab :lit true) (set @professor :dead true) (move @mummified-hand @player) (set @mummified-hand :person false) (set @mummified-hand :animation-count 0))
   (do @vat :put @mummified-hand)
   (assert (outcome? success))
   (assert (loc? @mummified-hand @vat))
@@ -318,7 +318,7 @@
   (assert (:person @mummified-hand)))
 
 (test-group "ring basics"
-  :setup ((move! @player @alchemy-dept) (move! @ring @player) (set @gloves :wearable false))
+  :setup ((move @player @alchemy-dept) (move @ring @player) (set @gloves :wearable false))
 
   (test "can examine ring"
     (do @ring :examine)
@@ -347,7 +347,7 @@
 )
 
 (test-group "ring on hand puzzle"
-  :setup ((move! @player @alchemy-lab) (move! @ring @player) (move! @mummified-hand @player))
+  :setup ((move @player @alchemy-lab) (move @ring @player) (move @mummified-hand @player))
 
   (test "can't put ring on mummified hand"
     :setup ((set @mummified-hand :person false))
@@ -368,14 +368,14 @@
 )
 
 (test-group "animated hand behaviors"
-  :setup ((move! @player @alchemy-lab) (move! @mummified-hand @player) (set @mummified-hand :person true))
+  :setup ((move @player @alchemy-lab) (move @mummified-hand @player) (set @mummified-hand :person true))
 
   (test "examine animated hand"
     (do @mummified-hand :examine)
     (assert (outcome? success)))
 
   (test "examine animated hand shows ring"
-    :setup ((move! @ring @mummified-hand))
+    :setup ((move @ring @mummified-hand))
     (do @mummified-hand :examine)
     (assert (outcome? success)))
 
@@ -388,45 +388,45 @@
     (assert (outcome? success)))
 
   (test "give item to animated hand"
-    :setup ((move! @knife @player))
+    :setup ((move @knife @player))
     (do @mummified-hand :give @knife)
     (assert (outcome? success)))
 )
 
 (test-group "mummified hand behaviors"
-  :setup ((move! @player @alchemy-lab) (move! @mummified-hand @player) (set @mummified-hand :person false))
+  :setup ((move @player @alchemy-lab) (move @mummified-hand @player) (set @mummified-hand :person false))
 
   (test "rub mummified hand - cold"
     (do @mummified-hand :rub)
     (assert (outcome? success)))
 
   (test "give to mummified hand blocked"
-    :setup ((move! @knife @player))
+    :setup ((move @knife @player))
     (do @mummified-hand :give @knife)
     (assert (outcome? blocked)))
 )
 
 (test-group "professor ritual event"
-  :setup ((set-prop! @professor dead false)
-          (move! @professor @alchemy-lab)
-          (move! @ring @professor)
-          (set-prop! @professor ritual-stage 7)
-          (queue! professor-ritual))
+  :setup ((set @professor :dead false)
+          (move @professor @alchemy-lab)
+          (move @ring @professor)
+          (set @professor :ritual-stage 7)
+          (queue professor-ritual))
 
   (test "escape survival moves ring to alchemy-lab"
-    :setup ((move! @player @under-alchemy-lab))  ; Escaped through trapdoor
+    :setup ((move @player @under-alchemy-lab))  ; Escaped through trapdoor
     (wait)
     (assert (:dead @professor))
     (assert (loc? @professor nil))
     (assert (loc? @ring @alchemy-lab)))  ; Ring drops to floor
 
   (test "player in lab dies"
-    :setup ((move! @player @alchemy-lab))
+    :setup ((move @player @alchemy-lab))
     (wait)
     (assert (death? true)))
 
   (test "player in pentagram dies"
-    :setup ((move! @player @pentagram))
+    :setup ((move @player @pentagram))
     (wait)
     (assert (outcome? blocked)))
 )

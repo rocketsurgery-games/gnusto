@@ -4,47 +4,47 @@
 
 
 (test "tunnel-entrance connects west to muddy-tunnel"
-  :setup ((move! @player @tunnel-entrance))
+  :setup ((move @player @tunnel-entrance))
   (go :direction west)
   (assert (outcome? success))
   (assert (player-at? @muddy-tunnel)))
 
 (test "tunnel-entrance connects down to muddy-tunnel"
-  :setup ((move! @player @tunnel-entrance))
+  :setup ((move @player @tunnel-entrance))
   (go :direction down)
   (assert (outcome? success))
   (assert (player-at? @muddy-tunnel)))
 
 (test "muddy-tunnel connects up to tunnel-entrance"
-  :setup ((move! @player @muddy-tunnel))
+  :setup ((move @player @muddy-tunnel))
   (go :direction up)
   (assert (outcome? success))
   (assert (player-at? @tunnel-entrance)))
 
 (test "muddy-tunnel connects down to large-chamber"
-  :setup ((move! @player @muddy-tunnel))
+  :setup ((move @player @muddy-tunnel))
   (go :direction down)
   (assert (outcome? success))
   (assert (player-at? @large-chamber)))
 
 (test "large-chamber connects up to muddy-tunnel"
-  :setup ((move! @player @large-chamber))
+  :setup ((move @player @large-chamber))
   (go :direction up)
   (assert (outcome? success))
   (assert (player-at? @muddy-tunnel)))
 
 (test "slots can be examined"
-  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  :setup ((move @player @large-chamber) (move @urchins @slots))
   (do @slots :examine)
   (assert (outcome? success)))
 
 (test "entering slots is creepy"
-  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  :setup ((move @player @large-chamber) (move @urchins @slots))
   (do @slots :enter)
   (assert (outcome? success)))
 
 (test "listening to slots reveals chanting"
-  :setup ((move! @player @large-chamber) (move! @urchins @slots))
+  :setup ((move @player @large-chamber) (move @urchins @slots))
   (do @slots :listen)
   (assert (outcome? success)))
 
@@ -54,34 +54,34 @@
   (assert (in? @urchins @slots)))
 
 (test "urchins block passage down when not freed"
-  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set-prop! @urchins freed false))
+  :setup ((move @player @large-chamber) (move @urchins @large-chamber) (set @urchins :freed false))
   (go :direction down)
   (assert (outcome? blocked)))
 
 (test "urchins can be examined"
-  :setup ((move! @player @large-chamber) (move! @urchins @large-chamber) (set @urchins :invisible false))
+  :setup ((move @player @large-chamber) (move @urchins @large-chamber) (set @urchins :invisible false))
   (do @urchins :examine)
   (assert (outcome? success)))
 
 (test "wire can be examined"
-  :setup ((move! @player @large-chamber))
+  :setup ((move @player @large-chamber))
   (do @urchin-wire :examine)
   (assert (outcome? success)))
 
 (test "cutting wire with wrong tool doesn't cut"
-  :setup ((move! @player @large-chamber) (move! @crowbar @player))
+  :setup ((move @player @large-chamber) (move @crowbar @player))
   (do @urchin-wire :cut @crowbar)
   (assert (outcome? success))
   (assert (loc? @urchin-wire @large-chamber)))
 
 (test "cutting wire with bolt cutters frees urchins"
-  :setup ((move! @player @large-chamber) (move! @bolt-cutters @player) (move! @urchins @slots) (set-prop! @urchins freed false))
+  :setup ((move @player @large-chamber) (move @bolt-cutters @player) (move @urchins @slots) (set @urchins :freed false))
   (do @urchin-wire :cut @bolt-cutters)
   (assert (outcome? success))
   (assert (prop? @urchins freed true)))
 
 (test "after cutting wire can pass through to lair"
-  :setup ((move! @player @large-chamber) (set-prop! @urchins freed true))
+  :setup ((move @player @large-chamber) (set @urchins :freed true))
   (go :direction down)
   (assert (outcome? success))
   (assert (player-at? @lair-1)))
@@ -92,17 +92,17 @@
   (assert (loc? @urchin @aero-lobby)))
 
 (test "urchin can be examined"
-  :setup ((move! @player @aero-lobby))
+  :setup ((move @player @aero-lobby))
   (do @urchin :examine)
   (assert (outcome? success)))
 
 (test "urchin can be talked to"
-  :setup ((move! @player @aero-lobby))
+  :setup ((move @player @aero-lobby))
   (do @urchin :talk-to)
   (assert (outcome? success)))
 
 (test "urchin smells damp"
-  :setup ((move! @player @aero-lobby))
+  :setup ((move @player @aero-lobby))
   (do @urchin :smell)
   (assert (outcome? success)))
 
@@ -113,39 +113,39 @@
   (assert (loc? @bolt-cutters @urchin)))
 
 (test "showing twitching hand to urchin drops bolt cutters"
-  :setup ((move! @player @aero-lobby) (move! @mummified-hand @player) (set @mummified-hand :person true))
+  :setup ((move @player @aero-lobby) (move @mummified-hand @player) (set @mummified-hand :person true))
   (do @urchin :give @mummified-hand)
   (assert (outcome? success))
   (assert (no-flag? @bolt-cutters invisible))
   (assert (loc? @bolt-cutters @aero-lobby)))
 
 (test "giving non-hand item to urchin is refused"
-  :setup ((move! @player @aero-lobby) (move! @flashlight @player))
+  :setup ((move @player @aero-lobby) (move @flashlight @player))
   (do @urchin :give @flashlight)
   (assert (outcome? success))
   (assert (loc? @urchin @aero-lobby)))
 
 (test "examining urchin clothes"
-  :setup ((move! @player @aero-lobby))
+  :setup ((move @player @aero-lobby))
   (do @urchin-clothes :examine)
   (assert (outcome? success)))
 
 (test "cannot take urchin clothes"
-  :setup ((move! @player @aero-lobby))
+  :setup ((move @player @aero-lobby))
   (do @urchin-clothes :take)
   (assert (outcome? blocked)))
 
 (test "cannot examine slots from terminal-room"
-  :setup ((move! @player @terminal-room))
+  :setup ((move @player @terminal-room))
   (do @slots :examine)
   (assert (outcome? blocked)))
 
 (test "cannot examine urchin from large-chamber"
-  :setup ((move! @player @large-chamber))
+  :setup ((move @player @large-chamber))
   (do @urchin :examine)
   (assert (outcome? blocked)))
 
 (test "can examine slots from large-chamber"
-  :setup ((move! @player @large-chamber))
+  :setup ((move @player @large-chamber))
   (do @slots :examine)
   (assert (outcome? success)))

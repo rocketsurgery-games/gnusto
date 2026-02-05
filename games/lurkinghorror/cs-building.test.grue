@@ -4,40 +4,40 @@
 
 
 (test-group "cs building navigation"
-  :setup ((move! @player @comp-center))
+  :setup ((move @player @comp-center))
 
   (test "can go up from lobby to second floor"
     (go :direction up)
     (assert (loc? @player @cs-2nd)))
 
   (test "can go down from second floor to lobby"
-    :setup ((move! @player @cs-2nd))
+    :setup ((move @player @cs-2nd))
     (go :direction down)
     (assert (loc? @player @comp-center)))
 
   (test "can go up from second floor to third floor"
-    :setup ((move! @player @cs-2nd))
+    :setup ((move @player @cs-2nd))
     (go :direction up)
     (assert (loc? @player @cs-3rd)))
 
   (test "can go down from third floor to second floor"
-    :setup ((move! @player @cs-3rd))
+    :setup ((move @player @cs-3rd))
     (go :direction down)
     (assert (loc? @player @cs-2nd)))
 
   (test "can go up from third floor to roof"
-    :setup ((move! @player @cs-3rd))
+    :setup ((move @player @cs-3rd))
     (go :direction up)
     (assert (loc? @player @cs-roof)))
 
   (test "can go down from roof to third floor"
-    :setup ((move! @player @cs-roof))
+    :setup ((move @player @cs-roof))
     (go :direction down)
     (assert (loc? @player @cs-3rd)))
 )
 
 (test-group "glass wall blocks north on third floor"
-  :setup ((move! @player @cs-3rd))
+  :setup ((move @player @cs-3rd))
 
   (test "cannot go north through glass wall"
     (go :direction north)
@@ -46,7 +46,7 @@
 )
 
 (test-group "smith street navigation"
-  :setup ((move! @player @smith-st))
+  :setup ((move @player @smith-st))
 
   (test "can go south into comp center"
     (go :direction south)
@@ -63,7 +63,7 @@
 )
 
 (test-group "smith street 2 navigation"
-  :setup ((move! @player @smith-st-2))
+  :setup ((move @player @smith-st-2))
 
   (test "can go west to smith-st"
     (go :direction west)
@@ -76,7 +76,7 @@
 )
 
 (test-group "freezing event"
-  :setup ((move! @player @smith-st) (set-prop! @player freeze-count 0) (queue! freezing))
+  :setup ((move @player @smith-st) (set @player :freeze-count 0) (queue freezing))
 
   (test "freezing advances when outside"
     (wait)
@@ -84,12 +84,12 @@
     (assert (> (:freeze-count @player) 0)))
 
   (test "freezing dequeues when player goes inside then events process"
-    :setup ((move! @player @smith-st) (set-prop! @player freeze-count 2) (queue! freezing 0))
+    :setup ((move @player @smith-st) (set @player :freeze-count 2) (queue freezing 0))
     (go :direction south)
     (assert (loc? @player @comp-center)))
 
   (test "freezing event dequeues when player is inside"
-    :setup ((move! @player @comp-center) (set-prop! @player freeze-count 2) (queue! freezing 0))
+    :setup ((move @player @comp-center) (set @player :freeze-count 2) (queue freezing 0))
     (wait)
     (assert (= (:freeze-count @player) 0))
     (assert (not (queued? freezing))))

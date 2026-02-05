@@ -52,13 +52,13 @@
 
 ; Button setters - update the list at a specific index
 (defn set-go-button! (?floor ?val)
-  (set-prop! @cs-elevator-room go-buttons (list-set (:go-buttons @cs-elevator-room) ?floor ?val)))
+  (set @cs-elevator-room :go-buttons (list-set (:go-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn set-up-button! (?floor ?val)
-  (set-prop! @cs-elevator-room up-buttons (list-set (:up-buttons @cs-elevator-room) ?floor ?val)))
+  (set @cs-elevator-room :up-buttons (list-set (:up-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn set-down-button! (?floor ?val)
-  (set-prop! @cs-elevator-room down-buttons (list-set (:down-buttons @cs-elevator-room) ?floor ?val)))
+  (set @cs-elevator-room :down-buttons (list-set (:down-buttons @cs-elevator-room) ?floor ?val)))
 
 (defn clear-all-buttons-at! (?floor)
   "Clear all button presses for a floor"
@@ -88,10 +88,10 @@
   (cond
     ; At basement - can only go up
     ((= (:floor @cs-elevator-room) 0)
-      (set-prop! @cs-elevator-room direction 1))
+      (set @cs-elevator-room :direction 1))
     ; At top floor - can only go down
     ((= (:floor @cs-elevator-room) 3)
-      (set-prop! @cs-elevator-room direction -1))
+      (set @cs-elevator-room :direction -1))
     ; In middle - check if there are calls in current direction
     (true
       (cond
@@ -99,16 +99,16 @@
         ((= (:direction @cs-elevator-room) -1)
           (cond
             ((and (= (:floor @cs-elevator-room) 1) (not (any-button-pressed? 0)))
-              (set-prop! @cs-elevator-room direction 1))
+              (set @cs-elevator-room :direction 1))
             ((and (= (:floor @cs-elevator-room) 2) (not (any-button-pressed? 0)) (not (any-button-pressed? 1)))
-              (set-prop! @cs-elevator-room direction 1))))
+              (set @cs-elevator-room :direction 1))))
         ; Going up, check if we should reverse
         ((= (:direction @cs-elevator-room) 1)
           (cond
             ((and (= (:floor @cs-elevator-room) 2) (not (any-button-pressed? 3)))
-              (set-prop! @cs-elevator-room direction -1))
+              (set @cs-elevator-room :direction -1))
             ((and (= (:floor @cs-elevator-room) 1) (not (any-button-pressed? 2)) (not (any-button-pressed? 3)))
-              (set-prop! @cs-elevator-room direction -1))))))))
+              (set @cs-elevator-room :direction -1))))))))
 
 ; === Elevator Room ===
 (room @cs-elevator-room

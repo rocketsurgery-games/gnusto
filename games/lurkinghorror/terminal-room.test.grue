@@ -17,7 +17,7 @@
     (assert (player-at? @cs-2nd)))
 
   (test "can exit out without carrying anything"
-    :setup ((move! @player @terminal-room))
+    :setup ((move @player @terminal-room))
     (go :direction out)
     (assert (outcome? success))
     (assert (player-at? @cs-2nd)))
@@ -26,22 +26,22 @@
 (test-group "blocked when carrying tech property"
 
   (test "blocked when carrying PC - south"
-    :setup ((move! @pc @player))
+    :setup ((move @pc @player))
     (go :direction south)
     (assert (outcome? blocked)))
 
   (test "blocked when carrying PC - out"
-    :setup ((move! @pc @player))
+    :setup ((move @pc @player))
     (go :direction out)
     (assert (outcome? blocked)))
 
   (test "blocked when carrying chair - south"
-    :setup ((move! @chair @player))
+    :setup ((move @chair @player))
     (go :direction south)
     (assert (outcome? blocked)))
 
   (test "can leave after putting PC back"
-    :setup ((move! @pc @player) (move! @pc @terminal-room))
+    :setup ((move @pc @player) (move @pc @terminal-room))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @cs-2nd)))
@@ -73,31 +73,31 @@
     (assert (prop? @hacker help-stage 0)))
 
   (test "event fires in terminal room"
-    :setup ((queue! hacker-helps) (set-prop! @hacker help-stage 0))
+    :setup ((queue hacker-helps) (set @hacker :help-stage 0))
     (wait)
     (assert (outcome? success))
     (assert (context? stage 1))
     (assert (prop? @hacker help-stage 1)))
 
   (test "event doesn't fire outside terminal room"
-    :setup ((queue! hacker-helps) (set-prop! @hacker help-stage 0) (move! @player @cs-2nd))
+    :setup ((queue hacker-helps) (set @hacker :help-stage 0) (move @player @cs-2nd))
     (wait)
     (assert (prop? @hacker help-stage 0)))
 
   (test "asking for help when already helping"
-    :setup ((queue! hacker-helps))
+    :setup ((queue hacker-helps))
     (do @hacker :help)
     (assert (outcome? success))
     (assert (queued? hacker-helps)))
 
   (test "asking for help when already helped"
-    :setup ((set-prop! @hacker help-stage 3))
+    :setup ((set @hacker :help-stage 3))
     (do @hacker :help)
     (assert (outcome? success)))
 )
 
 (test "hacker-helps full 4-stage sequence"
-  :setup ((queue! hacker-helps) (set-prop! @hacker help-stage 0))
+  :setup ((queue hacker-helps) (set @hacker :help-stage 0))
   (wait)
   (assert (outcome? success))
   (assert (context? stage 1))
@@ -120,7 +120,7 @@
   (assert (loc? @hacker @terminal-room)))
 
 (test-group "hacker blocks PC actions during help"
-  :setup ((queue! hacker-helps))
+  :setup ((queue hacker-helps))
 
   (test "can't turn off PC"
     :setup ((set @pc :powered true))
@@ -137,7 +137,7 @@
     (assert (context? blocker @hacker)))
 
   (test "can't rub more-box"
-    :setup ((move! @more-box @pc))
+    :setup ((move @more-box @pc))
     (do @more-box :rub)
     (assert (outcome? blocked)))
 
@@ -147,7 +147,7 @@
 )
 
 (test "nightmare wake-up via lurker sequence"
-  :setup ((move! @player @platform-room) (move! @smooth-stone @platform-room) (set @smooth-stone :touched false) (set-prop! @lurker count 0))
+  :setup ((move @player @platform-room) (move @smooth-stone @platform-room) (set @smooth-stone :touched false) (set @lurker :count 0))
   (do @smooth-stone :take)
   (assert (outcome? success))
   (assert (held? @smooth-stone))
@@ -169,7 +169,7 @@
 (test-group "nightmare wake-up"
 
   (test "entering from cs-2nd does not trigger wake-up"
-    :setup ((move! @player @cs-2nd))
+    :setup ((move @player @cs-2nd))
     (go :direction north)
     (assert (outcome? success))
     (assert (player-at? @terminal-room))
@@ -177,7 +177,7 @@
 )
 
 (test-group "compulsion blocking"
-  :setup ((queue! compulsion))
+  :setup ((queue compulsion))
 
   (test "blocks unrelated actions"
     (do @chair :examine)
@@ -186,12 +186,12 @@
     (assert (context? forced-target @more-box)))
 
   (test "allows click on more-box"
-    :setup ((move! @more-box @pc) (set-prop! @odd-paper read-page true))
+    :setup ((move @more-box @pc) (set @odd-paper :read-page true))
     (do @more-box :click)
     (assert (outcome? success)))
 
   (test "allows read odd-paper"
-    :setup ((move! @odd-paper @pc))
+    :setup ((move @odd-paper @pc))
     (do @odd-paper :read)
     (assert (outcome? success)))
 )
@@ -199,7 +199,7 @@
 (test-group "compulsion event"
 
   (test "page 1"
-    :setup ((queue! compulsion) (set-prop! @hacker comp-cnt 0))
+    :setup ((queue compulsion) (set @hacker :comp-cnt 0))
     (wait)
     (assert (outcome? success))
     (assert (context? page 1))
@@ -207,7 +207,7 @@
 )
 
 (test "compulsion full 4-page sequence"
-  :setup ((queue! compulsion) (set-prop! @hacker comp-cnt 0))
+  :setup ((queue compulsion) (set @hacker :comp-cnt 0))
   (wait)
   (assert (outcome? success))
   (assert (context? page 1))

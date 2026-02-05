@@ -8,7 +8,7 @@
     (assert (outcome? success)))
 
   (test "take - blocked when hacker in it"
-    :setup ((move! @hacker @chair))
+    :setup ((move @hacker @chair))
     (do @chair :take)
     (assert (outcome? blocked)))
 
@@ -26,17 +26,17 @@
     (assert (loc? @player @chair)))
 
   (test "sit - blocked when hacker using it"
-    :setup ((move! @hacker @chair))
+    :setup ((move @hacker @chair))
     (do @chair :sit)
     (assert (outcome? blocked)))
 
   (test "sit - blocked when already sitting"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (do @chair :sit)
     (assert (outcome? blocked)))
 
   (test "stand from chair"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (do @chair :stand)
     (assert (outcome? success))
     (assert (loc? @player @terminal-room)))
@@ -45,22 +45,22 @@
 (test-group "visibility from inside vehicle"
 
   (test "can see PC while sitting in chair"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (do @pc :examine)
     (assert (outcome? success)))
 
   (test "can see hacker while sitting in chair"
-    :setup ((move! @player @chair) (move! @hacker @terminal-room))
+    :setup ((move @player @chair) (move @hacker @terminal-room))
     (do @hacker :examine)
     (assert (outcome? success)))
 
   (test "can see chair while sitting in it"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (do @chair :examine)
     (assert (outcome? success)))
 
   (test "can interact with room objects while sitting"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (do @pc :turn-on)
     (assert (outcome? success)))
 )
@@ -70,7 +70,7 @@
   ; This prevents the furniture from moving with the player
 
   (test "walking while in chair auto-exits first"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (go :direction south)
     (assert (outcome? success))
     (assert (player-at? @cs-2nd))       ; Player moved
@@ -78,7 +78,7 @@
     (assert (context? auto_exit "First, you arise from the chair.")))
 
   (test "chair remains in original room after walking"
-    :setup ((move! @player @chair))
+    :setup ((move @player @chair))
     (go :direction out)
     (assert (outcome? success))
     (assert (loc? @chair @terminal-room)))
