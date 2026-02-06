@@ -1,0 +1,123 @@
+; === The Lurking Horror - ENDGAME WALKTHROUGH ===
+; Agent-exposed commands only: (do), (go), (wait)
+; Continues from where commands.grue ends (after ritual escape)
+; Run with: grue-repl games/lurkinghorror/ < walkthrough/commands.grue
+;           then paste these commands interactively, or use full_walkthrough.grue
+
+; === PHASE 7: GET RING & VAT ===
+(do @alchemy-trap-door :open)
+(go up)
+(do @ring :take)
+(do @vat :take)
+
+; === PHASE 8: NAVIGATE TO BROWN BUILDING ===
+; Path: alchemy-lab -> alchemy-dept -> chemistry-bldg -> inf-5 -> nutrition-bldg -> brown-tunnel -> brown-basement
+(go north)
+(go north)
+(go north)
+(wait)                                 ; Waxer timing
+(go north)
+(go down)
+(go se)
+
+; === PHASE 9: BROWN BUILDING -> INSIDE-DOME ===
+(go up)
+(go up)
+(do @roof-door :unlock @master-key)
+(do @roof-door :open)
+(go out)
+(go up)
+
+; === PHASE 10: MUMMIFIED HAND PUZZLE ===
+(do @tub :search)                      ; Find hand in dirt
+(do @mummified-hand :take)
+(go down)                              ; Back to roof where flier waits
+(do @flier :attack @smooth-stone)      ; Drive away flier with stone
+
+; === PHASE 11: ANIMATE HAND ===
+(go in)                                ; Escape cold
+(go down)
+(go down)
+(do @vat :put @mummified-hand)         ; Drop hand in elixir
+(wait)
+(wait)
+(wait)                                 ; Hand animates (becomes :person true)
+(do @mummified-hand :take)
+(do @ring :put-on @mummified-hand)     ; Put professor's ring on hand
+
+; === PHASE 12: SCARE URCHIN FOR BOLT CUTTERS ===
+; Path: brown-basement -> brown-tunnel -> nutrition-bldg -> inf-5 -> inf-1 -> aero-lobby
+(go nw)
+(go up)
+(go south)
+(wait)
+(wait)
+(wait)
+(wait)
+(wait)                                 ; Waxer timing
+(go west)
+(go west)
+(go west)
+(go west)
+(go north)                             ; aero-lobby
+(do @urchin :show @mummified-hand)     ; Urchin flees, drops bolt cutters
+(do @bolt-cutters :take)
+
+; === PHASE 13: STEAM TUNNELS & RATS ===
+; Path: aero-lobby -> aero-stairs -> sub-basement -> tomb -> tunnel
+(go down)
+(go down)
+(go nw)
+(do @padlock :cut)                     ; Cut padlock with bolt cutters
+(do @access-hatch :open)
+(go down)
+(go east)                              ; tunnel-east (valve location)
+(do @pressure-valve :turn)             ; Release steam to kill rats
+(wait)
+(wait)
+(wait)
+(wait)                                 ; Wait for rats to die
+(do @pressure-valve :turn)             ; Close valve
+
+; === PHASE 14: LARGE CHAMBER & FREE URCHINS ===
+; Path: tunnel-east -> tunnel -> tunnel-west -> tunnel-entrance -> muddy-tunnel -> large-chamber
+(go west)
+(go west)
+(go west)
+(go west)
+(go down)
+(do @urchin-wire :cut @bolt-cutters)   ; Free the urchins
+
+; === PHASE 15: LAIR MAZE ===
+; Navigate following the hand's guidance
+; Correct path: north -> down -> south -> south -> down
+(go down)                              ; Enter lair-1
+(go north)                             ; lair-2
+(go down)                              ; lair-3
+(go south)                             ; lair-4
+(go south)                             ; lair-5
+(go down)                              ; outer-lair
+
+; === STATUS: BLOCKED AT OUTER-LAIR ===
+; The slime curtain requires nitrogen to freeze (3 pours)
+; Missing items for full completion:
+;   - @nitrogen/@flask (from chemistry lab - freeze slime curtain)
+;   - @axe (from emergency-cabinet in inf-4 - cut power line)
+;   - @boots (from brown-basement - electrical safety)
+;
+; Full endgame sequence after freezing slime curtain:
+;   (do @curtain-door :unlock @master-key)
+;   (do @curtain-door :open)
+;   (go south)                          ; Enter inner-lair
+;   (do @pool :reach-in)                ; Find power line
+;   (do @high-voltage :take)
+;   (do @high-voltage :cut @axe) x3     ; Cut power line
+;   (do @repeater :open)
+;   (do @input-cable :unplug)
+;   (do @high-voltage :plug @input-socket) ; Triggers frob!
+;   (wait)                              ; Frob appears
+;   (wait)                              ; Stone glows
+;   (do @frob :attack @smooth-stone)    ; VICTORY!
+
+(look)
+

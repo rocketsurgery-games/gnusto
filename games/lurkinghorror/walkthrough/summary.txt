@@ -83,28 +83,91 @@
 (do @alchemy-trap-door :open)
 (go down)                               ; Escape! Professor dies above
 
-=== CURRENT STATUS ===
-Player is in @under-alchemy-lab
-Inventory: @master-key, @crowbar, @gloves, @bronze-plug, @knife, @smooth-stone
+=== PHASE 7: GET RING & VAT ===
+(do @alchemy-trap-door :open)
+(go up)                                 ; Back to alchemy-lab
+(do @ring :take)                        ; Professor's ring
+(do @vat :take)                         ; Contains elixir of life
 
-=== REMAINING ENDGAME (Not Yet Completed) ===
-1. Go up to alchemy-lab, take @ring (dropped by dead professor)
-2. Take @vat from @lab-bench
-3. Navigate to @inside-dome (in brown building)
-4. (do @tub :search) - reveals mummified hand
-5. (do @mummified-hand :take)
-6. (do @vat :put @mummified-hand) - animates hand
-7. Wait for hand to animate (becomes :person true)
-8. (do @mummified-hand :put @ring) or similar - put ring on hand
-9. Navigate to @aero-lobby
-10. (do @urchin :show @mummified-hand) - urchin flees, drops bolt cutters
-11. (do @bolt-cutters :take)
-12. Navigate to where urchins are trapped
-13. (do @urchin-wire :cut @bolt-cutters) - frees urchins
-14. Navigate to @lair and complete the game
+=== PHASE 8: BROWN BUILDING - MUMMIFIED HAND ===
+(go north) (go north) (go north)       ; To inf-5
+(wait) (go north)                      ; To nutrition-bldg
+(go down) (go se) (go up) (go up)      ; To brown-top-floor
+(do @roof-door :unlock @master-key)
+(do @roof-door :open)
+(go out) (go up)                       ; To inside-dome (flier appears)
+(do @tub :search)                      ; Find mummified hand
+(do @mummified-hand :take)
+(go down)                               ; To brown-roof (flier waiting)
+(do @flier :attack @smooth-stone)      ; Drive away flier with stone!
+
+=== PHASE 9: ANIMATE HAND ===
+(go in) (go down) (go down)            ; To brown-basement
+(do @vat :put @mummified-hand)         ; Hand in elixir
+(wait) x3                               ; Hand animates
+(do @mummified-hand :take)
+(do @ring :put-on @mummified-hand)     ; Put ring on animated hand
+
+=== PHASE 10: SCARE URCHIN ===
+(go nw) (go up) (go south)             ; To inf-5
+(wait) x5                               ; Waxer timing
+(go west) x4 (go north)                ; To aero-lobby
+(do @urchin :show @mummified-hand)     ; Urchin flees, drops bolt cutters
+(do @bolt-cutters :take)
+
+=== PHASE 11: STEAM TUNNELS ===
+(go down) (go down) (go nw)            ; To tomb
+(do @padlock :cut)                     ; Cut with bolt cutters
+(do @access-hatch :open)
+(go down) (go east)                    ; To tunnel-east (valve)
+(do @pressure-valve :turn)             ; Steam kills rats
+(wait) x4
+(do @pressure-valve :turn)             ; Close valve
+
+=== PHASE 12: FREE URCHINS ===
+(go west) x4 (go down)                 ; To large-chamber
+(do @urchin-wire :cut @bolt-cutters)   ; Free urchins
+
+=== PHASE 13: LAIR MAZE ===
+(go down)                               ; Enter lair-1
+(go north)                              ; lair-2 (hand points north)
+(go down)                               ; lair-3 (hand points down)
+(go south)                              ; lair-4 (hand points south)
+(go south)                              ; lair-5 (hand points south)
+(go down)                               ; outer-lair
+
+=== CURRENT STATUS ===
+Player is in @outer-lair
+Inventory: @master-key, @vat, @mummified-hand (animated, with ring), @crowbar,
+           @gloves, @bronze-plug, @knife, @bolt-cutters, @smooth-stone
+
+=== BLOCKED: MISSING ITEMS FOR FINAL PUZZLE ===
+The slime curtain blocks entry to inner-lair without:
+- @nitrogen/@flask (from chemistry lab) - pour 3x to freeze curtain
+- @axe (from emergency-cabinet in inf-4) - cut power line
+- @boots (from brown-basement) - electrical safety
+
+=== REMAINING ENDGAME SEQUENCE (requires missing items) ===
+(do @slime-curtain :pour @nitrogen) x3  ; Freeze and destroy curtain
+(do @curtain-door :unlock @master-key)
+(do @curtain-door :open)
+(go south)                              ; Enter inner-lair
+(do @pool :reach-in)                    ; Find power line
+(do @high-voltage :take)
+(do @high-voltage :cut @axe) x3         ; Cut power line with axe
+(do @repeater :open)
+(do @input-cable :unplug)
+(do @high-voltage :plug @input-socket)  ; Triggers the Frob!
+(wait) x2                               ; Frob appears, stone glows
+(do @frob :attack @smooth-stone)        ; VICTORY!
 
 === NOTES ===
 - Floor waxer timing is tricky - may need extra waits
 - Ritual escape timing is critical - must cut pentagram by stage 4-5
 - Professor dies at stage 8, dropping ring to alchemy-lab
 - The trapdoor is called @alchemy-trap-door, not @trapdoor
+- Use @smooth-stone to drive away the flier on brown-roof
+- Ring verb is :put-on not :put (do @ring :put-on @mummified-hand)
+- Steam valve kills rats after ~3-4 waits, must close before passing
+- Lair maze: follow the hand's pointing finger (north, down, south, south, down)
+
