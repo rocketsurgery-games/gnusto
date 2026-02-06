@@ -1,5 +1,6 @@
-=== THE LURKING HORROR - COMPLETE WALKTHROUGH ===
+=== THE LURKING HORROR - COMPLETE VICTORY WALKTHROUGH ===
 === (Agent-Exposed Commands Only: do, go, wait) ===
+=== Run: grue-repl games/lurkinghorror/ < walkthrough/complete.grue ===
 
 === PHASE 1: LOGIN & NIGHTMARE ===
 (do @pc :turn-on)
@@ -31,11 +32,14 @@
 (do @hacker :give @carton)
 (do @hacker :ask-for @master-key)
 
-=== PHASE 3: GET TOOLS & CLEAR JUNK ===
+=== PHASE 3: GET TOOLS, FLASK & CLEAR JUNK ===
 (go south) (go down) (go down)         ; To basement
 (go east)                               ; Temporary basement
 (do @gloves :take)
 (do @crowbar :take)
+(go up)                                 ; To temporary-lab
+(do @flask :take)                       ; Contains nitrogen!
+(go down)                               ; Back to temporary-basement
 (go west) (go west)                    ; Aero basement
 (do @forklift :enter)
 (do @forklift :turn-on)
@@ -51,7 +55,7 @@
 (do @knife :take)
 (go up) (go south) (go up)             ; Back to surface
 
-=== PHASE 5: GREAT DOME ===
+=== PHASE 5: GREAT DOME & AXE ===
 (go west) x5 (go up)                   ; To aero lobby via stairs
 (go south)                              ; Infinite corridor
 (wait) x5                               ; Wait for floor waxer
@@ -65,18 +69,21 @@
 (do @note :take)
 (go down) (go in)                      ; Back to top of dome
 (go down) (go down)                    ; To inf-3
+(wait) x10                              ; Wait for waxer timing
+(go east)                               ; To inf-4
+(do @emergency-cabinet :break)         ; Break glass with gloves!
+(do @axe :take)                         ; For cutting power line
+(go east)                               ; Continue to inf-5
+(wait) x5                               ; More waxer timing
 
 === PHASE 6: ALCHEMY LAB & RITUAL ESCAPE ===
-(wait) x10                              ; Wait for waxer timing
-(go east) (go east)                    ; Navigate to inf-5
-(wait) x5                               ; More waxer timing
 (go east) (go east) (go south)         ; Chemistry building
 (do @alchemy-door :knock)
 (wait)                                  ; Professor answers
-(go south)                              ; Enter alchemy-dept (automatic)
+(go south)                              ; Enter alchemy-dept
 (do @professor :give @note)
 (go south)                              ; Alchemy lab - ritual begins
-(wait) x2                               ; Let ritual progress
+(wait) x2                               ; Let ritual progress to stage 4
 (do @pentagram :cut @knife)            ; Break pentagram
 (do @pentagram :exit)                  ; Escape pentagram
 (do @lab-bench :move)                  ; Reveal trapdoor
@@ -89,10 +96,12 @@
 (do @ring :take)                        ; Professor's ring
 (do @vat :take)                         ; Contains elixir of life
 
-=== PHASE 8: BROWN BUILDING - MUMMIFIED HAND ===
+=== PHASE 8: BROWN BUILDING - BOOTS & HAND ===
 (go north) (go north) (go north)       ; To inf-5
 (wait) (go north)                      ; To nutrition-bldg
-(go down) (go se) (go up) (go up)      ; To brown-top-floor
+(go down) (go se)                      ; To brown-basement
+(do @boots :take)                       ; For electrical safety!
+(go up) (go up)                        ; To brown-top-floor
 (do @roof-door :unlock @master-key)
 (do @roof-door :open)
 (go out) (go up)                       ; To inside-dome (flier appears)
@@ -136,30 +145,30 @@
 (go south)                              ; lair-5 (hand points south)
 (go down)                               ; outer-lair
 
-=== CURRENT STATUS ===
-Player is in @outer-lair
-Inventory: @master-key, @vat, @mummified-hand (animated, with ring), @crowbar,
-           @gloves, @bronze-plug, @knife, @bolt-cutters, @smooth-stone
-
-=== BLOCKED: MISSING ITEMS FOR FINAL PUZZLE ===
-The slime curtain blocks entry to inner-lair without:
-- @nitrogen/@flask (from chemistry lab) - pour 3x to freeze curtain
-- @axe (from emergency-cabinet in inf-4) - cut power line
-- @boots (from brown-basement) - electrical safety
-
-=== REMAINING ENDGAME SEQUENCE (requires missing items) ===
-(do @slime-curtain :pour @nitrogen) x3  ; Freeze and destroy curtain
+=== PHASE 14: SLIME CURTAIN & INNER LAIR ===
+(do @boots :wear)                       ; Electrical safety
+(do @slime-curtain :pour @nitrogen) x3 ; Freeze and destroy curtain
 (do @curtain-door :unlock @master-key)
 (do @curtain-door :open)
 (go south)                              ; Enter inner-lair
+
+=== PHASE 15: FINAL BATTLE ===
 (do @pool :reach-in)                    ; Find power line
 (do @high-voltage :take)
 (do @high-voltage :cut @axe) x3         ; Cut power line with axe
 (do @repeater :open)
 (do @input-cable :unplug)
 (do @high-voltage :plug @input-socket)  ; Triggers the Frob!
-(wait) x2                               ; Frob appears, stone glows
+(wait)                                  ; Frob appears, stone glows
 (do @frob :attack @smooth-stone)        ; VICTORY!
+
+=== VICTORY! ===
+Score: 100
+The creature is destroyed by the smooth stone!
+
+=== INVENTORY AT VICTORY ===
+@master-key, @flask, @axe, @vat, @mummified-hand (animated, with ring),
+@crowbar, @gloves (worn), @boots (worn), @bronze-plug, @knife, @bolt-cutters
 
 === NOTES ===
 - Floor waxer timing is tricky - may need extra waits
@@ -170,4 +179,6 @@ The slime curtain blocks entry to inner-lair without:
 - Ring verb is :put-on not :put (do @ring :put-on @mummified-hand)
 - Steam valve kills rats after ~3-4 waits, must close before passing
 - Lair maze: follow the hand's pointing finger (north, down, south, south, down)
+- Pour nitrogen 3 times on slime curtain to destroy it
+- Final battle: plug in power, wait ONCE, then attack immediately!
 
