@@ -1,0 +1,110 @@
+=== THE LURKING HORROR - COMPLETE WALKTHROUGH ===
+=== (Agent-Exposed Commands Only: do, go, wait) ===
+
+=== PHASE 1: LOGIN & NIGHTMARE ===
+(do @pc :turn-on)
+(do @pc :login "xyzzy")
+(do @pc :password "plugh")
+(do @menu-box :click)
+(do @yak-window :click)
+(do @odd-paper :read)
+(wait) x8                               ; Read 4 pages, transport to Yuggoth
+(do @smooth-stone :take)
+(wait) x3                               ; Escape nightmare
+
+=== PHASE 2: HACKER TRADE ===
+(do @hacker :ask-about @assignment)
+(wait)
+(go south) (go west)                   ; To kitchen
+(do @refrigerator :open)
+(do @carton :take)
+(do @microwave :open)
+(do @carton :put @microwave)
+(do @microwave :close)
+(do @microwave :set-timer 300)
+(do @microwave :start)
+(wait) x4                               ; Cook food
+(do @microwave :open)
+(do @carton :take)
+(go east) (go north)                   ; Back to hacker
+(do @hacker :ask-about @keys)
+(do @hacker :give @carton)
+(do @hacker :ask-for @master-key)
+
+=== PHASE 3: GET TOOLS & CLEAR JUNK ===
+(go south) (go down) (go down)         ; To basement
+(go east)                               ; Temporary basement
+(do @gloves :take)
+(do @crowbar :take)
+(go west) (go west)                    ; Aero basement
+(do @forklift :enter)
+(do @forklift :turn-on)
+(go east) (go east) (go east)          ; Drive to dead-storage
+(do @forklift :use @junk) x4           ; Clear path
+(do @forklift :exit)
+(go east)                               ; Storage room
+(do @manhole-cover :pry @crowbar)
+(go down)                               ; Brick tunnel
+
+=== PHASE 4: GET KNIFE ===
+(go north) (go down)                   ; Cave altar
+(do @knife :take)
+(go up) (go south) (go up)             ; Back to surface
+
+=== PHASE 5: GREAT DOME ===
+(go west) x5 (go up)                   ; To aero lobby via stairs
+(go south)                              ; Infinite corridor
+(wait) x5                               ; Wait for floor waxer
+(go east) (go east)                    ; To inf-3
+(go up)                                 ; Great dome
+(do @gloves :wear)
+(do @tentacle :climb)                  ; To top of dome
+(do @dome-door :open)
+(go out) (go up)                       ; On dome roof
+(do @bronze-plug :pry @crowbar)        ; Reveal secret hole
+(do @note :take)
+(go down) (go in)                      ; Back to top of dome
+(go down) (go down)                    ; To inf-3
+
+=== PHASE 6: ALCHEMY LAB & RITUAL ESCAPE ===
+(wait) x10                              ; Wait for waxer timing
+(go east) (go east)                    ; Navigate to inf-5
+(wait) x5                               ; More waxer timing
+(go east) (go east) (go south)         ; Chemistry building
+(do @alchemy-door :knock)
+(wait)                                  ; Professor answers
+(go south)                              ; Enter alchemy-dept (automatic)
+(do @professor :give @note)
+(go south)                              ; Alchemy lab - ritual begins
+(wait) x2                               ; Let ritual progress
+(do @pentagram :cut @knife)            ; Break pentagram
+(do @pentagram :exit)                  ; Escape pentagram
+(do @lab-bench :move)                  ; Reveal trapdoor
+(do @alchemy-trap-door :open)
+(go down)                               ; Escape! Professor dies above
+
+=== CURRENT STATUS ===
+Player is in @under-alchemy-lab
+Inventory: @master-key, @crowbar, @gloves, @bronze-plug, @knife, @smooth-stone
+
+=== REMAINING ENDGAME (Not Yet Completed) ===
+1. Go up to alchemy-lab, take @ring (dropped by dead professor)
+2. Take @vat from @lab-bench
+3. Navigate to @inside-dome (in brown building)
+4. (do @tub :search) - reveals mummified hand
+5. (do @mummified-hand :take)
+6. (do @vat :put @mummified-hand) - animates hand
+7. Wait for hand to animate (becomes :person true)
+8. (do @mummified-hand :put @ring) or similar - put ring on hand
+9. Navigate to @aero-lobby
+10. (do @urchin :show @mummified-hand) - urchin flees, drops bolt cutters
+11. (do @bolt-cutters :take)
+12. Navigate to where urchins are trapped
+13. (do @urchin-wire :cut @bolt-cutters) - frees urchins
+14. Navigate to @lair and complete the game
+
+=== NOTES ===
+- Floor waxer timing is tricky - may need extra waits
+- Ritual escape timing is critical - must cut pentagram by stage 4-5
+- Professor dies at stage 8, dropping ring to alchemy-lab
+- The trapdoor is called @alchemy-trap-door, not @trapdoor

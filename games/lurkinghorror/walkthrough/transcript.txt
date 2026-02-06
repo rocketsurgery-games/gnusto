@@ -1,0 +1,716 @@
+Loading games/lurkinghorror...
+
+==================================================
+  The Lurking Horror
+  Conversion of Infocom's _The Lurking Horror_ to FrotzLM / Grue
+==================================================
+
+Grue REPL
+Type (help) for commands.
+
+
+=== @terminal-room ===
+This is a large room crammed with computer terminals, small computers, and printers. An exit leads south. Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.
+
+Visible: @chair, @hacker, @pc
+Exits: south -> @cs-2nd, out -> @cs-2nd
+
+grue> [OK: booting=True, message=The computer powers up, goes through a remarkably fast self-check, and greets you, requesting "LOGIN PLEASE:" The only sound you hear is a very low hum.]
+  Effect: set @pc powered = True
+grue> [OK: message=The computer responds "PASSWORD PLEASE:"]
+  Effect: set @pc username = xyzzy
+grue> [OK: message=The computer responds "Good evening. You're here awfully late." It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads "Classics Paper," some particularly ominous words next to it say "DUE TOMORROW!" and more reassuringly, a menu box next to that reads "Edit Classics Paper."]
+  Effect: set @pc logged-in = True
+  Effect: move @menu-box to @pc
+grue> [OK: message=The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red.]
+  Effect: move @menu-box to None
+  Effect: move @yak-window to @pc
+grue> [OK: message=You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different.]
+  Effect: move @yak-window to None
+  Effect: move @odd-paper to @pc
+  Effect: move @more-box to @pc
+  Effect: set @odd-paper touched = True
+grue> [OK: possession-starting=True, message=As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the "MORE" box...]
+  Effect: queue compulsion (countdown=2)
+  Effect: set-prop @odd-paper read-page = True
+grue> [Time passes...]
+[EVENT: event]
+  page: 1
+  description: The paper appears to be a facsimile overlaid with occasional typescript. The text is mostly in a sort of "Olde English" you've never seen before. What you read is a combination of incomprehensible gibberish, latinate pseudowords, debased Hebrew and Arabic scripts, and an occasional disquieting phrase in English.
+  Effect: set @hacker comp-cnt = 1
+  Effect: set-prop @odd-paper read-page = True
+grue> [Time passes...]
+[EVENT: event]
+  page: 2
+  description: The second page is much like the first, but around the edges, not when you look at it straight, it's almost readable. There is something about a "summoning," or a "visitor."
+  Effect: set @hacker comp-cnt = 2
+  Effect: set-prop @odd-paper read-page = True
+grue> [Time passes...]
+[EVENT: event]
+  page: 3
+  description: The third page is in the same script as the first, but laid out like a poem. There are woodcut illustrations which are queasily disturbing.
+
+There is a translation, or notes for one, typed between the lines of the poem:
+
+"He returns, he is called back (?)
+The loyal ones (acolytes?) make a sacrifice
+Those who survive will meet him (be absorbed? eaten?)
+They will live, yet die
+Forever will be (is?) nothing to them (to him?)
+
+"His place (lair? burrow?) must be prepared
+His food (offerings?) must be prepared
+Call him forth (invite him?) with great power
+Only an acceptable (tasteful?) sacrifice will call him forth
+He will be grateful (satiated?)"
+
+The rest is even more fragmentary.
+  Effect: set @hacker comp-cnt = 3
+  Effect: set-prop @odd-paper read-page = True
+grue> [Time passes...]
+[EVENT: event]
+  page: 4
+  description: The fourth page is a photograph. You try to recoil from the screen, but cannot. Fascinated and repelled at the same time, you wonder: is that a mouth, and what is in it?
+  transition: You faint, and when you awaken...
+  Effect: set @hacker comp-cnt = 4
+  Effect: dequeue compulsion
+  Effect: move @more-box to None
+  Effect: move @menu-box to @pc
+  Effect: move @player to @yuggoth
+  Effect: queue yuggoth-advance (countdown=2)
+grue> [Time passes...]
+grue> [Time passes...]
+[EVENT: event]
+  description: From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise.
+  Effect: move @player to @bowl-room
+  Effect: queue yuggoth-advance (countdown=2)
+grue> [Time passes...]
+grue> [Time passes...]
+[EVENT: event]
+  description: The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise.
+  Effect: move @player to @platform-room
+  Effect: move @smooth-stone to @platform-room
+grue> [OK: message=You pick up the stone. It feels warm in your hand.]
+  Effect: set @smooth-stone touched = True
+  Effect: move @smooth-stone to @player
+  Effect: queue lurker-appears
+[EVENT: event]
+  Effect: dequeue yuggoth-advance
+[EVENT: event]
+  description: Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens.
+  Effect: set @lurker count = 1
+  Effect: move @lurker to @platform-room
+  Effect: queue lurker-appears
+grue> [Time passes...]
+[EVENT: event]
+  description: The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand.
+  Effect: set @lurker count = 2
+  Effect: queue lurker-appears
+grue> [Time passes...]
+[EVENT: event]
+  description: The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.
+  transition: You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand.
+  nightmare-wake: True
+  message: You are awakened by the thump of your head hitting the keyboard.
+  Effect: dequeue lurker-appears
+  Effect: move @lurker to None
+  Effect: set @lurker count = 0
+  Effect: move @player to @terminal-room
+  Effect: queue hacker-helps
+  Effect: set @hacker help-stage = 0
+grue> [Time passes...]
+[EVENT: event]
+  stage: 1
+  description: The hacker wanders over, trying to look nonchalant. "Losing, huh?" he asks wittily. He glances at your terminal, which displays a pattern of snow and unusual characters. He appears somewhat excited.
+  Effect: set @hacker help-stage = 1
+grue> The hacker studiously ignores you, loath to admit there is something he doesn't know about.
+[OK: reason=asked about unknown]
+[EVENT: event]
+  stage: 2
+  description: The hacker, mumbling under his breath, begins a flurry of activity. First the screen returns to something nearly normal, then windows begin popping up like toadstools after a rain.
+  Effect: set @hacker help-stage = 2
+grue> [Time passes...]
+[EVENT: event]
+  stage: 3
+  description: The hacker types furiously. After a while he says, "Chomping file system. Your directory has gone seriously west. I fixed it." He checks the screen. "It was mixed up on the file server with some files from the Department of Alchemy." He grunts. "People's names for their nodes are getting weird. This one is called 'Lovecraft.'" He pauses. "Your paper is gone, though. Sorry. Maybe they could help you down there."
+  Effect: set @hacker help-stage = 3
+grue> [OK: moved south]
+  Effect: @player moved to @cs-2nd (via @hacker-exit-barrier)
+
+=== @cs-2nd ===
+This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room.
+
+Visible: @elevator-door-2
+Exits: north -> @terminal-room, west -> @kitchen, up -> @cs-3rd, down -> @comp-center, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved west]
+  Effect: @player moved to @kitchen
+
+=== @kitchen ===
+This is a filthy kitchen. The exit is to the east. On the wall near a counter are a refrigerator and a microwave.
+Exits: east -> @cs-2nd
+grue> [OK: message=Opened.]
+  Effect: set @refrigerator open = True
+grue> [OK: message=Taken.]
+  Effect: move @carton to @player
+grue> [OK: description=The microwave oven is now open.]
+  Effect: set @microwave open = True
+grue> [OK: message=Done.]
+  Effect: move @carton to @microwave
+grue> [OK: description=The microwave oven is now closed.]
+  Effect: set @microwave open = False
+grue> [OK: description=The timer display now reads 5:00.]
+  Effect: set @microwave timer = 300
+grue> [OK: description=The microwave starts up. The timer begins counting down.]
+  Effect: set @microwave temp = 4
+  Effect: queue microwave-running
+[EVENT: event]
+  timer-display: 4:00
+  Effect: set @microwave timer = 240
+  Effect: set-prop @chinese-food heat = 4
+  Effect: set-prop @carton heat = 4
+grue> [Time passes...]
+[EVENT: event]
+  timer-display: 3:00
+  Effect: set @microwave timer = 180
+  Effect: set-prop @chinese-food heat = 8
+  Effect: set-prop @carton heat = 8
+grue> [Time passes...]
+[EVENT: event]
+  timer-display: 2:00
+  Effect: set @microwave timer = 120
+  Effect: set-prop @chinese-food heat = 12
+  Effect: set-prop @carton heat = 12
+grue> [Time passes...]
+[EVENT: event]
+  timer-display: 1:00
+  Effect: set @microwave timer = 60
+  Effect: set-prop @chinese-food heat = 16
+  Effect: set-prop @carton heat = 16
+grue> [Time passes...]
+[EVENT: event]
+  description: The microwave stops.
+  timer-display: 0:00
+  Effect: set @microwave timer = 0
+  Effect: dequeue microwave-running
+  Effect: set-prop @chinese-food heat = 20
+  Effect: set-prop @carton heat = 20
+grue> [OK: description=The microwave oven is now open.]
+  Effect: set @microwave open = True
+grue> [OK: message=Taken.]
+  Effect: move @carton to @player
+grue> [OK: moved east]
+  Effect: @player moved to @cs-2nd
+
+=== @cs-2nd ===
+This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room.
+
+Visible: @elevator-door-2
+Exits: north -> @terminal-room, west -> @kitchen, up -> @cs-3rd, down -> @comp-center, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved north]
+  Effect: @player moved to @terminal-room
+
+=== @terminal-room ===
+This is a large room crammed with computer terminals, small computers, and printers. An exit leads south. Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.
+
+Visible: @chair, @hacker, @pc
+Exits: south -> @cs-2nd, out -> @cs-2nd
+[EVENT: event]
+  stage: 4
+  description: The hacker wanders back to his terminal and returns to his hacking.
+  Effect: dequeue hacker-helps
+  Effect: move @hacker to @terminal-room
+grue> @hacker: "I've accumulated a few keys over the years. I'm a licensed locksmith, which helps. I can get into any room at Tech."
+He pulls the keyring out on its chain, and shows off a key you hadn't noticed before.
+@hacker: "This is a master key."
+[OK: reason=revealed master key]
+  Effect: set @master-key touched = True
+  Effect: move @master-key to @keyring
+grue> @hacker: "Ah! Serious food!"
+He plunges into the food with all the delicacy and table manners of a shark at a feeding frenzy. Soon a satisfied expression appears on his face.
+@hacker: "Now, what was it you were wanting?"
+[OK: reason=gave hot food]
+  Effect: move @carton to @hacker
+  Effect: move @chinese-food to None
+grue> @hacker: "Well, I suppose I could loan you the master key for a while. Just don't get into trouble, okay? I'll find you later, when I'm done with all this, and get it back."
+He hands you the key.
+[OK: reason=hacker loaned master key]
+  Effect: set @hacker trade = False
+  Effect: move @master-key to @player
+grue> [OK: moved south]
+  Effect: @player moved to @cs-2nd (via @hacker-exit-barrier)
+
+=== @cs-2nd ===
+This is the second floor of the Computer Center. An elevator and call buttons are on the south side of the hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller room.
+
+Visible: @elevator-door-2
+Exits: north -> @terminal-room, west -> @kitchen, up -> @cs-3rd, down -> @comp-center, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved down]
+  Effect: @player moved to @comp-center
+
+=== @comp-center ===
+This is the lobby of the Computer Center. An elevator and call buttons are to the south. Stairs lead up and down. To the north is Smith Street.
+
+Visible: @elevator-door-1
+Exits: north -> @smith-st, out -> @smith-st, up -> @cs-2nd, down -> @cs-basement, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved down]
+  Effect: @player moved to @cs-basement
+
+=== @cs-basement ===
+Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes.
+
+Visible: @elevator-door-b
+Exits: up -> @comp-center, east -> @temporary-basement, west -> @aero-basement, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved east]
+  Effect: @player moved to @temporary-basement
+
+=== @temporary-basement ===
+During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east.
+
+Visible: @crowbar, @gloves
+Exits: west -> @cs-basement, east -> @dead-storage, up -> @temporary-lab
+grue> [OK: message=Taken.]
+  Effect: move @gloves to @player
+grue> [OK: message=Taken.]
+  Effect: move @crowbar to @player
+grue> [OK: moved west]
+  Effect: @player moved to @cs-basement
+
+=== @cs-basement ===
+Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes.
+
+Visible: @elevator-door-b
+Exits: up -> @comp-center, east -> @temporary-basement, west -> @aero-basement, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved west]
+  Effect: @player moved to @aero-basement
+
+=== @aero-basement ===
+This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues.
+
+Visible: @forklift
+Exits: east -> @cs-basement, west -> @aero-stairs
+grue> [OK: message=You climb onto the forklift.]
+  Effect: move @player to @forklift
+grue> [OK: message=The forklift sputters to life.]
+  Effect: set @forklift powered = True
+grue> [OK: moved east]
+  Effect: @forklift moved to @cs-basement
+
+=== @cs-basement, on @forklift ===
+Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes.
+
+Visible: @forklift, @elevator-door-b
+Exits: up -> @comp-center, east -> @temporary-basement, west -> @aero-basement, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved east]
+  Effect: @forklift moved to @temporary-basement
+
+=== @temporary-basement, on @forklift ===
+During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east.
+
+Visible: @forklift
+Exits: west -> @cs-basement, east -> @dead-storage, up -> @temporary-lab
+grue> [OK: moved east]
+  Effect: @forklift moved to @dead-storage
+
+=== @dead-storage, on @forklift ===
+This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets. you can't even see the east wall.
+
+Visible: @forklift
+Exits: west -> @temporary-basement, east -> @storage-room
+grue> [OK: message=You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage.]
+  Effect: set @junk moved = 1
+grue> [OK: message=You continue moving junk, becoming more proficient with the forklift.]
+  Effect: inc @junk moved by 1
+grue> [OK: message=You continue moving junk, becoming more proficient with the forklift.]
+  Effect: inc @junk moved by 1
+grue> [OK: message=You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one.]
+  Effect: inc @junk moved by 1
+grue> [OK: message=You climb off the forklift.]
+  Effect: move @player to @dead-storage
+grue> [OK: moved east]
+  Effect: @player moved to @storage-room (via @junk-barrier)
+  Effect: set @manhole invisible = False
+
+=== @storage-room ===
+What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be.
+
+Visible: @manhole, @manhole-cover
+Exits: west -> @dead-storage, down -> @brick-tunnel
+grue> [OK: message=You lever the manhole cover aside, and crusted dirt falls into a dark hole below.]
+  Effect: move @manhole-cover to @storage-room
+grue> [OK: moved down, message=You push your way through cobwebs, damp fungus, and other obstructions.]
+  Effect: @player moved to @brick-tunnel (via @manhole-passage)
+
+=== @brick-tunnel ===
+This is an ancient tunnel constructed of roughly mortared bricks and stones. The tunnel continues a long way north and south from here.
+Exits: up -> @storage-room, north -> @cave-room, south -> @under-alchemy-lab
+grue> [OK: moved north]
+  Effect: @player moved to @cave-room
+
+=== @cave-room ===
+You are in a huge, cave-like construction. A path leads down to a floor partly covered with rough concrete. The walls and ceiling are high and reinforced with beams of wood, iron, and steel. In the center of the floor you can see a large, flat slab. The only exit is behind you to the south.
+Exits: south -> @brick-tunnel, down -> @cave-altar
+grue> [OK: moved down]
+  Effect: @player moved to @cave-altar
+
+=== @cave-altar ===
+You are at the bottom of the cave. The huge slab in the center is a sort of altar. It is carved with strange and disturbing symbols, the largest of which looks very familiar. Some of the symbols are obscured by rusty red stains. Nearby is an iron plate set in the concrete of the floor.
+
+Visible: @knife
+Exits: up -> @cave-room
+grue> [OK: message=Taken.]
+  Effect: move @knife to @player
+grue> [OK: moved up]
+  Effect: @player moved to @cave-room
+
+=== @cave-room ===
+You are in a huge, cave-like construction. A path leads down to a floor partly covered with rough concrete. The walls and ceiling are high and reinforced with beams of wood, iron, and steel. In the center of the floor you can see a large, flat slab. The only exit is behind you to the south.
+Exits: south -> @brick-tunnel, down -> @cave-altar
+grue> [OK: moved south, message=You make your way along the long tunnel.]
+  Effect: @player moved to @brick-tunnel
+
+=== @brick-tunnel ===
+This is an ancient tunnel constructed of roughly mortared bricks and stones. The tunnel continues a long way north and south from here.
+Exits: up -> @storage-room, north -> @cave-room, south -> @under-alchemy-lab
+grue> [OK: moved up]
+  Effect: @player moved to @storage-room (via @manhole-passage)
+  Effect: set @manhole invisible = False
+
+=== @storage-room ===
+What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be.
+
+Visible: @manhole, @manhole-cover
+Exits: west -> @dead-storage, down -> @brick-tunnel
+grue> [OK: moved west]
+  Effect: @player moved to @dead-storage
+
+=== @dead-storage ===
+This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets. A narrow path winds eastward through the junk.
+
+Visible: @forklift
+Exits: west -> @temporary-basement, east -> @storage-room
+grue> [OK: moved west]
+  Effect: @player moved to @temporary-basement
+
+=== @temporary-basement ===
+During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east.
+Exits: west -> @cs-basement, east -> @dead-storage, up -> @temporary-lab
+grue> [OK: moved west]
+  Effect: @player moved to @cs-basement
+
+=== @cs-basement ===
+Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes.
+
+Visible: @elevator-door-b
+Exits: up -> @comp-center, east -> @temporary-basement, west -> @aero-basement, south -> @cs-elevator-room, in -> @cs-elevator-room
+grue> [OK: moved west]
+  Effect: @player moved to @aero-basement
+
+=== @aero-basement ===
+This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues.
+Exits: east -> @cs-basement, west -> @aero-stairs
+grue> [OK: moved west]
+  Effect: @player moved to @aero-stairs
+
+=== @aero-stairs ===
+A dimly lit stairway leads up and down from here. A corridor continues east.
+Exits: up -> @aero-lobby, east -> @aero-basement, down -> @sub-basement
+grue> [OK: moved up]
+  Effect: @player moved to @aero-lobby
+
+=== @aero-lobby ===
+This is the lobby of the Aeronautical Engineering Building. Stairs lead down and a corridor heads south towards the main building.
+
+Visible: @urchin
+Exits: south -> @inf-1, down -> @aero-stairs
+grue> [OK: moved south]
+  Effect: @player moved to @inf-1
+  Effect: set @floor-waxer patrol-started = True
+  Effect: queue waxer-moves (countdown=3)
+
+=== @inf-1 ===
+The so-called infinite corridor runs from east to west in the main campus building. This is the west end. Side corridors lead north and south, and a set of doors leads west into the howling blizzard.
+
+Visible: @plastic-container
+Exits: west -> @mass-ave, north -> @aero-lobby, east -> @inf-2, south -> @engineering-bldg, out -> @mass-ave
+grue> [Time passes...]
+grue> [Time passes...]
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-3
+  Effect: queue waxer-moves (countdown=5)
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [OK: moved east]
+  Effect: @player moved to @inf-2 (via @waxer-exit-barrier)
+
+=== @inf-2 ===
+The so-called infinite corridor runs from east to west in the main campus building. The corridor extends both ways from here. Many closed and locked offices are to the north and south.
+Exits: west -> @inf-1, east -> @inf-3
+grue> [OK: moved east]
+  Effect: @player moved to @inf-3 (via @waxer-exit-barrier)
+
+=== @inf-3 ===
+The so-called infinite corridor runs from east to west in the main campus building. The corridor extends both ways from here. A stairway leads up, and a door leads out to the Great Court.
+
+Visible: @floor-waxer
+Exits: west -> @inf-2, east -> @inf-4, south -> @great-court, out -> @great-court, up -> @great-dome
+[EVENT: event]
+  description: The floor waxer waxes away to the east.
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-4
+  Effect: queue waxer-moves (countdown=5)
+grue> [OK: moved up]
+  Effect: @player moved to @great-dome
+
+=== @great-dome ===
+Here a walkway circles the base of a huge ornate dome. Below is the Infinite Corridor. From stories of Tech Exploring trips, you recall that there is supposed to be a ladder here. On the other hand, there is a shiny rope-like thing hanging near where the ladder used to be, and leading upward.
+Exits: down -> @inf-3, up -> @top-of-dome
+grue> [OK: message=You put on the gloves. They're a little big, but not really such a bad fit.]
+  Effect: set @gloves wearable = True
+grue> [via (do (loc @player) :go up)]
+[OK: message=The wet stuff on the strand sticks to the gloves, but doesn't otherwise affect you. You have a little trouble climbing up to the catwalk, but grab the rail just before your strength gives out. You heave yourself up onto the catwalk., message=You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone.]
+  Effect: @player moved to @top-of-dome (via @tentacle-climb)
+  Effect: set @tentacle invisible = True
+  Effect: set @dome-ladder touched = True
+  Effect: move @dome-ladder to @top-of-dome
+grue> [OK: message=You open the door, and freezing air, blowing snow, and howling wind enter and whip around you.]
+  Effect: set @dome-door open = True
+grue> [OK: moved out, message=You enter the freezing, biting cold of the blizzard.]
+  Effect: @player moved to @dome-roof (via @dome-door)
+  Effect: queue freezing
+
+=== @dome-roof ===
+You are perched precariously on the roof of the Great Dome. A set of narrow indentations in the dome provides a dangerous route to the very tip-top of the dome.
+Exits: in -> @top-of-dome, south -> @top-of-dome, up -> @on-dome
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-5
+  Effect: queue waxer-moves (countdown=5)
+[EVENT: event]
+  description: Bitter, bone-cracking cold assaults you continuously. The temperature and the blizzard conditions are both horrible.
+  Effect: set @player freeze-count = 1
+  Effect: queue freezing (countdown=4)
+grue> [OK: moved up, message=You scramble up the icy surface of the dome, almost slipping a few times, but finally you make it to the top.]
+  Effect: @player moved to @on-dome
+
+=== @on-dome ===
+This is the very top of the Great Dome, a favorite place for Tech fraternities to install cows, Volkswagen Beetles, giant birthday candles, and other bizarre objects. The top is flat, round, and about five feet in diameter. It's very windy, which has kept the snow from accumulating here. The only way off is down.
+
+Visible: @bronze-plug
+Exits: down -> @dome-roof
+grue> [OK: message=You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. There is a piece of paper in the hole.]
+  Effect: set @bronze-plug rmung = True
+  Effect: set @bronze-plug touched = True
+  Effect: move @secret-hole to @on-dome
+  Effect: take @bronze-plug
+grue> [OK: message=Taken.]
+  Effect: move @note to @player
+grue> [OK: moved down]
+  Effect: @player moved to @dome-roof
+
+=== @dome-roof ===
+You are perched precariously on the roof of the Great Dome. A set of narrow indentations in the dome provides a dangerous route to the very tip-top of the dome.
+Exits: in -> @top-of-dome, south -> @top-of-dome, up -> @on-dome
+[EVENT: event]
+  description: You can feel the cold worming its way through your layers of clothing and biting into your flesh.
+  Effect: set @player freeze-count = 2
+  Effect: queue freezing (countdown=4)
+grue> [OK: moved in]
+  Effect: @player moved to @top-of-dome (via @dome-door)
+
+=== @top-of-dome ===
+Inside the great dome, near the top, a metal catwalk is precariously perched. There is no way further up, but a small metal door is set in the side of the dome. Frigid wind and snow blow through the open door.
+
+Visible: @dome-ladder
+Exits: out -> @dome-roof, north -> @dome-roof, down -> @great-dome
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = True
+  Effect: move @floor-waxer to @inf-4
+  Effect: queue waxer-moves (countdown=5)
+grue> [OK: moved down]
+  Effect: @player moved to @great-dome (via @tentacle-descend)
+
+=== @great-dome ===
+Here a walkway circles the base of a huge ornate dome. Below is the Infinite Corridor.
+Exits: down -> @inf-3, up -> @top-of-dome
+grue> [OK: moved down]
+  Effect: @player moved to @inf-3
+
+=== @inf-3 ===
+The so-called infinite corridor runs from east to west in the main campus building. The corridor extends both ways from here. A stairway leads up, and a door leads out to the Great Court.
+Exits: west -> @inf-2, east -> @inf-4, south -> @great-court, out -> @great-court, up -> @great-dome
+grue> [Time passes...]
+[EVENT: event]
+  Effect: dequeue freezing
+  Effect: set @player freeze-count = 0
+grue> [Time passes...]
+grue> [Time passes...]
+[EVENT: event]
+  description: The floor waxer, approaching from the east, is now here.
+  Effect: set @floor-waxer going-west = True
+  Effect: move @floor-waxer to @inf-3
+  Effect: queue waxer-moves (countdown=5)
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+[EVENT: event]
+  description: The floor waxer waxes away to the west.
+  Effect: set @floor-waxer going-west = True
+  Effect: move @floor-waxer to @inf-2
+  Effect: queue waxer-moves (countdown=5)
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [OK: moved east]
+  Effect: @player moved to @inf-4 (via @waxer-exit-barrier)
+
+=== @inf-4 ===
+The so-called infinite corridor runs from east to west in the main campus building. The corridor extends both ways from here. Many closed and locked offices are to the north and south.
+
+Visible: @emergency-cabinet
+Exits: west -> @inf-3, east -> @inf-5
+grue> [OK: moved east]
+  Effect: @player moved to @inf-5 (via @waxer-exit-barrier)
+
+=== @inf-5 ===
+The so-called infinite corridor runs from east to west in the main campus building. This is the east end. The corridor branches north and south here.
+Exits: west -> @inf-4, north -> @nutrition-bldg, south -> @chemistry-bldg
+grue> [Time passes...]
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = True
+  Effect: move @floor-waxer to @inf-1
+  Effect: queue waxer-moves (countdown=5)
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [Time passes...]
+grue> [BLOCKED: no-exit]
+  direction: east
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-2
+  Effect: queue waxer-moves (countdown=5)
+grue> [BLOCKED: no-exit]
+  direction: east
+grue> [OK: moved south]
+  Effect: @player moved to @chemistry-bldg (via @waxer-exit-barrier)
+
+=== @chemistry-bldg ===
+This corridor is lined with closed, dark offices. At the south end of the corridor is a door with a light shining behind it. There is something written on the door.
+Exits: north -> @inf-5, south -> @alchemy-dept
+grue> [OK: message=You knock on the door. The hollow sound reverberates down the hall. You sort of wish you had knocked more softly.]
+  Effect: queue answer-door (countdown=3)
+grue> [Time passes...]
+grue> [BLOCKED: unknown]
+  message: The door is locked.
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-3
+  Effect: queue waxer-moves (countdown=5)
+[EVENT: event]
+  message: The door opens partway, revealing a professorial man in a white lab coat. He smiles. "Good evening! I don't get many visitors this late. You're not one of my students, are you?" He ushers you into the room without waiting for an answer, closing the door behind you.
+  Effect: move @professor to @alchemy-dept
+  Effect: queue professor-watches
+  Effect: move @player to @alchemy-dept
+  Effect: dequeue answer-door
+  Effect: set @alchemy-door locked = False
+  Effect: set @alchemy-door open = False
+grue> [OK: message=He reads it carefully. "What drivel! This just confirms my suspicions. He had clearly gone over the edge. Drug use, drinking, insanity. It's only too bad that I didn't realize what was happening. I might have helped him."]
+  Effect: set @professor seen-note = True
+  Effect: set @professor mad = True
+  Effect: move @note to @professor
+[EVENT: event]
+  message: The professor gazes at you with a distinctly predatory air.
+  Effect: queue professor-watches
+grue> [OK: moved south, message="Ah! You'd like to see the lab?" the professor asks in a rather unctuous tone. "Come right in!" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.]
+  Effect: @player moved to @alchemy-lab (via @alchemy-lab-barrier)
+  Effect: queue professor-ritual
+
+=== @alchemy-lab ===
+The lab is an ultramodern, fully equipped chemistry lab. Unfortunately, or perhaps fortunately, you aren't a chemistry major, so the equipment might as well be magical.
+
+Visible: @lovecraft, @lab-bench, @professor
+Exits: north -> @alchemy-dept, down -> @under-alchemy-lab
+[EVENT: event]
+  stage: 1
+  message: The professor guides you to the center of the lab, where a strange pentagonal symbol is chalked on the floor. He cuts one of the chalk lines with a small knife you had not previously noticed, pushes you into the center of the chalked symbol, and redraws the line, muttering softly and rhythmically as he does so. "There, that's done. Don't move from there, it'll only make things worse for you." He makes some odd gestures at the archway and then goes over to the lab bench.
+  Effect: set @professor ritual-stage = 1
+  Effect: move @player to @pentagram
+  Effect: queue professor-ritual
+grue> [Time passes...]
+[EVENT: event]
+  stage: 2
+  message: The professor is preparing something at the lab bench. "Alchemy is my chosen field, and I've gotten ridiculed for it. It's like chemistry, except that chemists don't recognize that some natural laws are enforced by persons, not physics. Some of them will grant power, or knowledge, but they must be placated, or even bribed. They're not of this earth, not demons or devils, and they aren't always friendly. To me it's just an unpleasant necessity on the path to power. When I'm done, they won't laugh anymore!"
+  Effect: set @professor ritual-stage = 2
+  Effect: queue professor-ritual
+grue> [Time passes...]
+[EVENT: event]
+  stage: 3
+  message: The professor enters another pentagram, and begins a highly choreographed ritual. "This may seem a little silly to you, but the symbology is what's important. Certain alignments, certain aspects. In a few moments, it won't matter anyway," he remarks. "There is very little room for error here, so be calm." He chants, he brandishes strange instruments, moves about inside the pentagram, and occasionally points to you. It becomes clear exactly what he meant by the word "bribe."
+  Effect: set @professor ritual-stage = 3
+  Effect: queue professor-ritual
+grue> [via (do @pentagram :rub @knife)]
+[OK: prof-reacts=True, message=You cut the outer lines of the pentagram. It no longer completely encloses you.]
+  Effect: set @pentagram rmung = True
+[EVENT: event]
+  context: None
+  Effect: set @floor-waxer going-west = False
+  Effect: move @floor-waxer to @inf-4
+  Effect: queue waxer-moves (countdown=5)
+[EVENT: event]
+  stage: 4
+  message: The chant grows more complex, with rhythms and cadences that make you want to stop your ears. The room appears to be getting darker., the professor having difficulty with the almost unpronounceable words
+  Effect: set @professor ritual-stage = 4
+  Effect: queue professor-ritual
+grue> [OK: message=You push your way through a soft spot just over the scuff marks, and are outside the pentagram. The air is thick and close.]
+  Effect: move @player to @alchemy-lab
+[EVENT: event]
+  stage: 5
+  message: A thick black mist begins to form in the room. Parts are darker, and parts lighter, and the dark parts form a disturbing shape. The professor chants and calls more loudly now, and you realize the calls are being answered.
+  Effect: set @professor ritual-stage = 5
+  Effect: queue professor-ritual
+grue> [OK: message=It's heavy, but it moves, revealing a hinged metal trapdoor beneath.]
+  Effect: set @lab-bench moved = True
+[EVENT: event]
+  stage: 6
+  message: The room is now freezing cold, though the windows are shuttered and tightly curtained. Low, bone-rattling vibrations shake the room in cadence with the chant. The black mist is growing thicker. The professor is alternately looking at you and at the mist.
+  Effect: set @professor ritual-stage = 6
+  Effect: queue professor-ritual
+grue> [OK: message=It swings open easily.]
+  Effect: set @alchemy-trap-door open = True
+[EVENT: event]
+  stage: 7
+  message: The black mist swirls wildly around the room, and a deep bass voice gibbers out of thin air. "No!" screams the professor, and jumps toward you out of his own pentagram. He realizes what he has done, and tries to reenter, but the mist grabs at him.
+  Effect: set @professor ritual-stage = 7
+  Effect: queue professor-ritual
+grue> [OK: moved down]
+  Effect: @player moved to @under-alchemy-lab (via @alchemy-lab-down-barrier)
+
+=== @under-alchemy-lab ===
+This is a tunnel whose walls are cinderblock, with a concrete floor and ceiling. A metal ladder leads up to an open metal plate in the ceiling, and the tunnel continues north, where the cinderblock walls become brick.
+Exits: north -> @brick-tunnel, up -> @alchemy-lab
+[EVENT: event]
+  stage: 8
+  message: From above, you hear a thunderous noise, a maniacal scream, and then the sound of equipment smashing. Around the trapdoor pours a blinding flash of light. Finally you hear an almost inaudible whimper, then nothing. The light fades.
+  Effect: set @professor ritual-stage = 0
+  Effect: set @professor dead = True
+  Effect: move @ring to @alchemy-lab
+  Effect: move @professor to None
+  Effect: set @alchemy-lab touched = False
+  Effect: set @alchemy-lab lit = False
+  Effect: set @alchemy-trap-door open = False
+  Effect: dequeue professor-ritual
+grue> 
+=== @under-alchemy-lab ===
+This is a tunnel whose walls are cinderblock, with a concrete floor and ceiling. A metal ladder leads up to a closed metal plate in the ceiling, and the tunnel continues north, where the cinderblock walls become brick.
+Exits: north -> @brick-tunnel, up -> @alchemy-lab
+grue> 
+Goodbye!
