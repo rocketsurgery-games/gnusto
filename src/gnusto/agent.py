@@ -454,6 +454,7 @@ class GameSession:
         max_iterations: int = 10,
         on_narrative: "Callable[[str], None] | None" = None,
         on_image: "Callable[[ImageRequest], None] | None" = None,
+        on_debug: "Callable[[str, str], None] | None" = None,
     ) -> tuple[str, list[str]]:
         """
         Process natural language input and return response.
@@ -469,6 +470,7 @@ class GameSession:
             max_iterations: Maximum number of LLM calls (default 10)
             on_narrative: Optional callback for streaming narrative text
             on_image: Optional callback for streaming image requests
+            on_debug: Optional callback for debug info (label, content)
 
         Returns:
             Tuple of (final narrative, raw action results list)
@@ -530,20 +532,21 @@ class GameSession:
             # Execute actions
             action_results: list[str] = []
             for action in response.actions:
-                if self.debug:
-                    _debug_log(f"Executing: {action.tool}", f"target={action.target} verb={action.verb} direction={action.direction}", style="yellow")
+                action_summary = self._summarize_action(action)
+
+                if self.debug and on_debug:
+                    on_debug("Action", action_summary)
 
                 result = self._execute_action(action)
                 action_results.append(result)
                 all_results.append(result)
 
                 # Track for history
-                action_summary = self._summarize_action(action)
                 all_actions.append(action_summary)
                 all_action_results.append(result)
 
-                if self.debug:
-                    _debug_log("Action Result", result, style="green")
+                if self.debug and on_debug:
+                    on_debug("Result", result)
 
             # Add assistant response to messages (as JSON)
             working_messages.append({
@@ -966,13 +969,20 @@ def play_game(game_path: str, debug: bool = False) -> None:
             print("Goodbye!")
             break
 
-        # Process game command with streaming narrative
+        # Process game command with streaming output
         def on_narrative(text: str) -> None:
             if text:
                 print()
                 print(text)
 
-        session.process_input(user_input, on_narrative=on_narrative)
+        def on_debug(label: str, content: str) -> None:
+            print(f"  [{label}] {content}")
+
+        session.process_input(
+            user_input,
+            on_narrative=on_narrative,
+            on_debug=on_debug if session.debug else None,
+        )
 
         if session.debug:
             state = session.get_state()

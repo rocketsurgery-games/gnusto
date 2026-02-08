@@ -54,8 +54,15 @@ class SystemMessage:
     level: Literal["info", "warning", "error"] = "info"
 
 
+@dataclass
+class DebugInfo:
+    """Debug information (action execution, grue I/O, etc.)."""
+    label: str
+    content: str
+
+
 # Union type for all content blocks
-ContentBlock = RoomEnter | ActionResult | Narrative | Image | SystemMessage
+ContentBlock = RoomEnter | ActionResult | Narrative | Image | SystemMessage | DebugInfo
 
 
 def build_room_block(
