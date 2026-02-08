@@ -18,6 +18,7 @@ from grue.runtime import ActionResult, GrueRuntime
 from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
+from .commands import handle_command, render_blocks_to_text
 from .images import scan_images, filter_images_for_state, format_image_catalog, add_renderable_entities, ImageInfo
 from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ImageRequest
 from .state import GameState, ObjectInfo, get_game_state
@@ -803,116 +804,24 @@ class GameSession:
             return str(result)
 
 
-def _handle_slash_command(session: "GameSession", command: str) -> bool:
-    """Handle slash commands. Returns True if command was handled."""
-    parts = command[1:].split(maxsplit=1)
-    cmd = parts[0].lower() if parts else ""
-    arg = parts[1] if len(parts) > 1 else ""
+def _handle_slash_command(session: "GameSession", command: str, game_dir: Path | None = None) -> bool:
+    """Handle slash commands. Returns True to continue, False to quit."""
+    result = handle_command(command, session, game_dir)
 
-    if cmd in ("help", "h", "?"):
-        print("""
-Slash Commands:
-  /help, /h, /?     Show this help
-  /save [slot]      Save game (default slot: "default")
-  /load [slot]      Load game
-  /saves            List available saves
-  /debug [on|off]   Toggle debug mode (show agent/grue chatter)
-  /state, /s        Show current game state (LLM context format)
-  /eval <expr>      Evaluate a Grue expression
-  /history          Show turn history
-  /quit, /q         Exit the game
-""")
-        return True
+    # Print any output blocks
+    if result.blocks:
+        print(render_blocks_to_text(result.blocks))
 
-    elif cmd in ("debug", "d"):
-        if arg.lower() == "on":
-            session.debug = True
-        elif arg.lower() == "off":
-            session.debug = False
-        else:
-            session.debug = not session.debug
-        print(f"Debug mode: {'on' if session.debug else 'off'}")
-        return True
+    # Handle special actions
+    if result.action == "quit":
+        return False
+    elif result.action == "clear":
+        print("\033[2J\033[H")  # ANSI clear screen
+    elif result.action == "reset":
+        # Reset is handled by the caller checking result.action
+        pass
 
-    elif cmd in ("state", "s"):
-        print(session.format_debug_context())
-        return True
-
-    elif cmd == "eval":
-        if not arg:
-            print("Usage: /eval <grue-expression>")
-            return True
-        try:
-            expr = parse(arg)
-            result = session.evaluator.eval(expr)
-            print(f"=> {result}")
-        except Exception as e:
-            print(f"Error: {e}")
-        return True
-
-    elif cmd == "history":
-        if not session.turn_history:
-            print("No turns yet.")
-        else:
-            for i, turn in enumerate(session.turn_history, 1):
-                print(f"{i}. [{turn.room}] {turn.player_command}")
-                if turn.actions:
-                    print(f"   Actions: {', '.join(turn.actions)}")
-        return True
-
-    elif cmd == "save":
-        slot = arg or "default"
-        try:
-            path = save_game(session.runtime, slot, session.turn_history, session.summaries)
-            print(f"Game saved to {path}")
-        except Exception as e:
-            print(f"Error saving: {e}")
-        return True
-
-    elif cmd == "load":
-        slot = arg or "default"
-        try:
-            history_data, summaries_data, warnings = load_game(session.runtime, slot)
-            for w in warnings:
-                print(f"Warning: {w}")
-            # Restore turn history
-            session.turn_history.clear()
-            for turn_data in history_data:
-                turn = TurnRecord(
-                    room=turn_data.get("room", ""),
-                    player_command=turn_data.get("command", ""),
-                    actions=turn_data.get("actions", []),
-                    results=turn_data.get("results", []),
-                    narrative=turn_data.get("narrative", ""),
-                )
-                session.turn_history.append(turn)
-            # Restore summaries
-            session.summaries = summaries_data
-            print(f"Game loaded ({len(session.turn_history)} turns, {len(session.summaries)} summaries)")
-        except FileNotFoundError:
-            print(f"No save found for slot '{slot}'")
-        except Exception as e:
-            print(f"Error loading: {e}")
-        return True
-
-    elif cmd == "saves":
-        game_name = session.runtime.world.name or "unknown"
-        saves = list_saves(game_name)
-        if not saves:
-            print("No saves found.")
-        else:
-            print("Available saves:")
-            for slot, timestamp, path in saves:
-                print(f"  {slot}: {timestamp}")
-        return True
-
-    elif cmd in ("quit", "q"):
-        return False  # Signal to quit
-
-    else:
-        print(f"Unknown command: /{cmd}")
-        print("Type /help for available commands.")
-        return True
+    return True
 
 
 def play_game(game_path: str, debug: bool = False) -> None:
@@ -959,7 +868,7 @@ def play_game(game_path: str, debug: bool = False) -> None:
 
         # Handle slash commands
         if user_input.startswith("/"):
-            if not _handle_slash_command(session, user_input):
+            if not _handle_slash_command(session, user_input, session.game_dir):
                 print("Goodbye!")
                 break
             continue

@@ -7,12 +7,15 @@ allowing both interfaces to handle commands identically.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 from grue.save import save_game, load_game, list_saves
+from grue.sexpr import parse
 
-from .agent import GameSession, TurnRecord
-from .render import ContentBlock, SystemMessage, RoomEnter, build_room_block
+from .render import ContentBlock, SystemMessage, RoomEnter, DebugInfo, build_room_block
+
+if TYPE_CHECKING:
+    from .agent import GameSession
 from .state import get_game_state
 
 
@@ -27,13 +30,48 @@ class CommandResult:
     action: CommandAction = None
 
 
+def render_block_to_text(block: ContentBlock) -> str:
+    """Render a content block to plain text for CLI output."""
+    if isinstance(block, SystemMessage):
+        prefix = ""
+        if block.level == "warning":
+            prefix = "Warning: "
+        elif block.level == "error":
+            prefix = "Error: "
+        return f"{prefix}{block.text}"
+    elif isinstance(block, RoomEnter):
+        lines = [f"\n=== {block.name} ===\n", block.description]
+        if block.objects:
+            lines.append("")
+            for obj in block.objects:
+                lines.append(obj)
+        if block.exits:
+            lines.append(f"\nNearby: {', '.join(block.exits)}")
+        if block.inventory:
+            lines.append(f"Carrying: {', '.join(block.inventory)}")
+        return "\n".join(lines)
+    elif isinstance(block, DebugInfo):
+        return f"  [{block.label}] {block.content}"
+    else:
+        # ActionResult, Narrative, Image - just return text if available
+        return getattr(block, "text", str(block))
+
+
+def render_blocks_to_text(blocks: list[ContentBlock]) -> str:
+    """Render a list of content blocks to plain text."""
+    return "\n".join(render_block_to_text(b) for b in blocks)
+
+
 HELP_TEXT = """Available commands:
   /help, /h, /?     Show this help
   /look, /l         Show current room
   /save [slot]      Save game (default slot: "default")
   /load [slot]      Load game
   /saves            List saved games
-  /debug, /d        Show debug context
+  /debug [on|off]   Toggle debug mode, or show context
+  /state, /s        Show current game state
+  /history          Show turn history
+  /eval <expr>      Evaluate a Grue expression
   /clear            Clear screen
   /reset            Restart game
   /quit, /q         Quit game"""
@@ -41,7 +79,7 @@ HELP_TEXT = """Available commands:
 
 def handle_command(
     command: str,
-    session: GameSession,
+    session: "GameSession",
     game_dir: Path | None = None,
 ) -> CommandResult:
     """
@@ -75,6 +113,7 @@ def handle_command(
     elif cmd == "load":
         slot = arg or "default"
         try:
+            from .agent import TurnRecord  # Local import to avoid circular dependency
             history_data, summaries_data, warnings = load_game(session.runtime, slot)
             for w in warnings:
                 result.blocks.append(SystemMessage(text=f"Warning: {w}", level="warning"))
@@ -116,8 +155,44 @@ def handle_command(
         result.blocks.append(room_block)
 
     elif cmd in ("debug", "d"):
+        if arg.lower() == "on":
+            session.debug = True
+            result.blocks.append(SystemMessage(text="Debug mode: on"))
+        elif arg.lower() == "off":
+            session.debug = False
+            result.blocks.append(SystemMessage(text="Debug mode: off"))
+        elif arg == "":
+            # No arg: toggle
+            session.debug = not session.debug
+            result.blocks.append(SystemMessage(text=f"Debug mode: {'on' if session.debug else 'off'}"))
+        else:
+            result.blocks.append(SystemMessage(text="Usage: /debug [on|off]"))
+
+    elif cmd in ("state", "s"):
         context = session.format_debug_context()
-        result.blocks.append(SystemMessage(text=f"─── Debug Context ───\n{context}\n─────────────────────"))
+        result.blocks.append(SystemMessage(text=context))
+
+    elif cmd == "history":
+        if not session.turn_history:
+            result.blocks.append(SystemMessage(text="No turns yet."))
+        else:
+            lines = []
+            for i, turn in enumerate(session.turn_history, 1):
+                lines.append(f"{i}. [{turn.room}] {turn.player_command}")
+                if turn.actions:
+                    lines.append(f"   Actions: {', '.join(turn.actions)}")
+            result.blocks.append(SystemMessage(text="\n".join(lines)))
+
+    elif cmd == "eval":
+        if not arg:
+            result.blocks.append(SystemMessage(text="Usage: /eval <grue-expression>"))
+        else:
+            try:
+                expr = parse(arg)
+                eval_result = session.evaluator.eval(expr)
+                result.blocks.append(SystemMessage(text=f"=> {eval_result}"))
+            except Exception as e:
+                result.blocks.append(SystemMessage(text=f"Error: {e}", level="error"))
 
     elif cmd == "clear":
         result.action = "clear"
