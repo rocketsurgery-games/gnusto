@@ -164,7 +164,13 @@ class WorldState(Protocol):
         ...
 
     def get_global(self, name: str) -> Any:
-        """Get global variable value."""
+        """Resolve a symbol name to its value.
+
+        Handles:
+        - Bindings (?self, ?actor, etc.)
+        - Entity-scoped values
+        - Constants
+        """
         ...
 
     def get_player_location(self) -> str:
@@ -217,10 +223,6 @@ class MutableWorldState(WorldState, Protocol):
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
         """Set object property value."""
-        ...
-
-    def set_global(self, name: str, value: Any) -> None:
-        """Set global variable value."""
         ...
 
     def move_object(self, obj: str, dest: str) -> None:
@@ -490,65 +492,38 @@ class EffectInterpreter:
             # Two forms:
             # (set @obj :prop value) - set object property (3 args)
             # (set global-name value) - set global (2 args, legacy)
-            if len(args) == 3:
-                obj, prop, val = args[0], args[1], args[2]
-                # Handle Keyword for property name
-                if hasattr(prop, 'name'):
-                    prop = prop.name
-                self.state.set_object_property(obj, prop, val)
-                self._effects_applied.append(f"set {obj} {prop} = {val}")
-            elif len(args) == 2:
-                global_name, val = args[0], args[1]
-                self.state.set_global(global_name, val)
-                self._effects_applied.append(f"set {global_name} = {val}")
-            else:
-                raise EvalError(f"'set' expects 2-3 arguments, got {len(args)}")
+            if len(args) != 3:
+                raise EvalError(f"'set' expects 3 arguments (obj prop value), got {len(args)}")
+            obj, prop, val = args[0], args[1], args[2]
+            # Handle Keyword for property name
+            if hasattr(prop, 'name'):
+                prop = prop.name
+            self.state.set_object_property(obj, prop, val)
+            self._effects_applied.append(f"set {obj} {prop} = {val}")
 
         elif name == "inc":
-            # Two forms:
-            # (inc @obj :prop [amount]) - increment object property (2-3 args)
-            # (inc global-name [amount]) - increment global (1-2 args, legacy)
-            if len(args) == 3 or (len(args) == 2 and hasattr(args[1], 'name')):
-                # Object property form: (inc @obj :prop) or (inc @obj :prop amt)
-                obj, prop = args[0], args[1]
-                if hasattr(prop, 'name'):
-                    prop = prop.name
-                amount = args[2] if len(args) > 2 else 1
-                current = self.state.get_object_property(obj, prop) or 0
-                self.state.set_object_property(obj, prop, current + amount)
-                self._effects_applied.append(f"inc {obj} {prop} by {amount}")
-            elif len(args) >= 1 and len(args) <= 2:
-                # Global form: (inc global-name) or (inc global-name amt)
-                global_name = args[0]
-                amount = args[1] if len(args) > 1 else 1
-                current = self.state.get_global(global_name)
-                self.state.set_global(global_name, current + amount)
-                self._effects_applied.append(f"inc {global_name} by {amount}")
-            else:
-                raise EvalError(f"'inc' expects 1-3 arguments, got {len(args)}")
+            # (inc @obj :prop [amount]) - increment object property
+            if len(args) < 2 or len(args) > 3:
+                raise EvalError(f"'inc' expects 2-3 arguments (obj prop [amount]), got {len(args)}")
+            obj, prop = args[0], args[1]
+            if hasattr(prop, 'name'):
+                prop = prop.name
+            amount = args[2] if len(args) > 2 else 1
+            current = self.state.get_object_property(obj, prop) or 0
+            self.state.set_object_property(obj, prop, current + amount)
+            self._effects_applied.append(f"inc {obj} {prop} by {amount}")
 
         elif name == "dec":
-            # Two forms:
-            # (dec @obj :prop [amount]) - decrement object property (2-3 args)
-            # (dec global-name [amount]) - decrement global (1-2 args, legacy)
-            if len(args) == 3 or (len(args) == 2 and hasattr(args[1], 'name')):
-                # Object property form: (dec @obj :prop) or (dec @obj :prop amt)
-                obj, prop = args[0], args[1]
-                if hasattr(prop, 'name'):
-                    prop = prop.name
-                amount = args[2] if len(args) > 2 else 1
-                current = self.state.get_object_property(obj, prop) or 0
-                self.state.set_object_property(obj, prop, current - amount)
-                self._effects_applied.append(f"dec {obj} {prop} by {amount}")
-            elif len(args) >= 1 and len(args) <= 2:
-                # Global form: (dec global-name) or (dec global-name amt)
-                global_name = args[0]
-                amount = args[1] if len(args) > 1 else 1
-                current = self.state.get_global(global_name)
-                self.state.set_global(global_name, current - amount)
-                self._effects_applied.append(f"dec {global_name} by {amount}")
-            else:
-                raise EvalError(f"'dec' expects 1-3 arguments, got {len(args)}")
+            # (dec @obj :prop [amount]) - decrement object property
+            if len(args) < 2 or len(args) > 3:
+                raise EvalError(f"'dec' expects 2-3 arguments (obj prop [amount]), got {len(args)}")
+            obj, prop = args[0], args[1]
+            if hasattr(prop, 'name'):
+                prop = prop.name
+            amount = args[2] if len(args) > 2 else 1
+            current = self.state.get_object_property(obj, prop) or 0
+            self.state.set_object_property(obj, prop, current - amount)
+            self._effects_applied.append(f"dec {obj} {prop} by {amount}")
 
         elif name == "set-in":
             # (set-in @obj '(:path :keys) value) - set nested property

@@ -986,7 +986,7 @@
               `((move @frob nil)
                 (move @smooth-stone ,(loc @player))
                 (set @smooth-stone :touched false)
-                (set score 100)
+                (set @player :score 100)
                 (success :context ((victory true)
                           (description "The stone smashes into the creature, sticking to its ichorous hide. The thing thrashes about, trying to bite at the stone, which is glowing brighter and brighter. Small hands issue from beneath its scales to tug in vain at the irritant. The creature begins to show gaping holes of dark, light-devouring nothingness around the stone. Its wings spread painfully, as though it were trying to fly away, and then fold. It widens its jaw in an almost human scream of agony. The black hole of its maw overwhelms it, and indeed the creature appears to be swallowing itself. At last, a grey cloud of greasy smoke surrounds the glowing stone, still suspended in midair. Then even that vanishes, and the stone drops to the ground, no longer glowing. The thing is gone.")))))
             (true

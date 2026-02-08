@@ -9,7 +9,7 @@ from grue.expr import (
     eval_predicate,
     execute_effect,
 )
-from grue.sexpr import parse
+from grue.sexpr import parse, Keyword
 
 
 class MockWorldState:
@@ -63,13 +63,10 @@ class MockWorldState:
         return prop in self.properties.get(obj, {})
 
     def get_global(self, name: str):
-        # Check bindings first (for test variables)
+        # Check bindings first (for test variables like ?x)
         if name in self.bindings:
             return self.bindings[name]
-        # score/moves are player properties
-        if name.lower() in ("score", "moves"):
-            return self.properties.get("PLAYER", {}).get(name.lower(), 0)
-        raise KeyError(f"Unknown global: {name}. Use object properties instead.")
+        raise KeyError(f"Unknown symbol: {name}")
 
     def get_player_location(self) -> str:
         return self.locations["PLAYER"]
@@ -100,15 +97,6 @@ class MockWorldState:
         if obj not in self.properties:
             self.properties[obj] = {}
         self.properties[obj][prop] = value
-
-    def set_global(self, name: str, value) -> None:
-        # score/moves are player properties
-        if name.lower() in ("score", "moves"):
-            if "PLAYER" not in self.properties:
-                self.properties["PLAYER"] = {}
-            self.properties["PLAYER"][name.lower()] = value
-        else:
-            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     def move_object(self, obj: str, dest: str) -> None:
         self.locations[obj] = dest
@@ -327,13 +315,14 @@ class TestEffects:
 
     def test_when_true(self):
         state = MockWorldState()
-        execute_effect("(when (= score 0) (inc PLAYER :score 10))", state)
+        state.properties["PLAYER"]["score"] = 0
+        execute_effect("(when (= (:score PLAYER) 0) (inc PLAYER :score 10))", state)
         assert state.properties["PLAYER"]["score"] == 10
 
     def test_when_false(self):
         state = MockWorldState()
         state.properties["PLAYER"]["score"] = 50
-        execute_effect("(when (= score 0) (inc PLAYER :score 10))", state)
+        execute_effect("(when (= (:score PLAYER) 0) (inc PLAYER :score 10))", state)
         assert state.properties["PLAYER"]["score"] == 50  # unchanged
 
 
@@ -904,53 +893,53 @@ class TestEffectInterpreterMutations:
         assert state.locations["KEY"] == "HALLWAY"
         assert "move KEY to HALLWAY" in result.effects_applied
 
-    def test_set_global_effect(self):
-        """Set effect changes global variable."""
+    def test_set_property_effect(self):
+        """Set effect changes object property."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
         result = interp.interpret([
-            ["set", "SCORE", 100],
+            ["set", "@player", Keyword("score"), 100],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.properties["PLAYER"]["score"] == 100
-        assert "set SCORE = 100" in result.effects_applied
+        assert state.properties["@player"]["score"] == 100
+        assert "set @player score = 100" in result.effects_applied
 
     def test_inc_effect(self):
-        """Inc effect increments score."""
+        """Inc effect increments object property."""
         state = MockStateWithQueues()
-        state.properties["PLAYER"]["score"] = 10
+        state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
         result = interp.interpret([
-            ["inc", "SCORE"],
+            ["inc", "@player", Keyword("score")],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.properties["PLAYER"]["score"] == 11
+        assert state.properties["@player"]["score"] == 11
 
     def test_inc_effect_with_amount(self):
         """Inc effect with custom amount."""
         state = MockStateWithQueues()
-        state.properties["PLAYER"]["score"] = 10
+        state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
         result = interp.interpret([
-            ["inc", "SCORE", 5],
+            ["inc", "@player", Keyword("score"), 5],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.properties["PLAYER"]["score"] == 15
+        assert state.properties["@player"]["score"] == 15
 
     def test_dec_effect(self):
-        """Dec effect decrements score."""
+        """Dec effect decrements object property."""
         state = MockStateWithQueues()
-        state.properties["PLAYER"]["score"] = 10
+        state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
         result = interp.interpret([
-            ["dec", "SCORE"],
+            ["dec", "@player", Keyword("score")],
             ["success"]
         ])
         assert result.outcome == "success"
-        assert state.properties["PLAYER"]["score"] == 9
+        assert state.properties["@player"]["score"] == 9
 
     def test_queue_effect(self):
         """Queue effect adds event to queue."""
@@ -1001,11 +990,12 @@ class TestEffectInterpreterMutations:
     def test_multiple_effects(self):
         """Multiple effects applied in order."""
         state = MockStateWithQueues()
+        state.properties["PLAYER"] = {"score": 0}
         interp = EffectInterpreter(state)
         result = interp.interpret([
             ["move", "KEY", "PLAYER"],
             ["set", "KEY", Keyword("taken"), True],
-            ["inc", "SCORE", 10],
+            ["inc", "PLAYER", Keyword("score"), 10],
             ["success", Keyword("message"), "You take the key."]
         ])
         assert result.outcome == "success"

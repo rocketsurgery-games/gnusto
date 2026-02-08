@@ -19,16 +19,10 @@ class MinimalState:
     """Minimal state that provides just enough for expression evaluation."""
 
     def __init__(self):
-        self._globals: dict = {}
         self._objects: dict = {}
 
     def get_global(self, name: str):
-        if name in self._globals:
-            return self._globals[name]
-        raise KeyError(name)
-
-    def set_global(self, name: str, value):
-        self._globals[name] = value
+        raise KeyError(f"Unknown symbol: {name}")
 
 
 # === Tests for (fn ...) anonymous functions ===
@@ -120,7 +114,6 @@ class TestDefn:
     def test_defn_via_effect_executor(self):
         """defn should also work via EffectExecutor."""
         state = MinimalState()
-        state.get_global = lambda name: state._globals.get(name, name)
         functions = {}
         executor = EffectExecutor(state, functions)
         executor.execute(parse("(defn check () true)"))

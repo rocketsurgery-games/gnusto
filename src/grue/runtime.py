@@ -521,13 +521,6 @@ class GrueRuntime:
             self._check_property_declared(obj, prop, "write")
             self.state.objects[obj].properties[prop] = value
 
-    def set_global(self, name: str, value: Any) -> None:
-        # score/moves are player properties
-        if name.lower() in ("score", "moves"):
-            self.set_object_property(self.player_name, name.lower(), value)
-        else:
-            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
-
     def move_object(self, obj: str, dest: str) -> None:
         if obj in self.state.objects:
             self.state.objects[obj].location = dest

@@ -199,7 +199,7 @@ class MockState:
         return None
 
     def get_global(self, name: str):
-        return None
+        raise KeyError(f"Unknown symbol: {name}")
 
     def get_player_location(self) -> str:
         return "@player-room"

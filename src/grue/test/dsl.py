@@ -59,7 +59,6 @@ State predicates (check game state):
     (held? OBJ)              - Object in player inventory
     (in? OBJ CONTAINER)      - Object inside container
     (prop? OBJ PROP VALUE)   - Object property equals value
-    (global? NAME VALUE)
     (queued? EVENT)
     (not-queued? EVENT)
 
@@ -351,7 +350,7 @@ class TestRunner:
         "outcome?", "context?", "death?", "victory?",
         # State predicates (with explicit handlers for better error messages)
         "player-at?", "has-flag?", "no-flag?", "not-flag?", "loc?",
-        "global?", "prop?", "queued?", "not-queued?",
+        "prop?", "queued?", "not-queued?",
     }
 
     # Result predicates require a last action result to check
@@ -664,25 +663,6 @@ class TestRunner:
                             f"Object '{obj}' at '{actual}', expected '{expected}'"
                         )
 
-            elif name == "global?":
-                if len(pred) != 3:
-                    failures.append("(global? NAME EXPECTED) requires 2 arguments")
-                    continue
-                gname = pred[1]
-                expected = pred[2]
-                if isinstance(gname, Symbol):
-                    gname = gname.name
-                if isinstance(expected, Symbol):
-                    expected = expected.name
-                try:
-                    actual = runtime.get_global(gname)
-                except KeyError:
-                    actual = None
-                if actual != expected:
-                    failures.append(
-                        f"Global '{gname}' is '{actual}', expected '{expected}'"
-                    )
-
             elif name == "prop?":
                 if len(pred) != 4:
                     failures.append("(prop? OBJ PROP EXPECTED) requires 3 arguments")
@@ -966,8 +946,7 @@ class TestRunner:
 
 class _DummyState:
     """Minimal state for parsing defn forms."""
-    def get_global(self, name: str) -> Any:
-        raise KeyError(name)
+    pass
 
 
 def run_tests(

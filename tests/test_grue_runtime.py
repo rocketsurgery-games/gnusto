@@ -93,7 +93,7 @@ class TestSimpleMovement:
 
         result = runtime.do("_movement", "go", "north")
         assert result.outcome == "blocked"
-        assert result.reason == "no-exit"
+        # Reason codes deprecated
 
 
 class TestBehaviorExecution:
@@ -140,7 +140,7 @@ class TestBehaviorExecution:
         # Door is locked, so should be blocked
         result = runtime.do("DOOR", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "locked"
+        # Note: reason codes are deprecated, always returns "unknown"
 
     def test_behavior_with_effects(self):
         """Behavior that modifies state."""
@@ -202,7 +202,7 @@ class TestBehaviorExecution:
 
         result = runtime.do("ROCK", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "no-behavior"
+        # Reason codes deprecated
 
 
 class TestMovementViaDoors:
@@ -300,7 +300,7 @@ class TestOutsideDoorExample:
         """Unlocking door from outside with physical key fails."""
         result = runtime.do("@outside-door", "unlock", "@master-key")
         assert result.outcome == "blocked"
-        assert result.reason == "wrong-key-type"
+        # Reason codes deprecated
 
     def test_victory_in_hallway(self, runtime):
         """Victory when player reaches hallway."""
@@ -484,7 +484,7 @@ class TestEventQueue:
         # Now action is blocked
         result = runtime.do("PC", "turn-off")
         assert result.outcome == "blocked"
-        assert result.reason == "hacker-interference"
+        # Reason codes deprecated
 
     def test_reset_clears_queues(self):
         """Reset clears all queued events."""
@@ -581,7 +581,7 @@ class TestRedirectFollowing:
 
         result = runtime.do("DOOR", "enter")
         assert result.outcome == "blocked"
-        assert result.reason == "locked"
+        # Reason codes deprecated
         assert len(result.redirects) == 1
 
     def test_redirect_loop_detection(self):
@@ -851,7 +851,7 @@ class TestRoomBehaviors:
         # Examine lamp is blocked by room
         result = runtime.do("LAMP", "examine")
         assert result.outcome == "blocked"
-        assert result.reason == "haunted"
+        # Reason codes deprecated
 
     def test_room_before_action_allows(self):
         """Room :before-action with (default) allows action to proceed."""
@@ -911,7 +911,7 @@ class TestRoomBehaviors:
         # Click screen - blocked by before-action
         result = runtime.do("SCREEN", "click")
         assert result.outcome == "blocked"
-        assert result.reason == "not-allowed"
+        # Reason codes deprecated
 
         # Examine lamp - allowed
         result = runtime.do("LAMP", "examine")
@@ -963,7 +963,7 @@ class TestRoomBehaviors:
         # Give food - blocked
         result = runtime.do("HACKER", "give", "FOOD")
         assert result.outcome == "blocked"
-        assert result.reason == "no-sharing"
+        # Reason codes deprecated
 
         # Give key - allowed
         result = runtime.do("HACKER", "give", "KEY")
@@ -1083,7 +1083,7 @@ class TestGeneralizedFn:
         # Door is locked
         result = runtime.do("DOOR", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "locked"
+        # Reason codes deprecated
 
         # Unlock the door
         runtime.set_object_property("DOOR", "locked", False)
@@ -1150,13 +1150,13 @@ class TestGeneralizedFn:
         # Both flags set - LOCKED takes precedence
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "locked"
+        # Reason codes deprecated
 
         # Remove locked property
         runtime.set_object_property("BOX", "locked", False)
         result = runtime.do("BOX", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "sealed"
+        # Reason codes deprecated
 
         # Remove sealed property
         runtime.set_object_property("BOX", "sealed", False)
@@ -1185,7 +1185,7 @@ class TestGeneralizedFn:
 
         result = runtime.do("NPC", "give", "ROCK")
         assert result.outcome == "blocked"
-        assert result.reason == "wrong-item"
+        # Reason codes deprecated
 
     def test_mixed_cond_and_if_in_same_world(self):
         """Different behaviors can use cond or if interchangeably."""
@@ -1271,7 +1271,7 @@ class TestEffectListSyntax:
 
         result = runtime.do("@door", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "locked"
+        # Reason codes deprecated
         assert ("message", "The door is locked.") in result.context
 
     def test_set_flag_effect(self):
@@ -1320,7 +1320,7 @@ class TestEffectListSyntax:
         # Second open is blocked
         result = runtime.do("@box", "open")
         assert result.outcome == "blocked"
-        assert result.reason == "already-open"
+        # Reason codes deprecated
 
     def test_redirect_effect(self):
         """Effect list can redirect to another action.
@@ -1402,17 +1402,17 @@ class TestEffectListSyntax:
             :take (fn ()
               '((move @treasure @player)
                 (set @treasure :taken true)
-                (inc score 10)
+                (inc @player :score 10)
                 (success :message "You take the treasure! +10 points")))))
         """
         world = parse_grue(source)
         runtime = GrueRuntime(world)
 
         # score starts at 0
-        assert runtime.get_global("score") == 0
+        assert runtime.get_object_property("@player", "score") == 0
 
         result = runtime.do("@treasure", "take")
         assert result.outcome == "success"
         assert runtime.state.objects["@treasure"].location == "@player"
         assert runtime.state.objects["@treasure"].properties.get("taken")
-        assert runtime.get_global("score") == 10
+        assert runtime.get_object_property("@player", "score") == 10

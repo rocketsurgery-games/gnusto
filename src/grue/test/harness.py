@@ -171,12 +171,6 @@ class GrueTestHarness:
             return self.runtime.state.objects[obj].properties.get(prop)
         return None
 
-    def get_global(self, name: str) -> Any:
-        """Get global variable (only score/moves are supported)."""
-        if name.lower() in ("score", "moves"):
-            return self.runtime.get_object_property(self.runtime.player_name, name.lower()) or 0
-        raise KeyError(f"Unknown global: {name}. Use object properties instead.")
-
     def snapshot(self) -> StateSnapshot:
         """Capture current state."""
         return StateSnapshot.from_runtime(self.runtime)
@@ -206,13 +200,6 @@ class GrueTestHarness:
         """Set property on object."""
         if obj in self.runtime.state.objects:
             self.runtime.state.objects[obj].properties[prop] = value
-
-    def set_global(self, name: str, value: Any) -> None:
-        """Set global variable (only score/moves are supported)."""
-        if name.lower() in ("score", "moves"):
-            self.runtime.set_object_property(self.runtime.player_name, name.lower(), value)
-        else:
-            raise KeyError(f"Unknown global: {name}. Use object properties instead.")
 
     # === Action Execution ===
 
@@ -424,14 +411,6 @@ class GrueTestCase(unittest.TestCase):
         self.assertEqual(
             actual, expected,
             msg or f"Expected {obj}.{prop} = {expected!r}, got {actual!r}"
-        )
-
-    def assert_global(self, name: str, expected: Any, msg: str | None = None) -> None:
-        """Assert global variable has expected value."""
-        actual = self.harness.get_global(name)
-        self.assertEqual(
-            actual, expected,
-            msg or f"Expected global {name} = {expected!r}, got {actual!r}"
         )
 
     def assert_state_unchanged(self, msg: str | None = None) -> None:
