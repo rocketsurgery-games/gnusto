@@ -213,6 +213,21 @@ class TurnRecord:
         return user_tokens + results_tokens + assistant_tokens + 8  # +8 for message overhead
 
 
+# Prompt for summarizing a batch of turns into narrative
+SUMMARIZE_PROMPT = """\
+Summarize these game turns into a brief narrative paragraph (2-4 sentences).
+
+Preserve:
+- Room names and locations visited
+- Objects found, taken, or interacted with
+- NPC interactions and key dialogue
+- Important events or discoveries
+
+Write in second person past tense ("You found...", "You spoke with...").
+Focus on what the player learned or accomplished, not mechanical details.
+"""
+
+
 @dataclass
 class GameSession:
     """An agent-driven game session."""
@@ -223,8 +238,8 @@ class GameSession:
     game_dir: Path
     all_images: list[ImageInfo] = field(default_factory=list)
     turn_history: list[TurnRecord] = field(default_factory=list)
+    summaries: list[str] = field(default_factory=list)  # Narrative summary blocks
     debug: bool = False
-    max_history_turns: int = 20  # Keep last N turns in full detail
 
     @classmethod
     def from_game_file(
@@ -257,9 +272,69 @@ class GameSession:
         )
         return session
 
-    # Tiered history settings
-    recent_turns_full: int = 5  # Last N turns get full narrative
-    medium_turns_brief: int = 15  # Next N turns get brief narrative
+    # History settings
+    recent_turns: int = 5  # Last N turns kept in full detail
+    pending_buffer_size: int = 5  # Summarize when this many turns accumulate
+
+    def _maybe_summarize(self) -> None:
+        """
+        Check if pending buffer is full and summarize if needed.
+
+        When turn_history exceeds recent_turns + pending_buffer_size,
+        the oldest pending_buffer_size turns get summarized into a
+        narrative block and removed from turn_history.
+        """
+        threshold = self.recent_turns + self.pending_buffer_size
+        if len(self.turn_history) <= threshold:
+            return
+
+        # Extract turns to summarize (oldest pending_buffer_size turns)
+        turns_to_summarize = self.turn_history[:self.pending_buffer_size]
+        self.turn_history = self.turn_history[self.pending_buffer_size:]
+
+        if self.debug:
+            _debug_log(
+                "Summarizing turns",
+                f"{len(turns_to_summarize)} turns -> narrative block",
+                style="blue"
+            )
+
+        # Format turns for summarization
+        turn_descriptions = []
+        for turn in turns_to_summarize:
+            lines = [f"In {turn.room}: {turn.player_command}"]
+            for i, action in enumerate(turn.actions):
+                result = turn.results[i] if i < len(turn.results) else ""
+                if result and result != "Done.":
+                    lines.append(f"  {action}: {result}")
+            turn_descriptions.append("\n".join(lines))
+
+        turns_text = "\n\n".join(turn_descriptions)
+
+        # Call LLM to generate summary
+        messages = [
+            {"role": "system", "content": SUMMARIZE_PROMPT},
+            {"role": "user", "content": turns_text},
+        ]
+
+        try:
+            # Use basic chat for summarization (not structured JSON)
+            response = self.llm.chat(messages)
+            summary = response.content or ""
+            self.summaries.append(summary.strip())
+
+            if self.debug:
+                _debug_log("Summary generated", summary.strip(), style="green")
+
+        except Exception as e:
+            # On error, fall back to mechanical summary
+            fallback = "; ".join(
+                f"[{t.room}] {t.player_command}" for t in turns_to_summarize
+            )
+            self.summaries.append(f"(Summary unavailable: {fallback})")
+
+            if self.debug:
+                _debug_log("Summary error", str(e), style="red")
 
     def _build_messages(self, current_state: GameState, player_command: str) -> list[dict[str, Any]]:
         """
@@ -267,61 +342,38 @@ class GameSession:
 
         Structure:
         1. System prompt
-        2. Turn history (tiered detail level)
-        3. Current game state + player command
-
-        History tiers:
-        - Recent (last 5): Full narrative
-        - Medium (5-20): First sentence of narrative
-        - Old (20+): One-line summary only
+        2. Summaries ("the story so far" - oldest to newest)
+        3. Recent full turns (as user/assistant pairs)
+        4. Current game state + player command
         """
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
 
-        # Get turns to include (with position for tiering)
-        turns_to_include = self.turn_history[-self.max_history_turns:]
-        num_turns = len(turns_to_include)
+        # Add summaries as "story so far" context
+        if self.summaries:
+            story_so_far = "\n\n".join(self.summaries)
+            messages.append({
+                "role": "user",
+                "content": f"[Story so far:]\n{story_so_far}"
+            })
+            messages.append({
+                "role": "assistant",
+                "content": "(Acknowledged - I'll continue narrating from here.)"
+            })
 
-        for i, turn in enumerate(turns_to_include):
-            # Calculate how "old" this turn is (0 = most recent)
-            age = num_turns - 1 - i
-
-            if age < self.recent_turns_full:
-                # Recent: full detail with results
-                user_lines = [f"[Previous turn in {turn.room}]", f"Player: {turn.player_command}"]
-                # Include action results (skip "Done." noise)
-                for j, action in enumerate(turn.actions):
-                    result = turn.results[j] if j < len(turn.results) else ""
-                    if result and result != "Done.":
-                        user_lines.append(f"  {action}: {result}")
-                    else:
-                        user_lines.append(f"  {action}")
-                user_content = "\n".join(user_lines)
-                assistant_content = turn.narrative
-            elif age < self.recent_turns_full + self.medium_turns_brief:
-                # Medium: abbreviated - command with results, brief narrative
-                user_lines = [f"[Turn in {turn.room}] {turn.player_command}"]
-                for j, action in enumerate(turn.actions):
-                    result = turn.results[j] if j < len(turn.results) else ""
-                    if result and result != "Done.":
-                        user_lines.append(f"  → {result}")
-                user_content = "\n".join(user_lines)
-                # Take first sentence or first 100 chars of narrative
-                narrative = turn.narrative
-                if ". " in narrative:
-                    assistant_content = narrative[:narrative.index(". ") + 1]
-                elif len(narrative) > 100:
-                    assistant_content = narrative[:100] + "..."
+        # Add recent turns in full detail
+        for turn in self.turn_history:
+            user_lines = [f"[Previous turn in {turn.room}]", f"Player: {turn.player_command}"]
+            # Include action results (skip "Done." noise)
+            for j, action in enumerate(turn.actions):
+                result = turn.results[j] if j < len(turn.results) else ""
+                if result and result != "Done.":
+                    user_lines.append(f"  {action}: {result}")
                 else:
-                    assistant_content = narrative
-            else:
-                # Old: summary only (single message, no assistant response)
-                messages.append({
-                    "role": "user",
-                    "content": f"[Earlier: {turn.to_summary()}]"
-                })
-                continue
+                    user_lines.append(f"  {action}")
+            user_content = "\n".join(user_lines)
+            assistant_content = turn.narrative
 
             messages.append({"role": "user", "content": user_content})
             messages.append({"role": "assistant", "content": assistant_content})
@@ -348,50 +400,35 @@ class GameSession:
         """
         Estimate current context token usage.
 
-        Returns dict with breakdown by tier:
+        Returns dict with breakdown:
         - system_prompt: Tokens in system prompt
-        - history_recent: Full-detail recent turns
-        - history_medium: Abbreviated medium turns
-        - history_old: Summary-only old turns
+        - summaries: Tokens in narrative summaries
+        - recent_turns: Tokens in recent full-detail turns
         - state_estimate: Estimated tokens for typical game state
         - total: Sum of all components
         """
         system_tokens = estimate_tokens(SYSTEM_PROMPT)
 
-        turns = self.turn_history[-self.max_history_turns:]
-        num_turns = len(turns)
+        # Summaries
+        summaries_text = "\n\n".join(self.summaries)
+        summaries_tokens = estimate_tokens(summaries_text) if self.summaries else 0
 
-        recent_tokens = 0
-        medium_tokens = 0
-        old_tokens = 0
-
-        for i, turn in enumerate(turns):
-            age = num_turns - 1 - i
-
-            if age < self.recent_turns_full:
-                # Full tokens
-                recent_tokens += turn.estimate_tokens()
-            elif age < self.recent_turns_full + self.medium_turns_brief:
-                # Abbreviated: ~half tokens
-                medium_tokens += turn.estimate_tokens() // 2
-            else:
-                # Summary only: ~20 tokens
-                old_tokens += 20
+        # Recent turns (full detail)
+        recent_tokens = sum(turn.estimate_tokens() for turn in self.turn_history)
 
         # Estimate typical game state size (varies by room)
         state_estimate = 500  # Rough average
 
-        history_total = recent_tokens + medium_tokens + old_tokens
+        total = system_tokens + summaries_tokens + recent_tokens + state_estimate
 
         return {
             "system_prompt": system_tokens,
-            "history_recent": recent_tokens,
-            "history_medium": medium_tokens,
-            "history_old": old_tokens,
-            "history_total": history_total,
-            "history_turns": num_turns,
+            "summaries": summaries_tokens,
+            "summaries_count": len(self.summaries),
+            "recent_turns": recent_tokens,
+            "recent_turns_count": len(self.turn_history),
             "state_estimate": state_estimate,
-            "total": system_tokens + history_total + state_estimate,
+            "total": total,
         }
 
     def get_state_context(self) -> str:
@@ -546,6 +583,9 @@ class GameSession:
         )
         self.turn_history.append(turn_record)
 
+        # Check if we need to summarize older turns
+        self._maybe_summarize()
+
         if self.debug:
             _debug_log("Turn Record", turn_record.to_summary(), style="blue")
 
@@ -666,28 +706,25 @@ class GameSession:
         """Format full LLM context for debug display (history + current state)."""
         lines = []
 
-        # Turn history summary
-        lines.append("## Turn History")
+        # Summaries (story so far)
+        lines.append("## Story So Far")
+        if not self.summaries:
+            lines.append("(no summaries yet)")
+        else:
+            lines.append(f"({len(self.summaries)} summary blocks)")
+            for i, summary in enumerate(self.summaries, 1):
+                lines.append(f"  [{i}] {summary[:100]}..." if len(summary) > 100 else f"  [{i}] {summary}")
+        lines.append("")
+
+        # Recent turns
+        lines.append("## Recent Turns")
         if not self.turn_history:
             lines.append("(no turns yet)")
         else:
-            num_turns = len(self.turn_history)
-            turns_shown = min(num_turns, self.max_history_turns)
-            lines.append(f"({num_turns} turns, showing last {turns_shown})")
+            lines.append(f"({len(self.turn_history)} turns in full detail)")
             lines.append("")
-
-            # Show turns with tier indicators
-            turns_to_show = self.turn_history[-self.max_history_turns:]
-            for i, turn in enumerate(turns_to_show):
-                age = len(turns_to_show) - 1 - i
-                if age < self.recent_turns_full:
-                    tier = "FULL"
-                elif age < self.recent_turns_full + self.medium_turns_brief:
-                    tier = "BRIEF"
-                else:
-                    tier = "SUMMARY"
-
-                lines.append(f"[{tier}] {turn.to_summary()}")
+            for turn in self.turn_history:
+                lines.append(f"[FULL] {turn.to_summary()}")
         lines.append("")
 
         # Current state
@@ -804,7 +841,7 @@ Slash Commands:
     elif cmd == "save":
         slot = arg or "default"
         try:
-            path = save_game(session.runtime, slot, session.turn_history)
+            path = save_game(session.runtime, slot, session.turn_history, session.summaries)
             print(f"Game saved to {path}")
         except Exception as e:
             print(f"Error saving: {e}")
@@ -813,7 +850,7 @@ Slash Commands:
     elif cmd == "load":
         slot = arg or "default"
         try:
-            history_data, warnings = load_game(session.runtime, slot)
+            history_data, summaries_data, warnings = load_game(session.runtime, slot)
             for w in warnings:
                 print(f"Warning: {w}")
             # Restore turn history
@@ -827,7 +864,9 @@ Slash Commands:
                     narrative=turn_data.get("narrative", ""),
                 )
                 session.turn_history.append(turn)
-            print(f"Game loaded ({len(session.turn_history)} turns of history)")
+            # Restore summaries
+            session.summaries = summaries_data
+            print(f"Game loaded ({len(session.turn_history)} turns, {len(session.summaries)} summaries)")
         except FileNotFoundError:
             print(f"No save found for slot '{slot}'")
         except Exception as e:

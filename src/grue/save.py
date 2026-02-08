@@ -30,6 +30,7 @@ class SaveData:
     objects: dict[str, dict[str, Any]]  # name -> {location, properties}
     queues: dict[str, int | None]  # event -> countdown
     history: list[dict[str, Any]]  # turn records
+    summaries: list[str]  # narrative summary blocks
 
 
 def get_save_dir(game_name: str) -> Path:
@@ -91,6 +92,7 @@ def save_game(
     runtime: "GrueRuntime",
     slot: str = "default",
     turn_history: list[Any] | None = None,
+    summaries: list[str] | None = None,
 ) -> Path:
     """
     Save game state to a file.
@@ -99,6 +101,7 @@ def save_game(
         runtime: The GrueRuntime to save
         slot: Save slot name (default: "default")
         turn_history: Optional list of TurnRecord objects from agent
+        summaries: Optional list of narrative summary strings
 
     Returns:
         Path to the saved file
@@ -149,6 +152,14 @@ def save_game(
             results = " ".join(f'"{_escape_string(r)}"' for r in turn.results)
             narrative = _escape_string(turn.narrative)
             lines.append(f'    (:room {room} :command "{command}" :actions ({actions}) :results ({results}) :narrative "{narrative}")')
+        lines.append("  )")
+
+    # Save narrative summaries if provided
+    if summaries:
+        lines.append("")
+        lines.append("  :summaries (")
+        for summary in summaries:
+            lines.append(f'    "{_escape_string(summary)}"')
         lines.append("  )")
 
     lines.append(")")
@@ -271,6 +282,12 @@ def parse_save_file(path: Path) -> SaveData:
         if isinstance(turn_expr, dict):
             history.append(turn_expr)
 
+    # Extract summaries
+    summaries = []
+    for summary_expr in data.get("summaries", []):
+        if isinstance(summary_expr, str):
+            summaries.append(summary_expr)
+
     return SaveData(
         version=data.get("version", 1),
         game=data.get("game", "unknown"),
@@ -278,13 +295,14 @@ def parse_save_file(path: Path) -> SaveData:
         objects=objects,
         queues=queues,
         history=history,
+        summaries=summaries,
     )
 
 
 def load_game(
     runtime: "GrueRuntime",
     slot: str = "default",
-) -> tuple[list[dict[str, Any]], list[str]]:
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     """
     Load game state from a file.
 
@@ -293,7 +311,7 @@ def load_game(
         slot: Save slot name (default: "default")
 
     Returns:
-        Tuple of (turn_history as dicts, list of warnings)
+        Tuple of (turn_history as dicts, summaries list, list of warnings)
 
     Raises:
         FileNotFoundError: If save file doesn't exist
@@ -342,7 +360,7 @@ def load_game(
             continue
         runtime.state.queues[event] = countdown
 
-    return save_data.history, warnings
+    return save_data.history, save_data.summaries, warnings
 
 
 def list_saves(game_name: str) -> list[tuple[str, str, Path]]:

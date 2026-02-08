@@ -92,15 +92,72 @@ The agent's job is to make sense of the world model for the player, describe it 
 
 In the original Infocom games, wrestling with the text parser and identifying possible actions could be extraordinarily frustrating. This was an unavoidable consequence of using hand-written text parsers on the simple micros of the era. But a modern language model is capable of parsing arbitrary input and matching the user's intentions to the world state, and available actions. This should dramatically reduce the frustration of wrestling with the parser, figuring out exactly which terminology the implementor expected, and so forth.
 
-## Text generation
+## Narrative Generation
 
-These games were also famous for repetitive text, especially for anything outside of the game's happy path. E.g., "I don't know what to do with that." An LLM-based agent, with the right guidance, can allow the player to explore and try many things not manually built into the game design, creating a depth of exploration and experience far beyond traditional interactive fiction.
+The agent's primary job is to **interpret Grue output faithfully** while **stitching it together coherently**. The game's Grue code provides the narrative soul -- room descriptions, action results, character dialogue -- and the agent provides the glue that makes it flow naturally.
+
+This is deliberately conservative: the agent doesn't invent narrative from scratch. Instead it:
+- Adapts player input to available actions (flexible parsing)
+- Executes actions and receives structured results from Grue
+- Weaves multiple results into coherent prose
+- Reduces repetition when similar actions occur
+- Preserves character dialogue and key descriptions verbatim
+
+This approach lets game authors maintain control over tone and story, while the agent handles the tedious work of natural language parsing and smooth presentation.
 
 ## Hints
 
 The downside of being able to generate an unbounded amount of expository text, is that the player has no way of knowing whether or not they're "on the beaten path". To balance this, we can leverage the language model's interpretation and reasoning capabilities to gently guide the player in the right direction. 
 
-## Notes & Bookkeeping
+## Context Management
+
+Long play sessions create a challenge: the agent needs enough context to be helpful ("where did we leave that stone?") without overwhelming the LLM's context window. We address this with **progressive summarization**.
+
+### History Tiers
+
+The agent maintains three tiers of history:
+
+```
+[Summaries...] [Pending Buffer: 0-N] [Recent: N full turns]
+                    ↑
+            Summarize when buffer fills
+```
+
+**Recent turns** (last N): Full detail -- player command, actions taken, Grue results, and the agent's narrative response. This provides immediate context for ongoing interactions.
+
+**Pending buffer** (0 to N turns): Full turns waiting to be batched. When this buffer fills, we call the LLM to summarize the batch into a narrative block.
+
+**Summaries**: Narrative blocks, each summarizing N turns of play. These form "the story so far" and grow as the game progresses.
+
+### Summarization
+
+When the pending buffer reaches N entries:
+1. Call LLM with the N turns, requesting a narrative summary
+2. The summary preserves: room context, objects found, NPC interactions, key events
+3. Prepend the summary block to the summaries list
+4. Clear the pending buffer
+
+This means expensive LLM summarization happens once every N player turns, not continuously.
+
+### What the Agent Sees
+
+Each turn, the agent receives:
+```
+System prompt
++ Summaries (oldest → newest, "the story so far")
++ Recent full turns (as conversation history)
++ Current game state + player command
+```
+
+The summaries provide long-term context while recent turns provide immediate detail.
+
+### Notes as Emergent Knowledge
+
+This design naturally supports player queries like "where was that stone?" or "what did the hacker say about the key?" The knowledge is embedded in the narrative summaries. Because the agent only knows what emerged through play (not by introspecting Grue state), it can't accidentally spoil puzzles.
+
+Future enhancements could extract structured data from summaries (rooms visited, objects found, NPC relationships) for more precise queries, but the narrative-first approach works well as a starting point.
+
+## Notes & Maps (Future)
 
 While there's a certain nostalgia for the hand-written maps and notes needed to solve these games in their heyday, it's also very labor intensive (and often frustrating) for players. The agent can help players by generating contextual notes and maps automatically. Rather than simply exposing a fixed set of pre-canned "notes", as is still common even in modern games, we can leverage the agent to create notes and maps that precisely reflect the player's experience. And because the agent can see "behind the curtain", it can do so in such a way that they gently guide the player in the right direction.
 
@@ -114,8 +171,14 @@ TODO
 ## Result context
 What do we _really_ want from effects like `(success :context (description "..."))`? Consider pulling all the context (e.g., `:context ((timer-display ...`) into explicit ui-effects that give instructions on how context should be displayed to the user.
 
-This is best addressed when we start bolting on the agent adapter for real. This will give us a much clearer idea of what we need to solve real needs.
+Related: Look at @help-key:click for an example of very repetitive success messages. The agent's narrative stitching should help reduce this repetition, but we may want to revisit how Grue expresses context for the agent to work with.
 
-Related: Look at @help-key:click for an example of very repetitive success messages. While we could simplify this
-a good bit with some string manipulation, it also provides an opportunity to think through what we want the interactions from grue -> agent to look like, so we can achieve our goals more flexibly.
+## Summarization tuning
+The progressive summarization system has several parameters to tune:
+- **Batch size**: How many turns per summary block? Smaller = finer granularity, more LLM calls.
+- **Summary prompt**: What should the LLM preserve? Room context, object locations, NPC dialogue, puzzle state?
+- **Re-summarization**: When summaries grow too long, we may need to summarize summaries. Design TBD.
+
+## Structured knowledge extraction
+The current design embeds knowledge in narrative summaries. For precise queries ("list all rooms I've visited"), we may want to extract structured data alongside the narrative. This could be a simple addition to the summarization prompt.
 

@@ -67,7 +67,7 @@ def handle_command(
     elif cmd == "save":
         slot = arg or "default"
         try:
-            path = save_game(session.runtime, slot, session.turn_history)
+            path = save_game(session.runtime, slot, session.turn_history, session.summaries)
             result.blocks.append(SystemMessage(text=f"Game saved to {path}"))
         except Exception as e:
             result.blocks.append(SystemMessage(text=f"Error saving: {e}", level="error"))
@@ -75,7 +75,7 @@ def handle_command(
     elif cmd == "load":
         slot = arg or "default"
         try:
-            history_data, warnings = load_game(session.runtime, slot)
+            history_data, summaries_data, warnings = load_game(session.runtime, slot)
             for w in warnings:
                 result.blocks.append(SystemMessage(text=f"Warning: {w}", level="warning"))
             session.turn_history.clear()
@@ -88,7 +88,8 @@ def handle_command(
                     narrative=turn_data.get("narrative", ""),
                 )
                 session.turn_history.append(turn)
-            result.blocks.append(SystemMessage(text=f"Game loaded ({len(session.turn_history)} turns)"))
+            session.summaries = summaries_data
+            result.blocks.append(SystemMessage(text=f"Game loaded ({len(session.turn_history)} turns, {len(session.summaries)} summaries)"))
             # Add room block to show current state
             state = get_game_state(session.runtime)
             room_block = build_room_block(state, session.runtime, game_dir)
