@@ -813,7 +813,7 @@ Slash Commands:
   /save [slot]      Save game (default slot: "default")
   /load [slot]      Load game
   /saves            List available saves
-  /debug, /d        Toggle debug mode (show LLM context)
+  /debug [on|off]   Toggle debug mode (show agent/grue chatter)
   /state, /s        Show current game state (LLM context format)
   /eval <expr>      Evaluate a Grue expression
   /history          Show turn history
@@ -822,7 +822,12 @@ Slash Commands:
         return True
 
     elif cmd in ("debug", "d"):
-        session.debug = not session.debug
+        if arg.lower() == "on":
+            session.debug = True
+        elif arg.lower() == "off":
+            session.debug = False
+        else:
+            session.debug = not session.debug
         print(f"Debug mode: {'on' if session.debug else 'off'}")
         return True
 
