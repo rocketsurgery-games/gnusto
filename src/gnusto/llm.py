@@ -180,6 +180,7 @@ class LLMClient:
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] | None = None,
         tool_choice: str | dict | None = None,
+        max_retries: int = 3,
     ) -> LLMResponse:
         """
         Send a chat request to the LLM.
@@ -188,6 +189,7 @@ class LLMClient:
             messages: List of message dicts with 'role' and 'content' keys
             tools: Optional list of tool definitions (OpenAI function calling format)
             tool_choice: Optional tool choice ("auto", "none", or specific tool)
+            max_retries: Number of retries on transient errors (default 3)
 
         Returns:
             LLMResponse with content and/or tool calls
@@ -204,8 +206,22 @@ class LLMClient:
             if tool_choice:
                 kwargs["tool_choice"] = tool_choice
 
-        response = litellm.completion(**kwargs)
-        return self._parse_response(response)
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = litellm.completion(**kwargs)
+                return self._parse_response(response)
+            except Exception as e:
+                last_error = e
+                # Only retry on network-related errors
+                error_str = str(e).lower()
+                if any(x in error_str for x in ["connection", "timeout", "network", "http2", "disconnect"]):
+                    import time
+                    time.sleep(0.5 * (attempt + 1))  # Simple backoff
+                    continue
+                raise  # Non-network errors, don't retry
+
+        raise last_error  # type: ignore
 
     def _parse_response(self, response: Any) -> LLMResponse:
         """Parse litellm response into our format."""
@@ -228,12 +244,13 @@ class LLMClient:
             raw=response,
         )
 
-    def chat_structured(self, messages: list[dict[str, str]]) -> AgentResponse:
+    def chat_structured(self, messages: list[dict[str, str]], max_retries: int = 3) -> AgentResponse:
         """
         Send a chat request expecting structured JSON output.
 
         Args:
             messages: List of message dicts with 'role' and 'content' keys
+            max_retries: Number of retries on transient errors (default 3)
 
         Returns:
             AgentResponse parsed from JSON
@@ -253,8 +270,22 @@ class LLMClient:
             },
         }
 
-        response = litellm.completion(**kwargs)
-        return self._parse_structured_response(response)
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = litellm.completion(**kwargs)
+                return self._parse_structured_response(response)
+            except Exception as e:
+                last_error = e
+                # Only retry on network-related errors
+                error_str = str(e).lower()
+                if any(x in error_str for x in ["connection", "timeout", "network", "http2", "disconnect"]):
+                    import time
+                    time.sleep(0.5 * (attempt + 1))  # Simple backoff
+                    continue
+                raise  # Non-network errors, don't retry
+
+        raise last_error  # type: ignore
 
     def _parse_structured_response(self, response: Any) -> AgentResponse:
         """Parse structured JSON response into AgentResponse."""
