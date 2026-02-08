@@ -272,30 +272,42 @@ class GameSession:
         )
         return session
 
-    # History settings
-    recent_turns: int = 5  # Last N turns kept in full detail
-    pending_buffer_size: int = 5  # Summarize when this many turns accumulate
+    # History settings (action-based, not turn-based)
+    recent_actions: int = 15  # Keep ~15 actions in full detail
+    pending_buffer_actions: int = 10  # Summarize when buffer exceeds this
+
+    def _count_actions(self) -> int:
+        """Count total actions across all TurnRecords."""
+        return sum(len(t.actions) or 1 for t in self.turn_history)
 
     def _maybe_summarize(self) -> None:
         """
         Check if pending buffer is full and summarize if needed.
 
-        When turn_history exceeds recent_turns + pending_buffer_size,
-        the oldest pending_buffer_size turns get summarized into a
-        narrative block and removed from turn_history.
+        Uses action count (not turn count) to determine when to summarize.
+        A single user command can execute many game actions, so we need
+        to track at action granularity for proper context management.
+
+        When total actions exceed recent_actions + pending_buffer_actions,
+        we remove whole TurnRecords (oldest first) until we've removed
+        ~pending_buffer_actions worth of actions.
         """
-        threshold = self.recent_turns + self.pending_buffer_size
-        if len(self.turn_history) <= threshold:
+        threshold = self.recent_actions + self.pending_buffer_actions
+        if self._count_actions() <= threshold:
             return
 
-        # Extract turns to summarize (oldest pending_buffer_size turns)
-        turns_to_summarize = self.turn_history[:self.pending_buffer_size]
-        self.turn_history = self.turn_history[self.pending_buffer_size:]
+        # Extract TurnRecords until we've removed enough actions
+        turns_to_summarize = []
+        actions_removed = 0
+        while self.turn_history and actions_removed < self.pending_buffer_actions:
+            turn = self.turn_history.pop(0)
+            turns_to_summarize.append(turn)
+            actions_removed += len(turn.actions) or 1
 
         if self.debug:
             _debug_log(
                 "Summarizing turns",
-                f"{len(turns_to_summarize)} turns -> narrative block",
+                f"{len(turns_to_summarize)} turns ({actions_removed} actions) -> narrative block",
                 style="blue"
             )
 
@@ -427,6 +439,7 @@ class GameSession:
             "summaries_count": len(self.summaries),
             "recent_turns": recent_tokens,
             "recent_turns_count": len(self.turn_history),
+            "recent_actions_count": self._count_actions(),
             "state_estimate": state_estimate,
             "total": total,
         }
@@ -721,7 +734,8 @@ class GameSession:
         if not self.turn_history:
             lines.append("(no turns yet)")
         else:
-            lines.append(f"({len(self.turn_history)} turns in full detail)")
+            action_count = self._count_actions()
+            lines.append(f"({len(self.turn_history)} turns, {action_count} actions)")
             lines.append("")
             for turn in self.turn_history:
                 lines.append(f"[FULL] {turn.to_summary()}")

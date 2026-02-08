@@ -118,26 +118,28 @@ Long play sessions create a challenge: the agent needs enough context to be help
 The agent maintains three tiers of history:
 
 ```
-[Summaries...] [Pending Buffer: 0-N] [Recent: N full turns]
+[Summaries...] [Pending Buffer] [Recent turns]
                     ↑
-            Summarize when buffer fills
+       Summarize when action count exceeds threshold
 ```
 
-**Recent turns** (last N): Full detail -- player command, actions taken, Grue results, and the agent's narrative response. This provides immediate context for ongoing interactions.
+**Recent turns**: Full detail -- player command, actions taken, Grue results, and the agent's narrative response. This provides immediate context for ongoing interactions.
 
-**Pending buffer** (0 to N turns): Full turns waiting to be batched. When this buffer fills, we call the LLM to summarize the batch into a narrative block.
+**Pending buffer**: Full turns waiting to be batched. When the total action count exceeds the threshold, we summarize the oldest turns into a narrative block.
 
-**Summaries**: Narrative blocks, each summarizing N turns of play. These form "the story so far" and grow as the game progresses.
+**Summaries**: Narrative blocks summarizing earlier gameplay. These form "the story so far" and grow as the game progresses.
 
-### Summarization
+### Action-Based Counting
 
-When the pending buffer reaches N entries:
-1. Call LLM with the N turns, requesting a narrative summary
-2. The summary preserves: room context, objects found, NPC interactions, key events
-3. Prepend the summary block to the summaries list
-4. Clear the pending buffer
+A single user command ("sit at the pc and work on my term paper") can execute many game actions (sit, login, type, read, etc.). We track **actions**, not user commands, to ensure proper context management.
 
-This means expensive LLM summarization happens once every N player turns, not continuously.
+When total actions exceed `recent_actions + pending_buffer_actions`:
+1. Remove oldest TurnRecords until we've cleared ~`pending_buffer_actions` worth
+2. Call LLM to summarize those turns into narrative
+3. The summary preserves: room context, objects found, NPC interactions, key events
+4. Add the summary block to the summaries list
+
+TurnRecords are never split -- we always summarize complete user commands together, preserving the connection between what the player asked and what happened.
 
 ### What the Agent Sees
 
