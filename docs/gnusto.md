@@ -165,8 +165,24 @@ While there's a certain nostalgia for the hand-written maps and notes needed to 
 
 ## Conversations
 
-TODO
+TODO: Hacker conversation example:
 
+```
+> What happened to my term paper?
+
+[Image: hacker.png]
+You look at the screen displaying your "Classics Paper" and once again find it hard to focus on the strange, shifting text, yet impossible to look away. The hacker wanders over, trying to appear casual. "Losing, huh?" he asks with misplaced wit. He glances at your terminal, which now displays a pattern of snow and unusual characters instead of normal text. His expression shifts to one of excitement as he recognizes something significant about what's on your screen.
+
+> Ask the hacker what happened.
+
+[Image: hacker.png]
+Instead of answering your question, you find your finger involuntarily moving toward the MORE box on the screen, and you touch it. The screen feels oddly cold beneath your fingertip. The hacker, mumbling under his breath, suddenly springs into a flurry of activity. First the screen returns to something nearly normal, then windows begin popping up like toadstools after a rain as he works frantically at the terminal.
+
+> Keep watching
+
+[Image: hacker.png]
+The hacker types furiously at the keyboard for several minutes. Finally, he sits back and says, "Chomping file system. Your directory has gone seriously west. I fixed it." He checks the screen again and frowns. "It was mixed up on the file server with some files from the Department of Alchemy." He grunts dismissively. "People's names for their nodes are getting weird. This one is called 'Lovecraft.'" He pauses and looks at you apologetically. "Your paper is gone, though. Sorry. Maybe they could help you down there."
+```
 
 # Open questions
 

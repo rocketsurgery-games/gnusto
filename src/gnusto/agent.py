@@ -726,7 +726,7 @@ class GameSession:
         else:
             lines.append(f"({len(self.summaries)} summary blocks)")
             for i, summary in enumerate(self.summaries, 1):
-                lines.append(f"  [{i}] {summary[:100]}..." if len(summary) > 100 else f"  [{i}] {summary}")
+                lines.append(f"  [{i}] {summary}")
         lines.append("")
 
         # Recent turns
