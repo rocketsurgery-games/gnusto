@@ -480,9 +480,6 @@ class GameSession:
         initial_state = self.get_state()
         initial_room = initial_state.room
 
-        if self.debug:
-            _debug_log("LLM Context (game state)", self._format_state_debug(initial_state), style="cyan")
-
         # Build fresh messages: history + current state + command
         working_messages = self._build_messages(initial_state, user_input)
 
@@ -495,9 +492,6 @@ class GameSession:
         while iteration < max_iterations:
             iteration += 1
 
-            if self.debug and iteration > 1:
-                _debug_log(f"Agentic Loop Iteration {iteration}", "", style="blue")
-
             # Get structured response from LLM
             try:
                 response = self.llm.chat_structured(messages=working_messages)
@@ -506,14 +500,6 @@ class GameSession:
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
                 return f"[LLM error: {error_msg}. Please try again.]", []
-
-            if self.debug:
-                _debug_log("Agent Response", json.dumps({
-                    "actions": [{"tool": a.tool, "target": a.target, "verb": a.verb} for a in response.actions],
-                    "narrative": response.narrative[:100] + "..." if response.narrative and len(response.narrative) > 100 else response.narrative,
-                    "images": [i.path for i in response.images],
-                    "needs_player_input": response.needs_player_input,
-                }, indent=2), style="magenta")
 
             # Emit images first (so they appear before narrative)
             for image in response.images:
@@ -534,20 +520,20 @@ class GameSession:
             action_results: list[str] = []
             for action in response.actions:
                 action_summary = self._summarize_action(action)
+                raw_results, formatted_result = self._execute_action(action)
 
-                if self.debug and on_debug:
-                    on_debug("Action", action_summary)
-
-                result = self._execute_action(action)
-                action_results.append(result)
-                all_results.append(result)
+                action_results.append(formatted_result)
+                all_results.append(formatted_result)
 
                 # Track for history
                 all_actions.append(action_summary)
-                all_action_results.append(result)
+                all_action_results.append(formatted_result)
 
+                # Emit compact debug output
                 if self.debug and on_debug:
-                    on_debug("Result", result)
+                    action_sexpr = self._format_action_sexpr(action)
+                    result_debug = self._format_compact_debug(raw_results)
+                    on_debug(action_sexpr, result_debug)
 
             # Add assistant response to messages (as JSON)
             working_messages.append({
@@ -569,8 +555,6 @@ class GameSession:
 
             # Add updated game state
             state = self.get_state()
-            if self.debug:
-                _debug_log("LLM Context (updated state)", self._format_state_debug(state), style="cyan")
 
             # Filter images for new state
             relevant_images = filter_images_for_state(self.all_images, state)
@@ -603,13 +587,10 @@ class GameSession:
         # Check if we need to summarize older turns
         self._maybe_summarize()
 
-        if self.debug:
-            _debug_log("Turn Record", turn_record.to_summary(), style="blue")
-
         return final_response_text, all_results
 
-    def _execute_action(self, action: ActionRequest) -> str:
-        """Execute a single action and return the result string."""
+    def _execute_action(self, action: ActionRequest) -> tuple[list[Any], str]:
+        """Execute a single action and return (raw_results, formatted_string)."""
         if action.tool == "do_action":
             return self._do_action(
                 target=action.target or "",
@@ -621,7 +602,7 @@ class GameSession:
         elif action.tool == "wait":
             return self._wait()
         else:
-            return f"Unknown action: {action.tool}"
+            return ([], f"Unknown action: {action.tool}")
 
     def _summarize_action(self, action: ActionRequest) -> str:
         """Generate a compact summary of an action for history."""
@@ -636,7 +617,21 @@ class GameSession:
         else:
             return f"{action.tool}(...)"
 
-    def _do_action(self, target: str, verb: str, action_args: list[str]) -> str:
+    def _format_action_sexpr(self, action: ActionRequest) -> str:
+        """Format an action as a Grue S-expression for debug display."""
+        if action.tool == "do_action":
+            parts = [f"(do {action.target} :{action.verb}"]
+            for arg in action.args or []:
+                parts.append(f" {arg}")
+            return "".join(parts) + ")"
+        elif action.tool == "move":
+            return f"(go {action.direction})"
+        elif action.tool == "wait":
+            return "(wait)"
+        else:
+            return f"({action.tool} ...)"
+
+    def _do_action(self, target: str, verb: str, action_args: list[str]) -> tuple[list[Any], str]:
         """Execute a do action."""
         # Build S-expression: (do @target :verb arg1 arg2 ...)
         items = [Symbol("do"), Symbol(target), Keyword(verb)]
@@ -654,46 +649,90 @@ class GameSession:
         expr = SList(items)
         return self._eval_and_format(expr)
 
-    def _move(self, direction: str) -> str:
+    def _move(self, direction: str) -> tuple[list[Any], str]:
         """Execute a move action."""
         expr = SList([Symbol("go"), Symbol(direction)])
         return self._eval_and_format(expr)
 
-    def _wait(self) -> str:
+    def _wait(self) -> tuple[list[Any], str]:
         """Execute a wait action."""
         expr = SList([Symbol("wait")])
         return self._eval_and_format(expr)
 
-    def _eval_and_format(self, expr: SList) -> str:
-        """Evaluate expression and format result, with optional debug output."""
-        expr_str = to_string(expr)
+    def _eval_and_format(self, expr: SList) -> tuple[list[Any], str]:
+        """Evaluate expression and format result.
 
-        if self.debug:
-            _debug_log("Grue Input", expr_str, style="yellow")
-
+        Returns:
+            Tuple of (raw_results, formatted_string) where raw_results includes
+            the main action result and any event results.
+        """
         result = self.evaluator.eval(expr)
-
-        if self.debug:
-            result_str = self._format_result_debug(result)
-            _debug_log("Grue Output", result_str, style="green")
 
         # Process turn-based events after action (like repl does)
         event_results = self.runtime.process_events()
-        if self.debug and event_results:
-            for event_result in event_results:
-                _debug_log("Event Fired", self._format_result_debug(event_result), style="cyan")
 
-        # Combine action result with any event descriptions
+        # Collect all raw results
+        raw_results = [result] + list(event_results)
+
+        # Combine action result with any event descriptions for LLM
         parts = [self._format_action_result(result)]
         for event_result in event_results:
             event_text = self._format_action_result(event_result)
             if event_text and event_text != "Done.":
                 parts.append(event_text)
 
-        return " ".join(parts)
+        return (raw_results, " ".join(parts))
+
+    def _format_compact_debug(self, results: list[Any]) -> str:
+        """Format results in compact debug format for display."""
+        lines = []
+        for result in results:
+            if isinstance(result, ActionDone):
+                # Show key context fields
+                for key, value in result.context:
+                    lines.append(f"{key}: {value}")
+                # Show output (narrate/say)
+                for out_type, entity, text in result.output:
+                    if out_type == "say" and entity:
+                        lines.append(f'{entity}: "{text}"')
+                    elif out_type == "narrate":
+                        lines.append(f"narrate: {text}")
+                # Show reason if present
+                if result.reason:
+                    lines.append(f"description: {result.reason}")
+                # Show effects
+                if result.effects:
+                    if len(result.effects) == 1:
+                        lines.append(f"effects: {result.effects[0]}")
+                    else:
+                        lines.append("effects: " + result.effects[0])
+                        for eff in result.effects[1:]:
+                            lines.append(f"         {eff}")
+            elif isinstance(result, ActionBlocked):
+                lines.append(f"blocked: {result.reason}")
+                if result.message:
+                    lines.append(f"message: {result.message}")
+                for out_type, entity, text in result.output:
+                    if out_type == "say" and entity:
+                        lines.append(f'{entity}: "{text}"')
+            elif isinstance(result, ActionError):
+                lines.append(f"error: {result.message}")
+            elif isinstance(result, ActionResult):
+                # From runtime.ActionResult
+                lines.append(f"outcome: {result.outcome}")
+                for key, value in result.context:
+                    lines.append(f"{key}: {value}")
+                if result.effects_applied:
+                    if len(result.effects_applied) == 1:
+                        lines.append(f"effects: {result.effects_applied[0]}")
+                    else:
+                        lines.append("effects: " + result.effects_applied[0])
+                        for eff in result.effects_applied[1:]:
+                            lines.append(f"         {eff}")
+        return "\n".join(lines)
 
     def _format_result_debug(self, result: Any) -> str:
-        """Format a result for debug display."""
+        """Format a result for debug display (legacy verbose format)."""
         if isinstance(result, ActionDone):
             parts = [f"ActionDone(message={result.message!r}"]
             if result.context:
@@ -884,8 +923,13 @@ def play_game(game_path: str, debug: bool = False) -> None:
                 print()
                 print(text)
 
-        def on_debug(label: str, content: str) -> None:
-            print(f"  [{label}] {content}")
+        def on_debug(action_sexpr: str, result_details: str) -> None:
+            # Show action as S-expression, then result details indented
+            print(action_sexpr)
+            for line in result_details.split("\n"):
+                if line:
+                    print(f"  {line}")
+            print()
 
         session.process_input(
             user_input,
@@ -893,9 +937,7 @@ def play_game(game_path: str, debug: bool = False) -> None:
             on_debug=on_debug if session.debug else None,
         )
 
-        if session.debug:
-            state = session.get_state()
-            _debug_log("LLM Context", session._format_state_debug(state))
-
-        print()
-        render_game_state(session.get_state(), debug=session.debug)
+        # Only show room state if not in debug mode (debug already shows details)
+        if not session.debug:
+            print()
+            render_game_state(session.get_state(), debug=False)
