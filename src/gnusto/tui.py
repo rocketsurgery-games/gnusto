@@ -24,7 +24,7 @@ from .agent import GameSession
 from .commands import handle_command
 from .llm import ImageRequest
 from .render import (
-    ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
+    ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage, DebugInfo,
     build_room_block,
 )
 from .state import get_game_state
@@ -173,6 +173,13 @@ class SimpleTUI:
                 "error": "bold red",
             }.get(block.level, "dim")
             self.console.print(Text(block.text, style=style))
+
+        elif isinstance(block, DebugInfo):
+            # Show action S-expression, then result details indented
+            self.console.print(Text(block.label, style="dim cyan"))
+            for line in block.content.split("\n"):
+                if line:
+                    self.console.print(Text(f"  {line}", style="dim"))
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""
@@ -347,11 +354,16 @@ class SimpleTUI:
                 # TUI can't display images, just note they exist
                 self.render_block(Image(src=image.path, alt=image.alt))
 
+            def on_debug(action_sexpr: str, result_details: str) -> None:
+                # Show action S-expr and result details as debug info
+                self.render_block(DebugInfo(label=action_sexpr, content=result_details))
+
             # Process command - outputs are streamed via callbacks
             self.session.process_input(
                 user_input,
                 on_narrative=on_narrative,
                 on_image=on_image,
+                on_debug=on_debug if self.session.debug else None,
             )
 
             # Check if room changed and show new room
