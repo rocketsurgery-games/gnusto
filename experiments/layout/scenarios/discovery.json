@@ -1,0 +1,46 @@
+{
+  "scene": {
+    "room": "@alchemy-dept",
+    "room_name": "Department of Alchemy",
+    "room_description": "This office is clinically clean, shiny, and modern. It looks like something out of a science fiction movie.",
+    "characters": [
+      {"id": "@professor", "name": "the professor"}
+    ],
+    "objects": [
+      {"id": "@signup", "name": "a sign-up sheet"},
+      {"id": "@alchemy-door", "name": "the department door"},
+      {"id": "@archway", "name": "an archway to the south"}
+    ]
+  },
+  "blocks": [
+    {
+      "type": "narrate",
+      "text": "Taped to the wall to the right of the archway is a sign-up sheet. You examine it closely."
+    },
+    {
+      "type": "narrate",
+      "text": "This appears to be a sign-up sheet for the lab. Strangely, although few daytime segments are used, almost all of the nighttime ones are. Most seem to have been taken by two different people, the professor and another, presumably one of his graduate students."
+    },
+    {
+      "type": "think",
+      "text": "The name of the graduate student is oddly familiar. Where have you seen it before?"
+    },
+    {
+      "type": "ambient",
+      "text": "The professor gazes at you in a bored and distracted way."
+    },
+    {
+      "type": "reveal",
+      "text": "Suddenly, you remember why the graduate student's name was familiar. He was a missing student, until his body was found smashed and broken at the base of the tallest building on campus.",
+      "entity": "@students"
+    },
+    {
+      "type": "think",
+      "text": "A missing student. The professor's graduate student. Found dead. What exactly is going on in this lab?"
+    },
+    {
+      "type": "narrate",
+      "text": "The professor watches you with an ambiguously predatory air."
+    }
+  ]
+}

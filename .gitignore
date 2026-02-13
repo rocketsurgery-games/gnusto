@@ -5,8 +5,9 @@
 **/assets/renders/cache/
 **/assets/renders/render-log.jsonl
 
-# Experiments (temporary/scratch)
-experiments/
+# Experiments (temporary/scratch - except layout experiment)
+experiments/*
+!experiments/layout/
 
 # Python-generated files
 __pycache__/

@@ -1,0 +1,404 @@
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a2e;
+  --bg-surface: #16213e;
+  --bg-card: #0f3460;
+  --text: #e0e0e0;
+  --text-dim: #8888aa;
+  --text-bright: #ffffff;
+  --accent: #e94560;
+  --accent-soft: #533483;
+  --border: #2a2a4a;
+  --speech-bg: #1e2d4a;
+  --think-bg: #2a1a3a;
+  --ambient-color: #6a8aaa;
+  --reveal-bg: #2a3a2a;
+  --reveal-border: #4a8a4a;
+  --narrate-bg: #1a1a2e;
+  --scene-gradient-start: #0a0a1e;
+  --scene-gradient-end: #16213e;
+
+  --font-body: 'Georgia', 'Times New Roman', serif;
+  --font-ui: system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+
+  --panel-radius: 8px;
+  --block-gap: 1rem;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* === Layout Shell === */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* === Toolbar === */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toolbar label {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.toolbar select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toolbar select:hover { border-color: var(--accent); }
+
+/* === Scene Header === */
+.scene-header {
+  position: relative;
+  padding: 2rem 1.5rem 1.5rem;
+  background: linear-gradient(to bottom, var(--scene-gradient-start), var(--scene-gradient-end));
+  border-bottom: 2px solid var(--border);
+  overflow: hidden;
+}
+
+.scene-header .room-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.2;
+  filter: blur(2px);
+}
+
+.scene-header .room-info {
+  position: relative;
+  z-index: 1;
+}
+
+.scene-header .room-name {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: var(--text-bright);
+  margin-bottom: 0.25rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.scene-header .room-description {
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.5;
+  max-width: 60ch;
+  opacity: 0.9;
+}
+
+/* === Character Strip === */
+.character-strip {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.character-strip:empty { display: none; }
+
+.character-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+}
+
+.character-chip .avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+
+.character-chip .avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-bright);
+  font-weight: bold;
+}
+
+.character-chip .char-name {
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+/* === Object Tray === */
+.object-tray {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+}
+
+.object-tray:empty { display: none; }
+
+.object-tag {
+  padding: 0.2rem 0.6rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+/* === Narrative Stream === */
+.narrative-stream {
+  display: flex;
+  flex-direction: column;
+  gap: var(--block-gap);
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+/* === Content Blocks (shared) === */
+.block {
+  border-radius: var(--panel-radius);
+  animation: block-enter 0.3s ease-out;
+}
+
+@keyframes block-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* === Narrate Block === */
+.block-narrate {
+  padding: 0.75rem 1rem;
+  background: var(--narrate-bg);
+  border-left: 3px solid var(--border);
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* === Speak Block === */
+.block-speak {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.75rem;
+  align-items: start;
+}
+
+.block-speak .speaker-tag {
+  grid-column: 2;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.block-speak .speaker-avatar {
+  grid-row: 1 / 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-bright);
+  font-weight: bold;
+  margin-top: 0.15rem;
+}
+
+.block-speak .speech-bubble {
+  grid-column: 2;
+  position: relative;
+  padding: 0.6rem 0.85rem;
+  background: var(--speech-bg);
+  border-radius: 2px var(--panel-radius) var(--panel-radius) var(--panel-radius);
+  color: var(--text-bright);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.block-speak .speech-bubble::before {
+  content: '\201C';
+  color: var(--accent);
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-right: 0.1rem;
+}
+
+.block-speak .speech-bubble::after {
+  content: '\201D';
+  color: var(--accent);
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-left: 0.1rem;
+}
+
+.block-speak .manner {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 0.25rem;
+  grid-column: 2;
+}
+
+/* === Think Block === */
+.block-think {
+  padding: 0.75rem 1rem;
+  background: var(--think-bg);
+  border-left: 3px solid var(--accent-soft);
+  border-radius: var(--panel-radius);
+  font-style: italic;
+  color: #c0a0d0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.block-think::before {
+  content: 'You think:';
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-soft);
+  font-style: normal;
+  margin-bottom: 0.25rem;
+}
+
+/* === Ambient Block === */
+.block-ambient {
+  padding: 0.5rem 1rem;
+  color: var(--ambient-color);
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+  opacity: 0.8;
+  letter-spacing: 0.02em;
+}
+
+/* === Reveal Block === */
+.block-reveal {
+  padding: 0.75rem 1rem;
+  background: var(--reveal-bg);
+  border: 1px solid var(--reveal-border);
+  border-radius: var(--panel-radius);
+  color: #a0d0a0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.block-reveal .reveal-label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--reveal-border);
+  margin-bottom: 0.25rem;
+}
+
+.block-reveal .entity-ref {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--reveal-border);
+  background: rgba(74,138,74,0.15);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+}
+
+/* === Scene Block (transition) === */
+.block-scene {
+  margin: 0.5rem 0;
+  padding: 1.25rem 1rem;
+  background: linear-gradient(to right, var(--scene-gradient-start), var(--scene-gradient-end));
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.block-scene .transition-label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.block-scene .scene-room-name {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--text-bright);
+  margin-bottom: 0.35rem;
+}
+
+.block-scene .scene-description {
+  font-size: 0.9rem;
+  color: var(--text);
+  max-width: 55ch;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+  .scene-header { padding: 1.25rem 1rem 1rem; }
+  .scene-header .room-name { font-size: 1.3rem; }
+  .narrative-stream { padding: 1rem; }
+  .toolbar { padding: 0.5rem 1rem; flex-wrap: wrap; }
+  .character-strip { padding: 0.5rem 1rem; }
+}

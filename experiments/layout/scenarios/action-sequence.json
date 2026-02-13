@@ -1,0 +1,41 @@
+{
+  "scene": {
+    "room": "@storage-room",
+    "room_name": "Ancient Storage",
+    "room_description": "What's deader than dead storage? Most of the contents have collapsed or rusted back to the primordial ooze.",
+    "characters": [],
+    "objects": [
+      {"id": "@manhole", "name": "a disused-looking manhole"},
+      {"id": "@manhole-cover", "name": "a steel manhole cover"},
+      {"id": "@crowbar", "name": "a rusty crowbar"},
+      {"id": "@junk", "name": "junk"}
+    ]
+  },
+  "blocks": [
+    {
+      "type": "narrate",
+      "text": "You look more closely at the manhole. It's a steel ring set in the floor, with a heavy cover seated inside it."
+    },
+    {
+      "type": "narrate",
+      "text": "You try to lift the manhole cover with your bare hands, but you can't get a good grip on it. It's heavy and seated in a steel ring \u2014 impossible to just drag it away."
+    },
+    {
+      "type": "think",
+      "text": "There must be some way to get leverage on this thing. The crowbar might work."
+    },
+    {
+      "type": "narrate",
+      "text": "You lever the manhole cover aside with the crowbar, and crusted dirt falls into a dark hole below."
+    },
+    {
+      "type": "reveal",
+      "text": "Below the manhole, crude brick handholds provide a slippery path down into darkness. Cool air rises out of the hole.",
+      "entity": "@brick-tunnel"
+    },
+    {
+      "type": "ambient",
+      "text": "A chill draft rises from the opening, carrying the smell of damp earth and something older."
+    }
+  ]
+}

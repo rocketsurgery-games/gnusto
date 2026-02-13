@@ -1,0 +1,63 @@
+{
+  "scene": {
+    "room": "@terminal-room",
+    "room_name": "Terminal Room",
+    "room_description": "A large room crammed with computer terminals. Almost deserted tonight.",
+    "characters": [
+      {"id": "@hacker", "name": "the hacker"}
+    ],
+    "objects": [
+      {"id": "@pc", "name": "a whiz-bang PC"},
+      {"id": "@master-key", "name": "a master key"}
+    ]
+  },
+  "blocks": [
+    {
+      "type": "narrate",
+      "text": "The hacker wanders over, trying to look nonchalant."
+    },
+    {
+      "type": "speak",
+      "speaker": "@hacker",
+      "text": "Losing, huh?",
+      "manner": "wittily"
+    },
+    {
+      "type": "narrate",
+      "text": "He glances at your terminal, which displays a pattern of snow and unusual characters. He appears somewhat excited."
+    },
+    {
+      "type": "narrate",
+      "text": "The hacker, mumbling under his breath, begins a flurry of activity. First the screen returns to something nearly normal, then windows begin popping up like toadstools after a rain."
+    },
+    {
+      "type": "speak",
+      "speaker": "@hacker",
+      "text": "Chomping file system. Your directory has gone seriously west. I fixed it.",
+      "manner": "typing furiously"
+    },
+    {
+      "type": "narrate",
+      "text": "He checks the screen."
+    },
+    {
+      "type": "speak",
+      "speaker": "@hacker",
+      "text": "It was mixed up on the file server with some files from the Department of Alchemy. People's names for their nodes are getting weird. This one is called 'Lovecraft.'",
+      "manner": "grunting"
+    },
+    {
+      "type": "speak",
+      "speaker": "@hacker",
+      "text": "Your paper is gone, though. Sorry. Maybe they could help you down there."
+    },
+    {
+      "type": "think",
+      "text": "The Department of Alchemy. You've always wondered what was behind that door."
+    },
+    {
+      "type": "narrate",
+      "text": "The hacker wanders back to his terminal and returns to his hacking."
+    }
+  ]
+}

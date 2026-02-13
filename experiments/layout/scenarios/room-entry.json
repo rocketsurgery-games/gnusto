@@ -1,0 +1,35 @@
+{
+  "scene": {
+    "room": "@terminal-room",
+    "room_name": "Terminal Room",
+    "room_description": "A large room crammed with computer terminals, small computers, and printers.",
+    "characters": [
+      {"id": "@hacker", "name": "the hacker"}
+    ],
+    "objects": [
+      {"id": "@pc", "name": "a whiz-bang PC"},
+      {"id": "@chair", "name": "a battered office chair"}
+    ]
+  },
+  "blocks": [
+    {
+      "type": "scene",
+      "room": "@terminal-room",
+      "room_name": "Terminal Room",
+      "description": "This is a large room crammed with computer terminals, small computers, and printers. An exit leads south. Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted.",
+      "transition": "You step inside from the hallway"
+    },
+    {
+      "type": "ambient",
+      "text": "Fluorescent lights hum overhead. A draft from the south corridor carries the smell of old pizza and stale soda."
+    },
+    {
+      "type": "narrate",
+      "text": "Sitting at a terminal is a hacker whom you recognize. He's typing madly, using just two fingers, but achieves speeds that typists using all ten fingers only dream of."
+    },
+    {
+      "type": "narrate",
+      "text": "Your PC sits in a corner, its screen displaying a pattern of snow and unusual characters."
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "scene": {
+    "room": "@inner-lair",
+    "room_name": "Inner Lair",
+    "room_description": "Wan, sourceless light illuminates the chamber. A stagnant, slime-infested pool covers the floor.",
+    "characters": [
+      {"id": "@hacker", "name": "the hacker"},
+      {"id": "@frob", "name": "the thing"}
+    ],
+    "objects": [
+      {"id": "@mass", "name": "a whitish mass"},
+      {"id": "@repeater", "name": "a metal box"},
+      {"id": "@high-voltage", "name": "a power line"},
+      {"id": "@smooth-stone", "name": "a smooth stone"}
+    ]
+  },
+  "blocks": [
+    {
+      "type": "scene",
+      "room": "@inner-lair",
+      "room_name": "Inner Lair",
+      "description": "The floor here is a stagnant, slime-infested pool of water about six inches deep. Ropes or wires tumble down the slope, where they enter a large whitish mass which takes up much of the chamber. Wan, sourceless light illuminates the chamber.",
+      "transition": "The ancient door creaks open"
+    },
+    {
+      "type": "ambient",
+      "text": "A low, bone-rattling hum fills the chamber, punctuated by sounds almost like many people talking at once."
+    },
+    {
+      "type": "narrate",
+      "text": "You shove the exposed conductors into the socket, producing a shower of sparks! The tentacle connected to the other socket begins to jerk and twitch spasmodically."
+    },
+    {
+      "type": "narrate",
+      "text": "The mass begins to change shape, compacting, darkening. You can briefly see human outlines within the grey, gelatinous mass. They surround something larger, of a shape not human, not animal, like nothing you've seen before."
+    },
+    {
+      "type": "speak",
+      "speaker": "@hacker",
+      "text": "No!",
+      "manner": "screaming"
+    },
+    {
+      "type": "narrate",
+      "text": "The hacker drops into the water."
+    },
+    {
+      "type": "narrate",
+      "text": "The gelatinous mass solidifies and compacts, leaving behind a litter of smoking debris. In the debris squats a being. Huge, misshapen, it stares at you with baleful yellow eyes. Its scaly wings beat slowly, driving a fetid stench through the stale air of the cavern."
+    },
+    {
+      "type": "reveal",
+      "text": "A barbed tongue slides across its broken, daggerlike fangs. A dead-black outline like a hole into nothingness opens where its mouth should be.",
+      "entity": "@frob"
+    },
+    {
+      "type": "ambient",
+      "text": "The smooth stone vibrates in your hand. It starts to feel warm."
+    },
+    {
+      "type": "narrate",
+      "text": "The thing tenses, preparing to leap."
+    },
+    {
+      "type": "think",
+      "text": "The stone. It's glowing now, bright red, but it doesn't burn. You know what you have to do."
+    },
+    {
+      "type": "narrate",
+      "text": "The stone smashes into the creature, sticking to its ichorous hide. The thing thrashes about, trying to bite at the stone, which is glowing brighter and brighter. Its wings spread painfully, and then fold."
+    },
+    {
+      "type": "narrate",
+      "text": "The creature appears to be swallowing itself. At last, a grey cloud of greasy smoke surrounds the glowing stone, still suspended in midair. Then even that vanishes, and the stone drops to the ground, no longer glowing. The thing is gone."
+    }
+  ]
+}
