@@ -108,6 +108,23 @@ class RenderResult:
     anchors: list[str] = field(default_factory=list)
     ref_size: int | None = None
 
+    @property
+    def prompt(self) -> str:
+        """Join string parts into a single prompt string, normalizing whitespace."""
+        raw = "".join(p for p in self.prompt_parts if isinstance(p, str))
+        # Collapse multiple spaces from gaps left by non-string parts
+        return " ".join(raw.split())
+
+    @property
+    def object_refs(self) -> list["ObjectRef"]:
+        """Extract ObjectRef parts from prompt_parts."""
+        return [p for p in self.prompt_parts if isinstance(p, ObjectRef)]
+
+    @property
+    def include_contents(self) -> bool:
+        """True if any ContentsMarker in prompt_parts."""
+        return any(isinstance(p, ContentsMarker) for p in self.prompt_parts)
+
 
 def evaluate_render_spec(
     spec: SExpr,

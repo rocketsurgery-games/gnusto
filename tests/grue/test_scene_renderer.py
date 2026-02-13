@@ -130,7 +130,7 @@ class TestSceneRendererUnit:
 
         assert renderer.runtime == runtime
         assert renderer.default_ref_size == 384
-        assert renderer._max_depth == 3
+        assert renderer._max_depth == 5
 
     def test_render_room_no_spec(self):
         """render_room returns None if room has no render spec."""
