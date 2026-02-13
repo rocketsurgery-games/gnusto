@@ -25,17 +25,41 @@ function text(str) {
   return document.createTextNode(str);
 }
 
-// --- Character name resolution ---
+// --- Character / object resolution ---
+
+function resolveCharacter(speakerId, scene) {
+  if (!scene?.characters) return null;
+  return scene.characters.find(c => c.id === speakerId) || null;
+}
 
 function resolveCharacterName(speakerId, scene) {
-  if (!scene?.characters) return speakerId;
-  const char = scene.characters.find(c => c.id === speakerId);
+  const char = resolveCharacter(speakerId, scene);
   return char ? char.name : speakerId.replace(/^@/, '');
+}
+
+function resolveObject(entityId, scene) {
+  if (!scene?.objects) return null;
+  return scene.objects.find(o => o.id === entityId) || null;
 }
 
 function speakerInitial(name) {
   const clean = name.replace(/^(the|a|an)\s+/i, '');
   return clean.charAt(0).toUpperCase();
+}
+
+function makeAvatar(name, imageSrc, size) {
+  if (imageSrc) {
+    const img = document.createElement('img');
+    img.className = size === 'large' ? 'speaker-avatar speaker-avatar-img' : 'avatar';
+    img.src = imageSrc;
+    img.alt = name;
+    img.onerror = () => {
+      const ph = el('div', size === 'large' ? 'speaker-avatar' : 'avatar-placeholder', speakerInitial(name));
+      img.replaceWith(ph);
+    };
+    return img;
+  }
+  return el('div', size === 'large' ? 'speaker-avatar' : 'avatar-placeholder', speakerInitial(name));
 }
 
 // --- Block renderers ---
@@ -46,12 +70,12 @@ const blockRenderers = {
   },
 
   speak(block, scene) {
-    const name = resolveCharacterName(block.speaker, scene);
+    const char = resolveCharacter(block.speaker, scene);
+    const name = char ? char.name : block.speaker.replace(/^@/, '');
     const wrapper = el('div', 'block block-speak');
 
-    // Avatar
-    const avatar = el('div', 'speaker-avatar', speakerInitial(name));
-    wrapper.appendChild(avatar);
+    // Avatar (use character image if available)
+    wrapper.appendChild(makeAvatar(name, char?.image, 'large'));
 
     // Speaker tag
     wrapper.appendChild(el('div', 'speaker-tag', name));
@@ -86,6 +110,38 @@ const blockRenderers = {
     }
     wrapper.appendChild(label);
     wrapper.appendChild(el('div', null, block.text));
+    return wrapper;
+  },
+
+  focus(block, scene) {
+    const wrapper = el('div', 'block block-focus');
+
+    // Resolve entity image from scene context
+    let image = block.image;
+    if (!image && block.entity) {
+      const char = resolveCharacter(block.entity, scene);
+      const obj = resolveObject(block.entity, scene);
+      image = char?.image || obj?.image;
+    }
+
+    if (image) {
+      const img = document.createElement('img');
+      img.className = 'focus-image';
+      img.src = image;
+      img.alt = block.entity || '';
+      img.onerror = () => img.remove();
+      wrapper.appendChild(img);
+    }
+
+    const body = el('div', 'focus-body');
+    if (block.entity) {
+      const label = resolveCharacterName(block.entity, scene) ||
+                    resolveObject(block.entity, scene)?.name ||
+                    block.entity.replace(/^@/, '');
+      body.appendChild(el('div', 'focus-label', label));
+    }
+    body.appendChild(el('div', 'focus-text', block.text));
+    wrapper.appendChild(body);
     return wrapper;
   },
 
@@ -141,21 +197,7 @@ function renderCharacterStrip(scene) {
 
   for (const char of scene.characters) {
     const chip = el('div', 'character-chip');
-
-    if (char.image) {
-      const img = document.createElement('img');
-      img.className = 'avatar';
-      img.src = char.image;
-      img.alt = char.name;
-      img.onerror = () => {
-        const ph = el('div', 'avatar-placeholder', speakerInitial(char.name));
-        img.replaceWith(ph);
-      };
-      chip.appendChild(img);
-    } else {
-      chip.appendChild(el('div', 'avatar-placeholder', speakerInitial(char.name)));
-    }
-
+    chip.appendChild(makeAvatar(char.name, char.image, 'small'));
     chip.appendChild(el('span', 'char-name', char.name));
     strip.appendChild(chip);
   }

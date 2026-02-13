@@ -4,7 +4,7 @@
     "room_name": "Inner Lair",
     "room_description": "Wan, sourceless light illuminates the chamber. A stagnant, slime-infested pool covers the floor.",
     "characters": [
-      {"id": "@hacker", "name": "the hacker"},
+      {"id": "@hacker", "name": "the hacker", "image": "assets/refs/hacker.jpg"},
       {"id": "@frob", "name": "the thing"}
     ],
     "objects": [

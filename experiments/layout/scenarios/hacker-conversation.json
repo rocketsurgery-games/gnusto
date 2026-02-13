@@ -3,11 +3,12 @@
     "room": "@terminal-room",
     "room_name": "Terminal Room",
     "room_description": "A large room crammed with computer terminals. Almost deserted tonight.",
+    "room_image": "assets/refs/terminal-room.jpg",
     "characters": [
-      {"id": "@hacker", "name": "the hacker"}
+      {"id": "@hacker", "name": "the hacker", "image": "assets/refs/hacker.jpg"}
     ],
     "objects": [
-      {"id": "@pc", "name": "a whiz-bang PC"},
+      {"id": "@pc", "name": "a whiz-bang PC", "image": "assets/refs/pc.jpg"},
       {"id": "@master-key", "name": "a master key"}
     ]
   },
@@ -56,8 +57,10 @@
       "text": "The Department of Alchemy. You've always wondered what was behind that door."
     },
     {
-      "type": "narrate",
-      "text": "The hacker wanders back to his terminal and returns to his hacking."
+      "type": "focus",
+      "entity": "@hacker",
+      "text": "The hacker wanders back to his terminal and returns to his hacking. He pulls out his keyring, an enormous ring bristling with keys, and fondles it absently as he types.",
+      "image": "assets/refs/keyring.jpg"
     }
   ]
 }

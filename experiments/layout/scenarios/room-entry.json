@@ -3,12 +3,13 @@
     "room": "@terminal-room",
     "room_name": "Terminal Room",
     "room_description": "A large room crammed with computer terminals, small computers, and printers.",
+    "room_image": "assets/refs/terminal-room.jpg",
     "characters": [
-      {"id": "@hacker", "name": "the hacker"}
+      {"id": "@hacker", "name": "the hacker", "image": "assets/refs/hacker.jpg"}
     ],
     "objects": [
-      {"id": "@pc", "name": "a whiz-bang PC"},
-      {"id": "@chair", "name": "a battered office chair"}
+      {"id": "@pc", "name": "a whiz-bang PC", "image": "assets/refs/pc.jpg"},
+      {"id": "@chair", "name": "a battered office chair", "image": "assets/refs/chair.jpg"}
     ]
   },
   "blocks": [
@@ -24,12 +25,19 @@
       "text": "Fluorescent lights hum overhead. A draft from the south corridor carries the smell of old pizza and stale soda."
     },
     {
-      "type": "narrate",
-      "text": "Sitting at a terminal is a hacker whom you recognize. He's typing madly, using just two fingers, but achieves speeds that typists using all ten fingers only dream of."
+      "type": "focus",
+      "entity": "@hacker",
+      "text": "Sitting at a terminal is a hacker whom you recognize. He's typing madly, using just two fingers, but achieves speeds that typists using all ten fingers only dream of. He is dressed in blue jeans, an old work shirt, and what might once have been running shoes. Hanging from his belt is an enormous ring of keys.",
+      "image": "assets/renders/cache/hacker-099cf7be.png"
     },
     {
-      "type": "narrate",
-      "text": "Your PC sits in a corner, its screen displaying a pattern of snow and unusual characters."
+      "type": "focus",
+      "entity": "@pc",
+      "text": "Your PC sits in a corner, its screen displaying a pattern of snow and unusual characters. Something is definitely wrong with it."
+    },
+    {
+      "type": "ambient",
+      "text": "The only sounds are the hum of monitors and the rapid-fire clatter of the hacker's keyboard."
     }
   ]
 }
