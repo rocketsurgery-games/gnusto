@@ -89,6 +89,16 @@ body {
   overflow: hidden;
 }
 
+/* When we have a composed illustration, use stacked layout */
+.scene-header:has(.scene-illustration) {
+  display: flex;
+  flex-direction: column;
+}
+
+.scene-header:has(.scene-illustration) .room-info {
+  position: static;
+}
+
 .scene-header .room-image {
   position: absolute;
   inset: 0;
@@ -97,6 +107,16 @@ body {
   object-fit: cover;
   opacity: 0.2;
   filter: blur(2px);
+}
+
+/* Composed scene illustration: prominent display */
+.scene-header .scene-illustration {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
 }
 
 .scene-header .room-info {
@@ -349,6 +369,15 @@ body {
   color: #a0d0a0;
   font-size: 0.95rem;
   line-height: 1.6;
+}
+
+.block-reveal .reveal-image {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--reveal-border);
 }
 
 .block-reveal .reveal-label {

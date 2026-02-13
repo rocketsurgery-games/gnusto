@@ -101,8 +101,20 @@ const blockRenderers = {
     return el('div', 'block block-ambient', block.text);
   },
 
-  reveal(block) {
+  reveal(block, scene, blockIndex, manifest) {
     const wrapper = el('div', 'block block-reveal');
+
+    // Check manifest for composed moment image
+    const momentImage = manifest?.[`moment-${blockIndex}`];
+    if (momentImage) {
+      const img = document.createElement('img');
+      img.className = 'reveal-image';
+      img.src = momentImage;
+      img.alt = block.entity || 'discovery';
+      img.onerror = () => img.remove();
+      wrapper.appendChild(img);
+    }
+
     const label = el('div', 'reveal-label');
     label.textContent = 'Discovered';
     if (block.entity) {
@@ -113,11 +125,12 @@ const blockRenderers = {
     return wrapper;
   },
 
-  focus(block, scene) {
+  focus(block, scene, blockIndex, manifest) {
     const wrapper = el('div', 'block block-focus');
 
-    // Resolve entity image from scene context
-    let image = block.image;
+    // Check manifest for composed focus image first
+    let image = manifest?.[`focus-${blockIndex}`];
+    if (!image) image = block.image;
     if (!image && block.entity) {
       const char = resolveCharacter(block.entity, scene);
       const obj = resolveObject(block.entity, scene);
@@ -166,13 +179,26 @@ const blockRenderers = {
 
 // --- Scene header ---
 
-function renderSceneHeader(scene) {
+function renderSceneHeader(scene, manifest) {
   const header = el('div', 'scene-header');
 
-  if (scene.room_image) {
+  // Use composed scene image if available, falling back to room_image
+  const composedScene = manifest?.scene;
+  const bgImage = composedScene || scene.room_image;
+
+  if (composedScene) {
+    // Composed image: show prominently as scene illustration
+    const img = document.createElement('img');
+    img.className = 'scene-illustration';
+    img.src = composedScene;
+    img.alt = scene.room_name || '';
+    img.onerror = () => img.remove();
+    header.appendChild(img);
+  } else if (bgImage) {
+    // Raw ref: faint backdrop
     const img = document.createElement('img');
     img.className = 'room-image';
-    img.src = scene.room_image;
+    img.src = bgImage;
     img.alt = scene.room_name || '';
     img.onerror = () => img.remove();
     header.appendChild(img);
@@ -220,13 +246,14 @@ function renderObjectTray(scene) {
 
 // --- Narrative stream ---
 
-function renderBlocks(blocks, scene) {
+function renderBlocks(blocks, scene, manifest) {
   const stream = el('div', 'narrative-stream');
 
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     const renderer = blockRenderers[block.type];
     if (renderer) {
-      stream.appendChild(renderer(block, scene));
+      stream.appendChild(renderer(block, scene, i, manifest));
     } else {
       console.warn(`Unknown block type: ${block.type}`);
     }
@@ -237,7 +264,7 @@ function renderBlocks(blocks, scene) {
 
 // --- Main render ---
 
-function renderScenario(scenario, container) {
+function renderScenario(scenario, container, manifest) {
   container.innerHTML = '';
 
   const scene = scenario.scene || {};
@@ -250,10 +277,10 @@ function renderScenario(scenario, container) {
     if (!scene.room_description && sceneBlock.description) scene.room_description = sceneBlock.description;
   }
 
-  container.appendChild(renderSceneHeader(scene));
+  container.appendChild(renderSceneHeader(scene, manifest));
   container.appendChild(renderCharacterStrip(scene));
   container.appendChild(renderObjectTray(scene));
-  container.appendChild(renderBlocks(blocks, scene));
+  container.appendChild(renderBlocks(blocks, scene, manifest));
 }
 
 // --- Scenario loading ---
@@ -290,7 +317,15 @@ async function init() {
   async function load(name) {
     try {
       const scenario = await loadScenario(name);
-      renderScenario(scenario, container);
+
+      // Try to load composed image manifest (optional)
+      let manifest = null;
+      try {
+        const mResp = await fetch(`assets/composed/${name}.json`);
+        if (mResp.ok) manifest = await mResp.json();
+      } catch { /* no composed images for this scenario */ }
+
+      renderScenario(scenario, container, manifest);
     } catch (err) {
       container.innerHTML = `<div style="padding:2rem;color:#e94560">Error: ${err.message}</div>`;
     }
