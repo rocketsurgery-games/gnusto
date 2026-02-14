@@ -680,6 +680,298 @@ multi_trial(MultiTrial(
 ))
 
 
+# --- Kitchen empty-stage trials ---
+
+# Single-shot: add closed fridge to empty kitchen
+trial(Trial(
+    name="empty-kitchen-fridge",
+    background="kitchen-empty",
+    placements=[
+        Placement(
+            ref="refrigerator",
+            x=580, y=80,
+            height=780,
+            opacity=0.5,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen "
+        "in a university basement. A refrigerator covered in notes, clippings, "
+        "and magnets stands in the corner. Fluorescent lights, stained counter."
+    ),
+    notes="Empty stage + closed fridge (pure addition)",
+))
+
+# Single-shot: add open fridge to empty kitchen
+trial(Trial(
+    name="empty-kitchen-fridge-open",
+    background="kitchen-empty",
+    placements=[
+        Placement(
+            ref="refrigerator-open",
+            x=530, y=80,
+            height=780,
+            opacity=0.5,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen. "
+        "The refrigerator door is wide open, revealing shelves crammed with "
+        "old takeout containers and brown bags. Notes cover the door."
+    ),
+    notes="Empty stage + open fridge (pure addition, no replacement)",
+))
+
+# Single-shot: add microwave to empty kitchen
+trial(Trial(
+    name="empty-kitchen-microwave",
+    background="kitchen-empty",
+    placements=[
+        Placement(
+            ref="microwave",
+            x=20, y=320,
+            width=300,
+            opacity=0.5,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen. "
+        "A white microwave oven sits on the counter on the left side. "
+        "Fluorescent lights, stained countertop."
+    ),
+    notes="Empty stage + closed microwave (pure addition)",
+))
+
+# Stepwise: build up full kitchen from empty stage
+multi_trial(MultiTrial(
+    name="empty-kitchen-full-build",
+    background="kitchen-empty",
+    steps=[
+        Step(
+            name="fridge",
+            placements=[
+                Placement(
+                    ref="refrigerator",
+                    x=580, y=80,
+                    height=780,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. A refrigerator covered in notes, clippings, and "
+                "magnets stands in the corner by the counter."
+            ),
+        ),
+        Step(
+            name="microwave",
+            placements=[
+                Placement(
+                    ref="microwave",
+                    x=20, y=320,
+                    width=300,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen with a note-covered refrigerator. A white microwave "
+                "oven sits on the counter on the left."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="Stepwise build from empty: fridge then microwave",
+))
+
+# Stepwise: open fridge with carton (from empty stage)
+multi_trial(MultiTrial(
+    name="empty-kitchen-fridge-carton",
+    background="kitchen-empty",
+    steps=[
+        Step(
+            name="open-fridge",
+            placements=[
+                Placement(
+                    ref="refrigerator-open",
+                    x=530, y=80,
+                    height=780,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. The refrigerator door is wide open, showing shelves "
+                "packed with old takeout containers. Notes on the door."
+            ),
+        ),
+        Step(
+            name="carton",
+            placements=[
+                Placement(
+                    ref="carton",
+                    x=620, y=280,
+                    height=180,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. The open refrigerator "
+                "in a dingy kitchen. A distinctive red and white striped "
+                "Chinese takeout carton with an occult symbol sits on a shelf "
+                "among the other containers."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="Empty stage → open fridge → carton inside (pure addition chain)",
+))
+
+
+# --- Kitchen scene trials (original bg with appliances) ---
+
+# Kitchen: basic scene with fridge and microwave at their existing positions
+trial(Trial(
+    name="kitchen-base",
+    background="kitchen",
+    placements=[],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen "
+        "in a university basement. Fluorescent lights, stained countertop, "
+        "a microwave and coffee maker on the counter, a refrigerator covered "
+        "in notes and clippings. Late night, slightly creepy."
+    ),
+    notes="Kitchen baseline - just background + text, no overlays",
+))
+
+# Kitchen: open microwave overlaid at the correct position
+# The microwave in the bg is at roughly x=80,y=380 at about 200px wide
+trial(Trial(
+    name="kitchen-microwave-open",
+    background="kitchen",
+    placements=[
+        Placement(
+            ref="microwave-open",
+            x=30, y=340,
+            width=320,
+            opacity=0.6,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen. "
+        "The microwave on the counter is open, its door hanging to the right, "
+        "revealing the empty turntable inside. Fluorescent lights overhead."
+    ),
+    notes="State swap: overlay open microwave over the closed one in bg",
+))
+
+# Kitchen: microwave running (glowing)
+trial(Trial(
+    name="kitchen-microwave-running",
+    background="kitchen",
+    placements=[
+        Placement(
+            ref="microwave-running",
+            x=30, y=340,
+            width=320,
+            opacity=0.6,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen. "
+        "The microwave on the counter is running, its interior glowing bright "
+        "yellow-white, timer counting down. Fluorescent lights overhead."
+    ),
+    notes="State swap: overlay running microwave over the closed one",
+))
+
+# Kitchen stepwise: open fridge, then put carton inside
+multi_trial(MultiTrial(
+    name="kitchen-fridge-carton",
+    background="kitchen",
+    steps=[
+        Step(
+            name="open-fridge",
+            placements=[
+                Placement(
+                    ref="refrigerator-open",
+                    x=560, y=100,
+                    height=750,
+                    opacity=0.6,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. The refrigerator door is wide open, revealing "
+                "shelves packed with old takeout containers and brown bags. "
+                "Notes and clippings cover the fridge door."
+            ),
+        ),
+        Step(
+            name="carton-in-fridge",
+            placements=[
+                Placement(
+                    ref="carton",
+                    x=640, y=320,
+                    height=180,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. The open refrigerator "
+                "in a dingy kitchen. A red and white striped Chinese takeout "
+                "carton with an occult symbol sits on one of the shelves "
+                "among the other containers."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="Stepwise: open fridge, then place the carton inside it",
+))
+
+# Kitchen stepwise: full scene - open microwave, then carton on counter
+multi_trial(MultiTrial(
+    name="kitchen-carton-in-microwave",
+    background="kitchen",
+    steps=[
+        Step(
+            name="open-microwave",
+            placements=[
+                Placement(
+                    ref="microwave-open",
+                    x=30, y=340,
+                    width=320,
+                    opacity=0.6,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. The microwave on the counter stands open, door "
+                "hanging to the right, empty turntable visible inside."
+            ),
+        ),
+        Step(
+            name="carton-in-microwave",
+            placements=[
+                Placement(
+                    ref="carton",
+                    x=100, y=380,
+                    height=130,
+                    opacity=0.5,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. A red and white striped Chinese takeout carton "
+                "with an occult symbol sits inside the open microwave."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="Stepwise: open microwave, then place carton inside it",
+))
+
+
 # Trial 5: Flipped hacker facing the other direction
 trial(Trial(
     name="hacker-flipped",
