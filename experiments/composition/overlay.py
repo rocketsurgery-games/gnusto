@@ -828,6 +828,293 @@ multi_trial(MultiTrial(
 ))
 
 
+# --- v2: improved positioning, opacity, and text ---
+# Fixes from v1:
+#   - Microwave: lowered to sit ON counter surface (~y=400), not floating above it
+#   - Fridge: shorter (perspective-corrected), positioned in right corner on floor
+#   - Step-2 opacity bumped to 0.7 so model commits to the addition
+#   - Text conditioning specifies exact spatial relationships
+
+# v2 single-shot: microwave on counter (fixed position)
+# At width=240, visible content spans y_local=67..188, body bottom ~164
+# Counter surface at ~y=440. body_bottom on counter: y+164=440 → y=276
+trial(Trial(
+    name="v2-kitchen-microwave",
+    background="kitchen-empty",
+    placements=[
+        Placement(
+            ref="microwave",
+            x=30, y=280,
+            width=240,
+            opacity=0.6,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen "
+        "in a university basement. A white microwave oven sits on the left "
+        "end of the countertop, pushed against the tile backsplash. "
+        "Fluorescent lights, stained counter, coffee maker nearby."
+    ),
+    notes="v2: microwave body bottom aligned to counter surface (y=280)",
+))
+
+# v2 single-shot: fridge in right corner (perspective-corrected)
+# At height=580, visible content bbox ~(157,43,432,527) → body is 275px wide
+# Floor on right side ~y=600. Grounded: y+527=600 → y=73
+# Fridge right edge: x+432. Fully visible at x <= 592. Use x=570.
+trial(Trial(
+    name="v2-kitchen-fridge",
+    background="kitchen-empty",
+    placements=[
+        Placement(
+            ref="refrigerator",
+            x=570, y=73,
+            height=580,
+            opacity=0.6,
+        ),
+    ],
+    prompt=(
+        "Comic book art, bold ink outlines. A dingy institutional kitchen. "
+        "A refrigerator covered in notes, clippings, and magnets stands on "
+        "the floor in the far-right corner, next to the end of the counter. "
+        "Fluorescent lights, stained countertop."
+    ),
+    notes="v2: fridge grounded on floor (y=73), fully on canvas (x=570)",
+))
+
+# v2 stepwise: fridge then microwave, with corrected positions
+multi_trial(MultiTrial(
+    name="v2-kitchen-full-build",
+    background="kitchen-empty",
+    steps=[
+        Step(
+            name="fridge",
+            placements=[
+                Placement(
+                    ref="refrigerator",
+                    x=570, y=73,
+                    height=580,
+                    opacity=0.6,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. A refrigerator covered in notes, clippings, and "
+                "magnets stands on the floor in the far-right corner of the "
+                "room, next to the end of the counter."
+            ),
+        ),
+        Step(
+            name="microwave",
+            placements=[
+                Placement(
+                    ref="microwave",
+                    x=30, y=280,
+                    width=240,
+                    opacity=0.7,   # Higher opacity for step 2
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen with a note-covered refrigerator in the right corner. "
+                "A white microwave oven sits on the left end of the countertop, "
+                "pushed against the tile backsplash."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="v2: corrected positions, higher step-2 opacity (0.7)",
+))
+
+# v2 stepwise: microwave FIRST, then fridge (reverse order to see if it matters)
+multi_trial(MultiTrial(
+    name="v2-kitchen-micro-first",
+    background="kitchen-empty",
+    steps=[
+        Step(
+            name="microwave",
+            placements=[
+                Placement(
+                    ref="microwave",
+                    x=30, y=280,
+                    width=240,
+                    opacity=0.6,
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen. A white microwave oven sits on the left end of the "
+                "countertop, pushed against the tile backsplash. Fluorescent "
+                "lights, stained counter."
+            ),
+        ),
+        Step(
+            name="fridge",
+            placements=[
+                Placement(
+                    ref="refrigerator",
+                    x=570, y=73,
+                    height=580,
+                    opacity=0.7,   # Higher opacity for step 2
+                ),
+            ],
+            prompt=(
+                "Comic book art, bold ink outlines. A dingy institutional "
+                "kitchen with a microwave on the left counter. A refrigerator "
+                "covered in notes and clippings stands on the floor in the "
+                "far-right corner, next to the counter."
+            ),
+            seed=43,
+        ),
+    ],
+    notes="v2: reverse order (microwave first) to test step-order sensitivity",
+))
+
+# v2 microwave variations: try different opacity/size/position combos
+# to find what makes the microwave solid (not translucent)
+for label, mw_y, mw_w, mw_op in [
+    ("v2-mw-big-opaque",   280, 300, 0.85),  # Bigger + nearly opaque
+    ("v2-mw-lower",        320, 280, 0.8),   # Lower on counter + bigger
+    ("v2-mw-max-opacity",  280, 260, 0.95),  # Near-full opacity, medium size
+]:
+    trial(Trial(
+        name=label,
+        background="kitchen-empty",
+        placements=[
+            Placement(
+                ref="microwave",
+                x=20, y=mw_y,
+                width=mw_w,
+                opacity=mw_op,
+            ),
+        ],
+        prompt=(
+            "Comic book art, bold ink outlines. A dingy institutional kitchen "
+            "in a university basement. A white microwave oven sits on the left "
+            "end of the countertop, pushed against the tile backsplash. "
+            "Fluorescent lights, stained counter, coffee maker nearby."
+        ),
+        notes=f"microwave variation: y={mw_y} w={mw_w} opacity={mw_op}",
+    ))
+
+
+# --- v2 state matrix: appliance open/closed combinations ---
+# Placement constants (derived from bounding box analysis):
+#   Fridge closed: x=570, y=63, h=580  (body 286px wide, fits canvas)
+#   Fridge open:   x=500, y=49, h=580  (body 431px wide, shifted left to fit)
+#   Microwave *:   x=20,  y=280, w=300 (all states same bbox)
+# Opacity: 0.85 step-1, 0.9 step-2 (near-full, preserves bg hints)
+
+_FRIDGE_CLOSED = Placement(ref="refrigerator",      x=570, y=63,  height=580, opacity=0.85)
+_FRIDGE_OPEN   = Placement(ref="refrigerator-open",  x=500, y=49,  height=580, opacity=0.85)
+
+_MW_CLOSED  = Placement(ref="microwave",         x=20, y=280, width=300, opacity=0.85)
+_MW_OPEN    = Placement(ref="microwave-open",     x=20, y=280, width=300, opacity=0.85)
+_MW_RUNNING = Placement(ref="microwave-running",  x=20, y=280, width=300, opacity=0.85)
+
+_FRIDGE_CLOSED_S2 = Placement(ref="refrigerator",      x=570, y=63,  height=580, opacity=0.9)
+_FRIDGE_OPEN_S2   = Placement(ref="refrigerator-open",  x=500, y=49,  height=580, opacity=0.9)
+
+_MW_CLOSED_S2  = Placement(ref="microwave",         x=20, y=280, width=300, opacity=0.9)
+_MW_OPEN_S2    = Placement(ref="microwave-open",     x=20, y=280, width=300, opacity=0.9)
+_MW_RUNNING_S2 = Placement(ref="microwave-running",  x=20, y=280, width=300, opacity=0.9)
+
+_states = [
+    # (name, fridge_step1, fridge_desc, mw_step2, mw_desc)
+    ("v2-states-default",
+     _FRIDGE_CLOSED, "A closed refrigerator covered in notes and magnets",
+     _MW_CLOSED_S2, "A white microwave oven sits closed"),
+    ("v2-states-fridge-open",
+     _FRIDGE_OPEN, "The refrigerator door is wide open, revealing shelves of old takeout",
+     _MW_CLOSED_S2, "A white microwave oven sits closed"),
+    ("v2-states-micro-open",
+     _FRIDGE_CLOSED, "A closed refrigerator covered in notes and magnets",
+     _MW_OPEN_S2, "The microwave door hangs open, showing the empty turntable inside"),
+    ("v2-states-both-open",
+     _FRIDGE_OPEN, "The refrigerator door is wide open, revealing shelves of old takeout",
+     _MW_OPEN_S2, "The microwave door hangs open, showing the empty turntable inside"),
+    ("v2-states-micro-running",
+     _FRIDGE_CLOSED, "A closed refrigerator covered in notes and magnets",
+     _MW_RUNNING_S2, "The microwave is running, its interior glowing bright yellow-white"),
+]
+
+for name, fridge_p, fridge_desc, mw_p, mw_desc in _states:
+    multi_trial(MultiTrial(
+        name=name,
+        background="kitchen-empty",
+        steps=[
+            Step(
+                name="fridge",
+                placements=[fridge_p],
+                prompt=(
+                    f"Comic book art, bold ink outlines. A dingy institutional "
+                    f"kitchen. {fridge_desc} stands on the floor in the far-right "
+                    f"corner, next to the end of the counter."
+                ),
+            ),
+            Step(
+                name="microwave",
+                placements=[mw_p],
+                prompt=(
+                    f"Comic book art, bold ink outlines. A dingy institutional "
+                    f"kitchen with a refrigerator in the right corner. "
+                    f"{mw_desc} on the left end of the countertop, pushed "
+                    f"against the tile backsplash."
+                ),
+                seed=43,
+            ),
+        ],
+        notes=f"State combo: fridge={'open' if 'open' in fridge_p.ref else 'closed'}, "
+              f"microwave={'open' if 'open' in mw_p.ref else 'running' if 'running' in mw_p.ref else 'closed'}",
+    ))
+
+
+# --- v3: minimal text conditioning ---
+# Hypothesis: detailed text fights the overlay. Let the spatial prior
+# do the heavy lifting, text just sets style + bare-minimum semantics.
+
+_text_levels = {
+    # Level 0: style only — let the overlay speak for itself
+    "style-only": (
+        "Comic book art, bold ink outlines.",
+        "Comic book art, bold ink outlines.",
+    ),
+    # Level 1: style + bare keywords
+    "keywords": (
+        "Comic book art. Kitchen, {fridge_word}, fluorescent lights.",
+        "Comic book art. Kitchen, {fridge_word}, {mw_word}, fluorescent lights.",
+    ),
+    # Level 2: style + one-sentence spatial hint
+    "spatial": (
+        "Comic book art. Kitchen with {fridge_word} in the corner.",
+        "Comic book art. Kitchen with {fridge_word} in the corner, {mw_word} on the counter.",
+    ),
+}
+
+_v3_combos = [
+    # (suffix, fridge_placement, fridge_word, mw_placement, mw_word)
+    ("closed-closed", _FRIDGE_CLOSED, "closed refrigerator", _MW_CLOSED_S2, "microwave"),
+    ("fridge-open",   _FRIDGE_OPEN,   "open refrigerator",   _MW_CLOSED_S2, "microwave"),
+    ("micro-open",    _FRIDGE_CLOSED, "closed refrigerator", _MW_OPEN_S2,   "open microwave"),
+    ("micro-running", _FRIDGE_CLOSED, "closed refrigerator", _MW_RUNNING_S2, "glowing microwave"),
+]
+
+for text_level, (step1_tmpl, step2_tmpl) in _text_levels.items():
+    for suffix, fridge_p, fridge_word, mw_p, mw_word in _v3_combos:
+        name = f"v3-{text_level}-{suffix}"
+        step1_prompt = step1_tmpl.format(fridge_word=fridge_word, mw_word=mw_word)
+        step2_prompt = step2_tmpl.format(fridge_word=fridge_word, mw_word=mw_word)
+        multi_trial(MultiTrial(
+            name=name,
+            background="kitchen-empty",
+            steps=[
+                Step(name="fridge", placements=[fridge_p], prompt=step1_prompt),
+                Step(name="microwave", placements=[mw_p], prompt=step2_prompt, seed=43),
+            ],
+            notes=f"v3 {text_level}: {suffix}",
+        ))
+
+
 # --- Kitchen scene trials (original bg with appliances) ---
 
 # Kitchen: basic scene with fridge and microwave at their existing positions
