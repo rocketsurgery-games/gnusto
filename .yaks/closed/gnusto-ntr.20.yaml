@@ -1,0 +1,19 @@
+id: gnusto-ntr.20
+title: 'Strict property initialization: no declaration without init, no read/write
+  without declaration'
+type: task
+priority: 2
+created: '2026-01-22T16:17:30.49431-05:00'
+updated: '2026-02-08T19:07:11.000334Z'
+description: "Enforce stricter property handling to improve static analysis and catch\
+  \ bugs:\n\n1. No declaration without initialization - all properties in :properties\
+  \ must have values\n2. No read without declaration - (:prop @obj) errors if :prop\
+  \ not in @obj's :properties  \n3. No write without declaration - (set @obj :prop\
+  \ val) errors if :prop not declared\n\nThis eliminates the nil/false ambiguity discovered\
+  \ during backward analysis, where unset properties return nil but game logic treats\
+  \ nil as falsy (same as false).\n\nBenefits:\n- Initial state is fully explicit\
+  \ and analyzable\n- Catches property name typos at parse/load time\n- Documents\
+  \ object schemas implicitly\n- Simplifies static analysis (no need to handle undefined\
+  \ properties)\n\nImplementation:\n- Parser/loader validates property declarations\n\
+  - Runtime checks read/write against declared properties\n- Could be warning-only\
+  \ initially, then enforced"

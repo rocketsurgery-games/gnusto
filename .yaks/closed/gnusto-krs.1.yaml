@@ -1,0 +1,17 @@
+id: gnusto-krs.1
+title: Add keyword-as-function syntax for property access
+type: task
+priority: 1
+created: '2026-01-17T17:54:07.780154-05:00'
+updated: '2026-02-08T19:07:10.960962Z'
+description: |-
+  Implement Clojure-style keyword-as-function for reading object properties:
+
+  (:heat @food)           ; read property
+  (:timer @microwave)     ; read property
+
+  This replaces (prop @obj key) with cleaner syntax. Keywords evaluate to themselves, so when applied as a function to an object, they look up that property.
+
+  Implementation:
+  - In expr.py, handle keyword application to objects
+  - Return the property value from the object's :properties map

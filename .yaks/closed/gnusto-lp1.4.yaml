@@ -1,0 +1,18 @@
+id: gnusto-lp1.4
+title: Test in-context generation with reference images
+type: task
+priority: 1
+created: '2026-01-07T19:17:10.566967-05:00'
+updated: '2026-02-08T19:07:10.985071Z'
+depends_on:
+- gnusto-lp1.7
+description: "Use OmniGen2's native multi-image input to test: (1) style transfer\
+  \ from a reference, (2) object consistency using reference images, (3) combining\
+  \ multiple references (style + object). Measure how faithfully the reference is\
+  \ reproduced.\n\n## Progress (2026-01-07)\n- \u2705 Single reference test completed:\
+  \ brass lantern in cave scene (test_lantern_scene.png)\n- \U0001F504 Multi-reference\
+  \ test started but interrupted (CPU too slow ~1min/step)\n- Reference images created:\
+  \ brass_lantern.png, elvish_sword.png, jade_figurine.png\n\n## Next Steps\n1. Run\
+  \ multi-reference test on GPU (lantern + sword in dungeon scene)\n2. Test jade figurine\
+  \ visibility in complex scene\n3. Evaluate reference adherence quality across all\
+  \ tests\n"

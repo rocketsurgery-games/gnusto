@@ -1,0 +1,9 @@
+id: gnusto-jmq
+title: Split YAML output into multiple files
+type: task
+priority: 3
+created: '2026-01-09T12:27:17.866864-05:00'
+updated: '2026-02-08T19:07:11.07781Z'
+description: The current single-file output is 4k+ lines. Split into multiple files
+  mirroring ZIL source structure. Implement a loader that combines files before parsing.
+  Ensure references resolve correctly regardless of file organization.

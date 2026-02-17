@@ -1,0 +1,9 @@
+id: gnusto-z6to.3
+title: Iterate on layout CSS and block vocabulary
+type: task
+priority: 2
+created: '2026-02-13T18:18:04.650438-05:00'
+updated: '2026-02-13T18:18:04.650438-05:00'
+description: Try different CSS approaches for speech bubbles, narration boxes, transitions.
+  Test with real game content. Adjust block vocabulary if gaps or redundancy found.
+  Experiment with responsive behavior at different viewport sizes.

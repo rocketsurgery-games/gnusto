@@ -1,0 +1,9 @@
+id: gnusto-lp1.1
+title: Test object count accuracy
+type: task
+priority: 2
+created: '2026-01-07T19:16:45.128397-05:00'
+updated: '2026-02-08T19:07:11.064255Z'
+description: Test how reliably OmniGen2 generates the correct number of objects when
+  specified (e.g., 'three candles', 'two guards'). This is a known weakness of diffusion
+  models.

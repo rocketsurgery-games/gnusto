@@ -1,0 +1,16 @@
+id: gnusto-svn.1
+title: Remove deprecated has-flag/has-flag? functions
+type: task
+priority: 2
+created: '2026-01-18T15:09:22.614817-05:00'
+updated: '2026-02-08T19:07:11.01008Z'
+description: |-
+  has-flag and has-flag? are now redundant since flags became properties.
+
+  Use keyword lookup instead: (:prop @obj) returns the property value directly.
+
+  Tasks:
+  1. Search for all uses of has-flag/has-flag? in game code
+  2. Convert to keyword lookup syntax
+  3. Remove the Python implementations from expr.py
+  4. Update any documentation

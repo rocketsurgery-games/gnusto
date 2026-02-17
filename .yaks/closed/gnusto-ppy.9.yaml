@@ -1,0 +1,51 @@
+id: gnusto-ppy.9
+title: Add globals initialization to GRUE world files
+type: task
+priority: 2
+created: '2026-01-11T17:44:00.840665-05:00'
+updated: '2026-02-08T19:07:11.052749Z'
+description: |-
+  Add support for declaring and initializing global variables in GRUE world files.
+
+  ## Background
+  ZIL games use global variables to track game state that doesn't belong to any specific object:
+  - LAIR-CNT: possession counter (0-7+)
+  - HACKER-HELP: help interaction state (0, 1, 2, 3)
+  - HACKER-TRADE?: boolean flag for trade proposal
+
+  The runtime already supports globals via `state.globals` dict, and symbols are resolved to global values in expressions. What's missing is a way to **declare and initialize** globals from GRUE files.
+
+  ## Proposed Syntax
+  ```scheme
+  (globals
+    :lair-cnt 0
+    :hacker-help 0
+    :hacker-trade false
+    :microwave-timer 0
+    :microwave-temp 0)
+  ```
+
+  ## Implementation
+  1. Add `globals: dict[str, Any]` field to `GrueWorld` dataclass
+  2. Add `parse_globals()` function to parse the form
+  3. Register handler in `FORM_HANDLERS`
+  4. Update `GameState.from_world()` to initialize from world.globals
+  5. Add tests
+
+  ## Use Cases
+  Once implemented, hacker behaviors can check:
+  ```scheme
+  ((> lair-cnt 6)
+    (success :context ((response "The hacker replies, \"Meld!\""))))
+  ```
+
+  And effects can modify:
+  ```scheme
+  :effects ((set! hacker-help 1))
+  ```
+
+  ## Testing
+  - Parse globals form
+  - Initialize runtime with globals
+  - Access globals in expressions
+  - Modify globals with set!/inc!

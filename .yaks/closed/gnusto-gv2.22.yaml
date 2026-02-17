@@ -1,0 +1,20 @@
+id: gnusto-gv2.22
+title: Track implicit visibility constraints in backward analysis
+type: task
+priority: 2
+created: '2026-01-24T23:46:46.411105-05:00'
+updated: '2026-02-08T19:07:10.994002Z'
+description: |-
+  When extracting preconditions from behaviors, inject implicit visibility constraints for ?self and arguments. Runtime enforces visible? check on all player interactions (builtins.grue:82), so backward analysis should generate these as constraints.
+
+  Visibility semantics (from runtime.py):
+  - Object's containing room must match player's room
+  - OR object is held by player
+  - OR object is in open container at player's location
+  - Scenery objects: in room's :visible list
+
+  Implementation:
+  - Modify _extract_preconditions() in backward.py
+  - For each behavior target (?self), add visibility constraint
+  - For behavior arguments, also add visibility constraints
+  - Express as location constraints (player location = object's room)

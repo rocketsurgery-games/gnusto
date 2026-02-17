@@ -1,0 +1,17 @@
+id: gnusto-krs.8
+title: Convert LH globals to object properties
+type: task
+priority: 2
+created: '2026-01-17T17:54:26.592481-05:00'
+updated: '2026-02-08T19:07:11.014107Z'
+description: "Convert all Lurking Horror globals to properties on appropriate objects.\n\
+  \nCOMPLETED:\n\u2705 Microwave: timer, temp \u2192 @microwave\n\nREMAINING:\n- Hacker:\
+  \ hacker-trade, lair-cnt, hacker-help, food-hint, comp-cnt \u2192 @hacker\n- Elevator:\
+  \ elevator-loc, elevator-direction, elevator-stopped, etc \u2192 @elevator  \n-\
+  \ Lair: lair-flag, slime-cnt, nitrogen-cnt, hv-cnt, end-cnt \u2192 various\n- Steam\
+  \ tunnels: seen-pit, brick-wall-broken, valve-turns, on-cable, rats-anger\n- Maintenance:\
+  \ maint-attack-count, seen-mm-slip, waxer-patrol-started\n- Alchemy: prof-dead,\
+  \ prof-mad, prof-seen-note, left-alchemy, lab-bench-moved, etc\n- Urchins: urchin-freed\n\
+  - Yuggoth: yuggoth-count, freeze-count, remembered-student\n- Brown building: flier-count\n\
+  - Aero: padlock-on\n- CS building: door-warning, username, logged-in\n\nPattern\
+  \ established: use (:prop @obj) for reads, (set @obj :prop val) for writes"

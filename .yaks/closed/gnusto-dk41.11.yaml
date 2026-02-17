@@ -1,0 +1,9 @@
+id: gnusto-dk41.11
+title: Use :rdesc in scene renderer prompt building
+type: task
+priority: 2
+created: '2026-02-04T18:54:40.277281-05:00'
+updated: '2026-02-08T19:07:10.987247Z'
+description: Update SceneRenderer._get_entity_description() to prefer :rdesc over
+  :description when building render prompts. Fall back to :description if no :rdesc
+  defined.

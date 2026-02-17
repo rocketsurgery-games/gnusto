@@ -1,0 +1,14 @@
+id: gnusto-6w5.4.3
+title: Complete remaining migrations in partially-done files
+type: task
+priority: 2
+created: '2026-01-17T10:05:24.029161-05:00'
+updated: '2026-02-08T19:07:11.019775Z'
+description: |-
+  Finish migrations blocked by incompatible patterns once architectural issues are resolved:
+  - kitchen.grue: 2 remaining (microwave-running event)
+  - elevator.grue: 8 remaining (let bindings, custom mutations)
+  - maintenance-man.grue: 12 remaining
+  - brown-building.grue: 6 remaining (flier-approach event)
+
+  Total: 28 occurrences pending architectural changes.

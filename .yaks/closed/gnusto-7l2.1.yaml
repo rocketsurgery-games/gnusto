@@ -1,0 +1,13 @@
+id: gnusto-7l2.1
+title: CS Building - Main floors
+type: task
+priority: 2
+created: '2026-01-12T17:19:50.405618-05:00'
+updated: '2026-02-08T19:07:11.051163Z'
+labels:
+- lh
+description: "Convert the main CS building rooms and objects.\n\n## Rooms\n- COMP-CENTER\
+  \ (lobby/entrance)\n- CS-2ND (2nd floor)\n- CS-3RD (3rd floor)  \n- CS-ROOF\n- CS-ELEVATOR-ROOM\n\
+  - SMITH-ST, SMITH-ST-2 (outside)\n\n## Key Objects\n- OFFICE-DOOR\n- ELEVATOR system\
+  \ (multiple doors, buttons)\n- ACCESS-PANEL, FLASHLIGHT\n\n## Dependencies\n- terminal-room.grue\
+  \ already exists (connected to CS-2ND)"

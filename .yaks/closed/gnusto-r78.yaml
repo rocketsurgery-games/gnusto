@@ -1,0 +1,9 @@
+id: gnusto-r78
+title: Define core action set (~10 actions)
+type: task
+priority: 1
+created: '2026-01-08T21:18:26.065294-05:00'
+updated: '2026-02-08T19:07:10.982534Z'
+description: 'Define the initial set of core actions for the prototype: go, take,
+  drop, examine, open, close, turn-on, turn-off, read, inventory. Each action needs
+  preconditions and effects defined.'

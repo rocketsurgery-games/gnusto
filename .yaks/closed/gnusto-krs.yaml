@@ -1,0 +1,17 @@
+id: gnusto-krs
+title: Eliminate globals in favor of object properties
+type: task
+priority: 2
+created: '2026-01-17T17:53:37.413171-05:00'
+updated: '2026-02-08T19:07:11.015518Z'
+labels:
+- lang
+description: |-
+  Replace ZIL/MDL-inherited globals with Clojure-style object properties. Globals were an optimization for 70s-era 8-bit systems but don't provide encapsulation benefits. Object properties with keyword-as-function syntax provide cleaner namespacing and better encapsulation while maintaining readable syntax.
+
+  Key changes:
+  - Add keyword-as-function property access: (:heat @food)
+  - Add (set ...) effect for property mutation
+  - Add (get-in) / (set-in) for nested properties
+  - Convert all existing globals to object properties
+  - Remove (globals ...) form from parser/runtime

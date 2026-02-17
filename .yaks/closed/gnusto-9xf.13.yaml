@@ -1,0 +1,15 @@
+id: gnusto-9xf.13
+title: 'Fix plug action: should trigger endgame'
+type: task
+priority: 2
+created: '2026-01-17T14:06:31.579939-05:00'
+updated: '2026-02-08T19:07:11.015851Z'
+description: |-
+  Lines 901-903 in walkthrough: (move! @high-voltage @input-socket) (queue! frob-appears) (set! end-cnt 0)
+
+  Plugging the cut power line into the input socket should:
+  1. Check player is wearing gloves (electrical safety)
+  2. Check output-cable is not already cut
+  3. Trigger the frob-appears event
+
+  Multiple conditions in plug-power-line aren't being met. Debug and fix.

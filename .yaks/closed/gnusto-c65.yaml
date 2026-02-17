@@ -1,0 +1,17 @@
+id: gnusto-c65
+title: 'Refactor parser: separate S-expr parsing from form interpretation'
+type: task
+priority: 3
+created: '2026-01-11T11:49:40.374877-05:00'
+updated: '2026-02-08T19:07:11.076272Z'
+description: "Current parser.py does two jobs:\n1. S-expr parsing (delegated to sexpr.py)\
+  \ \n2. Form interpretation (converting parsed S-exprs to GrueWorld dataclasses)\n\
+  \nThe form interpretation has hardcoded knowledge of each top-level form (`world`,\
+  \ `object`, `room`, etc.) with custom parsing logic.\n\nProposed architecture:\n\
+  ```\nsexpr.py          -> SExpr AST (unchanged)\nforms.py (new)    -> Form interpreters\
+  \ as registered handlers\nparser.py         -> Thin orchestration layer\n```\n\n\
+  Benefits:\n- Easier to add new top-level forms\n- Form handlers can be tested independently\
+  \  \n- Cleaner separation for static analysis (analyze AST, then interpret)\n- Could\
+  \ eventually allow user-defined forms via macros\n\nEach form handler would be a\
+  \ function: `(SList, GrueWorld) -> None`\nForms register themselves: `@form('object')\
+  \ def parse_object(...)`"

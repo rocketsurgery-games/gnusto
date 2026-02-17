@@ -1,0 +1,22 @@
+id: gnusto-gv2.18
+title: Smart mobile object location tracking for barriers
+type: task
+priority: 2
+created: '2026-01-23T12:04:56.384507-05:00'
+updated: '2026-02-08T19:07:10.998413Z'
+description: |-
+  Current behavior: collect_navigation_refs() excludes mobile object LocationRefs by default to prevent state explosion.
+
+  Problem: For LH, @floor-waxer:location is critical because:
+  1. Waxer patrols inf-1 to inf-5
+  2. @waxer-exit-barrier:through checks (= (loc @floor-waxer) ?from)
+  3. Player must wait for waxer to move away to reach @inf-4
+  4. @inf-4 contains emergency-cabinet with axe needed for victory
+
+  When waxer location isn't tracked, exploration collapses timing-dependent paths where player waits for waxer.
+
+  Potential approaches:
+  1. Track locations only for objects mentioned in barriers that affect critical paths
+  2. Use a 'critical barrier' heuristic to identify which barriers block victory-relevant locations
+  3. Add explicit waiting actions so exploration can find 'wait for waxer' paths
+  4. Use subgoal-based exploration to focus on reaching specific rooms

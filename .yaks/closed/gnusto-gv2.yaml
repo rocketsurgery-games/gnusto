@@ -1,0 +1,9 @@
+id: gnusto-gv2
+title: Heuristic state-space exploration
+type: task
+priority: 1
+created: '2026-01-21T00:06:37.977647-05:00'
+updated: '2026-02-08T19:07:10.958629Z'
+description: 'Replace exhaustive BFS exploration with heuristic-guided search using
+  bidirectional techniques. Goals: (1) Find victory paths quickly via greedy best-first
+  search, (2) Detect black holes via backward constraint propagation.'

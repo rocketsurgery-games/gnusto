@@ -1,0 +1,15 @@
+id: gnusto-b4m
+title: Add quote and keyword-as-function to Grue
+type: task
+priority: 2
+created: '2026-01-12T17:51:08.883069-05:00'
+updated: '2026-02-08T19:07:11.03987Z'
+description: "Add two fundamental Lisp features to Grue:\n\n## 1. Quote syntax\n-\
+  \ `'expr` or `(quote expr)` returns expr unevaluated as data\n- `'(foo bar)` \u2192\
+  \ the list (foo bar), not a function call\n- `'@hacker` \u2192 the symbol @hacker\n\
+  \n## 2. Keywords as functions (Clojure-style)\n- `(:key obj)` looks up :key on obj\n\
+  - Works for objects: `(:fdesc @pc)` \u2192 \"A really whiz-bang pc...\"\n- Works\
+  \ for quoted maps: `(:foo '(:foo \"bar\"))` \u2192 \"bar\"\n- Optional default:\
+  \ `(:missing obj \"default\")` \u2192 \"default\"\n\nThis enables clean access to\
+  \ object attributes without special syntax.\n\nReferences:\n- https://clojure.org/guides/learn/hashed_colls\n\
+  - https://blog.mrhaki.com/2020/06/clojure-goodness-keyword-as-function.html"

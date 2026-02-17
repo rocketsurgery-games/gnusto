@@ -1,0 +1,9 @@
+id: gnusto-gv2.7.1
+title: Add early termination for state_goal during exploration
+type: task
+priority: 3
+created: '2026-01-24T10:44:13.813101-05:00'
+updated: '2026-02-08T19:07:11.069754Z'
+description: Currently state_goal is checked post-hoc after exploration completes.
+  Add support for checking it during exploration for early termination when goal is
+  found.

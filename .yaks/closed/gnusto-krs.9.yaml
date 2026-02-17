@@ -1,0 +1,16 @@
+id: gnusto-krs.9
+title: Remove (globals ...) form from parser/runtime
+type: task
+priority: 2
+created: '2026-01-17T17:54:36.172474-05:00'
+updated: '2026-02-08T19:07:11.013814Z'
+description: |-
+  After all globals are converted to object properties, remove the (globals ...) form entirely:
+
+  - Remove from forms.py parser
+  - Remove global storage from runtime.py GameState
+  - Remove get_global/set_global from GrueRuntime
+  - Remove set!/inc!/dec! global mutation forms
+  - Update any remaining references
+
+  This is the final cleanup task - only do after all conversions complete.

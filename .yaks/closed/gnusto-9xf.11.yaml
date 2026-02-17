@@ -1,0 +1,10 @@
+id: gnusto-9xf.11
+title: 'Fix urchin drop: bolt-cutters INVISIBLE flag'
+type: task
+priority: 2
+created: '2026-01-17T14:06:31.20969-05:00'
+updated: '2026-02-08T19:07:11.016428Z'
+description: |-
+  Line 817 in walkthrough: (clear-flag! @bolt-cutters INVISIBLE)
+
+  When the urchin flees after being shown the animated hand, he should drop the bolt cutters. The INVISIBLE flag should be cleared automatically when dropped, making them visible and takeable.

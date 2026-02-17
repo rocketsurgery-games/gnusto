@@ -1,0 +1,30 @@
+id: gnusto-8t8
+title: Event queue as implicit precondition
+type: task
+priority: 1
+created: '2026-01-22T13:02:56.109909-05:00'
+updated: '2026-02-08T19:07:10.957009Z'
+description: |-
+  ## Problem
+  Backward analysis finds that `event:X:on_turn` can modify state, but doesn't know that the event must be queued first.
+
+  ## Current Behavior
+  - `event:frob-appears:on_turn` is found as achiever for `@frob:count >= 2`
+  - But preconditions list is empty
+  - Missing: the event must be queued (by `@high-voltage:plug`)
+
+  ## Fix
+  When extracting preconditions from an event behavior:
+  1. Recognize it's an event (object starts with "event:")
+  2. Add implicit precondition: `queue:event-name` must be active
+  3. This chains to behaviors that call `(queue event-name ...)`
+
+  ## Implementation
+  In `_extract_preconditions` or `_expand_node`, check if behavior is an event:
+  ```python
+  if behavior.object.startswith("event:"):
+      event_name = behavior.object.split(":")[1]
+      queue_ref = QueueRef(event_name)
+      # Add constraint that queue must be active
+      # Then find what behaviors queue this event
+  ```

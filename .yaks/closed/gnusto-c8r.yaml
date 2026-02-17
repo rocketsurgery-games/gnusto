@@ -1,0 +1,12 @@
+id: gnusto-c8r
+title: Profile and optimize explorer performance
+type: task
+priority: 2
+created: '2026-01-23T20:45:00.49509-05:00'
+updated: '2026-02-08T19:07:10.997604Z'
+description: "Explorer runs at ~4 states/second on LH which limits scalability.\n\n\
+  Observed: 611 states in 147s (~4.2 states/sec)\n\nProfile to identify:\n1. Runtime\
+  \ action enumeration overhead\n2. State fingerprint computation cost\n3. Deep copy\
+  \ vs. rollback overhead\n4. Effect execution time\n\nPossible optimizations:\n-\
+  \ Cache action availability per object type\n- Incremental fingerprint updates \
+  \ \n- Rollback-based state instead of deep copy\n- Batch effect execution"

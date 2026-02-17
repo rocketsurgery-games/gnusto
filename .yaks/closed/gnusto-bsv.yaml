@@ -1,0 +1,15 @@
+id: gnusto-bsv
+title: Display action context in non-debug mode
+type: task
+priority: 2
+created: '2026-01-19T11:58:16.816931-05:00'
+updated: '2026-02-08T19:07:11.007366Z'
+description: "Currently _format_action_result() in frotz/agent.py only extracts 'description'\
+  \ from ActionDone context, ignoring other user-facing values like 'message' and\
+  \ 'screen-contents'.\n\nExample: turning on the PC returns rich context:\n  context=[('power',\
+  \ 'on'), ('screen-contents', '@menu-box'), ('message', 'This is a beyond-state-of-the-art\
+  \ personal computer...')]\n\nBut user only sees \"Done.\" unless in debug mode.\n\
+  \nFix: Extract displayable context values (at minimum 'message' and 'description').\
+  \ May want to be selective - 'power: on' as raw text isn't useful, but 'message'\
+  \ is clearly intended for the user.\n\nOptions:\n1. Whitelist approach: show 'message',\
+  \ 'description' \n2. Blacklist approach: show everything except known metadata keys"

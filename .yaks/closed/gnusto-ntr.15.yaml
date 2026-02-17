@@ -1,0 +1,55 @@
+id: gnusto-ntr.15
+title: Implement proper closures with captured environments
+type: task
+priority: 1
+created: '2026-01-14T10:02:40.53225-05:00'
+updated: '2026-02-08T19:07:10.968023Z'
+labels:
+- lang
+description: |-
+  Closures don't capture their lexical environment properly.
+
+  **Current approach:** GrueFn has a \`captured\` dict, but it's populated via substitution, not environment capture:
+  ```python
+  @dataclass
+  class GrueFn:
+      params: list[str]
+      body: SExpr
+      captured: dict[str, Any] = field(default_factory=dict)
+  ```
+
+  And in call_fn:
+  ```python
+  for name, value in fn.captured.items():
+      result_expr = self._substitute(result_expr, name, value)
+  ```
+
+  **Problem:** This doesn't implement proper lexical closure semantics:
+  ```scheme
+  (let ((x 10))
+    (let ((f (fn () x)))
+      (let ((x 20))
+        (f))))  ; Should return 10, not 20
+  ```
+
+  With substitution, this is undefined behavior. With proper closures, `f` captures the environment where `x=10`.
+
+  **Lisp norm:** When `fn` is evaluated, create a closure that captures the current environment. When called, extend that captured environment with parameter bindings.
+
+  **Solution:** After implementing environments (frotzlm-ntr.11):
+  ```python
+  def _eval_fn(self, form: SList, env: Environment) -> GrueFn:
+      params = [p.name for p in form[1]]
+      body = form[2]
+      return GrueFn(params, body, captured_env=env)  # Capture current env
+
+  def call_fn(self, fn: GrueFn, args: list[Any]) -> Any:
+      # Extend captured env with parameters
+      call_env = Environment(
+          dict(zip(fn.params, args)),
+          parent=fn.captured_env
+      )
+      return self.eval(fn.body, call_env)
+  ```
+
+  This depends on frotzlm-ntr.11 (lexical environments).

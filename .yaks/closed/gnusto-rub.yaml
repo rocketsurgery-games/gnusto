@@ -1,0 +1,26 @@
+id: gnusto-rub
+title: Convert defensive (set!) to (assert) in walkthrough-full
+type: task
+priority: 3
+created: '2026-01-17T14:12:35.133004-05:00'
+updated: '2026-02-08T19:07:11.074076Z'
+depends_on:
+- gnusto-9xf
+description: |-
+  Once all navigation and mechanics are working (epic frotzlm-9xf complete), clean up the walkthrough-full test:
+
+  1. Remove all (move! @player ...) teleports - use proper navigation
+  2. Convert defensive (set!) calls to (assert) - verify game state is correct
+  3. Remove item grants like (move! @axe @player) - acquire through gameplay
+
+  Lines to review:
+  - 709: waxer-patrol-started (should trigger on enter)
+  - 734-735: prof-dead, left-alchemy (should be default false)
+  - 745-746: prof-seen-note, prof-mad (should be default false)
+  - 753: tied-up (should be 0)
+  - 824: urchin-freed (should be false)
+  - 837: nitrogen-cnt (should be 0)
+  - 881: hv-cnt (should be 0)
+  - 892-897: endgame state (review if still needed)
+
+  Any assertion failures reveal new bugs to fix.

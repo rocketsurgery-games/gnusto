@@ -1,0 +1,31 @@
+id: gnusto-ppy.2
+title: Translate HACKER basic behaviors
+type: task
+priority: 2
+created: '2026-01-11T09:59:06.266946-05:00'
+updated: '2026-02-08T19:07:11.058199Z'
+description: |-
+  Translate the simple sensory and social behaviors for the HACKER NPC.
+
+  ## Scope
+  Basic interactions that don't involve complex state or puzzles.
+
+  ### Behaviors to implement:
+  - `:examine` - state-dependent description (normal vs at-your-terminal vs in-lair)
+  - `:listen` - "humming something... perhaps Bach?"
+  - `:smell` - "in need of cleaning"
+  - `:hello` - "Greetingage." + turns back to hacking
+  - `:thank` - blushes (if helped or has master key)
+
+  ### State dependencies:
+  - HACKER-HELP level (0, 1, 2, 3+)
+  - LAIR-CNT > 6 (hacker in lair, different responses)
+  - I-HACKER-HELPS queued (hacker at your terminal)
+
+  ### Notes:
+  - These are the simpler verbs - good starting point
+  - Examine has the most complexity with multiple description branches
+  - Can stub out state checks initially
+
+  ## Source
+  games/lurkinghorror/terminal-room.grue lines 191-401 (HACKER-F routine)

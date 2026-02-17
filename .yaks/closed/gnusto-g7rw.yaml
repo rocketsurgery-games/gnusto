@@ -1,0 +1,9 @@
+id: gnusto-g7rw
+title: 'GFX mode: Basic rendering scaffold'
+type: task
+priority: 1
+created: '2026-01-26T00:45:02.851295-05:00'
+updated: '2026-02-08T19:07:10.953763Z'
+description: Phase 1 of --gfx mode. Set up blessed alternate screen + keyboard, term-image
+  for Kitty, simple vertical scroll, fixed status bar and input area, mouse scroll.
+  See docs/ui.md

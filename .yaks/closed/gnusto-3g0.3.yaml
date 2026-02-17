@@ -1,0 +1,16 @@
+id: gnusto-3g0.3
+title: Add location chain traversal for take preconditions
+type: task
+priority: 2
+created: '2026-01-24T18:24:19.117808-05:00'
+updated: '2026-02-08T19:07:10.995358Z'
+description: |-
+  When runtime:take achieves @X:location = @player, the decomposer shows NO preconditions. But:
+  - Object X has an initial location (e.g., @boots starts in @dead-storage)
+  - Player must BE at that location to take the object
+  - This creates implicit precondition: @player:location = <object's current location>
+
+  Need to:
+  1. Look up where the object currently is (from world state or parent goal chain)
+  2. Add @player:location = <that room> as a precondition
+  3. Recurse to find how player reaches that room

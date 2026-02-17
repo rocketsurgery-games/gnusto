@@ -1,0 +1,16 @@
+id: gnusto-bj4
+title: Symbol values in context lists not evaluated
+type: bug
+priority: 1
+created: '2026-01-14T23:05:42.927512-05:00'
+updated: '2026-02-08T19:07:10.966486Z'
+description: |-
+  When a behavior returns (success :context ((key symbol))), the symbol is returned as a string instead of being evaluated.
+
+  Example from hacker.grue line 59:
+    (true (success :context ((description hacker-desc))))
+
+  Expected: description should be the full hacker description string
+  Actual: description is returned as 'hacker-desc' (the symbol name)
+
+  The _parse_context_list in expr.py only evaluates SList values, not Symbol values. It should also look up Symbol values in the environment/defs.

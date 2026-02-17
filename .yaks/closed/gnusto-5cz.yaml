@@ -1,0 +1,13 @@
+id: gnusto-5cz
+title: Create LLM-driven game loop
+type: task
+priority: 1
+created: '2026-01-18T19:24:56.338503-05:00'
+updated: '2026-02-08T19:07:10.959254Z'
+depends_on:
+- gnusto-39g
+- gnusto-k9k
+- gnusto-gmr
+description: 'Minimal REPL that: 1) gets user input, 2) calls LLM with game state
+  + tool schema, 3) executes returned (do) call, 4) prints results. Just enough to
+  play.'

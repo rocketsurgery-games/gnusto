@@ -1,0 +1,25 @@
+id: gnusto-h36
+title: Convert TERMINAL-ROOM and HACKER-EXIT to verified Grue
+type: task
+priority: 1
+created: '2026-01-10T18:27:21.171111-05:00'
+updated: '2026-02-08T19:07:10.975113Z'
+description: |-
+  Convert TERMINAL-ROOM and its HACKER-EXIT barrier from Lurking Horror to verified Grue. This is the starting room and serves as our first real-world conversion test case.
+
+  ## Scope
+  - TERMINAL-ROOM: Starting location with PC, terminals, HACKER
+  - HACKER-EXIT barrier: Prevents stealing hardware from CS building
+
+  ## Approach
+  Work in small incremental steps:
+  1. Examine existing ZIL source and auto-generated GRUE
+  2. Identify behaviors that need manual implementation
+  3. Write .test.grue tests for expected behavior
+  4. Implement minimal Grue to pass tests
+  5. Iterate until room behavior is complete
+
+  ## Discussion Points
+  - What should be directly converted vs reformulated for clarity?
+  - How to handle ZIL routines that don't map cleanly to Grue?
+  - What level of fidelity to original game logic?

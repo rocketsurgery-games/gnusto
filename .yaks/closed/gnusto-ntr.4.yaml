@@ -1,0 +1,15 @@
+id: gnusto-ntr.4
+title: Add test-group form for shared setup
+type: task
+priority: 2
+created: '2026-01-13T13:13:48.940117-05:00'
+updated: '2026-02-08T19:07:11.03362Z'
+labels:
+- lang
+description: "Add test-group to the test DSL for grouping tests with shared setup.\n\
+  \nPattern:\n```scheme\n(test-group \"microwave timer\"\n  :setup ((move! @player\
+  \ @kitchen))\n  \n  (test \"set to 2 minutes\"\n    :action (do @microwave :set-timer\
+  \ 120)\n    :expect ((global? microwave-timer 120)))\n  \n  (test \"set to 30 seconds\"\
+  \n    :action (do @microwave :set-timer 30)\n    :expect ((global? microwave-timer\
+  \ 30))))\n```\n\nBenefits:\n- Reduces boilerplate (no repeated setup per test)\n\
+  - Groups related tests logically\n- Could support nesting for hierarchical setup"

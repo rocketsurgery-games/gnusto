@@ -1,0 +1,30 @@
+id: gnusto-3up
+title: Agentic loop for multi-step commands
+type: task
+priority: 2
+created: '2026-01-19T11:10:56.500669-05:00'
+updated: '2026-02-08T19:07:11.007576Z'
+description: |-
+  Enable the LLM player to execute multi-step commands like \"take the chair and leave with it\" or \"take the chair down the elevator to the first floor\".
+
+  ## Current Behavior
+  - LLM returns tool calls, all are executed, results shown to user
+  - No feedback loop - LLM doesn't see action results or get chance to continue
+  - Complex commands only execute first action
+
+  ## Desired Behavior
+  - Agentic loop: execute action(s), feed results back to LLM, repeat until done
+  - LLM can react to mid-sequence failures (e.g., hacker blocks elevator)
+  - Natural termination: loop until LLM response has no tool calls (approach B)
+
+  ## Implementation
+  1. After executing tool calls, check if response has more
+  2. If yes, feed results + updated game state back to LLM
+  3. Loop until no tool calls in response (LLM is done narrating)
+  4. Add max iteration cap (e.g., 10) to prevent runaway
+  5. Update system prompt to guide multi-step planning
+
+  ## Edge Cases
+  - Mid-sequence failure: LLM should report why plan failed
+  - Ambiguous commands: LLM should ask for clarification
+  - Long sequences: cap iterations, report partial progress

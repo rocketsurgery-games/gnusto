@@ -1,0 +1,41 @@
+id: gnusto-otr
+title: IF Design Tools
+type: task
+priority: 1
+created: '2026-01-25T10:51:31.341008-05:00'
+updated: '2026-02-08T19:07:10.954646Z'
+description: "CLI tools for interactive fiction designers to validate game designs,\
+  \ detect soft-locks, \nand understand puzzle complexity. Tools operate on partial\
+  \ state specifications using Grue syntax.\n\n## Tier 1 - Core Debugging\n\n### reach\
+  \ - Reachability Query\n```bash\ngrue-tool reach --to \"(= (:location @axe) @player)\"\
+  \ngrue-tool reach --from \"(= (:location @player) @computer-room)\" --to \"(= (:location\
+  \ @axe) @player)\"\n```\n- Answers: \"Can state S1 be reached from S0?\"\n- Returns:\
+  \ Yes/No + shortest path (action sequence)\n- Default --from is initial game state\n\
+  \n### requires - Precondition Analysis  \n```bash\ngrue-tool requires \"(= (:location\
+  \ @axe) @player)\"\ngrue-tool requires \"(not (= (:location @maintenance-man) @floor-waxer))\"\
+  \n```\n- Answers: \"What must be true to achieve this?\"\n- Returns: Backward constraint\
+  \ tree showing dependencies\n- Shows alternative paths, bottlenecks\n\n### blockers\
+  \ - Progress Blocker Detection\n```bash\ngrue-tool blockers --goal \"(>= (:count\
+  \ @frob) 2)\"\ngrue-tool blockers --from state.json --goal victory\n```\n- Answers:\
+  \ \"What's preventing progress from here?\"\n- Returns: Unsatisfied preconditions,\
+  \ missing items, locked paths\n\n## Tier 2 - Soft-Lock Prevention\n\n### deadends\
+  \ - Unwinnable State Detection\n```bash\ngrue-tool deadends --check \"(= (:location\
+  \ @axe) @abyss)\"\ngrue-tool deadends --from state.json\n```\n- Answers: \"Is this\
+  \ state unwinnable?\"\n- Returns: Yes/No + which victory conditions become unreachable\n\
+  \n### critical - Required Object Detection\n```bash\ngrue-tool critical --goal victory\n\
+  grue-tool critical --goal \"(= (:location @player) @lair)\"\n```\n- Answers: \"\
+  Which objects are required (no alternatives)?\"\n- Helps identify key items vs optional\n\
+  \n## Tier 3 - Design Insight\n\n### depgraph - Dependency Visualization\n```bash\n\
+  grue-tool depgraph --goal \"(>= (:count @frob) 2)\" -o deps.dot\ngrue-tool depgraph\
+  \ --object @axe\n```\n- Visualize constraint relationships\n- Show critical path,\
+  \ parallel opportunities\n\n### solutions - Alternative Path Finding\n```bash\n\
+  grue-tool solutions --goal victory --max 5\n```\n- Find multiple winning paths\n\
+  - Show how they differ\n\n### complexity - Puzzle Metrics\n```bash\ngrue-tool complexity\
+  \ --goal \"(= (:rmung @emergency-cabinet) true)\"\n```\n- Metrics: depth (steps),\
+  \ breadth (alternatives), dependencies\n- Compare complexity across puzzles\n\n\
+  ## Implementation Notes\n\nState specifications use Grue syntax:\n- Location: `(=\
+  \ (:location @obj) @room)` or shorthand `@obj@room`\n- Property: `(= (:prop @obj)\
+  \ value)` or `@obj:prop=value`  \n- Negation: `(not ...)` or `!=`\n- Comparisons:\
+  \ `(>= (:count @obj) n)`\n\nAll tools share common flags:\n- `--game <dir>` - Game\
+  \ directory (default: current)\n- `--verbose` - Show exploration stats\n- `--max-states\
+  \ N` - Limit exploration\n- `--timeout N` - Time limit in seconds"

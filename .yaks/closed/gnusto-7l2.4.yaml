@@ -1,0 +1,30 @@
+id: gnusto-7l2.4
+title: Elevator System
+type: task
+priority: 2
+created: '2026-01-12T17:20:09.500334-05:00'
+updated: '2026-02-08T19:07:11.04988Z'
+labels:
+- lh
+description: |-
+  Convert the complex elevator mechanics.
+
+  ## Rooms
+  - CS-ELEVATOR-ROOM (already in CS building task, but elevator logic here)
+  - ELEVATOR-PIT
+  - Elevator shaft rooms (SHAFT-B, SHAFT-1, SHAFT-2, SHAFT-3)
+
+  ## Key Objects
+  - ELEVATOR (vehicle-like object)
+  - ELEVATOR-DOOR (multiple instances for each floor)
+  - Control buttons (OPEN-BUTTON, CLOSE-BUTTON, FLOOR-BUTTON, BASEMENT-BUTTON)
+  - ALARM-BUTTON, STOP-SWITCH
+  - UP-BUTTON, DOWN-BUTTON (external call buttons)
+  - ELEVATOR-CEILING, ELEVATOR-FLOOR
+  - HOOK, CHAIN (multiple states)
+
+  ## Mechanics
+  - Elevator state machine (moving, stopped, doors open/closed)
+  - Multiple floor access
+  - Getting on/off elevator roof
+  - Chain/hook puzzle for shaft access

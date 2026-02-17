@@ -1,0 +1,21 @@
+id: gnusto-266.2
+title: 'Phase 2: Unified state model with builtin specs'
+type: task
+priority: 1
+created: '2026-01-23T17:55:39.727485-05:00'
+updated: '2026-02-08T19:07:10.955849Z'
+depends_on:
+- gnusto-266.1
+description: "Replace StateRef variants with unified StatePath and add builtin specifications.\n\
+  \n1. Unified StatePath:\n   - Replace PropertyRef|LocationRef|QueueRef|HeldRef with\
+  \ single StatePath class\n   - StatePath is just a string path like 'loc(@key)',\
+  \ 'prop(@door,locked)'\n   - Hashable, comparable, serializable\n\n2. Builtin specifications\
+  \ for runtime-provided symbols:\n   - Define BuiltinSpec class for runtime operations\
+  \ (go, take, drop)\n   - Define BuiltinFunc class for runtime functions (loc, held?,\
+  \ in-room?)\n   - Each spec declares parameter domains and return value domains\n\
+  \   - Example: runtime:go provides ?from \u2208 rooms, ?via \u2208 objects\n\n3.\
+  \ Refactor effect analysis to use new model:\n   - Operate on reduced expressions\
+  \ (from Phase 1)\n   - Use StatePath instead of StateRef variants\n   - Consult\
+  \ builtin specs for runtime parameter domains\n\nDeliverables:\n- src/frotz/state.py\
+  \ with StatePath, BuiltinSpec, BuiltinFunc\n- Update src/frotz/effects.py to use\
+  \ new model\n- Maintain backward compatibility during transition"

@@ -1,0 +1,17 @@
+id: gnusto-gv2.8
+title: Enhance backward analysis for OR-conditions
+type: task
+priority: 2
+created: '2026-01-21T15:28:32.742832-05:00'
+updated: '2026-02-08T19:07:11.00122Z'
+description: "Static backward analysis currently only finds ONE path through OR-conditions\
+  \ (e.g., unlock with key OR lockpick). This causes alternate solutions to be flagged\
+  \ as anomalies.\n\nThe issue: backward analysis extracts preconditions by looking\
+  \ for (blocked ...) patterns. But OR-conditions appear as multiple success branches\
+  \ in cond expressions, not as blocking conditions.\n\nExample from testgame unlock:\n\
+  \  (cond\n    ((held? @key) -> success)        ; Path A - not analyzed\n    ((held?\
+  \ @lockpick) -> success)   ; Path B - not analyzed  \n    (else -> (blocked ...)))\
+  \         ; Only this is analyzed\n\nOptions:\nA) Analyze all cond branches that\
+  \ lead to effects (not just blocked)\nB) Use effect analysis reads to infer what\
+  \ enables behaviors\nC) Accept limitation, use dynamic analysis to discover alternatives\n\
+  \nThis would make static analysis more complete and reduce false-positive anomalies."

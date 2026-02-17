@@ -1,0 +1,29 @@
+id: gnusto-c0b
+title: Document GRUE language semantics
+type: task
+priority: 2
+created: '2026-01-11T11:49:22.464211-05:00'
+updated: '2026-02-08T19:07:11.054981Z'
+description: |-
+  Create formal documentation of GRUE language semantics:
+
+  **Special Forms** (custom evaluation rules):
+  - `cond` - conditional with clause structure
+  - `success`/`blocked`/`redirect`/`default` - outcome declarations
+  - `when` - conditional effect execution
+  - `seq` - sequential effect execution
+  - `any`/`all` - quantified predicates with binding
+
+  **Functions** (uniform evaluation):
+  - Predicates: `has-flag`, `loc`, `prop`, `visible?`, `held?`, `here?`, etc.
+  - Effects: `move!`, `set-flag!`, `clear-flag!`, `set-prop!`, `set!`, `inc!`, `queue!`, `dequeue!`
+
+  **Declarative Forms** (data, not code):
+  - `world`, `room`, `object`, `victory`, `defeat`, `default`
+
+  **Binding Model**:
+  - Document dynamic bindings (`self`, `?actor`, `?with`, etc.)
+  - Document lexical bindings in `defn`
+  - Clarify evaluation order and scoping rules
+
+  Output: Update docs/grue.md with formal semantics section

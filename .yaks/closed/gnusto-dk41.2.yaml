@@ -1,0 +1,9 @@
+id: gnusto-dk41.2
+title: 'Experiment: ref-size impact on composition fidelity'
+type: task
+priority: 2
+created: '2026-01-29T20:59:26.677793979-05:00'
+updated: '2026-02-08T19:07:10.989916Z'
+description: Test different --ref-size values to understand tradeoff between speed
+  and reference preservation. Determine recommended defaults for atomic/composite/scene
+  layers.

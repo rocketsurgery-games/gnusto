@@ -1,0 +1,13 @@
+id: gnusto-mw2
+title: Enhance ZIL converter to emit behavioral stubs with source comments
+type: task
+priority: 2
+created: '2026-01-09T12:27:13.000277-05:00'
+updated: '2026-02-08T19:07:11.061175Z'
+depends_on:
+- gnusto-bkv
+- gnusto-4fa
+description: 'Modify the ZIL-to-DSL converter to: (1) Emit behavioral stubs for objects
+  with ACTION routines, (2) Include original ZIL source as comments/metadata, (3)
+  Mark behaviors as ''needs-translation'' for LLM refinement, (4) Extract what static
+  info we can (verb patterns, referenced objects).'

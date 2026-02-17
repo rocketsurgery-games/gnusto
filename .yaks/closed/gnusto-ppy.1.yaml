@@ -1,0 +1,34 @@
+id: gnusto-ppy.1
+title: Translate PC object behaviors
+type: task
+priority: 2
+created: '2026-01-11T09:58:57.280655-05:00'
+updated: '2026-02-08T19:07:11.058486Z'
+depends_on:
+- gnusto-ppy.5
+description: |-
+  Translate the PC-F routine from ZIL to GRUE behaviors.
+
+  ## Scope
+  The PC is a computer terminal with power/plug state management.
+
+  ### Behaviors to implement:
+  - `:examine` - describe PC, check power state, show screen contents
+  - `:listen` - "hums contentedly" if powered on
+  - `:take` - auto-unplug logic, hacker interference when I-HACKER-HELPS queued
+  - `:read` - redirect to screen contents (ODD-PAPER, MENU-BOX, MORE-BOX, YAK-WINDOW)
+  - `:lamp-on`/`:lamp-off` - power control with hacker interference
+  - `:plug-in`/`:unplug` - plug state management
+  - `:sit-at` - redirect to CHAIR
+
+  ### State needed:
+  - POWERBIT flag (or similar) for on/off
+  - PC-UNPLUGGED? global or property
+  - References screen objects that may not exist yet
+
+  ### Challenges:
+  - Hacker interference when I-HACKER-HELPS is queued (may need event queue system first)
+  - Screen object redirection pattern
+
+  ## Source
+  games/lurkinghorror/terminal-room.grue lines 76-157 (PC-F routine in comments)

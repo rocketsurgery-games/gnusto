@@ -1,0 +1,20 @@
+id: gnusto-svn.3
+title: Move simple predicates to builtins.grue
+type: task
+priority: 2
+created: '2026-01-18T15:09:33.275356-05:00'
+updated: '2026-02-08T19:07:11.00955Z'
+description: |-
+  Move these simple predicates from Python to Grue:
+
+  - held? = (defn held? (?obj) (= (loc ?obj) (player)))
+  - here? = (defn here? (?obj) (= (loc ?obj) (loc (player))))
+  - in? = (defn in? (?obj ?container) (= (loc ?obj) ?container))
+  - held-by? = (defn held-by? (?obj ?holder) (= (loc ?obj) ?holder))
+  - at? = (defn at? (?obj ?other) (= (loc ?obj) (loc ?other)))
+  - loc? = (defn loc? (?obj ?expected) (= (loc ?obj) ?expected))
+
+  Steps:
+  1. Add definitions to builtins.grue
+  2. Remove Python implementations from expr.py
+  3. Run tests to verify behavior unchanged

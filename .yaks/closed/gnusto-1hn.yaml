@@ -1,0 +1,18 @@
+id: gnusto-1hn
+title: Review Grue language and patterns
+type: task
+priority: 2
+created: '2026-01-10T12:17:10.944638-05:00'
+updated: '2026-02-08T19:07:11.060026Z'
+description: |
+  Look over the syntax, semantics, and patterns we've implemente in Grueto ensure that we're taking advantage of the concepts already exploredin languages like Clojure. For example:
+  :behaviors (
+    (foo ... )
+    (bar ... )
+  )
+
+  could perhaps be something more like:
+  :behaviors (
+    :foo ( ... )
+    :bar ( ... )
+  )

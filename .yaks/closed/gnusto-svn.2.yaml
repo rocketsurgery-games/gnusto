@@ -1,0 +1,12 @@
+id: gnusto-svn.2
+title: Add (player) primitive function
+type: task
+priority: 2
+created: '2026-01-18T15:09:27.941734-05:00'
+updated: '2026-02-08T19:07:11.009804Z'
+description: |-
+  Add a (player) function that returns the current player entity name.
+
+  This is needed so that Grue-defined predicates like held? can work outside of behavior contexts where ?actor isn't bound.
+
+  Implementation: Add to expr.py _builtins, call self.state.get_player_name()

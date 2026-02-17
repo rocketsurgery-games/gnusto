@@ -1,0 +1,9 @@
+id: gnusto-dby
+title: Design DSL expression language for preconditions/effects
+type: task
+priority: 1
+created: '2026-01-08T22:08:05.708798-05:00'
+updated: '2026-02-08T19:07:10.98057Z'
+description: 'Define the expression syntax for preconditions and effects. Must be:
+  parseable, verifiable (no arbitrary code), expressive enough for IF logic. Consider:
+  predicates, property access, boolean ops, quantifiers.'

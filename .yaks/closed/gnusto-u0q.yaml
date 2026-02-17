@@ -1,0 +1,24 @@
+id: gnusto-u0q
+title: Global pseudo-objects have invented :examine messages instead of default fallback
+type: bug
+priority: 2
+created: '2026-01-15T15:46:07.921783-05:00'
+updated: '2026-02-08T19:07:11.025528Z'
+labels:
+- LH
+description: "## Problem\nGlobal pseudo-objects like @dirt, @air, @noise return custom\
+  \ :examine messages in Grue that don't exist in the original ZIL game.\n\n**Grue\
+  \ behavior:**\n```\ngrue> (do @dirt :examine)\n[OK: message=Just ordinary dirt and\
+  \ debris.]\n```\n\n**dfrotz behavior:**\n```\n>examine dirt\nYou see nothing special\
+  \ about the dirt.\n```\n\n## Root Cause\nDuring ZIL\u2192Grue conversion, we invented\
+  \ :examine handlers for objects that have NO ACTION handler in ZIL. Objects without\
+  \ handlers should fall through to a default response.\n\n**ZIL pattern:**\n- Objects\
+  \ WITH action handler (GROUND-F, SNOW-F, WALL-F): have explicit EXAMINE \u2192 custom\
+  \ response\n- Objects WITHOUT action handler (DIRT, AIR, NOISE, CORRIDOR): no EXAMINE\
+  \ \u2192 default \"nothing special\"\n\n## Affected Objects (likely incomplete)\n\
+  - @dirt - invented message, should be default\n- @air - invented message, should\
+  \ be default  \n- @noise - invented message, should be default\n- @corridor - has\
+  \ :through/:walk-to but NOT :examine, should be default for examine\n\n## Solution\
+  \ Options\n1. Remove invented :examine handlers; implement runtime default for unhandled\
+  \ verbs\n2. Replace invented messages with standard default message\n3. Add explicit\
+  \ :default behaviors that return (default) for standard fallback"

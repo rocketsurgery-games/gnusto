@@ -1,0 +1,42 @@
+id: gnusto-ppy.3
+title: Translate HACKER conversation system
+type: task
+priority: 2
+created: '2026-01-11T09:59:17.775343-05:00'
+updated: '2026-02-08T19:07:11.057822Z'
+depends_on:
+- gnusto-ppy.2
+description: "Translate the HACKER's conversation system using topic-based behaviors.\n\
+  \n## Design Decision\nConversation is modeled as behaviors on the NPC:\n- NPC =\
+  \ direct object (target of action)\n- Topic = indirect object (`?topic` parameter)\n\
+  \nNo separate \"actor\" concept needed - fits GRUE's declarative style.\n\n## Behavior\
+  \ Mapping\n\n| Command | Behavior | Parameter |\n|---------|----------|-----------|\n\
+  | ASK HACKER ABOUT KEYS | `:ask-about` | `?topic = @keys` |\n| TELL HACKER ABOUT\
+  \ HAND | `:tell-about` | `?topic = @hand` |\n| SAY HELLO TO HACKER | `:hello` |\
+  \ (none) |\n| HACKER, GIVE ME KEY | `:ask-for` | `?object = @key` |\n\n## Implementation\n\
+  \n### :ask-about behavior\n```scheme\n:ask-about (cond\n  ((= ?topic @hacker)\n\
+  \    (success :context ((response \"He's reluctant to boast.\"))))\n  ((= ?topic\
+  \ @keyring)\n    (success \n      :effects ((set-flag! @master-key TOUCHBIT) (move!\
+  \ @master-key @keyring))\n      :context ((response \"\\\"I've accumulated a few\
+  \ keys...\\\" He shows off a master key.\"))))\n  ((or (= ?topic @chinese-food)\
+  \ (= ?topic @snack))\n    (success :context ((response \"\\\"I'd love some yummy\
+  \ Chinese food. Szechuan style!\\\"\"))))\n  ; ... more topics\n  (true\n    (success\
+  \ :context ((response \"The hacker studiously ignores you.\")))))\n```\n\n### Topics\
+  \ to implement\n- HACKER - \"reluctant to boast\"\n- KEYRING/KEYS - reveals master\
+  \ key\n- CHINESE-FOOD/SNACK - food hint\n- MASTER-KEY - depends on visibility\n\
+  - STUDENTS - missing students\n- PROGRAM/PC - debugging advice (state-dependent)\n\
+  - LOVECRAFT - \"fantasy author?\"\n- SMOOTH-STONE - \"pretty tasteful\"\n- URCHINS\
+  \ - \"always urchins around\"\n- REPEATER/CABLE - \"I'll fix it!\"\n\n### :ask-for\
+  \ behavior (GIVE ME X)\n```scheme\n:ask-for (cond\n  ((= ?object @master-key)\n\
+  \    (cond\n      ((in? @carton @hacker)  ; Fed him\n        (success :effects (...)\
+  \ :context ((response \"...\"))))\n      (true\n        (blocked :reason not-earned\
+  \ :context ((response \"\\\"Fat chance!\\\"\"))))))\n  ((= ?object @keyring)\n \
+  \   (blocked :reason wont-give :context ((response \"\\\"I need my keys.\\\"\"))))\n\
+  \  ; ...\n)\n```\n\n### :hello behavior\n```scheme\n:hello (cond\n  ((here? @terminal-room)\n\
+  \    (success :context ((response \"\\\"Greetingage.\\\" He turns back to his hacking.\"\
+  ))))\n  (true\n    (success :context ((response \"\\\"Greetingage.\\\"\")))))\n\
+  ```\n\n## State Dependencies\n- HACKER-HELP global (needs frotzlm-ppy.9)\n- LAIR-CNT\
+  \ global for possessed state\n- MASTER-KEY visibility (TOUCHBIT flag)\n- I-HACKER-HELPS\
+  \ queue state\n\n## Runtime Changes Needed\n- Add :ask-about, :tell-about, :ask-for,\
+  \ :hello to recognized behaviors\n- Parser support for `?topic` parameter in actions\n\
+  \n## Source\ngames/lurkinghorror/source/hacker.zil lines 35-150"

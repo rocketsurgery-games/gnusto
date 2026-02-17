@@ -1,0 +1,32 @@
+id: gnusto-c2c
+title: Clean up player display to hide implementation details
+type: task
+priority: 2
+created: '2026-01-19T12:47:22.976795-05:00'
+updated: '2026-02-08T19:07:11.006912Z'
+description: "Separate agent context (technical) from player display (natural). Currently\
+  \ render_game_state() shows implementation details like object IDs (@pc), action\
+  \ lists, and exit directions.\n\n## Current display (leaks implementation)\n```\n\
+  Visible Objects\nObject          Actions\n@pc             examine, login <value>,\
+  \ ...\n\nExits\nDirection       Destination\nsouth           @cs-2nd\n```\n\n##\
+  \ Desired display (natural)\n```\n\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2510\n\u2502 Terminal Room                                       \
+  \             \u2502\n\u2502                                                   \
+  \               \u2502\n\u2502 A really whiz-bang pc is right inside the door. \
+  \                \u2502\n\u2502 There's a battered old chair here.             \
+  \                 \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+  \u2500\u2518\n\nNearby: Computer Science Building (2nd Floor)\n\nInventory: empty\n\
+  ```\n\n## Implementation\n1. Modify render_game_state() in frotz/agent.py\n2. For\
+  \ objects: show fdesc/ldesc instead of ID + actions\n3. For exits: show unique adjacent\
+  \ room descriptions, dedupe directional synonyms\n4. Technical details (IDs, actions,\
+  \ directions) only shown in debug mode\n5. Keep GameState structure unchanged -\
+  \ agent still needs technical context\n\n## Goal\nGame playable from player perspective\
+  \ without exposing \"secrets\" or implementation details when --debug is off."

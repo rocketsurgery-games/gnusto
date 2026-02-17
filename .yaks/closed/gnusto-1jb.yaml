@@ -1,0 +1,17 @@
+id: gnusto-1jb
+title: Rename GitHub repo and bead prefix (manual)
+type: task
+priority: 2
+created: '2026-01-20T19:01:03.050556-05:00'
+updated: '2026-02-08T14:07:16.75452-05:00'
+depends_on:
+- gnusto-44o
+description: |-
+  Manual steps to complete the Gnusto rename:
+
+  1. Rename GitHub repository: frotz-lm -> gnusto
+  2. Rename bead prefix: frotzlm -> gnusto
+     - Use: bd rename-prefix gnusto
+  3. Update any external references (bookmarks, scripts, etc.)
+
+  The code has already been updated to use Gnusto naming internally.

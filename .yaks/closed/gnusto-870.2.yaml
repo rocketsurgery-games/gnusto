@@ -1,0 +1,13 @@
+id: gnusto-870.2
+title: Migrate score/moves from globals to @player properties
+type: task
+priority: 2
+created: '2026-01-18T15:47:37.61809-05:00'
+updated: '2026-02-08T19:07:11.00863Z'
+description: |-
+  Move score and moves from state.globals dict to @player object properties:
+  - Initialize score/moves as @player properties (0) instead of globals
+  - Update runtime to increment moves via property, not globals
+  - Update get_global/set_global to check @player for score/moves
+  - Update repl.py status display
+  - Eventually remove globals dict entirely if no other uses remain

@@ -1,0 +1,14 @@
+id: gnusto-ntr.5
+title: Fix lurkinghorror world loading (parse error)
+type: bug
+priority: 2
+created: '2026-01-13T13:53:40.620054-05:00'
+updated: '2026-02-08T19:07:11.033305Z'
+labels:
+- lang
+description: |-
+  The lurkinghorror directory fails to load with a parse error:
+  ```
+  SExprError: Unclosed list - expected ')' at line 211, col 14
+  ```
+  This prevents running any tests against the multi-file world.

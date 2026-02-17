@@ -1,0 +1,10 @@
+id: gnusto-9xf.3
+title: Fix door passage through curtain-door to inner-lair
+type: task
+priority: 2
+created: '2026-01-17T14:05:57.064598-05:00'
+updated: '2026-02-08T19:07:11.018615Z'
+description: |-
+  Line 867 in walkthrough: (move! @player @inner-lair)
+
+  After unlocking and opening the curtain-door in outer-lair, the player can't traverse into inner-lair. The door's :via/:through behavior isn't working correctly.

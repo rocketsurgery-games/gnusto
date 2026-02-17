@@ -1,0 +1,20 @@
+id: gnusto-c7k
+title: 'Frotz Phase 1: Effect analysis pass'
+type: task
+priority: 2
+created: '2026-01-20T18:45:07.79403-05:00'
+updated: '2026-02-08T19:07:11.004298Z'
+depends_on:
+- gnusto-44o
+description: "Scan all world definitions and build:\n\n1. **modifies**: `property\
+  \ \u2192 set[behavior]` - which behaviors can modify each property\n2. **reads**:\
+  \ `property \u2192 set[behavior]` - which behaviors depend on each property  \n\
+  3. **constants**: `set[property]` - properties that never change\n\nThis is the\
+  \ \"def\" side of def-use analysis. For each property in the game, we want to know:\n\
+  - Can it ever change? (if not, it's a constant)\n- What behaviors can change it?\
+  \ (the modifiers)\n- What behaviors read it? (for relevance analysis later)\n\n\
+  Implementation:\n- Walk all objects, rooms, events, defaults\n- For each behavior\
+  \ body, find all `(set ...)`, `(move ...)`, `(queue ...)` effects\n- For each condition,\
+  \ find all property reads `(:prop @obj)`, `(loc @obj)`, etc.\n- Build the maps\n\
+  \nOutput: Data structures that can answer \"what can modify @door:locked?\" and\
+  \ \"what reads @player:score?\"\n\nSee docs/frotz-design.md for context."

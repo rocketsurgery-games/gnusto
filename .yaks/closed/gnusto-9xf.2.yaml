@@ -1,0 +1,10 @@
+id: gnusto-9xf.2
+title: 'Fix navigation: alchemy area to aero-lobby'
+type: task
+priority: 2
+created: '2026-01-17T14:05:56.902034-05:00'
+updated: '2026-02-08T19:07:11.018873Z'
+description: |-
+  Lines 806, 822 in walkthrough: (move! @player @aero-lobby) and (move! @player @large-chamber)
+
+  After escaping alchemy lab, player can't navigate to aero-lobby or large-chamber. Need to trace expected path and implement missing connections.

@@ -1,0 +1,13 @@
+id: gnusto-870.1
+title: Remove set-flag/clear-flag effects and related API
+type: task
+priority: 2
+created: '2026-01-18T15:47:32.337146-05:00'
+updated: '2026-02-08T19:07:11.008937Z'
+description: |-
+  Remove legacy flag effects and the WorldState methods they depend on:
+  - Remove set-flag/clear-flag effect handlers from expr.py
+  - Remove get_object_flag, set_object_flag, clear_object_flag from runtime.py
+  - Remove get_object_flags (only used in debug _print_value)
+  - Update _print_value to inline the logic or remove flag display
+  - Update tests/test_expr.py to remove set-flag/clear-flag tests or convert to property syntax

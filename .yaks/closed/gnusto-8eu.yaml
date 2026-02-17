@@ -1,0 +1,35 @@
+id: gnusto-8eu
+title: Agent knowledge base / note-taking
+type: task
+priority: 3
+created: '2026-01-19T15:06:12.198432-05:00'
+updated: '2026-02-08T16:50:54.559805-05:00'
+description: |-
+  Give the agent tools to maintain persistent notes about the game world.
+
+  ## Motivation
+  - Separates "what agent knows" from "what happened recently"
+  - Lets conversation history be aggressively windowed while agent stays informed
+  - Naturally prevents spoilers - agent only knows what player has discovered
+  - Enables intelligent hints: "you saw a hammer in maintenance earlier"
+
+  ## Possible Structure
+  - **Rooms**: Visited rooms, notable features, exits discovered
+  - **Objects**: Items found, states observed, interactions tried
+  - **NPCs**: Characters met, conversation topics, relationships
+  - **Puzzles**: Encountered puzzles, progress, solutions found
+  - **Goals**: What player seems to be trying to accomplish
+
+  ## Implementation Options
+  1. Structured JSON that agent updates via tool calls
+  2. Free-form notes the agent can append to
+  3. Hybrid: structured schema + free-form observations
+
+  ## Considerations
+  - Should notes be visible to player? (transparency vs immersion)
+  - How does agent decide what's worth noting?
+  - Should old notes compact/expire like conversation history?
+
+  ## References
+  - Context management: frotzlm-pu9
+  - Agent: src/frotz/agent.py

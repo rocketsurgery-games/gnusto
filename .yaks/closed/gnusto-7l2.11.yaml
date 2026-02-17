@@ -1,0 +1,27 @@
+id: gnusto-7l2.11
+title: Aero Building & Tomb
+type: task
+priority: 2
+created: '2026-01-12T17:20:55.986132-05:00'
+updated: '2026-02-08T19:07:11.04281Z'
+labels:
+- lh
+description: |-
+  Convert the Aero building and tomb area (cs.zil).
+
+  ## Rooms
+  - AERO-STAIRS
+  - AERO-BASEMENT
+  - AERO-LOBBY
+  - SUB-BASEMENT
+  - TOMB
+
+  ## Key Objects
+  - LADDER
+  - ACCESS-HATCH
+  - PADLOCK
+  - GRAFFITI
+
+  ## Mechanics
+  - Padlock puzzle (bolt cutters needed)
+  - Tomb discovery

@@ -1,0 +1,17 @@
+id: gnusto-ntr.3
+title: Add ?value binding and stdlib functions to grue.md
+type: task
+priority: 2
+created: '2026-01-13T11:14:43.764212-05:00'
+updated: '2026-02-08T19:07:11.033973Z'
+labels:
+- lang
+description: |-
+  Added to grue.md:
+  - ?value dynamic binding for parameterized behaviors (e.g., (do @microwave :set-timer 120))
+  - String and list stdlib functions: str, nth, first, rest, count, empty?, cons, concat
+
+  Also updated CLAUDE.md with:
+  - Stdlib guidance: use Clojure style by default, Scheme when needed
+  - Purity requirement: all side-effects through formal effects system
+  - LLM interface guidance: prefer explicit formal actions over parser-dependent constructs

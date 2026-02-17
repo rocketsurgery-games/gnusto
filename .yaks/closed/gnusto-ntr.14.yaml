@@ -1,0 +1,17 @@
+id: gnusto-ntr.14
+title: Keywords should evaluate to themselves, not strings
+type: task
+priority: 2
+created: '2026-01-14T10:02:30.558265-05:00'
+updated: '2026-02-08T19:07:11.031115Z'
+labels:
+- lang
+description: "Keywords currently evaluate to strings.\n\n**Current code (expr.py lines\
+  \ 367-369):**\n```python\nif isinstance(expr, Keyword):\n    return expr.name\n\
+  ```\n\n**Clojure norm:** Keywords evaluate to themselves (the keyword object). They're\
+  \ used as:\n- Map keys: `{:name \"Alice\"}`\n- Lookup functions: `(:name person)`\
+  \ \u2192 looks up :name in person\n\n**Solution:**\n1. Keywords should eval to Keyword\
+  \ objects, not strings\n2. When used as a function, implement lookup: `(:key obj)`\
+  \ \u2192 `(get obj :key)`\n3. Comparisons: `:foo` = `:foo` but `:foo` \u2260 \"\
+  foo\"\n\n**Impact:** Need to audit where keywords are used and ensure proper handling.\n\
+  \nLower priority than P1 items but still important for Clojure compatibility."

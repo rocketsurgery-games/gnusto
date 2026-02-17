@@ -1,0 +1,15 @@
+id: gnusto-2fv
+title: Convert existing .grue files to @lowercase naming
+type: task
+priority: 2
+created: '2026-01-11T12:08:58.13239-05:00'
+updated: '2026-02-08T19:07:11.053576Z'
+description: "Manually update existing .grue files to use the new @lowercase naming\
+  \ convention:\n\nFiles to update:\n- games/examples/outside-door.grue\n- games/examples/outside-door.test.grue\
+  \  \n- games/lurkinghorror/terminal-room.grue\n- games/lurkinghorror/terminal-room.test.grue\n\
+  - src/grue/builtins.grue\n\nConversion rules:\n- Object/room names: `TERMINAL-ROOM`\
+  \ -> `@terminal-room`\n- PLAYER: `PLAYER` -> `@player`\n- Flags stay ALL-CAPS: `TAKEBIT`,\
+  \ `LOCKED`, `OPENBIT` unchanged\n- Verbs/predicates stay lowercase: `has-flag`,\
+  \ `move!`, `open` unchanged\n\nThis is separate from frotzlm-86f (converter update)\
+  \ to preserve manually-translated behaviors.\n\nNote: Tests may need updating to\
+  \ match new entity names."
