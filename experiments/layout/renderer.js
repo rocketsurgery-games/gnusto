@@ -77,18 +77,13 @@ const blockRenderers = {
     // Avatar (use character image if available)
     wrapper.appendChild(makeAvatar(name, char?.image, 'large'));
 
-    // Speaker tag
-    wrapper.appendChild(el('div', 'speaker-tag', name));
-
-    // Speech bubble
+    // Speech bubble (no speaker tag — avatar identifies the speaker)
     const bubble = el('div', 'speech-bubble');
     bubble.appendChild(text(block.text));
-    wrapper.appendChild(bubble);
-
-    // Manner annotation
     if (block.manner) {
-      wrapper.appendChild(el('div', 'manner', block.manner));
+      bubble.appendChild(el('span', 'manner', block.manner));
     }
+    wrapper.appendChild(bubble);
 
     return wrapper;
   },
@@ -101,8 +96,9 @@ const blockRenderers = {
     return el('div', 'block block-ambient', block.text);
   },
 
-  reveal(block, scene, blockIndex, manifest) {
-    const wrapper = el('div', 'block block-reveal');
+  reveal(block, scene, blockIndex, manifest, imageIndex) {
+    const side = (imageIndex % 2 === 1) ? 'image-right' : 'image-left';
+    const wrapper = el('div', `block block-reveal ${side}`);
 
     // Check manifest for composed moment image
     const momentImage = manifest?.[`moment-${blockIndex}`];
@@ -115,18 +111,14 @@ const blockRenderers = {
       wrapper.appendChild(img);
     }
 
-    const label = el('div', 'reveal-label');
-    label.textContent = 'Discovered';
-    if (block.entity) {
-      label.appendChild(el('span', 'entity-ref', block.entity));
-    }
-    wrapper.appendChild(label);
-    wrapper.appendChild(el('div', null, block.text));
+    wrapper.appendChild(el('div', 'reveal-text', block.text));
     return wrapper;
   },
 
-  focus(block, scene, blockIndex, manifest) {
-    const wrapper = el('div', 'block block-focus');
+  focus(block, scene, blockIndex, manifest, imageIndex) {
+    // Alternate image side: even → left (default), odd → right
+    const side = (imageIndex % 2 === 1) ? 'image-right' : 'image-left';
+    const wrapper = el('div', `block block-focus ${side}`);
 
     // Check manifest for composed focus image first
     let image = manifest?.[`focus-${blockIndex}`];
@@ -147,12 +139,6 @@ const blockRenderers = {
     }
 
     const body = el('div', 'focus-body');
-    if (block.entity) {
-      const label = resolveCharacterName(block.entity, scene) ||
-                    resolveObject(block.entity, scene)?.name ||
-                    block.entity.replace(/^@/, '');
-      body.appendChild(el('div', 'focus-label', label));
-    }
     body.appendChild(el('div', 'focus-text', block.text));
     wrapper.appendChild(body);
     return wrapper;
@@ -179,7 +165,7 @@ const blockRenderers = {
 
 // --- Scene header ---
 
-function renderSceneHeader(scene, manifest) {
+function renderSceneHeader(scene, sceneBlock, manifest) {
   const header = el('div', 'scene-header');
 
   // Use composed scene image if available, falling back to room_image
@@ -187,7 +173,6 @@ function renderSceneHeader(scene, manifest) {
   const bgImage = composedScene || scene.room_image;
 
   if (composedScene) {
-    // Composed image: show prominently as scene illustration
     const img = document.createElement('img');
     img.className = 'scene-illustration';
     img.src = composedScene;
@@ -195,7 +180,6 @@ function renderSceneHeader(scene, manifest) {
     img.onerror = () => img.remove();
     header.appendChild(img);
   } else if (bgImage) {
-    // Raw ref: faint backdrop
     const img = document.createElement('img');
     img.className = 'room-image';
     img.src = bgImage;
@@ -205,10 +189,19 @@ function renderSceneHeader(scene, manifest) {
   }
 
   const info = el('div', 'room-info');
+
+  // Transition text from scene block goes above the room name
+  const transition = sceneBlock?.transition;
+  if (transition) {
+    info.appendChild(el('div', 'transition-label', transition));
+  }
+
   info.appendChild(el('div', 'room-name', scene.room_name || scene.room || 'Unknown'));
 
-  if (scene.room_description) {
-    info.appendChild(el('div', 'room-description', scene.room_description));
+  // Use the scene block's full description if available, otherwise the short one
+  const description = sceneBlock?.description || scene.room_description;
+  if (description) {
+    info.appendChild(el('div', 'room-description', description));
   }
 
   header.appendChild(info);
@@ -249,11 +242,25 @@ function renderObjectTray(scene) {
 function renderBlocks(blocks, scene, manifest) {
   const stream = el('div', 'narrative-stream');
 
+  // Track image-bearing block count for left/right alternation
+  let imageIndex = 0;
+
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
+
+    // Scene blocks are absorbed into the header — skip them here
+    if (block.type === 'scene') continue;
+
     const renderer = blockRenderers[block.type];
     if (renderer) {
-      stream.appendChild(renderer(block, scene, i, manifest));
+      // Pass imageIndex for blocks that use image alternation
+      const node = renderer(block, scene, i, manifest, imageIndex);
+      stream.appendChild(node);
+
+      // Increment image counter for blocks that have images
+      if (block.type === 'focus' || block.type === 'reveal') {
+        imageIndex++;
+      }
     } else {
       console.warn(`Unknown block type: ${block.type}`);
     }
@@ -270,14 +277,13 @@ function renderScenario(scenario, container, manifest) {
   const scene = scenario.scene || {};
   const blocks = scenario.blocks || [];
 
-  // Update scene header from scene blocks (first scene block overrides)
+  // Find the first scene block to fold into the header
   const sceneBlock = blocks.find(b => b.type === 'scene');
   if (sceneBlock) {
     if (!scene.room_name && sceneBlock.room_name) scene.room_name = sceneBlock.room_name;
-    if (!scene.room_description && sceneBlock.description) scene.room_description = sceneBlock.description;
   }
 
-  container.appendChild(renderSceneHeader(scene, manifest));
+  container.appendChild(renderSceneHeader(scene, sceneBlock, manifest));
   container.appendChild(renderCharacterStrip(scene));
   container.appendChild(renderObjectTray(scene));
   container.appendChild(renderBlocks(blocks, scene, manifest));
