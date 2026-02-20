@@ -15,15 +15,15 @@ description: "## Problem\nCurrent precondition extraction only finds conditions 
   \ WANT\n  (true '((success ...))))                           ; Branch 5: fallthrough\n\
   ```\n\nTo reach Branch 4 (which has the effect), we need:\n- Branch 1 condition\
   \ to be FALSE \u2192 gloves held and wearable\n- Branch 2 condition to be FALSE\
-  \ \u2192 boots wearable  \n- Branch 3 condition to be FALSE \u2192 output-cable\
-  \ not rmung\n- Branch 4 condition to be TRUE \u2192 frob-appears not queued\n\n\
-  ## Proposed Solution\nInstead of only looking for blockers, we need \"effect-path\
-  \ analysis\":\n1. Find which branch produces the effect we care about\n2. Extract\
-  \ all conditions that must be true/false to reach that branch\n3. This is essentially\
-  \ symbolic execution / path condition collection\n\n## Complexity\nThis requires\
-  \ knowing WHICH effect we're tracing for. Currently we find all preconditions for\
-  \ a behavior generically, but for this we need:\n- \"What conditions lead to \\\
-  `(queue frob-appears)\\` specifically?\"\n- Different effects may have different\
-  \ preconditions in the same behavior\n\n## Alternative\nCould track \"negative paths\"\
-  \ instead - conditions that lead away from the effect:\n- Any \\`blocked\\` \u2192\
-  \ must avoid\n- Any branch before our effect \u2192 must fail that branch's test"
+  \ \u2192 boots wearable\n- Branch 3 condition to be FALSE \u2192 output-cable not\
+  \ rmung\n- Branch 4 condition to be TRUE \u2192 frob-appears not queued\n\n## Proposed\
+  \ Solution\nInstead of only looking for blockers, we need \"effect-path analysis\"\
+  :\n1. Find which branch produces the effect we care about\n2. Extract all conditions\
+  \ that must be true/false to reach that branch\n3. This is essentially symbolic\
+  \ execution / path condition collection\n\n## Complexity\nThis requires knowing\
+  \ WHICH effect we're tracing for. Currently we find all preconditions for a behavior\
+  \ generically, but for this we need:\n- \"What conditions lead to \\`(queue frob-appears)\\\
+  ` specifically?\"\n- Different effects may have different preconditions in the same\
+  \ behavior\n\n## Alternative\nCould track \"negative paths\" instead - conditions\
+  \ that lead away from the effect:\n- Any \\`blocked\\` \u2192 must avoid\n- Any\
+  \ branch before our effect \u2192 must fail that branch's test"

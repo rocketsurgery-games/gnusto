@@ -4,6 +4,8 @@ type: task
 priority: 2
 created: '2026-01-18T17:11:26.23306-05:00'
 updated: '2026-02-08T19:07:11.008062Z'
-description: "Move REPL functionality into Grue where possible:\n- Phase 1: Expose\
-  \ primitives (exits, visible, room-description) to Grue\n- Phase 2: Define inventory/look\
-  \ in builtins.grue  \n- Phase 3: Simplify Python REPL to call Grue functions"
+description: |-
+  Move REPL functionality into Grue where possible:
+  - Phase 1: Expose primitives (exits, visible, room-description) to Grue
+  - Phase 2: Define inventory/look in builtins.grue
+  - Phase 3: Simplify Python REPL to call Grue functions

@@ -9,15 +9,14 @@ description: "## Status: DEFERRED\nBackward static analysis now works with conse
   \ where backward analysis truly fails.\n\n## Context\nWhen analyzing LH, backward\
   \ analysis originally only found 3 constraints because it couldn't trace through\
   \ complex mechanics.\n\n## Resolution\nThe issues were fixed in frotzlm-6ca and\
-  \ related tasks:\n- Function inlining now works\n- Event queue preconditions implemented\
-  \  \n- Cond skip condition accumulation added\n- Conservative fallbacks for dynamic\
-  \ values\n\nLH now has a meaningful constraint hierarchy with depth 0\u21921\u2192\
-  2.\n\n## Why Keep This Task?\nThe state-ref approach could still be valuable as:\n\
-  1. **Fallback** for games with truly intractable static analysis\n2. **Complementary**\
-  \ - use backward constraints where available, state-ref for gaps\n3. **Validation**\
-  \ - compare constraint sets to find static analysis gaps\n\n## Trade-offs (Original)\n\
-  **Pros:**\n- Works regardless of game mechanics complexity\n- Better clustering/region\
-  \ detection\n\n**Cons:**\n- Loses semantic relationship to victory\n- Can't use\
-  \ constraints to guide exploration priority\n- Would need alternative exploration\
-  \ strategy\n\n## Depends On\nOnly revisit if backward analysis proves insufficient\
-  \ for real games."
+  \ related tasks:\n- Function inlining now works\n- Event queue preconditions implemented\n\
+  - Cond skip condition accumulation added\n- Conservative fallbacks for dynamic values\n\
+  \nLH now has a meaningful constraint hierarchy with depth 0\u21921\u21922.\n\n##\
+  \ Why Keep This Task?\nThe state-ref approach could still be valuable as:\n1. **Fallback**\
+  \ for games with truly intractable static analysis\n2. **Complementary** - use backward\
+  \ constraints where available, state-ref for gaps\n3. **Validation** - compare constraint\
+  \ sets to find static analysis gaps\n\n## Trade-offs (Original)\n**Pros:**\n- Works\
+  \ regardless of game mechanics complexity\n- Better clustering/region detection\n\
+  \n**Cons:**\n- Loses semantic relationship to victory\n- Can't use constraints to\
+  \ guide exploration priority\n- Would need alternative exploration strategy\n\n\
+  ## Depends On\nOnly revisit if backward analysis proves insufficient for real games."

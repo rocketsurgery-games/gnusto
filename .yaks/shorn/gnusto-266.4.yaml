@@ -6,18 +6,31 @@ created: '2026-01-23T17:56:01.183346-05:00'
 updated: '2026-02-08T19:07:10.955209Z'
 depends_on:
 - gnusto-266.3
-description: "Update explorer to use automatically inferred AbstractionConfig.\n\n\
-  1. Integrate domain inference into exploration pipeline:\n   - Run partial evaluation\
-  \ on all behaviors\n   - Run effect analysis on reduced expressions  \n   - Run\
-  \ domain inference to get AbstractionConfig\n   - Pass config to explorer for fingerprinting\n\
-  \n2. Update GameState fingerprinting:\n   - Use AbstractionConfig.fingerprint()\
-  \ instead of ad-hoc StateRef projection\n   - Fingerprint respects inferred value\
-  \ domains\n   - Equivalent states (under abstraction) get same fingerprint\n\n3.\
-  \ Remove legacy StateRef special cases:\n   - Delete HeldRef (emerges from domain\
-  \ inference)\n   - Delete special barrier analysis (emerges from unified dataflow)\n\
-  \   - Clean up backward.py's _abstract_constraint_ref\n\n4. Validation on floor-waxer:\n\
-  \   - Exploration should automatically track loc(@floor-waxer) with 5-value domain\n\
-  \   - Should find victory path through timing-dependent barrier\n   - Compare state\
-  \ count and performance vs manual tracking\n\nDeliverables:\n- Updated src/frotz/explorer.py\
-  \ using AbstractionConfig\n- Removal of legacy special cases\n- Integration tests\
-  \ validating floor-waxer victory path discovery"
+description: |-
+  Update explorer to use automatically inferred AbstractionConfig.
+
+  1. Integrate domain inference into exploration pipeline:
+     - Run partial evaluation on all behaviors
+     - Run effect analysis on reduced expressions
+     - Run domain inference to get AbstractionConfig
+     - Pass config to explorer for fingerprinting
+
+  2. Update GameState fingerprinting:
+     - Use AbstractionConfig.fingerprint() instead of ad-hoc StateRef projection
+     - Fingerprint respects inferred value domains
+     - Equivalent states (under abstraction) get same fingerprint
+
+  3. Remove legacy StateRef special cases:
+     - Delete HeldRef (emerges from domain inference)
+     - Delete special barrier analysis (emerges from unified dataflow)
+     - Clean up backward.py's _abstract_constraint_ref
+
+  4. Validation on floor-waxer:
+     - Exploration should automatically track loc(@floor-waxer) with 5-value domain
+     - Should find victory path through timing-dependent barrier
+     - Compare state count and performance vs manual tracking
+
+  Deliverables:
+  - Updated src/frotz/explorer.py using AbstractionConfig
+  - Removal of legacy special cases
+  - Integration tests validating floor-waxer victory path discovery

@@ -7,7 +7,7 @@ updated: '2026-02-08T19:07:11.011175Z'
 depends_on:
 - gnusto-m95
 description: "Convert runtime.py hardcoded flag checks to property access:\n\n- NDESCBIT\
-  \ \u2192 :ndesc or :hidden-from-listing\n- INVISIBLE \u2192 :invisible  \n- OPENBIT\
+  \ \u2192 :ndesc or :hidden-from-listing\n- INVISIBLE \u2192 :invisible\n- OPENBIT\
   \ \u2192 :open\n- TRANSBIT \u2192 :transparent\n- SURFACEBIT \u2192 :surface\n-\
   \ VEHBIT \u2192 :vehicle\n- ONBIT \u2192 :lit\n\nAll checks should use `.get(prop,\
   \ default)` pattern."

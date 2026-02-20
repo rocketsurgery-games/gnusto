@@ -8,9 +8,9 @@ depends_on:
 - gnusto-44o
 description: "Scan all world definitions and build:\n\n1. **modifies**: `property\
   \ \u2192 set[behavior]` - which behaviors can modify each property\n2. **reads**:\
-  \ `property \u2192 set[behavior]` - which behaviors depend on each property  \n\
-  3. **constants**: `set[property]` - properties that never change\n\nThis is the\
-  \ \"def\" side of def-use analysis. For each property in the game, we want to know:\n\
+  \ `property \u2192 set[behavior]` - which behaviors depend on each property\n3.\
+  \ **constants**: `set[property]` - properties that never change\n\nThis is the \"\
+  def\" side of def-use analysis. For each property in the game, we want to know:\n\
   - Can it ever change? (if not, it's a constant)\n- What behaviors can change it?\
   \ (the modifiers)\n- What behaviors read it? (for relevance analysis later)\n\n\
   Implementation:\n- Walk all objects, rooms, events, defaults\n- For each behavior\

@@ -6,7 +6,7 @@ created: '2026-01-17T23:59:21.707216-05:00'
 updated: '2026-02-08T19:07:11.078292Z'
 description: "Future improvement: Consider whether hardcoded runtime behaviors should\
   \ be declarative.\n\nCurrently the runtime has baked-in semantics for:\n- :open/:transparent/:surface\
-  \ \u2192 container visibility rules\n- :vehicle \u2192 movement semantics  \n- :ndesc\
+  \ \u2192 container visibility rules\n- :vehicle \u2192 movement semantics\n- :ndesc\
   \ \u2192 room description filtering\n- :invisible \u2192 visibility checks\n\nCould\
   \ these be declarative behaviors attached to objects instead of runtime hardcoding?\n\
   E.g., object \"types\" or \"traits\" that bring behaviors with them.\n\nThis is\

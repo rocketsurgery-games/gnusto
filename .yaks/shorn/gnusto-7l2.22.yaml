@@ -14,8 +14,8 @@ description: "## Problem\n\nThe PC login flow is missing from our conversion. Af
   \ mechanic is implemented as a **verb-level state machine**, not as object behaviors:\n\
   \n1. **Global state variables**: `USERNAME?` and `LOGGED-IN?` track login progress\n\
   2. **V-TYPE verb**: Intercepts typing and redirects to `V-LOGIN` or `V-PASSWORD`\
-  \ based on state\n3. **V-LOGIN**: Sets `USERNAME?` when valid login entered  \n\
-  4. **V-PASSWORD**: Sets `LOGGED-IN?` and moves `MENU-BOX` to `PC` when valid password\
+  \ based on state\n3. **V-LOGIN**: Sets `USERNAME?` when valid login entered\n4.\
+  \ **V-PASSWORD**: Sets `LOGGED-IN?` and moves `MENU-BOX` to `PC` when valid password\
   \ entered\n5. **CANT-USE-COMPUTER?**: Checks PC is accessible and powered on\n\n\
   The original ZIL code is in:\n- `games/lurkinghorror/source/pc.zil` lines 291-347\
   \ (V-LOGIN, V-PASSWORD routines)\n- `games/lurkinghorror/source/parser.zil` lines\
@@ -48,7 +48,7 @@ description: "## Problem\n\nThe PC login flow is missing from our conversion. Af
   \ for INIT-* routines**: These often reset state when objects change state (power\
   \ off, close, etc.).\n\n## Fix Approach\n\nOption A: Add `:login` and `:password`\
   \ behaviors to PC object with globals tracking state\nOption B: Implement as a barrier/interceptor\
-  \ on PC read/click behaviors  \nOption C: Create a \"login-flow\" event that tracks\
+  \ on PC read/click behaviors\nOption C: Create a \"login-flow\" event that tracks\
   \ state\n\nRecommend Option A as it maps most directly to the original ZIL structure.\n\
   \nSpecific fixes needed:\n1. Add `logged-in` and `username` globals to pc.grue\n\
   2. Move @menu-box starting location to nil\n3. Add `:type` behavior that redirects\

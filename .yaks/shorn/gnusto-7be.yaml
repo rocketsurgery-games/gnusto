@@ -4,9 +4,14 @@ type: feature
 priority: 2
 created: '2026-01-23T20:44:42.101007-05:00'
 updated: '2026-02-08T19:07:10.99816Z'
-description: "Allow explorer to start from a custom initial state (like test :setup\
-  \ blocks do). This enables testing puzzles in isolation without traversing the full\
-  \ game map.\n\nCurrent state: Explorer always starts from GrueRuntime(world) default\
-  \ state.\n\nNeeded: Accept optional initial_state parameter with setup effects like:\n\
-  - move! @player @inf-4\n- move! @gloves @player  \n- set-prop! @emergency-cabinet\
-  \ rmung true\n\nThis is how test :setup blocks work and enables focused puzzle analysis."
+description: |-
+  Allow explorer to start from a custom initial state (like test :setup blocks do). This enables testing puzzles in isolation without traversing the full game map.
+
+  Current state: Explorer always starts from GrueRuntime(world) default state.
+
+  Needed: Accept optional initial_state parameter with setup effects like:
+  - move! @player @inf-4
+  - move! @gloves @player
+  - set-prop! @emergency-cabinet rmung true
+
+  This is how test :setup blocks work and enables focused puzzle analysis.

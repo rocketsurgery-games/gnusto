@@ -4,20 +4,47 @@ type: feature
 priority: 1
 created: '2026-01-12T00:16:31.011734-05:00'
 updated: '2026-02-08T19:07:10.973578Z'
-description: "## Summary\n\nAdd behaviors to rooms, similar to object behaviors. Start\
-  \ with `:before-action` hook that runs before any action in the room.\n\n## Motivation\n\
-  \nZIL room action routines can intercept actions before they happen. This is used\
-  \ for:\n- Hacker blocking screen interactions while helping with PC\n- Compulsion\
-  \ (possession) overriding player agency during the cursed document sequence\n\n\
-  ## Design\n\n```scheme\n(room @terminal-room\n  :behaviors (\n    :before-action\
-  \ (fn (?verb ?target)\n      (cond\n        ; Block and handle locally\n       \
-  \ ((some-condition)\n          (blocked :reason ... :message \"...\"))\n       \
-  \ ; Fall through to normal action\n        (true (default))))))\n```\n\n## Semantics\n\
-  \n- `(blocked ...)` - Stop the action, return this result\n- `(default)` - Continue\
-  \ to normal object behavior dispatch\n- `(redirect ...)` - Redirect to different\
-  \ action (future)\n\n## Bindings\n\n- `?verb` - The verb being attempted\n- `?target`\
-  \ - The object being acted upon\n- `?actor` - Who is performing the action (usually\
-  \ @player)\n- `?args` - List of additional arguments (if any)\n\n## Implementation\n\
-  \n1. Add `behaviors` field to `GrueRoom` dataclass\n2. Update room parsing to handle\
-  \ `:behaviors` \n3. In `runtime.do()`, check room's `:before-action` before object\
-  \ dispatch\n4. If blocked, return that result; if default, proceed normally"
+description: |-
+  ## Summary
+
+  Add behaviors to rooms, similar to object behaviors. Start with `:before-action` hook that runs before any action in the room.
+
+  ## Motivation
+
+  ZIL room action routines can intercept actions before they happen. This is used for:
+  - Hacker blocking screen interactions while helping with PC
+  - Compulsion (possession) overriding player agency during the cursed document sequence
+
+  ## Design
+
+  ```scheme
+  (room @terminal-room
+    :behaviors (
+      :before-action (fn (?verb ?target)
+        (cond
+          ; Block and handle locally
+          ((some-condition)
+            (blocked :reason ... :message "..."))
+          ; Fall through to normal action
+          (true (default))))))
+  ```
+
+  ## Semantics
+
+  - `(blocked ...)` - Stop the action, return this result
+  - `(default)` - Continue to normal object behavior dispatch
+  - `(redirect ...)` - Redirect to different action (future)
+
+  ## Bindings
+
+  - `?verb` - The verb being attempted
+  - `?target` - The object being acted upon
+  - `?actor` - Who is performing the action (usually @player)
+  - `?args` - List of additional arguments (if any)
+
+  ## Implementation
+
+  1. Add `behaviors` field to `GrueRoom` dataclass
+  2. Update room parsing to handle `:behaviors`
+  3. In `runtime.do()`, check room's `:before-action` before object dispatch
+  4. If blocked, return that result; if default, proceed normally

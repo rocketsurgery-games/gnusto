@@ -16,8 +16,8 @@ description: "CRITICAL: The current implementation uses textual substitution for
   4. Performance issues (re-parsing/transforming expressions)\n5. Can't distinguish\
   \ quoted data from code after substitution\n\n**Solution:** Implement an Environment\
   \ class:\n```python\n@dataclass\nclass Environment:\n    bindings: dict[str, Any]\n\
-  \    parent: Optional[\"Environment\"] = None\n    \n    def lookup(self, name:\
-  \ str) -> Any:\n        if name in self.bindings:\n            return self.bindings[name]\n\
+  \    parent: Optional[\"Environment\"] = None\n\n    def lookup(self, name: str)\
+  \ -> Any:\n        if name in self.bindings:\n            return self.bindings[name]\n\
   \        if self.parent:\n            return self.parent.lookup(name)\n        raise\
   \ UnboundVariableError(name)\n```\n\nThen evaluator carries current environment\
   \ and extends it for let/fn:\n```python\ndef eval(self, expr: SExpr, env: Environment)\

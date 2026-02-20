@@ -4,15 +4,32 @@ type: task
 priority: 2
 created: '2026-01-10T23:59:28.753431-05:00'
 updated: '2026-02-08T19:07:11.059006Z'
-description: "The runtime's _try_default_behavior(), do(), _do_go(), and _evaluate_behavior()\
-  \ methods contain logic that could be expressed in Grue code instead of Python.\n\
-  \n## Current State\n- Default take/drop behaviors are hardcoded in Python\n- Movement\
-  \ logic is in Python  \n- Actor parameter now generalized (no longer hardcoded to\
-  \ PLAYER)\n\n## Proposed Approach\nDefine default behaviors in a defaults.grue file\
-  \ that gets loaded with every world:\n\n```lisp\n(behavior take\n  (case (not (has-flag\
-  \ self TAKEBIT))\n    :outcome blocked :reason not-takeable)\n  (case (and (not\
-  \ (here? self)) (not (held? self)))\n    :outcome blocked :reason not-here)\n  (case\
-  \ (held? self)\n    :outcome blocked :reason already-held)\n  (case true\n    :outcome\
-  \ success\n    :effects ((move! self ?actor))))\n```\n\n## Benefits\n- Default behaviors\
-  \ become data, not code\n- Easier to override/extend per-game\n- Same execution\
-  \ path for all behaviors\n- Validates that Grue is expressive enough for core logic"
+description: |-
+  The runtime's _try_default_behavior(), do(), _do_go(), and _evaluate_behavior() methods contain logic that could be expressed in Grue code instead of Python.
+
+  ## Current State
+  - Default take/drop behaviors are hardcoded in Python
+  - Movement logic is in Python
+  - Actor parameter now generalized (no longer hardcoded to PLAYER)
+
+  ## Proposed Approach
+  Define default behaviors in a defaults.grue file that gets loaded with every world:
+
+  ```lisp
+  (behavior take
+    (case (not (has-flag self TAKEBIT))
+      :outcome blocked :reason not-takeable)
+    (case (and (not (here? self)) (not (held? self)))
+      :outcome blocked :reason not-here)
+    (case (held? self)
+      :outcome blocked :reason already-held)
+    (case true
+      :outcome success
+      :effects ((move! self ?actor))))
+  ```
+
+  ## Benefits
+  - Default behaviors become data, not code
+  - Easier to override/extend per-game
+  - Same execution path for all behaviors
+  - Validates that Grue is expressive enough for core logic

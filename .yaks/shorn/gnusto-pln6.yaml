@@ -24,7 +24,7 @@ description: "## Problem\n\nThe current agent flow has two issues:\n\n1. **Input
   - LLM can request image display as part of narration\n- Simple filter structure\
   \ for state-dependent image selection\n\n### Implementation Chunks\n\n1. Refactor\
   \ tool result handling - Stop streaming raw results, accumulate for LLM\n2. Per-step\
-  \ narration prompt - Ask LLM to narrate each result, with quote-preservation guidance\
-  \  \n3. Early stopping mechanism - Let LLM signal \"stop sequence, need player input\"\
+  \ narration prompt - Ask LLM to narrate each result, with quote-preservation guidance\n\
+  3. Early stopping mechanism - Let LLM signal \"stop sequence, need player input\"\
   \n4. Image catalog - Simple structure listing available images with descriptions\n\
   5. Image selection in narration - LLM can include image references in output"

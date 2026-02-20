@@ -13,24 +13,24 @@ description: "## Purpose\nTrack theoretical/computability limitations we encount
   \ dynamic expressions.\n**Fallback:** `_filter_modifiers_by_target` includes behaviors\
   \ with unknown targets conservatively.\n**Sound:** Yes - never miss real achievers\n\
   **Complete:** No - may include false achievers\n\n### 2. Recursive Functions \u2705\
-  \ HANDLED  \nIf functions can recurse, full inlining is impossible.\n\n**Current\
-  \ handling:** `_inlining_stack` and `_inline_stack_*` detect cycles during traversal.\n\
-  **Fallback:** Skip recursive paths, don't descend into same function twice.\n**Sound:**\
-  \ Yes - won't infinite loop, won't make false claims\n**Complete:** No - may miss\
-  \ effects inside recursive paths\n\n### 3. Higher-Order Functions \U0001F6AB N/A\n\
-  If functions take functions as arguments (unlikely in Grue).\n\n**Current:** Not\
-  \ relevant - Grue doesn't support HOF yet.\n**Theory:** Would require flow analysis\
-  \ to track function identity.\n\n### 4. Event Queue Ordering \u2705 SIMPLIFIED\n\
-  Multiple queued events can fire in different orders depending on timing.\n\n**Current\
-  \ handling:** Queue modeled as boolean (queued/not queued), not ordered list.\n\
-  **Fallback:** Any queue behavior is potential achiever regardless of order.\n**Sound:**\
-  \ Yes - conservative\n**Complete:** No - loses ordering information, may include\
-  \ impossible paths\n\n### 5. Local Variable Bindings \u2705 HANDLED\nConditions\
-  \ like `(= ?socket @input-socket)` depend on function arguments.\n\n**Current handling:**\
-  \ `_condition_to_constraint` returns `None` for variable references.\n**Fallback:**\
-  \ Skip constraint - just loses precision.\n**Sound:** Yes - never claims false constraints\n\
-  **Complete:** No - loses precision on argument-dependent branches\n\n## Summary\
-  \ Table\n\n| Limitation | Status | Sound? | Complete? | Notes |\n|------------|--------|--------|-----------|-------|\n\
+  \ HANDLED\nIf functions can recurse, full inlining is impossible.\n\n**Current handling:**\
+  \ `_inlining_stack` and `_inline_stack_*` detect cycles during traversal.\n**Fallback:**\
+  \ Skip recursive paths, don't descend into same function twice.\n**Sound:** Yes\
+  \ - won't infinite loop, won't make false claims\n**Complete:** No - may miss effects\
+  \ inside recursive paths\n\n### 3. Higher-Order Functions \U0001F6AB N/A\nIf functions\
+  \ take functions as arguments (unlikely in Grue).\n\n**Current:** Not relevant -\
+  \ Grue doesn't support HOF yet.\n**Theory:** Would require flow analysis to track\
+  \ function identity.\n\n### 4. Event Queue Ordering \u2705 SIMPLIFIED\nMultiple\
+  \ queued events can fire in different orders depending on timing.\n\n**Current handling:**\
+  \ Queue modeled as boolean (queued/not queued), not ordered list.\n**Fallback:**\
+  \ Any queue behavior is potential achiever regardless of order.\n**Sound:** Yes\
+  \ - conservative\n**Complete:** No - loses ordering information, may include impossible\
+  \ paths\n\n### 5. Local Variable Bindings \u2705 HANDLED\nConditions like `(= ?socket\
+  \ @input-socket)` depend on function arguments.\n\n**Current handling:** `_condition_to_constraint`\
+  \ returns `None` for variable references.\n**Fallback:** Skip constraint - just\
+  \ loses precision.\n**Sound:** Yes - never claims false constraints\n**Complete:**\
+  \ No - loses precision on argument-dependent branches\n\n## Summary Table\n\n| Limitation\
+  \ | Status | Sound? | Complete? | Notes |\n|------------|--------|--------|-----------|-------|\n\
   | Dynamic values | \u2705 Handled | Yes | No | False positives OK |\n| Recursive\
   \ functions | \u2705 Handled | Yes | No | Skip on cycle |\n| Higher-order functions\
   \ | N/A | - | - | Not in Grue |\n| Event queue ordering | \u2705 Simplified | Yes\

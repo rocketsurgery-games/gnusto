@@ -17,7 +17,7 @@ description: "Undefined symbols silently become strings instead of raising error
   \ (should be explicit, not fallback)\n\n**Solution:**\n1. Raise `UnboundVariableError`\
   \ for unknown symbols\n2. If we need literal strings for object names (@player),\
   \ use explicit syntax:\n   - Keep @ prefix for object references\n   - Or use symbols\
-  \ explicitly: `'player` \n   - Or use strings: `\"player\"`\n\n**Migration concern:**\
+  \ explicitly: `'player`\n   - Or use strings: `\"player\"`\n\n**Migration concern:**\
   \ Existing code relies on this behavior for:\n- Object names (@player \u2192 \"\
   @player\")\n- Flag names (TAKEBIT \u2192 \"TAKEBIT\")\n- Maybe other cases\n\nNeed\
   \ to audit usage patterns and decide on explicit syntax.\n\nThis is critical for\
