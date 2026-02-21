@@ -21,7 +21,7 @@ from .commands import handle_command as handle_slash_command
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
     Reveal, Focus, Image, SystemMessage, DebugInfo,
-    build_room_block,
+    build_room_block, build_scene_context,
 )
 from .state import get_game_state
 
@@ -106,7 +106,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
         return {"type": "unknown", "text": str(block)}
 
 
-def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -> FastAPI:
+def create_app(game_path: str, debug: bool = False) -> FastAPI:
     """Create the FastAPI application for a game."""
     app = FastAPI(title="Gnusto", debug=debug)
 
@@ -116,7 +116,6 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
         game_dir = game_dir.parent
     app.state.game_path = game_path
     app.state.game_dir = game_dir
-    app.state.model = model
     app.state.debug = debug
 
     @app.websocket("/ws")
@@ -130,17 +129,9 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
             debug=app.state.debug
         )
 
-        # Create scene renderer for image generation
-        scene_renderer = _create_scene_renderer(
-            session, app.state.game_dir, app.state.model
-        )
-
         try:
             # Send initial game state
-            await send_initial_state(websocket, session, app.state.game_dir, scene_renderer)
-
-            # Track current room for change detection
-            last_room: str | None = None
+            await send_initial_state(websocket, session, app.state.game_dir)
 
             # Main message loop
             while True:
@@ -153,7 +144,6 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
                     command = message.get("text", "").strip()
                     if command:
                         if command.startswith("/"):
-                            # Handle slash command
                             session, should_continue = await handle_slash_command_ws(
                                 websocket, session, command,
                                 app.state.game_path, app.state.game_dir, app.state.debug
@@ -161,15 +151,12 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
                             if not should_continue:
                                 break
                         else:
-                            # Get room before processing
                             state_before = get_game_state(session.runtime)
                             last_room = state_before.room
 
-                            # Process and send results
                             await handle_game_command(
                                 websocket, session, command,
                                 last_room, app.state.game_dir,
-                                scene_renderer,
                             )
 
         except WebSocketDisconnect:
@@ -186,13 +173,7 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
     # Serve rendered images
     @app.get("/renders/{path:path}")
     async def serve_rendered_image(path: str):
-        """Serve images from the game's renders or refs directories.
-
-        Handles:
-        - Exact filenames (e.g., terminal-room-a1b2c3d4.png)
-        - Hash-suffixed stems (e.g., terminal-room.png -> terminal-room-a1b2.png)
-        - Ref fallback with flexible extension (e.g., pc.png -> refs/pc.jpg)
-        """
+        """Serve images from the game's renders or refs directories."""
         renders_dir = app.state.game_dir / "assets" / "renders"
         refs_dir = app.state.game_dir / "assets" / "refs"
         render_dirs = [renders_dir, renders_dir / "cache"]
@@ -214,11 +195,9 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
 
         # Fall back to refs directory (any extension)
         if refs_dir.exists():
-            # Exact match first
             ref_path = refs_dir / path
             if ref_path.exists():
                 return FileResponse(ref_path)
-            # Flexible extension (e.g., pc.png -> pc.jpg)
             for match in refs_dir.glob(f"{stem}.*"):
                 if match.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
                     return FileResponse(match)
@@ -237,69 +216,36 @@ def create_app(game_path: str, model: str = "nanobanana", debug: bool = False) -
     return app
 
 
-def _create_scene_renderer(session: GameSession, game_dir: Path, model: str):
-    """Create a SceneRenderer for the session, or None on failure."""
-    try:
-        from .scene_renderer import SceneRenderer
-        renders_dir = game_dir / "assets" / "renders"
-        return SceneRenderer(
-            runtime=session.runtime,
-            renders_dir=renders_dir,
-            assets_dir=game_dir / "assets",
-            model=model,
-        )
-    except Exception as e:
-        print(f"Warning: Failed to create scene renderer: {e}")
-        return None
-
-
-def _render_room_image(scene_renderer, room_id: str) -> str | None:
-    """Render a room image and return a web-serveable URL, or None."""
-    if not scene_renderer:
-        return None
-    try:
-        image_path = scene_renderer.render_room(room_id)
-        if image_path:
-            return f"/renders/{Path(image_path).name}"
-    except Exception as e:
-        print(f"Warning: Scene render failed for {room_id}: {e}")
-    return None
-
-
 async def send_initial_state(
     websocket: WebSocket,
     session: GameSession,
     game_dir: Path,
-    scene_renderer=None,
 ) -> None:
     """Send initial game state to the client."""
     blocks: list[ContentBlock] = []
 
-    # Add intro if present
     if session.runtime.world.intro:
         blocks.append(Narrate(text=session.runtime.world.intro))
 
-    # Add initial room state
     state = get_game_state(session.runtime)
     room_block = build_room_block(state, session.runtime, game_dir)
-
-    # Generate room image if renderer available
-    image_url = _render_room_image(scene_renderer, state.room)
-    if image_url:
-        room_block.image = image_url
-
     blocks.append(room_block)
 
-    # Add system message
     blocks.append(SystemMessage(text="Type commands in natural language.", level="info"))
 
-    # Send blocks
+    # Send scene context (entity images) before blocks
+    scene_ctx = build_scene_context(state, session.runtime, game_dir)
+    if scene_ctx:
+        await websocket.send_text(json.dumps({
+            "type": "scene_context",
+            "entities": scene_ctx,
+        }))
+
     await websocket.send_text(json.dumps({
         "type": "blocks",
         "blocks": [block_to_dict(b) for b in blocks],
     }))
 
-    # Signal ready for input
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
@@ -311,15 +257,9 @@ async def handle_slash_command_ws(
     game_dir: Path,
     debug: bool,
 ) -> tuple[GameSession, bool]:
-    """
-    Handle a slash command via websocket.
-
-    Returns:
-        Tuple of (session, should_continue) - session may be replaced on reset
-    """
+    """Handle a slash command via websocket."""
     result = handle_slash_command(command, session, game_dir)
 
-    # Handle special actions
     if result.action == "quit":
         await websocket.send_text(json.dumps({"type": "quit"}))
         return session, False
@@ -328,56 +268,19 @@ async def handle_slash_command_ws(
         await websocket.send_text(json.dumps({"type": "clear"}))
 
     elif result.action == "reset":
-        # Create new session
         session = GameSession.from_game_file(game_path, debug=debug)
-        # Send reset action first
         await websocket.send_text(json.dumps({"type": "clear"}))
-        # Then send initial state
         await send_initial_state(websocket, session, game_dir)
         return session, True
 
-    # Send any blocks
     if result.blocks:
         await websocket.send_text(json.dumps({
             "type": "blocks",
             "blocks": [block_to_dict(b) for b in result.blocks],
         }))
 
-    # Signal turn complete
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
     return session, True
-
-
-def _build_scene_context(session: GameSession) -> dict[str, Any]:
-    """Build scene context with entity metadata for the frontend."""
-    state = get_game_state(session.runtime)
-    entities: dict[str, dict[str, Any]] = {}
-
-    # Build image lookup from session images (subject -> path)
-    image_by_subject: dict[str, str] = {}
-    if session.all_images:
-        for img in session.all_images:
-            image_by_subject[img.subject] = img.path
-
-    # Add visible objects
-    for obj in state.visible_objects:
-        entity_id = obj.id
-        image_url = image_by_subject.get(entity_id)
-        entities[entity_id] = {
-            "name": obj.description,
-            "image": image_url,
-        }
-
-    # Add inventory items
-    for obj in state.inventory:
-        entity_id = obj.id
-        if entity_id not in entities:
-            entities[entity_id] = {
-                "name": obj.description,
-                "image": None,
-            }
-
-    return {"type": "scene_context", "entities": entities}
 
 
 async def handle_game_command(
@@ -386,16 +289,10 @@ async def handle_game_command(
     command: str,
     previous_room: str | None,
     game_dir: Path,
-    scene_renderer=None,
 ) -> None:
     """Process a player command and send results, streaming LLM outputs."""
     loop = asyncio.get_running_loop()
 
-    # Send scene context before processing
-    scene_ctx = _build_scene_context(session)
-    await websocket.send_text(json.dumps(scene_ctx))
-
-    # Track futures for streamed content
     send_futures: list[concurrent.futures.Future] = []
 
     def on_blocks(blocks: list) -> None:
@@ -424,7 +321,6 @@ async def handle_game_command(
         send_futures.append(future)
         time.sleep(0.01)
 
-    # Run process_input in thread pool so event loop stays responsive
     def do_process() -> None:
         session.process_input(
             command,
@@ -434,32 +330,33 @@ async def handle_game_command(
 
     await loop.run_in_executor(None, do_process)
 
-    # Wait for any pending sends to complete (wrap concurrent futures for asyncio)
     if send_futures:
         await asyncio.gather(*[asyncio.wrap_future(f) for f in send_futures], return_exceptions=True)
 
     # Check for room change
     state = get_game_state(session.runtime)
     if state.room != previous_room:
+        # Send updated scene context for the new room
+        scene_ctx = build_scene_context(state, session.runtime, game_dir)
+        if scene_ctx:
+            await websocket.send_text(json.dumps({
+                "type": "scene_context",
+                "entities": scene_ctx,
+            }))
         room_block = build_room_block(state, session.runtime, game_dir)
-        # Generate room image
-        image_url = _render_room_image(scene_renderer, state.room)
-        if image_url:
-            room_block.image = image_url
         await websocket.send_text(json.dumps({
             "type": "blocks",
             "blocks": [block_to_dict(room_block)],
         }))
 
-    # Signal that the turn is complete
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
-def run_server(game_path: str, model: str = "nanobanana", host: str = "127.0.0.1", port: int = 8000, debug: bool = False) -> None:
+def run_server(game_path: str, host: str = "127.0.0.1", port: int = 8000, debug: bool = False) -> None:
     """Run the web server."""
     import uvicorn
 
-    app = create_app(game_path, model=model, debug=debug)
+    app = create_app(game_path, debug=debug)
 
     print(f"Starting Gnusto web server...")
     print(f"Game: {game_path}")

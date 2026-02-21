@@ -108,29 +108,20 @@ class GrueRoom:
         :ldesc (fn () (str "The door is " (if (:open @door) "open" "closed") "."))
 
     Render spec (:render):
-        Can be a function, string, or list:
-        :render "A dusty room"                           ; String - prompt only
-        :render (fn () (str "Room with " ...))           ; Function - returns spec
-        :render ["A room" :ref "room.png" :contents]     ; List - full spec
-
-    Render description (:rdesc):
-        State-aware text for image generation prompts, separate from player-facing
-        :description. Used when this entity is referenced in another render spec.
-        Can be a string or function:
-        :rdesc "cluttered kitchen with fluorescent lighting"
-        :rdesc (fn () (if (:lit ?self) "brightly lit kitchen" "dark kitchen"))
+        A string or function that evaluates to a string (image filename or prompt):
+        :render "A dusty room"
+        :render (fn () (if (:lit ?self) "bright room" "dark room"))
     """
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
-    rdesc: SExpr | None = None  # Render description: string or (fn () ...)
     flags: list[str] = field(default_factory=list)
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list["GrueBehavior"] = field(default_factory=list)
     nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
     visible: list[str] = field(default_factory=list)  # Objects visible in this room (via :visible)
-    render: SExpr | None = None  # Render spec for visual composition
+    render: SExpr | None = None  # Render spec: string or (fn () ...)
 
 
 @dataclass
@@ -160,28 +151,19 @@ class GrueObject:
         :ldesc (fn () (str "The lantern is " (if (:lit ?self) "glowing" "dark") "."))
 
     Render spec (:render):
-        Can be a function, string, or list:
-        :render "A brass lantern"                        ; String - prompt only
-        :render (fn () (str "Lantern, " ...))            ; Function - returns spec
-        :render ["A lantern" :ref "lantern.png"]         ; List - full spec
-
-    Render description (:rdesc):
-        State-aware text for image generation prompts, separate from player-facing
-        :description. Used when this entity is referenced in another render spec.
-        Can be a string or function:
-        :rdesc "brass lantern"
-        :rdesc (fn () (if (:open ?self) "open microwave oven" "closed microwave"))
+        A string or function that evaluates to a string (image filename or prompt):
+        :render "A brass lantern"
+        :render (fn () (if (:lit ?self) "glowing lantern" "dark lantern"))
     """
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
-    rdesc: SExpr | None = None  # Render description: string or (fn () ...)
     location: str | None = None
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list[GrueBehavior] = field(default_factory=list)
     nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
-    render: SExpr | None = None  # Render spec for visual composition
+    render: SExpr | None = None  # Render spec: string or (fn () ...)
 
 
 @dataclass
@@ -231,33 +213,6 @@ class GrueFunction:
 
 
 @dataclass
-class GrueReference:
-    """A named render spec for reusable visual assets.
-
-    References are render spec "bags" - named render specs that can be
-    composed into room and object scenes. They have no runtime state and
-    cannot access ?self properties.
-
-    When a reference is used in another render spec (e.g., @terminal-room-bg),
-    it contributes its rendered image as a reference but no text to the prompt.
-    The caller wraps the reference with descriptive text as needed.
-
-    Example:
-        (reference @terminal-room-bg
-          :render "A large 1980s computer lab with CRT monitors, empty of people")
-
-        (room @terminal-room
-          :render ("In the" @terminal-room-bg "with the following objects:" :contents))
-
-    References can also use :ref for static images (path relative to assets dir):
-        (reference @hacker-portrait
-          :render (:ref "refs/hacker.jpg"))
-    """
-    name: str
-    render: SExpr  # Render spec (text prompt, composition, or :ref for static)
-
-
-@dataclass
 class GrueWorld:
     """
     Complete GRUE world definition.
@@ -266,7 +221,6 @@ class GrueWorld:
     description: str = ""
     intro: str = ""  # Introductory text shown at game start
     player: str = ""  # Entity name of the player (e.g., "@player")
-    render_style: str = ""  # Style prefix for scene rendering prompts (e.g., "Color graphic novel style.")
     rooms: dict[str, GrueRoom] = field(default_factory=dict)
     objects: dict[str, GrueObject] = field(default_factory=dict)
     victory: GrueVictory | None = None
@@ -275,7 +229,6 @@ class GrueWorld:
     constants: dict[str, Any] = field(default_factory=dict)  # immutable constants from (def name value)
     events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
     functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
-    references: dict[str, GrueReference] = field(default_factory=dict)  # name -> static render reference
 
 
 # === Helper functions for form handlers ===
@@ -620,8 +573,6 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
         world.intro = expect_string(kwargs["intro"], "world intro")
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
-    if "render-style" in kwargs:
-        world.render_style = expect_string(kwargs["render-style"], "world render-style")
 
 
 @form("room")
@@ -648,9 +599,6 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         room.ldesc = kwargs["ldesc"]
-    if "rdesc" in kwargs:
-        # rdesc can be string or (fn () ...) - store as-is
-        room.rdesc = kwargs["rdesc"]
     if "flags" in kwargs:
         room.flags = parse_flags(kwargs["flags"])
     if "exits" in kwargs:
@@ -697,9 +645,6 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "ldesc" in kwargs:
         # ldesc can be string or (fn () ...) - store as-is
         obj.ldesc = kwargs["ldesc"]
-    if "rdesc" in kwargs:
-        # rdesc can be string or (fn () ...) - store as-is
-        obj.rdesc = kwargs["rdesc"]
     if "location" in kwargs:
         loc = expect_symbol(kwargs["location"], "object location")
         obj.location = None if loc == "nil" else loc
@@ -900,37 +845,6 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
 
     value = expr[2]
     world.constants[name] = value
-
-
-@form("reference")
-def _parse_reference(expr: SList, world: GrueWorld) -> None:
-    """Parse (reference NAME :render SPEC).
-
-    Named render specs for reusable visual assets. References are "render bags"
-    that can be composed into room and object scenes. They have no runtime state.
-
-    When used in another render spec, references contribute their rendered image
-    but no text to the prompt. The caller wraps references with descriptive text.
-
-    Example:
-        (reference @terminal-room-bg
-          :render "A large 1980s computer lab, CRT monitors, empty of people")
-
-        ; Static image reference (path relative to assets dir)
-        (reference @hacker-portrait
-          :render (:ref "refs/hacker.jpg"))
-    """
-    if len(expr) < 2:
-        raise FormParseError("reference requires a name")
-
-    name = expect_symbol(expr[1], "reference name")
-    kwargs = parse_kwargs(list(expr.items[2:]))
-
-    if "render" not in kwargs:
-        raise FormParseError(f"reference {name} requires :render")
-
-    ref = GrueReference(name=name, render=kwargs["render"])
-    world.references[ref.name] = ref
 
 
 # === Form Dispatcher ===

@@ -2,15 +2,8 @@
   :description "hacker"
   :location @terminal-room
 
-  ; hacker.jpg:
-  ;   A scruffy, innocent looking young hacker in his 20s. Blue jeans, old work shirt, worn running
-  ;   shoes. A large ring of keys hangs from his belt. He looks like he needs a bath. Solid white
-  ;   background, no shadows.
-  ;
   ; TODO: Deal with different states the hacker can be in.
-  :render (
-    "The hacker sits comfortably on an office chair. Solid white background."
-    :ref "refs/hacker.jpg" :ref "refs/office-chair.jpg")
+  :render "refs/hacker.jpg"
 
   :properties (
     :searchable true

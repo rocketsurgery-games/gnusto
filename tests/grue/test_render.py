@@ -2,18 +2,9 @@
 
 import pytest
 
-from grue import (
-    parse_grue,
-    GrueObject,
-    GrueRoom,
-    Symbol,
-    SList,
-    Keyword,
-)
+from grue import parse_grue
 from grue.render import (
-    RenderResult,
     RenderError,
-    ObjectRef,
     evaluate_render_spec,
     has_render_spec,
     get_render_spec,
@@ -24,33 +15,30 @@ from grue.sexpr import parse
 class TestRenderSpecParsing:
     """Test parsing :render on objects and rooms."""
 
-    def test_object_with_render_spec(self):
-        """Object can have a :render spec."""
+    def test_object_with_string_render(self):
+        """Object can have a string :render spec."""
         source = """
         (object @lantern
           :description "A brass lantern"
-          :render ("A brass lantern with glass panels"
-                   :ref "assets/lantern.png"))
+          :render "lantern.png")
         """
         world = parse_grue(source)
         obj = world.objects["@lantern"]
 
-        assert obj.render is not None
+        assert obj.render == "lantern.png"
         assert has_render_spec(obj)
 
-    def test_room_with_render_spec(self):
-        """Room can have a :render spec."""
+    def test_room_with_string_render(self):
+        """Room can have a string :render spec."""
         source = """
         (room @cellar
           :description "A dark cellar"
-          :render ("A stone cellar with torchlight"
-                   :ref "assets/cellar.png"
-                   :contents))
+          :render "cellar.png")
         """
         world = parse_grue(source)
         room = world.rooms["@cellar"]
 
-        assert room.render is not None
+        assert room.render == "cellar.png"
         assert has_render_spec(room)
 
     def test_object_without_render_spec(self):
@@ -70,160 +58,63 @@ class TestRenderSpecParsing:
         source = """
         (object @lantern
           :description "A lantern"
-          :render ("A brass lantern"))
+          :render "lantern.png")
         (object @key
           :description "A key")
         """
         world = parse_grue(source)
 
         spec = get_render_spec(world.objects["@lantern"])
-        assert spec is not None
-        assert isinstance(spec, SList)
+        assert spec == "lantern.png"
 
         spec = get_render_spec(world.objects["@key"])
         assert spec is None
 
 
 class TestRenderSpecEvaluation:
-    """Test evaluating render specs to RenderResult."""
+    """Test evaluating render specs."""
 
-    def test_simple_prompt(self):
-        """Simple string prompt."""
-        spec = parse('("A brass lantern")')
+    def test_none_returns_none(self):
+        """None spec returns None."""
+        result = evaluate_render_spec(None, "@lantern", MockState())
+        assert result is None
+
+    def test_string_returns_string(self):
+        """String spec returns the string."""
+        result = evaluate_render_spec("lantern.png", "@lantern", MockState())
+        assert result == "lantern.png"
+
+    def test_fn_spec(self):
+        """fn spec evaluates and returns string."""
+        spec = parse('(fn () "glowing-lantern.png")')
         result = evaluate_render_spec(spec, "@lantern", MockState())
+        assert result == "glowing-lantern.png"
 
-        assert result.prompt == "A brass lantern"
-        assert result.ref_paths == []
-        assert result.object_refs == []
-
-    def test_prompt_with_ref(self):
-        """Prompt with :ref path."""
-        spec = parse('("A brass lantern" :ref "assets/lantern.png")')
-        result = evaluate_render_spec(spec, "@lantern", MockState())
-
-        assert result.prompt == "A brass lantern"
-        assert result.ref_paths == ["assets/lantern.png"]
-
-    def test_prompt_with_multiple_refs(self):
-        """Prompt with multiple :ref paths."""
-        spec = parse("""
-            ("A brass lantern on a wooden table"
-             :ref "assets/lantern.png"
-             :ref "assets/table.png")
-        """)
-        result = evaluate_render_spec(spec, "@lantern", MockState())
-
-        assert result.prompt == "A brass lantern on a wooden table"
-        assert result.ref_paths == ["assets/lantern.png", "assets/table.png"]
-
-    def test_object_references(self):
-        """Object references (@obj) become object_refs."""
-        spec = parse('("A scene with " @lantern " and " @table)')
-        result = evaluate_render_spec(spec, "@scene", MockState())
-
-        assert result.prompt == "A scene with and"  # Object refs don't add to prompt
-        assert len(result.object_refs) == 2
-        assert result.object_refs[0].name == "@lantern"
-        assert result.object_refs[1].name == "@table"
-
-    def test_ref_size_option(self):
-        """The :ref-size keyword sets ref_size."""
-        spec = parse('("A lantern" :ref-size 512 :ref "assets/lantern.png")')
-        result = evaluate_render_spec(spec, "@lantern", MockState())
-
-        assert result.ref_size == 512
-
-    def test_anchor_option(self):
-        """The :anchor keyword adds to anchors list."""
-        spec = parse('("A scene" @composite :anchor @atomic-ref)')
-        result = evaluate_render_spec(spec, "@scene", MockState())
-
-        assert result.anchors == ["@atomic-ref"]
-
-    def test_contents_option(self):
-        """The :contents keyword sets include_contents."""
-        spec = parse('("A cellar" :ref "assets/cellar.png" :contents)')
-        result = evaluate_render_spec(spec, "@cellar", MockState())
-
-        assert result.include_contents is True
-
-    def test_concatenated_strings(self):
-        """Multiple strings are concatenated."""
-        spec = parse('("A brass " "lantern " "with glass panels")')
-        result = evaluate_render_spec(spec, "@lantern", MockState())
-
-        assert result.prompt == "A brass lantern with glass panels"
-
-    def test_expression_evaluation(self):
-        """Expressions are evaluated and added to prompt."""
-        spec = parse('("Door is " (if true "open" "closed"))')
+    def test_fn_spec_with_conditional(self):
+        """fn spec with conditional logic."""
+        spec = parse('(fn () (if true "open-door.png" "closed-door.png"))')
         result = evaluate_render_spec(spec, "@door", MockState())
+        assert result == "open-door.png"
 
-        assert result.prompt == "Door is open"
-
-    def test_self_binding(self):
-        """The `self` symbol is bound to entity name."""
-        spec = parse('("Rendering " self)')
-        result = evaluate_render_spec(spec, "@my-object", MockState())
-
-        assert result.prompt == "Rendering @my-object"
-
-    def test_when_expression_nil(self):
-        """(when false ...) returns nil and is skipped."""
-        spec = parse('("A lantern" (when false ", glowing"))')
-        result = evaluate_render_spec(spec, "@lantern", MockState())
-
-        # The nil result from (when false ...) should be skipped
-        assert result.prompt == "A lantern"
-
-    def test_ref_size_applies_to_object_refs(self):
-        """ref-size applies to subsequent object refs."""
-        spec = parse('(:ref-size 384 @lantern @table :ref-size 128 @background)')
-        result = evaluate_render_spec(spec, "@scene", MockState())
-
-        assert len(result.object_refs) == 3
-        assert result.object_refs[0].ref_size == 384
-        assert result.object_refs[1].ref_size == 384
-        assert result.object_refs[2].ref_size == 128
+    def test_fn_spec_nil_result(self):
+        """fn returning nil produces empty string."""
+        spec = parse('(fn () (when false "never.png"))')
+        result = evaluate_render_spec(spec, "@obj", MockState())
+        assert result == ""
 
 
 class TestRenderSpecErrors:
     """Test error handling in render spec evaluation."""
 
-    def test_string_as_prompt_only(self):
-        """String spec is valid as prompt-only render."""
-        result = evaluate_render_spec("A brass lantern", "@obj", MockState())
-        assert result.prompt == "A brass lantern"
-        assert result.ref_paths == []
-        assert result.object_refs == []
-
-    def test_invalid_spec_type(self):
-        """Non-list, non-string spec raises RenderError."""
-        with pytest.raises(RenderError, match="must be a string, fn, or list"):
+    def test_invalid_spec_type_raises(self):
+        """Non-string, non-fn spec raises RenderError."""
+        with pytest.raises(RenderError):
             evaluate_render_spec(123, "@obj", MockState())
 
-    def test_ref_without_path(self):
-        """:ref without path raises error."""
-        spec = parse('("A lantern" :ref)')
-        with pytest.raises(RenderError, match=":ref requires a path"):
-            evaluate_render_spec(spec, "@obj", MockState())
-
-    def test_ref_with_non_string_path(self):
-        """:ref with non-string path raises error."""
-        spec = parse('("A lantern" :ref 123)')
-        with pytest.raises(RenderError, match="must be a string"):
-            evaluate_render_spec(spec, "@obj", MockState())
-
-    def test_ref_size_without_value(self):
-        """:ref-size without number raises error."""
-        spec = parse('("A lantern" :ref-size)')
-        with pytest.raises(RenderError, match=":ref-size requires a number"):
-            evaluate_render_spec(spec, "@obj", MockState())
-
-    def test_anchor_without_object(self):
-        """:anchor without object ref raises error."""
-        spec = parse('("A scene" :anchor)')
-        with pytest.raises(RenderError, match=":anchor requires an object"):
+    def test_list_without_fn_raises(self):
+        """List that isn't (fn ...) raises RenderError."""
+        spec = parse('("just a string in a list")')
+        with pytest.raises(RenderError):
             evaluate_render_spec(spec, "@obj", MockState())
 
 

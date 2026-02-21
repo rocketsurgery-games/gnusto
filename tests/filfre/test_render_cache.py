@@ -4,7 +4,7 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from grue.render_cache import (
+from filfre.render_cache import (
     RenderCache,
     hash_image_data,
     hash_pil_image,

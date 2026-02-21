@@ -681,7 +681,7 @@ GRUE has three categories of constructs, each with different evaluation semantic
 
 | Category | Examples | Evaluation |
 |----------|----------|------------|
-| **Declarative Forms** | `world`, `room`, `object`, `reference`, `victory`, `defeat`, `default`, `event` | Data definitions, not evaluated at runtime |
+| **Declarative Forms** | `world`, `room`, `object`, `victory`, `defeat`, `default`, `event` | Data definitions, not evaluated at runtime |
 | **Special Forms** | `cond`, `and`, `or`, `when`, `seq`, `fn`, `let` | Custom evaluation rules |
 | **Functions** | `loc`, `held?`, `visible?`, `move`, `set` | Uniform evaluation (all arguments evaluated) |
 
@@ -700,12 +700,11 @@ Game metadata and player declaration.
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:
 - `:description` / `:ldesc` - Short/long descriptions
-- `:rdesc` - Render description for image generation prompts (see below)
 - `:flags` - Boolean markers (e.g., `OUTSIDE`, `LIT`)
 - `:exits` - List of exit forms `(DIRECTION :to ROOM [:via OBJECT] [:when EXPR])`
 - `:properties` - Key-value properties
 - `:behaviors` - Room-level action handlers (see Room Hooks below)
-- `:render` - Render spec for illustration (see [filfre.md](filfre.md))
+- `:render` - Image filename or `(fn () ...)` returning filename
 
 **Room Hooks:**
 
@@ -741,12 +740,11 @@ intercept and block actions based on game state (e.g., possession mechanics).
 #### `(object NAME :location LOC :flags (...) :behaviors (...))`
 Object definition. Objects are named entities with:
 - `:description` / `:ldesc` - Descriptions (can be string or fn)
-- `:rdesc` - Render description for image generation prompts (see below)
 - `:location` - Where the object is (room, container, or entity name)
 - `:flags` - Boolean markers (e.g., `TAKEBIT`, `LOCKED`, `PERSON`)
 - `:properties` - Key-value properties
 - `:behaviors` - Verb-to-handler mappings (see Behaviors section)
-- `:render` - Render spec for illustration (see [filfre.md](filfre.md))
+- `:render` - Image filename or `(fn () ...)` returning filename
 
 #### `(victory :when EXPR :context (...))`
 Win condition. The `:when` expression is evaluated each turn.
@@ -763,69 +761,6 @@ Turn-based event handler. Events fire each turn while queued.
 - `:on-turn` - A `cond` form evaluated each turn
 
 See [Turn-Based Events](#turn-based-events) for detailed documentation.
-
-#### `(reference NAME :render SPEC)`
-Named render spec for reusable visual assets. References are "render bags" that can
-be composed into room and object scenes. They have no runtime state and cannot access
-`?self` properties.
-
-When used in another render spec (e.g., `@terminal-room-bg`), references contribute
-their rendered image but no text to the prompt. The caller wraps references with
-descriptive text as needed.
-
-```scheme
-; Reference with generated image
-(reference @terminal-room-bg
-  :render "A large 1980s computer lab with CRT monitors, empty of people")
-
-; Reference with static image (path relative to assets dir)
-(reference @hacker-portrait
-  :render (:ref "refs/hacker.jpg"))
-
-; Using a reference in a room render
-(room @terminal-room
-  :render ("In the" @terminal-room-bg "with:" :contents))
-```
-
-See [filfre.md](filfre.md) for detailed render spec documentation.
-
-#### Render Descriptions (`:rdesc`)
-
-The `:rdesc` field provides a separate description for image generation, distinct from
-the player-facing `:description`. This is important because:
-
-- **`:description`** is for players - concise, game-appropriate text
-- **`:rdesc`** is for the image model - descriptive, visual, state-aware
-
-When the scene renderer builds a prompt for image generation, it prefers `:rdesc` over
-`:description`. This allows objects to appear correctly in composed scenes even when
-their visual state differs from their textual description.
-
-`:rdesc` can be a string or a function for state-dependent descriptions:
-
-```scheme
-;; Static rdesc
-(object @kitchen-counter
-  :description "kitchen counter"
-  :rdesc "dirty kitchen counter")
-
-;; State-dependent rdesc
-(object @microwave
-  :description "microwave oven"
-  :rdesc (fn ()
-    (cond
-      ((:open self) "open microwave oven")
-      ((queued? microwave-running) "running microwave oven with turntable spinning")
-      (true "closed microwave oven"))))
-
-(object @refrigerator
-  :description "refrigerator"
-  :rdesc (fn ()
-    (if (:open self) "open refrigerator with cluttered shelves"
-                     "closed refrigerator with notes on door")))
-```
-
-When `:rdesc` is not specified, the scene renderer falls back to `:description`.
 
 #### `(globals :name value ...)` *(Removed)*
 > **Note:** The `(globals)` form has been removed. Use object properties instead.

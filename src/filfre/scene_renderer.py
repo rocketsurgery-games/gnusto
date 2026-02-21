@@ -24,8 +24,14 @@ from typing import TYPE_CHECKING, Optional, Callable
 import hashlib
 
 from grue.render import evaluate_render_spec, has_render_spec, get_render_spec, RenderResult, ObjectRef, ContentsMarker, ThroughMarker
-from grue.render_cache import RenderCache, hash_pil_image
-from gnusto.terminal_images import display_image, display_pil_image, is_supported as terminal_images_supported
+from .render_cache import RenderCache, hash_pil_image
+
+try:
+    from gnusto.terminal_images import display_image, display_pil_image, is_supported as terminal_images_supported
+except ImportError:
+    def display_image(*args, **kwargs): pass
+    def display_pil_image(*args, **kwargs): pass
+    def terminal_images_supported(): return False
 
 if TYPE_CHECKING:
     from grue.runtime import GrueRuntime

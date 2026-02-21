@@ -7,7 +7,9 @@ differently by TUI (colored text) and web UI (HTML with images).
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, TYPE_CHECKING
+from typing import Any, Literal, TYPE_CHECKING
+
+from grue.render import evaluate_render_spec, has_render_spec
 
 if TYPE_CHECKING:
     from .state import GameState
@@ -118,9 +120,11 @@ def build_room_block(
     Returns:
         RoomEnter block with room info
     """
-    # Room images are now generated on-demand from render specs by the scene renderer.
-    # The TUI and web UI handle image generation separately.
+    # Evaluate render spec to get image filename
     image_url = None
+    room = runtime.world.rooms.get(state.room)
+    if room and has_render_spec(room):
+        image_url = _resolve_image_url(room.render, state.room, runtime, game_dir)
 
     # De-duplicate exits (multiple directions may lead to same room)
     seen_exits: set[str] = set()
@@ -139,6 +143,62 @@ def build_room_block(
         inventory=[obj.description for obj in state.inventory],
         image=image_url,
     )
+
+
+def _resolve_image_url(
+    spec: Any,
+    entity_name: str,
+    runtime: "GrueRuntime",
+    game_dir: Path | None,
+) -> str | None:
+    """Evaluate a render spec and resolve to a /assets/ URL, or None."""
+    try:
+        filename = evaluate_render_spec(spec, entity_name, runtime)
+        if not filename:
+            return None
+        if game_dir:
+            image_path = game_dir / "assets" / filename
+            if not image_path.exists():
+                return None
+        return f"/assets/{filename}"
+    except Exception:
+        return None
+
+
+def build_scene_context(
+    state: "GameState",
+    runtime: "GrueRuntime",
+    game_dir: Path | None = None,
+) -> dict[str, dict[str, str | None]]:
+    """Build entity-to-image map for the current scene.
+
+    Iterates visible objects, inventory, and the current room, evaluating
+    render specs to produce image URLs for the web UI's scene_context.
+
+    Returns:
+        Dict mapping entity IDs to {"name": ..., "image": ...}
+    """
+    entities: dict[str, dict[str, str | None]] = {}
+
+    # Current room
+    room_def = runtime.world.rooms.get(state.room)
+    if room_def and has_render_spec(room_def):
+        image_url = _resolve_image_url(room_def.render, state.room, runtime, game_dir)
+        entities[state.room] = {"name": str(room_def.description or ""), "image": image_url}
+
+    # Visible objects + inventory (recursing into containers)
+    def _add_objects(obj_list: list) -> None:
+        for obj_info in obj_list:
+            obj_def = runtime.world.objects.get(obj_info.id)
+            if obj_def and has_render_spec(obj_def):
+                url = _resolve_image_url(obj_def.render, obj_info.id, runtime, game_dir)
+                entities[obj_info.id] = {"name": str(obj_def.description or ""), "image": url}
+            if obj_info.contents:
+                _add_objects(obj_info.contents)
+
+    _add_objects(list(state.visible_objects) + list(state.inventory))
+
+    return entities
 
 
 def format_room_enter(room: RoomEnter) -> str:

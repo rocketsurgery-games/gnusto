@@ -18,7 +18,6 @@ from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .commands import handle_command, render_blocks_to_text
-from .images import scan_images, filter_images_for_state, format_image_catalog, add_renderable_entities, ImageInfo
 from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ContentBlockData, content_block_data_to_render
 from .render import ContentBlock
 from .state import GameState, ObjectInfo, get_game_state
@@ -254,7 +253,6 @@ class GameSession:
     evaluator: ReplEvaluator
     llm: LLMClient
     game_dir: Path
-    all_images: list[ImageInfo] = field(default_factory=list)
     turn_history: list[TurnRecord] = field(default_factory=list)
     summaries: list[str] = field(default_factory=list)  # Narrative summary blocks
     debug: bool = False
@@ -276,16 +274,11 @@ class GameSession:
         evaluator = ReplEvaluator(runtime)
         llm = LLMClient(llm_config)
 
-        # Scan for available images and add renderable entities
-        all_images = scan_images(game_dir)
-        all_images = add_renderable_entities(all_images, runtime)
-
         session = cls(
             runtime=runtime,
             evaluator=evaluator,
             llm=llm,
             game_dir=game_dir,
-            all_images=all_images,
             debug=debug,
         )
         return session
@@ -408,16 +401,12 @@ class GameSession:
             messages.append({"role": "user", "content": user_content})
             messages.append({"role": "assistant", "content": assistant_content})
 
-        # Current turn: fresh state + images + player command
+        # Current turn: fresh state + player command
         state_context = current_state.to_context_string()
-
-        # Filter images relevant to current state
-        relevant_images = filter_images_for_state(self.all_images, current_state)
-        image_context = format_image_catalog(relevant_images)
 
         messages.append({
             "role": "user",
-            "content": f"{state_context}\n\n{image_context}\n\n---\n\nPlayer command: {player_command}"
+            "content": f"{state_context}\n\n---\n\nPlayer command: {player_command}"
         })
 
         return messages
@@ -567,15 +556,10 @@ class GameSession:
 
             # Add updated game state
             state = self.get_state()
-
-            # Filter images for new state
-            relevant_images = filter_images_for_state(self.all_images, state)
-            image_context = format_image_catalog(relevant_images)
-
             state_context = state.to_context_string()
             working_messages.append({
                 "role": "user",
-                "content": f"[Updated game state:]\n{state_context}\n\n{image_context}\n\nNarrate what happened using content blocks, then continue or set needs_player_input to true if done."
+                "content": f"[Updated game state:]\n{state_context}\n\nNarrate what happened using content blocks, then continue or set needs_player_input to true if done."
             })
 
         else:

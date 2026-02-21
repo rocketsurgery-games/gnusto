@@ -127,12 +127,7 @@
   ;   doors straight ahead, no people.
   ; refs: @access-panel
   ;
-  ; For testing with @cs-2nd, hardcode the through-view target
-  ; TODO: Generalize to use (nth floor-rooms (:floor self)) once :through supports expressions
-  :render (fn ()
-    (if (:open @elevator-door)
-      '(:ref "refs/cs-elevator-room.jpg" "with doors open" (:through @elevator-door @cs-2nd))
-      '(:ref "refs/cs-elevator-room.jpg")))
+  :render "refs/cs-elevator-room.jpg"
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -170,11 +165,7 @@
   :location @cs-elevator-room
   :properties (:nodesc true :door true :openable true)
 
-  :render (fn ()
-    (if (:open self)
-      '("1980s elevator doors slid open, revealing a hallway beyond"
-        :ref "refs/cs-elevator-room.jpg" @cs-2nd)
-      '(:ref "refs/cs-elevator-room.jpg")))
+  :render "refs/cs-elevator-room.jpg"
 
   :behaviors (
     :examine (fn ()
@@ -327,7 +318,7 @@
   ; access-panel.jpg:
   ;   Elevator control panel with floor buttons (B and 1 through 3), an open button, a close button,
   ;   a stop switch, and an alarm button. Below these is a closed access panel.
-  :render (:ref "refs/access-panel.jpg")
+  :render "refs/access-panel.jpg"
 
   :behaviors (
     :examine (fn ()
@@ -467,11 +458,7 @@
     :container true 
     :floor 2)
 
-  :render (fn ()
-    (if (:open self)
-      '("Open elevator doors, revealing the back of the elevator"
-        :ref "refs/elevator-doors.jpg" @cs-elevator-room)
-      '(:ref "refs/elevator-doors.jpg")))
+  :render "refs/elevator-doors.jpg"
 
   :behaviors elevator-door-behaviors)
 

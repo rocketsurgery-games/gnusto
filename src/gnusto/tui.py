@@ -3,19 +3,10 @@ Simple terminal UI for Gnusto.
 
 Uses Rich for formatting. No scroll regions, no cursor manipulation,
 just straightforward terminal output.
-
-Scene rendering:
-    By default, generates and displays room illustrations using filfre.
-    Requires a CUDA GPU and the filfre pipeline (~15GB VRAM).
-    Images are displayed inline in supported terminals (Kitty, iTerm2, WezTerm).
-
-    Use --no-render to skip generation and use only frozen/cached images.
-    Use --plain for text-only mode (no images or colors).
 """
 
 import re
 from pathlib import Path
-from typing import Optional
 from rich.console import Console
 from rich.text import Text
 from rich.rule import Rule
@@ -65,25 +56,18 @@ class SimpleTUI:
     def __init__(
         self,
         game_path: str,
-        model: str = "nanobanana",
         debug: bool = False,
-        no_render: bool = False,
         plain: bool = False,
-        renders_dir: str | Path | None = None,
     ):
         self.game_path = game_path
         self.game_dir = Path(game_path).resolve()
         if self.game_dir.is_file():
             self.game_dir = self.game_dir.parent
-        self.model = model
         self.debug = debug
-        self.no_render = no_render  # Skip generation, use frozen/cached only
-        self.plain = plain  # Text-only mode, no images or colors
+        self.plain = plain
         self.session: GameSession | None = None
         self.console = Console(highlight=False, force_terminal=not plain, no_color=plain)
         self._last_room: str | None = None
-        self._scene_renderer: Optional["SceneRenderer"] = None
-        self._renders_dir = renders_dir or self.game_dir / "assets" / "renders"
         self._can_display_images = terminal_images_supported() and not plain
 
     def render_block(self, block: ContentBlock) -> None:
@@ -120,12 +104,10 @@ class SimpleTUI:
 
             # Image - display if terminal supports it
             if block.image:
-                # Handle paths from renderer (relative to cwd) and game def (relative to game_dir)
                 image_path = Path(block.image)
                 if not image_path.exists():
                     image_path = self.game_dir / block.image.lstrip("/")
                 if self._can_display_images and image_path.exists():
-                    # Calculate width (use ~60% of terminal width)
                     term_width, _ = self.console.size
                     img_width = min(int(term_width * 0.6), 80)
                     display_image(image_path, width=img_width)
@@ -144,7 +126,6 @@ class SimpleTUI:
             self.console.print()
 
         elif isinstance(block, Speak):
-            # Bold speaker name + yellow italic quoted text + dim manner
             speaker_name = block.speaker.replace("@", "").replace("-", " ").title()
             speaker_text = Text(f"{speaker_name}: ", style="bold")
             dialogue = Text(f'"{block.text}"', style="italic yellow")
@@ -168,20 +149,9 @@ class SimpleTUI:
             self.console.print()
 
         elif isinstance(block, Image):
-            # Display image if terminal supports it
-            # Handle paths like "/renders/foo.png" or "renders/foo.png"
             image_path = Path(block.src.lstrip("/"))
             if not image_path.is_absolute():
                 image_path = self.game_dir / image_path
-
-            # If image doesn't exist, try to generate it
-            if not image_path.exists() and self._scene_renderer:
-                # Extract entity ID from path (e.g., "/renders/lantern.png" -> "@lantern")
-                entity_id = f"@{image_path.stem}"
-                # Try room first, then object
-                generated = self._render_room_image(entity_id) or self._render_object_image(entity_id)
-                if generated:
-                    image_path = Path(generated)
 
             if self._can_display_images and image_path.exists():
                 term_width, _ = self.console.size
@@ -199,7 +169,6 @@ class SimpleTUI:
             self.console.print(Text(block.text, style=style))
 
         elif isinstance(block, DebugInfo):
-            # Show action S-expression, then result details indented
             self.console.print(Text(block.label, style="dim cyan"))
             for line in block.content.split("\n"):
                 if line:
@@ -212,109 +181,28 @@ class SimpleTUI:
 
         result = handle_command(command, self.session, self.game_dir)
 
-        # Render all blocks, applying scene rendering to RoomEnter blocks
         for block in result.blocks:
-            if isinstance(block, RoomEnter) and self._scene_renderer:
-                generated_image = self._render_room_image(block.room_id)
-                if generated_image:
-                    block.image = generated_image
             self.render_block(block)
 
-        # Handle special actions
         if result.action == "quit":
             return False
         elif result.action == "clear":
             self.console.clear()
         elif result.action == "reset":
-            # Reload the game
             self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
-            # Re-init scene renderer for new session
-            if not self.no_render:
-                self._init_scene_renderer()
             state = get_game_state(self.session.runtime)
             room_block = build_room_block(state, self.session.runtime, self.game_dir)
-            if self._scene_renderer:
-                generated_image = self._render_room_image(state.room)
-                if generated_image:
-                    room_block.image = generated_image
             self.render_block(room_block)
 
         return True
-
-    def _init_scene_renderer(self) -> None:
-        """Initialize the scene renderer unless disabled."""
-        if self.no_render or not self.session:
-            return
-
-        try:
-            from .scene_renderer import SceneRenderer
-            self.render_block(SystemMessage(f"Loading scene renderer (model: {self.model})..."))
-            self._scene_renderer = SceneRenderer(
-                runtime=self.session.runtime,
-                renders_dir=self._renders_dir,
-                assets_dir=self.game_dir / "assets",
-                model=self.model,
-            )
-            self.render_block(SystemMessage("Scene renderer ready."))
-        except Exception as e:
-            self.render_block(SystemMessage(
-                f"Failed to initialize scene renderer: {e}",
-                level="warning"
-            ))
-            self.no_render = True  # Fall back to no-render mode
-
-    def _render_room_image(self, room_id: str) -> str | None:
-        """Generate a room image if scene rendering is enabled.
-
-        Returns:
-            Path to the generated image, or None
-        """
-        if not self._scene_renderer:
-            return None
-
-        try:
-            image_path = self._scene_renderer.render_room(room_id)
-            if image_path:
-                # Return relative path for the render block
-                return str(image_path)
-        except Exception as e:
-            if self.debug:
-                self.console.print(Text(f"[Scene render failed: {e}]", style="dim red"))
-
-        return None
-
-    def _render_object_image(self, object_id: str) -> str | None:
-        """Generate an object image if scene rendering is enabled.
-
-        Returns:
-            Path to the generated image, or None
-        """
-        if not self._scene_renderer:
-            return None
-
-        try:
-            image_path = self._scene_renderer.render_object(object_id)
-            if image_path:
-                return str(image_path)
-        except Exception as e:
-            if self.debug:
-                self.console.print(Text(f"[Object render failed: {e}]", style="dim red"))
-
-        return None
 
     def run(self) -> None:
         """Run the game loop."""
         self.render_block(SystemMessage(f"Loading game: {self.game_path}"))
         if self.debug:
             self.render_block(SystemMessage("Debug mode enabled"))
-        if self.no_render:
-            self.render_block(SystemMessage("Scene generation disabled (using cached images only)"))
 
         self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
-
-        # Initialize scene renderer after session is created
-        if not self.no_render:
-            self._init_scene_renderer()
 
         self.console.print()
         self.console.print(Rule("Game Start"))
@@ -326,13 +214,6 @@ class SimpleTUI:
         # Show initial room state
         state = get_game_state(self.session.runtime)
         room_block = build_room_block(state, self.session.runtime, self.game_dir)
-
-        # Generate scene image if renderer is enabled (prefer over static images)
-        if self._scene_renderer:
-            generated_image = self._render_room_image(state.room)
-            if generated_image:
-                room_block.image = generated_image
-
         self.render_block(room_block)
 
         self.render_block(SystemMessage("Type commands in natural language. /help for commands."))
@@ -363,7 +244,7 @@ class SimpleTUI:
                 self.render_block(SystemMessage("Goodbye!"))
                 break
 
-            # Add spacing before response (command already visible from input)
+            # Add spacing before response
             self.console.print()
 
             # Track previous room for change detection
@@ -375,10 +256,9 @@ class SimpleTUI:
                     self.render_block(block)
 
             def on_debug(action_sexpr: str, result_details: str) -> None:
-                # Show action S-expr and result details as debug info
                 self.render_block(DebugInfo(label=action_sexpr, content=result_details))
 
-            # Process command - outputs are streamed via callbacks
+            # Process command
             self.session.process_input(
                 user_input,
                 on_blocks=on_blocks,
@@ -389,25 +269,16 @@ class SimpleTUI:
             state = get_game_state(self.session.runtime)
             if state.room != previous_room:
                 room_block = build_room_block(state, self.session.runtime, self.game_dir)
-
-                # Generate scene image if renderer is enabled (prefer over static images)
-                if self._scene_renderer:
-                    generated_image = self._render_room_image(state.room)
-                    if generated_image:
-                        room_block.image = generated_image
-
                 self.render_block(room_block)
 
 
-def run_tui(game_path: str, model: str = "nanobanana", debug: bool = False, no_render: bool = False, plain: bool = False) -> None:
+def run_tui(game_path: str, debug: bool = False, plain: bool = False) -> None:
     """Run the simple TUI.
 
     Args:
         game_path: Path to the game directory or main .grue file
-        model: Image generation model ("flux" or "nanobanana")
         debug: Enable debug mode (show LLM tool calls)
-        no_render: Skip scene generation (use frozen/cached images only)
         plain: Text-only mode (no images, no colors)
     """
-    tui = SimpleTUI(game_path, model=model, debug=debug, no_render=no_render, plain=plain)
+    tui = SimpleTUI(game_path, debug=debug, plain=plain)
     tui.run()

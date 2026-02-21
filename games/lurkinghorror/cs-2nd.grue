@@ -9,7 +9,7 @@
   ; stairs leading up and down visible in background, empty and eerie, wide angle view, no people.
   ; A forward doorway leads into the kitchen. To the right a door leads to the computer lab.
   ; To the left, an elevator with call buttons.
-  :render (:ref "refs/cs-2nd.jpg" "with the elevator door on the left" @elevator-door-2)
+  :render "refs/cs-2nd.jpg"
 
   :properties (
     :lit true

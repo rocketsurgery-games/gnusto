@@ -2,8 +2,6 @@
   :name "The Lurking Horror"
   :description "Conversion of Infocom's _The Lurking Horror_ to FrotzLM / Grue"
 
-  :render-style "Color graphic novel style, clean lines, not too much noise, dramatic lighting, 1980s horror aesthetic."
-
   :intro "You've waited until the last minute again. This time it's the end of the term, so all the TechNet terminals in
           the dorm are occupied. So, off you go to the old Comp Center. Too bad it's the worst storm of the winter (Murphy's
           Law, right?), and you practically froze to death slogging over here from the dorm. Not to mention jumping at every

@@ -14,9 +14,6 @@ Usage:
     filfre generate --model flux --prompt "A brass lantern on a stone altar" \
         --reference lantern.png --output scene.png
 
-    # Render a game entity (uses initial game state)
-    filfre render --model nanobanana games/lurkinghorror @terminal-room
-
     # List renders in cache
     filfre list games/lurkinghorror
 
@@ -28,7 +25,6 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Any
 
 
 def get_game_dirs(game_path: str | Path) -> tuple[Path, Path, Path]:
@@ -413,155 +409,13 @@ def cmd_generate(args):
     print(f"Total wall time: {time.time() - total_start:.2f}s")
 
     # Display in terminal if supported
-    from gnusto.terminal_images import display_image, is_supported
-    if is_supported():
-        print()
-        display_image(output_path, width=60)
-
-
-# =============================================================================
-# Subcommand: render
-# =============================================================================
-
-def parse_set_arg(set_arg: str) -> tuple[str, str, Any]:
-    """Parse a --set argument using Grue syntax: '@entity :prop value'.
-
-    Examples:
-        --set '@refrigerator :open true'
-        --set '@microwave :timer 120'
-        --set '@player :score 100'
-
-    Returns:
-        Tuple of (entity_id, property_name, value)
-    """
-    from grue.sexpr import parse_all, Symbol, Keyword
-    from grue.expr import quote_to_data
-
     try:
-        parts = parse_all(set_arg)
-    except Exception as e:
-        raise ValueError(f"Invalid --set syntax: '{set_arg}'. Error: {e}")
-
-    if len(parts) != 3:
-        raise ValueError(
-            f"Invalid --set format: '{set_arg}'. "
-            f"Expected '@entity :prop value' (got {len(parts)} parts)"
-        )
-
-    entity_expr, prop_expr, value_expr = parts
-
-    # Entity must be a symbol starting with @
-    if not isinstance(entity_expr, Symbol) or not entity_expr.name.startswith('@'):
-        raise ValueError(f"First argument must be an entity (@symbol), got: {entity_expr}")
-    entity_id = entity_expr.name
-
-    # Property must be a keyword
-    if not isinstance(prop_expr, Keyword):
-        raise ValueError(f"Second argument must be a keyword (:prop), got: {prop_expr}")
-    prop = prop_expr.name  # Keyword.name is without the colon
-
-    # Value is converted via quote_to_data (handles bools, numbers, strings, etc.)
-    value = quote_to_data(value_expr)
-
-    return entity_id, prop, value
-
-
-def cmd_render(args):
-    """Render an entity from a game using the scene renderer.
-
-    Note: This renders the entity in its initial game state. For dynamic
-    state rendering during gameplay, use gnusto's built-in scene renderer.
-    """
-    from gnusto.scene_renderer import SceneRenderer
-    from grue.parser import load_grue
-    from grue.runtime import GrueRuntime
-
-    game_dir, renders_dir, assets_dir = get_game_dirs(args.game_path)
-    entity_id = args.entity_id
-
-    # Ensure entity_id starts with @
-    if not entity_id.startswith("@"):
-        entity_id = f"@{entity_id}"
-
-    print(f"Loading game: {game_dir}")
-    world = load_grue(game_dir)
-    runtime = GrueRuntime(world)
-
-    # Apply --set overrides to state
-    if args.set_props:
-        print("State overrides:")
-        for set_arg in args.set_props:
-            try:
-                target_entity, prop, value = parse_set_arg(set_arg)
-                runtime.set_object_property(target_entity, prop, value)
-                print(f"  {target_entity}:{prop} = {value!r}")
-            except ValueError as e:
-                print(f"Error: {e}")
-                sys.exit(1)
-            except Exception as e:
-                print(f"Error setting {set_arg}: {e}")
-                sys.exit(1)
-
-    print(f"Renders directory: {renders_dir}")
-    print(f"Entity: {entity_id}")
-    if args.set_props:
-        print("Note: Rendering with modified state")
-    else:
-        print("Note: Rendering with initial game state")
-
-    # Initialize renderer
-    model = args.model
-    print(f"\n--- Initializing Scene Renderer (model: {model}) ---")
-    renderer = SceneRenderer(
-        runtime=runtime,
-        renders_dir=renders_dir,
-        assets_dir=assets_dir,
-        model=model,
-        verbose=args.verbose,
-    )
-
-    # Determine if it's a room, object, or reference
-    is_room = entity_id in runtime.world.rooms
-    is_object = entity_id in runtime.world.objects
-    is_reference = entity_id in runtime.world.references
-
-    if not is_room and not is_object and not is_reference:
-        print(f"Error: Entity '{entity_id}' not found in game")
-        sys.exit(1)
-
-    # Check for render spec
-    entity = (
-        runtime.world.rooms.get(entity_id) or
-        runtime.world.objects.get(entity_id) or
-        runtime.world.references.get(entity_id)
-    )
-    if not entity.render:
-        print(f"Error: Entity '{entity_id}' has no render spec")
-        sys.exit(1)
-
-    entity_type = "room" if is_room else "reference" if is_reference else "object"
-    print(f"\n--- Rendering {entity_id} ({entity_type}) ---")
-    start = time.time()
-
-    if is_room:
-        result = renderer.render_room(entity_id)
-    elif is_reference:
-        result = renderer.render_reference(entity_id)
-    else:
-        result = renderer.render_object(entity_id)
-
-    if result:
-        print(f"\nGenerated: {result}")
-        print(f"Time: {time.time() - start:.2f}s")
-
-        # Display in terminal if supported
         from gnusto.terminal_images import display_image, is_supported
         if is_supported():
             print()
-            display_image(result, width=60)
-    else:
-        print(f"\nFailed to render {entity_id}")
-        sys.exit(1)
+            display_image(output_path, width=60)
+    except ImportError:
+        pass
 
 
 # =============================================================================
@@ -570,7 +424,7 @@ def cmd_render(args):
 
 def cmd_list(args):
     """List renders in the cache/frozen directories."""
-    from grue.render_cache import RenderCache
+    from .render_cache import RenderCache
 
     game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
@@ -614,7 +468,7 @@ def cmd_list(args):
 
 def cmd_log(args):
     """Show the render log."""
-    from grue.render_cache import RenderCache
+    from .render_cache import RenderCache
 
     game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
@@ -655,7 +509,7 @@ def cmd_log(args):
 
 def cmd_clear(args):
     """Clear the render cache (preserves frozen renders)."""
-    from grue.render_cache import RenderCache
+    from .render_cache import RenderCache
 
     game_dir, renders_dir, _ = get_game_dirs(args.game_path)
     cache = RenderCache(renders_dir)
@@ -797,60 +651,6 @@ Examples:
         help="Print detailed timing information",
     )
     gen_parser.set_defaults(func=cmd_generate)
-
-    # ---------------------------------------------------------------------
-    # render subcommand
-    # ---------------------------------------------------------------------
-    render_parser = subparsers.add_parser(
-        "render",
-        help="Render an entity from a game (initial state)",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""\
-Renders an entity using its render spec in the initial game state.
-Useful for testing render specs and pre-caching initial images.
-
-For dynamic state rendering during gameplay, use gnusto's built-in
-scene renderer which has access to live game state.
-
-Examples:
-  filfre render --model nanobanana games/lurkinghorror @terminal-room
-  filfre render --model flux games/lurkinghorror @brass-lantern
-
-  # Render with modified state (uses Grue syntax):
-  filfre render --model nanobanana games/lurkinghorror @refrigerator --set '@refrigerator :open true'
-        """,
-    )
-    render_parser.add_argument(
-        "--model", "-m",
-        type=str,
-        required=True,
-        choices=VALID_MODELS,
-        help="Image generation model: flux (local CUDA) or nanobanana (Google cloud API)",
-    )
-    render_parser.add_argument(
-        "game_path",
-        type=str,
-        help="Path to the game directory",
-    )
-    render_parser.add_argument(
-        "entity_id",
-        type=str,
-        help="Entity ID to render (e.g., @terminal-room, @brass-lantern)",
-    )
-    render_parser.add_argument(
-        "--set", "-s",
-        type=str,
-        action="append",
-        dest="set_props",
-        metavar="'@ENTITY :PROP VALUE'",
-        help="Set object property before rendering using Grue syntax (can be repeated)",
-    )
-    render_parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Show full prompt and render parameters",
-    )
-    render_parser.set_defaults(func=cmd_render)
 
     # ---------------------------------------------------------------------
     # list subcommand

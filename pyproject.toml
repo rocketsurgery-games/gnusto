@@ -8,6 +8,17 @@ version = "0.1.0"
 description = "Gnusto: LLM-powered interactive fiction system using the Grue language"
 requires-python = ">=3.11"
 dependencies = [
+    "pillow",
+    "anthropic>=0.75.0",
+    "pyyaml>=6.0.3",
+    "litellm>=1.81.0",
+    "rich>=14.2.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[project.optional-dependencies]
+render = [
     "torch>=2.6.0",
     "torchvision",
     "transformers>=4.45.0",
@@ -15,14 +26,7 @@ dependencies = [
     "diffusers>=0.32.0",
     "sentencepiece",
     "protobuf",
-    "pillow",
-    "anthropic>=0.75.0",
-    "pyyaml>=6.0.3",
-    "litellm>=1.81.0",
     "google-genai>=1.0.0",
-    "rich>=14.2.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0",
     # OmniGen2 dependencies (vendor/omnigen2)
     "einops",
     "timm",
@@ -30,8 +34,6 @@ dependencies = [
     "scipy",
     "omegaconf",
 ]
-
-[project.optional-dependencies]
 dev = [
     "ipython",
 ]
@@ -51,28 +53,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
-
-# Ensure uv resolves dependencies for both platforms
-[tool.uv]
-required-environments = [
-    "sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "sys_platform == 'linux' and platform_machine == 'aarch64'",
-]
-
-[tool.uv.sources]
-# Use CUDA wheels on Linux, standard PyPI wheels on macOS (with MPS support)
-torch = [
-    { index = "pytorch-cu130", marker = "sys_platform == 'linux'" },
-]
-torchvision = [
-    { index = "pytorch-cu130", marker = "sys_platform == 'linux'" },
-]
-diffusers = { git = "https://github.com/huggingface/diffusers.git" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

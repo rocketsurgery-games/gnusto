@@ -38,13 +38,11 @@
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
           counter are a refrigerator and a microwave."
-  :rdesc "dirty 1980s university kitchen with fluorescent lighting"
-
   ; kitchen.jpg:
   ; A 1980s university break room kitchen, dirty counter, fluorescent lighting, no windows, no people present, wide
   ; angle view showing full room, with refrigerator and microwave. Dirty, but not foul or with anything broken.
   ; Refs: @microwave, @refrigerator
-  :render (:ref "refs/kitchen.jpg" "containing:" :contents)
+  :render "refs/kitchen.jpg"
 
   :properties (:lit true)
   :exits ((east :to @cs-2nd)))
@@ -57,19 +55,13 @@
   :location @kitchen
   :properties (:nodesc true :searchable true :container true :transparent true :openable true :capacity 30 :timer 0 :temp 0)
 
-  :rdesc (fn ()
-    (cond
-      ((:open self) "open microwave oven")
-      ((queued? microwave-running) "running microwave oven with turntable spinning")
-      (true "closed microwave oven")))
-
   ; microwave.jpg:
   ; A 1980s microwave oven with door closed, mounted above a counter.
   :render (fn ()
     (cond
-      ((:open self) '(:ref "refs/microwave-open.jpg"))
-      ((queued? microwave-running) '(:ref "refs/microwave-running.jpg"))
-      (true '(:ref "refs/microwave.jpg"))))
+      ((:open self) "refs/microwave-open.jpg")
+      ((queued? microwave-running) "refs/microwave-running.jpg")
+      (true "refs/microwave.jpg")))
 
   :behaviors (
     :examine (fn ()
@@ -202,7 +194,6 @@
 
 (object @controls
   :description "microwave controls"
-  :rdesc "microwave control panel"
   :location @kitchen
   :properties (:nodesc true)
   :behaviors (
@@ -221,7 +212,6 @@
 
 (object @readout
   :description "display"
-  :rdesc "LED display"
   :location @kitchen
   :properties (:nodesc true)
   :behaviors (
@@ -237,7 +227,6 @@
 
 (object @kitchen-counter
   :description "kitchen counter"
-  :rdesc "dirty kitchen counter"
   :location @kitchen
   :properties (:nodesc true :open true :container true :searchable true :surface true :capacity 200))
 
@@ -249,10 +238,6 @@
   :location @kitchen
   :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
 
-  :rdesc (fn ()
-    (if (:open self) "open refrigerator with cluttered shelves"
-                     "closed refrigerator with notes on door"))
-
   ; refrigerator.jpg:
   ;   An old white refrigerator with notes and papers stuck to the front.
   ; refrigerator-open.jpg:
@@ -260,8 +245,8 @@
   ;   with soggy lunch bags and old food containers.
   ;   refs: @refrigerator
   :render (fn ()
-    (if (:open self) '(:ref "refs/refrigerator-open.jpg")
-                     '(:ref "refs/refrigerator.jpg")))
+    (if (:open self) "refs/refrigerator-open.jpg"
+                     "refs/refrigerator.jpg"))
 
   :behaviors (
     :examine (fn ()

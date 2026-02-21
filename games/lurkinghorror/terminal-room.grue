@@ -9,10 +9,7 @@
   ; A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
   ; Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
   ; Dim fluorescent lighting. The room is completely empty of people - no one is here.
-  :render (
-    "A terminal room" :ref "refs/terminal-room.jpg"
-    "with the following objects:" :contents
-    ". The hacker is sitting at one of the PCs.") ; TODO: Hack!
+  :render "refs/terminal-room.jpg"
 
   :properties (
     :lit true

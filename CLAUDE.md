@@ -95,9 +95,6 @@ that creates gratuitous fireworks. See `docs/filfre.md` for detailed documentati
 filfre generate --prompt "A troll under a bridge" --output troll.png
 filfre generate --prompt "A scene" -r lantern.png -r table.png -o scene.png
 
-# Render game entities (initial state)
-filfre render games/lurkinghorror @terminal-room
-
 # Manage render cache
 filfre list games/lurkinghorror
 filfre log games/lurkinghorror
