@@ -22,9 +22,9 @@ from rich.rule import Rule
 
 from .agent import GameSession
 from .commands import handle_command
-from .llm import ImageRequest
 from .render import (
-    ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage, DebugInfo,
+    ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
+    Reveal, Focus, Image, SystemMessage, DebugInfo,
     build_room_block,
 )
 from .state import get_game_state
@@ -138,7 +138,31 @@ class SimpleTUI:
         elif isinstance(block, ActionResult):
             self.console.print(Text(block.text, style="dim"))
 
-        elif isinstance(block, Narrative):
+        elif isinstance(block, Narrate):
+            styled = style_narrative(block.text)
+            self.console.print(styled)
+            self.console.print()
+
+        elif isinstance(block, Speak):
+            # Bold speaker name + yellow italic quoted text + dim manner
+            speaker_name = block.speaker.replace("@", "").replace("-", " ").title()
+            speaker_text = Text(f"{speaker_name}: ", style="bold")
+            dialogue = Text(f'"{block.text}"', style="italic yellow")
+            line = speaker_text + dialogue
+            if block.manner:
+                line.append(f" ({block.manner})", style="dim italic")
+            self.console.print(line)
+            self.console.print()
+
+        elif isinstance(block, Think):
+            self.console.print(Text(block.text, style="italic magenta"))
+            self.console.print()
+
+        elif isinstance(block, Ambient):
+            self.console.print(Text(block.text, style="dim italic"))
+            self.console.print()
+
+        elif isinstance(block, (Reveal, Focus)):
             styled = style_narrative(block.text)
             self.console.print(styled)
             self.console.print()
@@ -297,7 +321,7 @@ class SimpleTUI:
 
         # Show intro
         if self.session.runtime.world.intro:
-            self.render_block(Narrative(self.session.runtime.world.intro))
+            self.render_block(Narrate(self.session.runtime.world.intro))
 
         # Show initial room state
         state = get_game_state(self.session.runtime)
@@ -346,13 +370,9 @@ class SimpleTUI:
             previous_room = self._last_room
 
             # Stream LLM outputs as they arrive
-            def on_narrative(text: str) -> None:
-                if text:
-                    self.render_block(Narrative(text=text))
-
-            def on_image(image: ImageRequest) -> None:
-                # TUI can't display images, just note they exist
-                self.render_block(Image(src=image.path, alt=image.alt))
+            def on_blocks(blocks: list) -> None:
+                for block in blocks:
+                    self.render_block(block)
 
             def on_debug(action_sexpr: str, result_details: str) -> None:
                 # Show action S-expr and result details as debug info
@@ -361,8 +381,7 @@ class SimpleTUI:
             # Process command - outputs are streamed via callbacks
             self.session.process_input(
                 user_input,
-                on_narrative=on_narrative,
-                on_image=on_image,
+                on_blocks=on_blocks,
                 on_debug=on_debug if self.session.debug else None,
             )
 

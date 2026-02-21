@@ -53,7 +53,7 @@ def render_block_to_text(block: ContentBlock) -> str:
     elif isinstance(block, DebugInfo):
         return f"  [{block.label}] {block.content}"
     else:
-        # ActionResult, Narrative, Image - just return text if available
+        # ActionResult, Narrate, Speak, etc. - just return text if available
         return getattr(block, "text", str(block))
 
 

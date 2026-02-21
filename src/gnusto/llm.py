@@ -46,12 +46,13 @@ class ActionRequest:
 
 
 @dataclass
-class ImageRequest:
-    """An image to display."""
-    path: str  # e.g., "/renders/terminal-room.png"
-    alt: str = ""
-    layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
-    size: Literal["small", "medium", "large", "full"] = "medium"
+class ContentBlockData:
+    """A content block from the LLM (flat schema, nullable fields)."""
+    type: Literal["narrate", "speak", "think", "ambient", "reveal", "focus"]
+    text: str
+    speaker: str | None = None   # For speak blocks
+    manner: str | None = None    # For speak blocks
+    entity: str | None = None    # For reveal/focus blocks
 
 
 @dataclass
@@ -61,11 +62,8 @@ class AgentResponse:
     # Actions to execute (if any)
     actions: list[ActionRequest] = field(default_factory=list)
 
-    # Narrative text to display (if any)
-    narrative: str | None = None
-
-    # Images to show (if any)
-    images: list[ImageRequest] = field(default_factory=list)
+    # Content blocks (replaces narrative + images)
+    blocks: list[ContentBlockData] = field(default_factory=list)
 
     # Should we stop and wait for player input?
     # Set to True when something unexpected happens mid-sequence
@@ -111,36 +109,35 @@ AGENT_RESPONSE_SCHEMA = {
                 "required": ["tool"]
             }
         },
-        "narrative": {
-            "type": ["string", "null"],
-            "description": "Narrative text describing what happened. Preserve dialogue verbatim. Use null if no narrative yet."
-        },
-        "images": {
+        "blocks": {
             "type": "array",
-            "description": "Images to display with the narrative.",
+            "description": "Content blocks for the narrative output. Each block has a type and text, plus optional fields.",
             "items": {
                 "type": "object",
                 "properties": {
-                    "path": {
+                    "type": {
                         "type": "string",
-                        "description": "Image path (e.g., /renders/terminal-room.png)"
+                        "enum": ["narrate", "speak", "think", "ambient", "reveal", "focus"],
+                        "description": "Block type"
                     },
-                    "alt": {
+                    "text": {
                         "type": "string",
-                        "description": "Alt text for the image"
+                        "description": "The text content of the block"
                     },
-                    "layout": {
-                        "type": "string",
-                        "enum": ["inline", "float-left", "float-right", "background"],
-                        "description": "How to position the image"
+                    "speaker": {
+                        "type": ["string", "null"],
+                        "description": "For speak: the speaker entity ID (e.g., @hacker)"
                     },
-                    "size": {
-                        "type": "string",
-                        "enum": ["small", "medium", "large", "full"],
-                        "description": "Image size"
+                    "manner": {
+                        "type": ["string", "null"],
+                        "description": "For speak: how they say it (e.g., whispering, shouting)"
+                    },
+                    "entity": {
+                        "type": ["string", "null"],
+                        "description": "For reveal/focus: the entity ID to show an image of"
                     }
                 },
-                "required": ["path"]
+                "required": ["type", "text"]
             }
         },
         "needs_player_input": {
@@ -295,9 +292,9 @@ class LLMClient:
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
-            # Fall back to empty response on parse error
+            # Fall back to error block on parse error
             return AgentResponse(
-                narrative=f"[Error parsing response: {e}]",
+                blocks=[ContentBlockData(type="narrate", text=f"[Error parsing response: {e}]")],
                 needs_player_input=True,
                 raw=response,
             )
@@ -313,32 +310,55 @@ class LLMClient:
                 direction=action_data.get("direction"),
             ))
 
-        # Parse images (deduplicate by path)
-        images = []
-        seen_paths: set[str] = set()
-        for image_data in data.get("images", []):
-            path = image_data.get("path", "")
-            if path and path not in seen_paths:
-                seen_paths.add(path)
-                images.append(ImageRequest(
-                    path=path,
-                    alt=image_data.get("alt", ""),
-                    layout=image_data.get("layout", "inline"),
-                    size=image_data.get("size", "medium"),
-                ))
-
-        # Handle narrative - treat "null" string as None (LLM sometimes does this)
-        narrative = data.get("narrative")
-        if narrative == "null":
-            narrative = None
+        # Parse content blocks
+        blocks = []
+        for block_data in data.get("blocks", []):
+            block_type = block_data.get("type", "narrate")
+            text = block_data.get("text", "")
+            if not text:
+                continue
+            speaker = block_data.get("speaker")
+            if speaker == "null":
+                speaker = None
+            manner = block_data.get("manner")
+            if manner == "null":
+                manner = None
+            entity = block_data.get("entity")
+            if entity == "null":
+                entity = None
+            blocks.append(ContentBlockData(
+                type=block_type,
+                text=text,
+                speaker=speaker,
+                manner=manner,
+                entity=entity,
+            ))
 
         return AgentResponse(
             actions=actions,
-            narrative=narrative,
-            images=images,
+            blocks=blocks,
             needs_player_input=data.get("needs_player_input", False),
             raw=response,
         )
+
+
+def content_block_data_to_render(block: ContentBlockData) -> "render.ContentBlock":
+    """Convert a ContentBlockData (from LLM) to a typed render block."""
+    from . import render
+    if block.type == "narrate":
+        return render.Narrate(text=block.text)
+    elif block.type == "speak":
+        return render.Speak(speaker=block.speaker or "unknown", text=block.text, manner=block.manner)
+    elif block.type == "think":
+        return render.Think(text=block.text)
+    elif block.type == "ambient":
+        return render.Ambient(text=block.text)
+    elif block.type == "reveal":
+        return render.Reveal(text=block.text, entity=block.entity)
+    elif block.type == "focus":
+        return render.Focus(text=block.text, entity=block.entity)
+    else:
+        return render.Narrate(text=block.text)
 
 
 # =============================================================================

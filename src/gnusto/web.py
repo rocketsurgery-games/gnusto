@@ -18,9 +18,9 @@ from fastapi.responses import FileResponse
 
 from .agent import GameSession
 from .commands import handle_command as handle_slash_command
-from .llm import ImageRequest
 from .render import (
-    ContentBlock, RoomEnter, ActionResult, Narrative, Image, SystemMessage,
+    ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
+    Reveal, Focus, Image, SystemMessage, DebugInfo,
     build_room_block,
 )
 from .state import get_game_state
@@ -48,10 +48,39 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "type": "action_result",
             "text": block.text,
         }
-    elif isinstance(block, Narrative):
+    elif isinstance(block, Narrate):
         return {
-            "type": "narrative",
+            "type": "narrate",
             "text": block.text,
+        }
+    elif isinstance(block, Speak):
+        return {
+            "type": "speak",
+            "text": block.text,
+            "speaker": block.speaker,
+            "manner": block.manner,
+        }
+    elif isinstance(block, Think):
+        return {
+            "type": "think",
+            "text": block.text,
+        }
+    elif isinstance(block, Ambient):
+        return {
+            "type": "ambient",
+            "text": block.text,
+        }
+    elif isinstance(block, Reveal):
+        return {
+            "type": "reveal",
+            "text": block.text,
+            "entity": block.entity,
+        }
+    elif isinstance(block, Focus):
+        return {
+            "type": "focus",
+            "text": block.text,
+            "entity": block.entity,
         }
     elif isinstance(block, Image):
         return {
@@ -66,6 +95,12 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "type": "system",
             "text": block.text,
             "level": block.level,
+        }
+    elif isinstance(block, DebugInfo):
+        return {
+            "type": "debug",
+            "label": block.label,
+            "content": block.content,
         }
     else:
         return {"type": "unknown", "text": str(block)}
@@ -242,7 +277,7 @@ async def send_initial_state(
 
     # Add intro if present
     if session.runtime.world.intro:
-        blocks.append(Narrative(text=session.runtime.world.intro))
+        blocks.append(Narrate(text=session.runtime.world.intro))
 
     # Add initial room state
     state = get_game_state(session.runtime)
@@ -313,6 +348,38 @@ async def handle_slash_command_ws(
     return session, True
 
 
+def _build_scene_context(session: GameSession) -> dict[str, Any]:
+    """Build scene context with entity metadata for the frontend."""
+    state = get_game_state(session.runtime)
+    entities: dict[str, dict[str, Any]] = {}
+
+    # Build image lookup from session images (subject -> path)
+    image_by_subject: dict[str, str] = {}
+    if session.all_images:
+        for img in session.all_images:
+            image_by_subject[img.subject] = img.path
+
+    # Add visible objects
+    for obj in state.visible_objects:
+        entity_id = obj.id
+        image_url = image_by_subject.get(entity_id)
+        entities[entity_id] = {
+            "name": obj.description,
+            "image": image_url,
+        }
+
+    # Add inventory items
+    for obj in state.inventory:
+        entity_id = obj.id
+        if entity_id not in entities:
+            entities[entity_id] = {
+                "name": obj.description,
+                "image": None,
+            }
+
+    return {"type": "scene_context", "entities": entities}
+
+
 async def handle_game_command(
     websocket: WebSocket,
     session: GameSession,
@@ -324,31 +391,29 @@ async def handle_game_command(
     """Process a player command and send results, streaming LLM outputs."""
     loop = asyncio.get_running_loop()
 
+    # Send scene context before processing
+    scene_ctx = _build_scene_context(session)
+    await websocket.send_text(json.dumps(scene_ctx))
+
     # Track futures for streamed content
     send_futures: list[concurrent.futures.Future] = []
 
-    def on_narrative(text: str) -> None:
-        """Stream LLM narrative immediately via websocket."""
-        if text:
-            block = Narrative(text=text)
-            future = asyncio.run_coroutine_threadsafe(
-                websocket.send_text(json.dumps({
-                    "type": "blocks",
-                    "blocks": [block_to_dict(block)],
-                })),
-                loop
-            )
-            send_futures.append(future)
-            time.sleep(0.01)
-
-    def on_image(image: ImageRequest) -> None:
-        """Stream image immediately via websocket."""
-        block = Image(
-            src=image.path,
-            alt=image.alt,
-            layout=image.layout,
-            size=image.size,
+    def on_blocks(blocks: list) -> None:
+        """Stream content blocks immediately via websocket."""
+        block_dicts = [block_to_dict(b) for b in blocks]
+        future = asyncio.run_coroutine_threadsafe(
+            websocket.send_text(json.dumps({
+                "type": "blocks",
+                "blocks": block_dicts,
+            })),
+            loop
         )
+        send_futures.append(future)
+        time.sleep(0.01)
+
+    def on_debug(action_sexpr: str, result_details: str) -> None:
+        """Stream debug info as a DebugInfo block via websocket."""
+        block = DebugInfo(label=action_sexpr, content=result_details)
         future = asyncio.run_coroutine_threadsafe(
             websocket.send_text(json.dumps({
                 "type": "blocks",
@@ -361,7 +426,11 @@ async def handle_game_command(
 
     # Run process_input in thread pool so event loop stays responsive
     def do_process() -> None:
-        session.process_input(command, on_narrative=on_narrative, on_image=on_image)
+        session.process_input(
+            command,
+            on_blocks=on_blocks,
+            on_debug=on_debug if session.debug else None,
+        )
 
     await loop.run_in_executor(None, do_process)
 

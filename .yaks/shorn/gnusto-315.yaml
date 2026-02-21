@@ -4,23 +4,47 @@ type: task
 priority: 1
 created: '2026-01-22T12:43:52.448185-05:00'
 updated: '2026-02-08T19:07:10.957526Z'
-description: "## Problem\nBackward static analysis fails for LH because it can't trace\
-  \ through complex mechanics:\n\n### Gap 1: Effect Analysis\n- Dynamic moves like\
-  \ `(move @frob ,(loc @player))` not captured\n- Effects inside helper functions\
-  \ (defn) not associated with behaviors\n- Result: `@frob:location` shows 0 modifiers\n\
-  \n### Gap 2: Backward Tracing\n- Can't follow function calls to find preconditions\n\
-  - Can't trace event queue relationships:\n  - `plug-power-line` calls `(queue frob-appears\
-  \ -1)`\n  - `frob-appears:on_turn` does `(set @frob :count ...)`\n  - Need to connect:\
-  \ behavior \u2192 queue \u2192 event \u2192 effect\n- Can't handle quasiquote conditional\
-  \ structures\n\n## Investigation Areas\n\n### 1. Event Queue Tracking\nThe key insight:\
-  \ `(queue event-name N)` is effectively a precondition for `event-name:on_turn`.\n\
-  \nCould we:\n- Track which behaviors call `(queue X ...)`\n- Treat those as \"achievers\"\
-  \ for event X's effects\n- Extract preconditions from those behaviors instead\n\n\
-  ### 2. Function Inlining\nFor `defn` helpers like `plug-power-line`:\n- Could inline\
-  \ function bodies during effect analysis\n- Or track which behaviors call which\
-  \ functions\n\n### 3. Quasiquote Handling\nThe pattern `(cond (test1 \\`((effect1)))\
-  \ (test2 \\`((effect2))))` is common.\n- Each branch's effects are conditional on\
-  \ the test\n- Need to extract both the effects AND the conditions\n\n## Acceptance\
-  \ Criteria\n- [ ] Backward analysis finds preconditions for `@frob:count >= 2`\n\
-  - [ ] Preconditions include: gloves worn, boots worn, etc.\n- [ ] Constraint hierarchy\
-  \ has meaningful depth for LH"
+description: |
+  ## Problem
+  Backward static analysis fails for LH because it can't trace
+    through complex mechanics:
+
+  ### Gap 1: Effect Analysis
+  - Dynamic moves like
+    `(move @frob ,(loc @player))` not captured
+  - Effects inside helper functions (defn) not associated with behaviors
+  - Result: `@frob:location` shows 0 modifiers
+    
+  ### Gap 2: Backward Tracing
+  - Can't follow function calls to find preconditions
+  - Can't trace event queue relationships:
+  - `plug-power-line` calls `(queue frob-appears-1)`
+  - `frob-appears:on_turn` does `(set @frob :count ...)`
+  - Need to connect: behavior u2192 queue u2192 event u2192 effect
+  - Can't handle quasiquote conditional structures
+
+  ## Investigation Areas
+
+  ### 1. Event Queue Tracking
+  The key insight:
+    `(queue event-name N)` is effectively a precondition for `event-name:on_turn`.
+    
+  Could we:
+  - Track which behaviors call `(queue X ...)`
+  - Treat those as "achievers" for event X's effects
+  - Extract preconditions from those behaviors instead
+
+  ### 2. Function Inlining
+  For `defn` helpers like `plug-power-line`:
+  - Could inline function bodies during effect analysis
+  - Or track which behaviors call which functions
+
+  ### 3. Quasiquote Handling
+  The pattern `(cond (test1 `((effect1))) (test2 `((effect2))))` is common.
+  - Each branch's effects are conditional on the test
+  - Need to extract both the effects AND the conditions
+
+  ## Acceptance Criteria
+  - [ ] Backward analysis finds preconditions for `@frob:count >= 2`
+  - [ ] Preconditions include: gloves worn, boots worn, etc.
+  - [ ] Constraint hierarchy has meaningful depth for LH"

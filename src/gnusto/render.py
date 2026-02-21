@@ -33,14 +33,48 @@ class ActionResult:
 
 
 @dataclass
-class Narrative:
-    """LLM-generated prose."""
+class Narrate:
+    """LLM-generated second-person prose."""
     text: str
 
 
 @dataclass
+class Speak:
+    """Character dialogue."""
+    speaker: str  # Entity ID, e.g. "@hacker"
+    text: str
+    manner: str | None = None  # e.g. "whispering", "shouting"
+
+
+@dataclass
+class Think:
+    """Player's inner monologue / dramatic moment."""
+    text: str
+
+
+@dataclass
+class Ambient:
+    """Atmospheric detail."""
+    text: str
+
+
+@dataclass
+class Reveal:
+    """Discovery of something new."""
+    text: str
+    entity: str | None = None  # Entity ID for image lookup
+
+
+@dataclass
+class Focus:
+    """Close-up on an entity."""
+    text: str
+    entity: str | None = None  # Entity ID for image lookup
+
+
+@dataclass
 class Image:
-    """An image to display."""
+    """An image to display (system-generated, not from LLM)."""
     src: str  # Path relative to game directory
     alt: str = ""
     layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
@@ -62,7 +96,10 @@ class DebugInfo:
 
 
 # Union type for all content blocks
-ContentBlock = RoomEnter | ActionResult | Narrative | Image | SystemMessage | DebugInfo
+ContentBlock = (
+    RoomEnter | ActionResult | Narrate | Speak | Think | Ambient | Reveal | Focus
+    | Image | SystemMessage | DebugInfo
+)
 
 
 def build_room_block(
@@ -102,48 +139,6 @@ def build_room_block(
         inventory=[obj.description for obj in state.inventory],
         image=image_url,
     )
-
-
-def build_turn_output(
-    action_results: list[str],
-    narrative: str,
-    state: "GameState",
-    runtime: "GrueRuntime",
-    previous_room: str | None = None,
-    game_dir: Path | None = None,
-) -> list[ContentBlock]:
-    """
-    Build content blocks for a completed turn.
-
-    Args:
-        action_results: List of action result strings (from effects)
-        narrative: LLM-generated narrative text
-        state: Current game state after the turn
-        runtime: Game runtime
-        previous_room: Room ID before the turn (to detect room changes)
-        game_dir: Game directory for resolving image paths
-
-    Returns:
-        List of ContentBlock objects to render
-    """
-    blocks: list[ContentBlock] = []
-
-    # Add action results (skip empty or "Done.")
-    for result in action_results:
-        if result and result != "Done.":
-            blocks.append(ActionResult(text=result))
-
-    # Add narrative if present
-    if narrative:
-        blocks.append(Narrative(text=narrative))
-
-    # Add room block if room changed (or if no previous room - initial state)
-    room_changed = previous_room is None or state.room != previous_room
-    if room_changed:
-        room_block = build_room_block(state, runtime, game_dir)
-        blocks.append(room_block)
-
-    return blocks
 
 
 def format_room_enter(room: RoomEnter) -> str:

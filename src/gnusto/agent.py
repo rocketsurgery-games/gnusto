@@ -7,7 +7,6 @@ results. The default mode uses plain text for automation compatibility.
 """
 
 import json
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -20,24 +19,25 @@ from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .commands import handle_command, render_blocks_to_text
 from .images import scan_images, filter_images_for_state, format_image_catalog, add_renderable_entities, ImageInfo
-from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ImageRequest
+from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ContentBlockData, content_block_data_to_render
+from .render import ContentBlock
 from .state import GameState, ObjectInfo, get_game_state
 
 SYSTEM_PROMPT = """\
 You are the narrator for an interactive fiction game. You interpret the player's commands,
-execute game actions, and narrate the results.
+execute game actions, and narrate the results using structured content blocks.
 
 You MUST respond with valid JSON matching this schema:
 ```json
 {
-  "actions": [
-    {"tool": "do_action", "target": "@object-id", "verb": "examine", "args": []},
-    {"tool": "move", "direction": "north"},
-    {"tool": "wait"}
-  ],
-  "narrative": "Your narrative text here...",
-  "images": [
-    {"path": "/renders/image.png", "alt": "description", "layout": "inline", "size": "medium"}
+  "actions": [...],
+  "blocks": [
+    {"type": "narrate", "text": "..."},
+    {"type": "speak", "text": "...", "speaker": "@entity-id", "manner": null},
+    {"type": "think", "text": "..."},
+    {"type": "ambient", "text": "..."},
+    {"type": "reveal", "text": "...", "entity": "@entity-id"},
+    {"type": "focus", "text": "...", "entity": "@entity-id"}
   ],
   "needs_player_input": false
 }
@@ -56,42 +56,45 @@ Match natural language to object IDs from the game state:
 - "his keyring" or "the keys" → @keyring
 - "the computer" or "terminal" → @pc
 
-## Narrative Guidelines
+## Content Blocks
 
-- **Preserve dialogue verbatim**: Quote characters' exact words
-- **Be concise**: 1-3 sentences, don't pad with atmosphere
-- **Second person**: "You examine the terminal..."
+Use these block types to structure your narrative output:
 
-## Images
+- **narrate**: Second-person prose describing what happens. "You step forward and peer into the darkness."
+- **speak**: Character dialogue. Set `speaker` to the entity ID (e.g., `@hacker`). Set optional `manner` for delivery (e.g., "whispering", "shouting"). The `text` is the spoken words only, without quotes.
+- **think**: Player's inner monologue or dramatic realization. Use sparingly for significant moments.
+- **ambient**: Atmospheric detail — sounds, smells, temperature. Sets mood without advancing action.
+- **reveal**: Discovery of something new or important. Set `entity` if a specific object is being discovered.
+- **focus**: Close-up examination of an entity. Set `entity` to the object/character ID being examined. The system will display the entity's image alongside the text.
 
-Include images to enhance the narrative when focusing on specific objects or characters.
+### Block Guidelines
 
-**Important:**
-- Room images are already displayed in the UI header - DON'T include them
-- Only include images for objects/characters the player is examining or interacting with
-- Never include the same image twice
-- Use at most ONE image per response
-
-Layouts: `inline`, `float-left`, `float-right`, `background`
-Sizes: `small`, `medium`, `large`, `full`
+- Use `narrate` as your default — most prose should be narrate blocks
+- Use `speak` for ALL character dialogue, with `@entity` speaker IDs
+- Use `focus` when the player examines or closely interacts with an entity
+- Use `reveal` when something new is discovered or first noticed
+- Use `ambient` for atmosphere that enriches the scene
+- Use `think` sparingly — only for dramatic moments
+- Do NOT describe room transitions — the system handles those automatically
+- Be concise: 1-3 blocks per response is typical, rarely more than 5
+- Preserve dialogue verbatim in speak blocks
 
 ## Flow
 
 1. If you need to execute actions, put them in `actions` and set `needs_player_input: false`
-2. After seeing action results, narrate what happened and decide if more actions are needed
+2. After seeing action results, narrate what happened using blocks and decide if more actions are needed
 3. Set `needs_player_input: true` when:
    - You're done with the player's request
    - Something unexpected happened (stop the sequence!)
    - You need clarification
 
-## Example Response
+## Examples
 
 Player says "ask the hacker about his keys":
 ```json
 {
   "actions": [{"tool": "do_action", "target": "@hacker", "verb": "ask", "args": ["@keyring"]}],
-  "narrative": null,
-  "images": [],
+  "blocks": [],
   "needs_player_input": false
 }
 ```
@@ -100,8 +103,22 @@ After seeing the result:
 ```json
 {
   "actions": [],
-  "narrative": "The hacker looks up from his terminal. \"Oh, this?\" He holds up a worn keyring. \"It's my master key. Opens every door in the building.\"",
-  "images": [{"path": "/renders/hacker.png", "layout": "float-right", "size": "small"}],
+  "blocks": [
+    {"type": "focus", "text": "The hacker looks up from his terminal, a glint of amusement in his eyes.", "entity": "@hacker", "speaker": null, "manner": null},
+    {"type": "speak", "text": "Oh, this? It's my master key. Opens every door in the building.", "speaker": "@hacker", "manner": "casually", "entity": null}
+  ],
+  "needs_player_input": true
+}
+```
+
+Player says "look around":
+```json
+{
+  "actions": [],
+  "blocks": [
+    {"type": "ambient", "text": "The fluorescent lights hum overhead, casting a sterile glow across the cluttered workstations.", "speaker": null, "manner": null, "entity": null},
+    {"type": "narrate", "text": "You take in your surroundings, noting the scattered papers and half-empty coffee cups.", "speaker": null, "manner": null, "entity": null}
+  ],
   "needs_player_input": true
 }
 ```
@@ -453,8 +470,7 @@ class GameSession:
         self,
         user_input: str,
         max_iterations: int = 10,
-        on_narrative: "Callable[[str], None] | None" = None,
-        on_image: "Callable[[ImageRequest], None] | None" = None,
+        on_blocks: "Callable[[list[ContentBlock]], None] | None" = None,
         on_debug: "Callable[[str, str], None] | None" = None,
     ) -> tuple[str, list[str]]:
         """
@@ -462,15 +478,14 @@ class GameSession:
 
         Uses structured JSON output from the LLM. The loop:
         1. Send game state + player command
-        2. LLM returns actions, narrative, images
+        2. LLM returns actions + content blocks
         3. Execute actions, collect results
         4. If needs_player_input, stop; otherwise add results and loop
 
         Args:
             user_input: Natural language command from player
             max_iterations: Maximum number of LLM calls (default 10)
-            on_narrative: Optional callback for streaming narrative text
-            on_image: Optional callback for streaming image requests
+            on_blocks: Optional callback for streaming content blocks
             on_debug: Optional callback for debug info (label, content)
 
         Returns:
@@ -486,7 +501,7 @@ class GameSession:
         all_results: list[str] = []  # Raw results for caller
         all_actions: list[str] = []  # Action summaries for TurnRecord
         all_action_results: list[str] = []  # Results paired with actions for TurnRecord
-        all_narratives: list[str] = []  # LLM narratives per step
+        all_narratives: list[str] = []  # Flattened block text for history
         iteration = 0
 
         while iteration < max_iterations:
@@ -501,16 +516,14 @@ class GameSession:
                     error_msg = error_msg[:200] + "..."
                 return f"[LLM error: {error_msg}. Please try again.]", []
 
-            # Emit images first (so they appear before narrative)
-            for image in response.images:
-                if on_image:
-                    on_image(image)
-
-            # Emit narrative
-            if response.narrative:
-                all_narratives.append(response.narrative)
-                if on_narrative:
-                    on_narrative(response.narrative)
+            # Convert and emit content blocks
+            if response.blocks:
+                render_blocks = [content_block_data_to_render(b) for b in response.blocks]
+                if on_blocks:
+                    on_blocks(render_blocks)
+                # Flatten block text for history
+                for b in response.blocks:
+                    all_narratives.append(b.text)
 
             # If no actions or needs player input, we're done
             if not response.actions or response.needs_player_input:
@@ -540,8 +553,7 @@ class GameSession:
                 "role": "assistant",
                 "content": json.dumps({
                     "actions": [{"tool": a.tool, "target": a.target, "verb": a.verb, "args": a.args, "direction": a.direction} for a in response.actions],
-                    "narrative": response.narrative,
-                    "images": [{"path": i.path, "layout": i.layout, "size": i.size} for i in response.images],
+                    "blocks": [{"type": b.type, "text": b.text, "speaker": b.speaker, "manner": b.manner, "entity": b.entity} for b in response.blocks],
                     "needs_player_input": response.needs_player_input,
                 })
             })
@@ -563,7 +575,7 @@ class GameSession:
             state_context = state.to_context_string()
             working_messages.append({
                 "role": "user",
-                "content": f"[Updated game state:]\n{state_context}\n\n{image_context}\n\nNarrate what happened, then continue or set needs_player_input to true if done."
+                "content": f"[Updated game state:]\n{state_context}\n\n{image_context}\n\nNarrate what happened using content blocks, then continue or set needs_player_input to true if done."
             })
 
         else:
@@ -918,10 +930,12 @@ def play_game(game_path: str, debug: bool = False) -> None:
             break
 
         # Process game command with streaming output
-        def on_narrative(text: str) -> None:
-            if text:
-                print()
-                print(text)
+        def on_blocks(blocks: list[ContentBlock]) -> None:
+            for block in blocks:
+                text = getattr(block, "text", "")
+                if text:
+                    print()
+                    print(text)
 
         def on_debug(action_sexpr: str, result_details: str) -> None:
             # Show action as S-expression, then result details indented
@@ -933,7 +947,7 @@ def play_game(game_path: str, debug: bool = False) -> None:
 
         session.process_input(
             user_input,
-            on_narrative=on_narrative,
+            on_blocks=on_blocks,
             on_debug=on_debug if session.debug else None,
         )
 

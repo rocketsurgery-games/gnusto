@@ -24,9 +24,38 @@ interface ActionResultBlock {
   text: string
 }
 
-interface NarrativeBlock {
-  type: 'narrative'
+interface NarrateBlock {
+  type: 'narrate'
   text: string
+}
+
+interface SpeakBlock {
+  type: 'speak'
+  text: string
+  speaker: string | null
+  manner: string | null
+}
+
+interface ThinkBlock {
+  type: 'think'
+  text: string
+}
+
+interface AmbientBlock {
+  type: 'ambient'
+  text: string
+}
+
+interface RevealBlock {
+  type: 'reveal'
+  text: string
+  entity: string | null
+}
+
+interface FocusBlock {
+  type: 'focus'
+  text: string
+  entity: string | null
 }
 
 interface ImageBlock {
@@ -48,7 +77,15 @@ interface CommandBlock {
   text: string
 }
 
-type ContentBlock = RoomEnterBlock | ActionResultBlock | NarrativeBlock | ImageBlock | SystemMessageBlock | CommandBlock
+interface DebugBlock {
+  type: 'debug'
+  label: string
+  content: string
+}
+
+type ContentBlock = RoomEnterBlock | ActionResultBlock | NarrateBlock | SpeakBlock
+  | ThinkBlock | AmbientBlock | RevealBlock | FocusBlock
+  | ImageBlock | SystemMessageBlock | CommandBlock | DebugBlock
 
 // Server messages
 interface BlocksMessage {
@@ -68,7 +105,31 @@ interface QuitMessage {
   type: 'quit'
 }
 
-type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage
+interface SceneContextMessage {
+  type: 'scene_context'
+  entities: Record<string, { name: string; image: string | null }>
+}
+
+type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage | SceneContextMessage
+
+// Scene entity tracking
+let sceneEntities: Record<string, { name: string; image: string | null }> = {}
+
+function resolveEntityName(id: string): string {
+  const entity = sceneEntities[id]
+  if (entity) return entity.name
+  // Fallback: strip @ and capitalize
+  return id.replace(/^@/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function resolveEntityImage(id: string): string | null {
+  return sceneEntities[id]?.image || null
+}
+
+function speakerInitial(name: string): string {
+  const clean = name.replace(/^(the|a|an)\s+/i, '')
+  return clean.charAt(0).toUpperCase()
+}
 
 // DOM elements
 const content = document.getElementById('content')!
@@ -79,6 +140,9 @@ const commandInput = document.getElementById('command-input')! as HTMLInputEleme
 // Track room blocks for fade effect
 const roomBlocks: HTMLElement[] = []
 const FADE_DISTANCE = 60 // pixels over which to fade
+
+// Track image-bearing block count for left/right alternation
+let imageBlockIndex = 0
 
 // WebSocket connection
 let ws: WebSocket | null = null
@@ -120,10 +184,13 @@ function clearContent() {
   }
   // Clear room blocks tracking
   roomBlocks.length = 0
+  imageBlockIndex = 0
 }
 
 function handleMessage(message: ServerMessage) {
-  if (message.type === 'blocks') {
+  if (message.type === 'scene_context') {
+    sceneEntities = message.entities
+  } else if (message.type === 'blocks') {
     for (const block of message.blocks) {
       renderBlock(block)
     }
@@ -133,6 +200,8 @@ function handleMessage(message: ServerMessage) {
     // Re-enable input only after turn is complete
     commandInput.disabled = false
     commandInput.focus()
+    // Reset image alternation for next turn
+    imageBlockIndex = 0
   } else if (message.type === 'clear') {
     clearContent()
   } else if (message.type === 'quit') {
@@ -186,11 +255,109 @@ function renderBlock(block: ContentBlock) {
       el.innerHTML = styleText(block.text)
       break
 
-    case 'narrative':
-      el.className += ' block-narrative'
-      // Use marked for markdown (handles images), then apply custom styling
+    case 'narrate':
+      el.className += ' block-narrate'
       el.innerHTML = styleNarrative(block.text)
       break
+
+    case 'speak': {
+      el.className += ' block-speak'
+      const speakerId = block.speaker || 'unknown'
+      const name = resolveEntityName(speakerId)
+      const avatarImage = resolveEntityImage(speakerId)
+
+      // Avatar
+      if (avatarImage) {
+        const img = document.createElement('img')
+        img.className = 'speaker-avatar speaker-avatar-img'
+        img.src = avatarImage
+        img.alt = name
+        img.onerror = () => {
+          const ph = document.createElement('div')
+          ph.className = 'speaker-avatar'
+          ph.textContent = speakerInitial(name)
+          img.replaceWith(ph)
+        }
+        el.appendChild(img)
+      } else {
+        const avatar = document.createElement('div')
+        avatar.className = 'speaker-avatar'
+        avatar.textContent = speakerInitial(name)
+        el.appendChild(avatar)
+      }
+
+      // Speech bubble
+      const bubble = document.createElement('div')
+      bubble.className = 'speech-bubble'
+      bubble.textContent = block.text
+      if (block.manner) {
+        const manner = document.createElement('span')
+        manner.className = 'manner'
+        manner.textContent = block.manner
+        bubble.appendChild(manner)
+      }
+      el.appendChild(bubble)
+      break
+    }
+
+    case 'think':
+      el.className += ' block-think'
+      el.textContent = block.text
+      break
+
+    case 'ambient':
+      el.className += ' block-ambient'
+      el.textContent = block.text
+      break
+
+    case 'focus': {
+      const side = (imageBlockIndex % 2 === 1) ? 'image-right' : 'image-left'
+      el.className += ` block-focus ${side}`
+
+      const entityImage = block.entity ? resolveEntityImage(block.entity) : null
+      if (entityImage) {
+        const img = document.createElement('img')
+        img.className = 'focus-image'
+        img.src = entityImage
+        img.alt = block.entity || ''
+        img.onerror = () => img.remove()
+        el.appendChild(img)
+      }
+
+      const body = document.createElement('div')
+      body.className = 'focus-body'
+      const focusText = document.createElement('div')
+      focusText.className = 'focus-text'
+      focusText.textContent = block.text
+      body.appendChild(focusText)
+      el.appendChild(body)
+
+      imageBlockIndex++
+      break
+    }
+
+    case 'reveal': {
+      const revealSide = (imageBlockIndex % 2 === 1) ? 'image-right' : 'image-left'
+      el.className += ` block-reveal ${revealSide}`
+
+      const revealImage = block.entity ? resolveEntityImage(block.entity) : null
+      if (revealImage) {
+        const img = document.createElement('img')
+        img.className = 'reveal-image'
+        img.src = revealImage
+        img.alt = block.entity || ''
+        img.onerror = () => img.remove()
+        el.appendChild(img)
+      }
+
+      const revealText = document.createElement('div')
+      revealText.className = 'reveal-text'
+      revealText.textContent = block.text
+      el.appendChild(revealText)
+
+      imageBlockIndex++
+      break
+    }
 
     case 'image':
       el.className += ` block-image image-${block.layout} image-${block.size}`
@@ -212,6 +379,11 @@ function renderBlock(block: ContentBlock) {
       el.className += ' block-command'
       el.innerHTML = `&gt; ${escapeHtml(block.text)}`
       break
+
+    case 'debug':
+      el.className += ' block-debug'
+      el.innerHTML = `<div class="debug-label">${escapeHtml(block.label)}</div><pre class="debug-content">${escapeHtml(block.content)}</pre>`
+      break
   }
 
   // Insert before the input area to keep it at the bottom
@@ -228,15 +400,8 @@ function styleText(text: string): string {
   // Escape HTML first
   let html = escapeHtml(text)
 
-  // Add line breaks before @speaker: "..." patterns (but not at start)
-  // This separates dialogue from different characters
-  html = html.replace(/(\S)\s*(@[\w-]+:\s*&quot;)/g, '$1<br><br>$2')
-
   // Style @references (magenta)
   html = html.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
-
-  // Style "dialogue" (escaped as &quot;) - use non-greedy match
-  html = html.replace(/&quot;.*?&quot;/g, '<span class="dialogue">$&</span>')
 
   // Convert remaining newlines to <br> for proper display
   html = html.replace(/\n/g, '<br>')
@@ -254,8 +419,6 @@ function styleNarrative(text: string): string {
     let styled = textContent
     // Style @references (magenta)
     styled = styled.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
-    // Style "dialogue" in quotes
-    styled = styled.replace(/"[^"]*"/g, '<span class="dialogue">$&</span>')
     return '>' + styled + '<'
   })
 
