@@ -413,8 +413,6 @@ body {
   max-width: 280px;
   max-height: 280px;
   margin: -0.5rem calc(-0.5 * var(--image-overhang)) 0.5rem 1rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* === Image Block === */

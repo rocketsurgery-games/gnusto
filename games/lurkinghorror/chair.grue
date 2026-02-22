@@ -5,7 +5,7 @@
 
   ; chair.jpg:
   ; A molded blue plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.
-  :render "refs/chair.jpg"
+  :render "chair.png"
 
   :properties (
     :takeable true 

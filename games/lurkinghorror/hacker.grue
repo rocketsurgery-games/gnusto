@@ -3,7 +3,7 @@
   :location @terminal-room
 
   ; TODO: Deal with different states the hacker can be in.
-  :render "refs/hacker.jpg"
+  :render "hacker.png"
 
   :properties (
     :searchable true

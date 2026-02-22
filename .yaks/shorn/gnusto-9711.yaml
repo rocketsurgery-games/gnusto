@@ -3,7 +3,7 @@ title: Remove dynamic composition for now
 type: task
 priority: 1
 created: '2026-02-21T00:18:31Z'
-updated: '2026-02-21T01:42:02Z'
+updated: '2026-02-21T02:46:59Z'
 description: |
   We have been experimenting with dynamic composition using various image models. It's time to retire that for the time being, sticking with canned art for now.
   

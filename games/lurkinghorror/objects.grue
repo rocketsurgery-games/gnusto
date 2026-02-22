@@ -16,7 +16,7 @@
 
   ; keyring.jpg:
   ; Normal keyring with many keys hanging from it. Solid white background.
-  :render "refs/keyring.jpg")
+  :render "keyring.png")
 
 (object @carton
   :description "white carton"
@@ -31,7 +31,7 @@
   ; A Chinese food carton with a symbol on the front. The symbol doesn't look like Chinese, English,
   ; or any other language you know. It looks more like an occult symbol. This is a carton of
   ; Szechuan shrimp. Lovely red peppers poke out of the sauce.
-  :render "refs/carton.jpg"
+  :render "carton.png"
 
   :behaviors (
     :examine (fn ()

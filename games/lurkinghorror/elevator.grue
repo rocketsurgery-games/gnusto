@@ -121,13 +121,7 @@
          "an open button, a close button, a stop switch, and an alarm button. Below these is "
          "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
 
-  ; cs-elevator-room.jpg:
-  ;   Dirty 1980s elevator interior with fake wood panel walls, scratched and graffitied,
-  ;   fluorescent light, control panel with buttons visible on the right wall, elevator 
-  ;   doors straight ahead, no people.
-  ; refs: @access-panel
-  ;
-  :render "refs/cs-elevator-room.jpg"
+  :render "cs-elevator-room.png"
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -165,7 +159,7 @@
   :location @cs-elevator-room
   :properties (:nodesc true :door true :openable true)
 
-  :render "refs/cs-elevator-room.jpg"
+  :render "cs-elevator-room.png"
 
   :behaviors (
     :examine (fn ()
@@ -315,10 +309,7 @@
     :openable true 
     :capacity 20)
 
-  ; access-panel.jpg:
-  ;   Elevator control panel with floor buttons (B and 1 through 3), an open button, a close button,
-  ;   a stop switch, and an alarm button. Below these is a closed access panel.
-  :render "refs/access-panel.jpg"
+  :render "access-panel.png"
 
   :behaviors (
     :examine (fn ()
@@ -458,7 +449,7 @@
     :container true 
     :floor 2)
 
-  :render "refs/elevator-doors.jpg"
+  :render "elevator-doors.png"
 
   :behaviors elevator-door-behaviors)
 

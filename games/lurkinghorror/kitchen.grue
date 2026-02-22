@@ -38,11 +38,7 @@
   :description "Kitchen"
   :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
           counter are a refrigerator and a microwave."
-  ; kitchen.jpg:
-  ; A 1980s university break room kitchen, dirty counter, fluorescent lighting, no windows, no people present, wide
-  ; angle view showing full room, with refrigerator and microwave. Dirty, but not foul or with anything broken.
-  ; Refs: @microwave, @refrigerator
-  :render "refs/kitchen.jpg"
+  :render "kitchen.png"
 
   :properties (:lit true)
   :exits ((east :to @cs-2nd)))
@@ -59,9 +55,9 @@
   ; A 1980s microwave oven with door closed, mounted above a counter.
   :render (fn ()
     (cond
-      ((:open self) "refs/microwave-open.jpg")
-      ((queued? microwave-running) "refs/microwave-running.jpg")
-      (true "refs/microwave.jpg")))
+      ((:open self) "microwave-open.png")
+      ((queued? microwave-running) "microwave-running.png")
+      (true "microwave.png")))
 
   :behaviors (
     :examine (fn ()
@@ -238,15 +234,9 @@
   :location @kitchen
   :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
 
-  ; refrigerator.jpg:
-  ;   An old white refrigerator with notes and papers stuck to the front.
-  ; refrigerator-open.jpg:
-  ;   An old white refrigerator with door open (hinge on the right), revealing cluttered shelves
-  ;   with soggy lunch bags and old food containers.
-  ;   refs: @refrigerator
   :render (fn ()
-    (if (:open self) "refs/refrigerator-open.jpg"
-                     "refs/refrigerator.jpg"))
+    (if (:open self) "refrigerator-open.png"
+                     "refrigerator.png"))
 
   :behaviors (
     :examine (fn ()
