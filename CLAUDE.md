@@ -4,22 +4,6 @@ This is a single-developer research project. There are no other users of this co
 Always prefer hard cutovers to backward-compatible migrations - just change things directly.
 
 
-# Issue Tracking
-
-This project uses **bd** (beads) for issue tracking.
-
-```bash
-bd ready                              # Find available work
-bd show <id>                          # View issue details
-bd create --title="..." --type=task   # Create new issue
-bd update <id> --status=in_progress   # Claim work
-bd close <id>                         # Mark complete
-bd sync                               # Sync with git remote
-```
-
-Do NOT start work on a bead without claiming it.
-
-
 # CLI Tools
 
 The project provides several CLI commands (installed via `pip install -e .`):
@@ -106,7 +90,7 @@ filfre clear games/lurkinghorror
 
 # Converting ZIL to Grue
 
-When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their beads P1, so we fix them before moving on to the rest of the conversion.
+When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their yaks P1, so we fix them before moving on to the rest of the conversion.
 
 As we work through converting The Lurking Horror as a starting point, we're keeping notes on what we learn in
 ./games/lurkinghorror/README.md.
@@ -130,7 +114,7 @@ parser-level distinctions.
 
 IMPORTANT: As you convert to Grue, always look for opportunities to improve the language design for flexibility and expressiveness. If you see such an opportunity, or any language construct that isn't generalized, or doesn't behave as an experienced Scheme/Clojure developer might expect, stop and initiate a discussion with the user.
 
-We're keeping the bead "Language & runtime design tweaks" (frotzlm-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
+We're keeping the yak "Language & runtime design tweaks" (frotzlm-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
 
 **Documentation:** When adding new language features, entity fields, or changing behavior, update the relevant docs:
 - `docs/grue.md` - Language reference (syntax, semantics, entity fields)
