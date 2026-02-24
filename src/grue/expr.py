@@ -45,7 +45,7 @@ Built-in Effects (for test :setup and REPL debugging):
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol, Optional
 
-from .sexpr import SExpr, Symbol, Keyword, SList, parse
+from .sexpr import SExpr, Symbol, Keyword, SList, parse, parse_param_list
 
 
 def quote_to_data(expr: SExpr) -> Any:
@@ -89,6 +89,7 @@ class GrueFn:
     """
     params: list[str]
     body: SExpr
+    param_types: dict[str, str] = field(default_factory=dict)  # Explicit type annotations
     # Captured lexical environment (for proper closures)
     # Note: This is Optional because Environment is defined later in the file.
     # At runtime, closures created via (fn ...) will always have an environment.
@@ -296,6 +297,7 @@ class EffectInterpreter:
             (dec global [amt])        - Decrement global
             (queue event [countdown]) - Queue event
             (dequeue event)           - Remove event from queue
+            (expose @obj)             - Set :known true (makes entity available in agent context)
 
         Terminators (exactly one required):
             (success [:message ...] [:context ...])
@@ -306,7 +308,8 @@ class EffectInterpreter:
 
     # Effect names that mutate state
     MUTATIONS = frozenset({
-        "move", "set-prop", "set", "set-in", "inc", "dec", "queue", "dequeue", "take"
+        "move", "set-prop", "set", "set-in", "inc", "dec", "queue", "dequeue", "take",
+        "expose",
     })
 
     # Effect names that terminate the effect list
@@ -559,6 +562,13 @@ class EffectInterpreter:
             obj = args[0]
             self.state.move_object(obj, self.state.player_name)
             self._effects_applied.append(f"take {obj}")
+
+        elif name == "expose":
+            if len(args) != 1:
+                raise EvalError(f"'expose' expects 1 argument, got {len(args)}")
+            obj = args[0]
+            self.state.set_object_property(obj, "known", True)
+            self._effects_applied.append(f"expose {obj}")
 
         else:
             raise EvalError(f"Unknown mutation effect: {name}")
@@ -1411,17 +1421,15 @@ class ExprEvaluator:
         params_expr = form[1]
         body = form[2]
 
-        params = []
+        params: list[str] = []
+        param_types: dict[str, str] = {}
         if isinstance(params_expr, SList):
-            for p in params_expr.items:
-                if isinstance(p, Symbol):
-                    # Strip ? prefix if present
-                    name = p.name[1:] if p.name.startswith("?") else p.name
-                    params.append(name)
-                else:
-                    raise EvalError(f"fn parameter must be a symbol, got {p}")
+            try:
+                params, param_types = parse_param_list(params_expr)
+            except ValueError as e:
+                raise EvalError(f"In 'fn' params: {e}") from e
 
-        return GrueFn(params=params, body=body)
+        return GrueFn(params=params, body=body, param_types=param_types)
 
     # === Convenience predicates ===
 
@@ -1576,6 +1584,8 @@ class ExprEvaluator:
         """(fn (params) body) - create a function value (closure).
 
         Captures the current lexical environment for proper closure semantics.
+        Parameters may have optional type annotations:
+            (fn (?x :number) (+ ?x 1))
 
         Examples:
             (fn () (success))
@@ -1588,21 +1598,19 @@ class ExprEvaluator:
         params_expr = form[1]
         body = form[2]
 
-        # Parse parameter list
+        # Parse parameter list (with optional type annotations)
         params: list[str] = []
+        param_types: dict[str, str] = {}
         if isinstance(params_expr, SList):
-            for p in params_expr.items:
-                if isinstance(p, Symbol):
-                    # Strip leading ? if present
-                    name = p.name[1:] if p.name.startswith("?") else p.name
-                    params.append(name)
-                else:
-                    raise EvalError(f"'fn' parameter must be a symbol, got {p}")
+            try:
+                params, param_types = parse_param_list(params_expr)
+            except ValueError as e:
+                raise EvalError(f"In 'fn' params: {e}") from e
         elif params_expr is not None:
             raise EvalError(f"'fn' params must be a list, got {params_expr}")
 
         # Capture the current environment for proper closure semantics
-        return GrueFn(params=params, body=body, captured_env=env)
+        return GrueFn(params=params, body=body, param_types=param_types, captured_env=env)
 
     def _eval_defn(self, form: SList, env: Optional[Environment] = None) -> None:
         """(defn name (params) body) - define a named function.

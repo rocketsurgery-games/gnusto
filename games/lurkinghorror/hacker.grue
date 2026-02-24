@@ -174,7 +174,7 @@
       (true                   '((say @hacker "Greetingage.") (success "greeted")))))
 
     ; ?topic is the thing being asked about
-    :ask-about (fn (?topic) (cond
+    :ask-about (fn (?topic :entity) (cond
       ; Possessed state (lair-cnt > 6) - he's not himself
       ((> (:lair-cnt @hacker) 6)
         '((say @hacker "Meld!") (success "possessed state")))

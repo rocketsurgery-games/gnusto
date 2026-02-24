@@ -1,0 +1,8 @@
+id: gnusto-f9d7
+title: Expose object and room images
+type: task
+priority: 2
+created: '2026-02-24T04:31:30Z'
+updated: '2026-02-24T04:31:30Z'
+description: |
+  We should show at least small icons/images for visible objects, inventory, etc.

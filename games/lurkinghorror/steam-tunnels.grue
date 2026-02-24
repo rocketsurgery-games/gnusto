@@ -229,7 +229,7 @@
     ((up :to @tomb :via @access-hatch-barrier)
      (east :to @tunnel-east :via @steam-barrier)
      (west :to @tunnel-west :via @rats-barrier))
-  :visible (@cable @steam-pipes @ladder)
+  :visible (@cable @steam-pipes @tunnel-ladder)
 
   :behaviors (
     :describe (fn ()
@@ -366,7 +366,7 @@
                "They're hissing and radiating intense heat."
                "They're warm to the touch."))))))
 
-(object @ladder
+(object @tunnel-ladder
   :location @tunnel
   :description "rusty ladder"
   :properties (:nodesc true)

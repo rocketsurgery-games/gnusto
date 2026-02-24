@@ -114,6 +114,59 @@ class SList:
 SExpr = Union[Symbol, Keyword, SList, str, int, bool]
 
 
+# Known parameter types for type annotations
+PARAM_TYPES = {"entity", "string", "number", "symbol"}
+
+
+def parse_param_list(
+    params_expr: SList,
+    *,
+    require_question_mark: bool = False,
+) -> tuple[list[str], dict[str, str]]:
+    """Parse a function parameter list with optional type annotations.
+
+    Supports type annotations via keyword after parameter:
+        (?x)              -> (["x"], {})
+        (?x :number)      -> (["x"], {"x": "number"})
+        (?x :entity ?y)   -> (["x", "y"], {"x": "entity"})
+
+    Args:
+        params_expr: The parameter list S-expression.
+        require_question_mark: If True, all params must start with '?'.
+
+    Returns:
+        (param_names, param_types) where param_types maps name -> type
+        for explicitly annotated parameters only.
+    """
+    params: list[str] = []
+    param_types: dict[str, str] = {}
+    items = list(params_expr.items)
+    i = 0
+    while i < len(items):
+        p = items[i]
+        if isinstance(p, Symbol):
+            if require_question_mark and not p.name.startswith("?"):
+                raise ValueError(f"Expected ?param, got {p.name}")
+            name = p.name[1:] if p.name.startswith("?") else p.name
+            params.append(name)
+            # Check for type annotation keyword
+            next_item = items[i + 1] if i + 1 < len(items) else None
+            if isinstance(next_item, Keyword):
+                type_name = next_item.name
+                if type_name not in PARAM_TYPES:
+                    raise ValueError(
+                        f"Unknown parameter type :{type_name} for ?{name}. "
+                        f"Expected one of: {', '.join(sorted(PARAM_TYPES))}"
+                    )
+                param_types[name] = type_name
+                i += 2
+            else:
+                i += 1
+        else:
+            raise ValueError(f"Expected parameter symbol, got {p}")
+    return params, param_types
+
+
 class Tokenizer:
     """Tokenize S-expression source text."""
 

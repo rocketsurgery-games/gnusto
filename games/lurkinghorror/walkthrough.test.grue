@@ -458,7 +458,7 @@
           (queue hand-dives))
 
   ; Search pool to find power line
-  (do @pool :reach-in)
+  (do @lair-pool :reach-in)
   (assert (in? @high-voltage @inner-lair)))
 
 ; Test cutting power line with axe
@@ -1094,7 +1094,7 @@
 
   ; Search pool to find power line
   ; (hand-dives was queued by on-enter when we came through the door)
-  (do @pool :reach-in)
+  (do @lair-pool :reach-in)
   (assert (in? @high-voltage @inner-lair))
 
   ; Pull power line out of water

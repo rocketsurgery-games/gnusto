@@ -173,6 +173,7 @@ followed by a terminator (`success`, `blocked`, `redirect`, or `default`):
 (dec OBJ :prop [AMT])         ; decrement numeric property (default: 1)
 (queue EVENT [COUNT])         ; activate event
 (dequeue EVENT)               ; deactivate event
+(expose OBJ)                  ; set :known true (makes entity available in agent context)
 
 ; Conditional effects in quoted lists
 (when COND (EFFECT ...))      ; conditional effect
@@ -258,6 +259,33 @@ regardless of the object's `:location`. This is useful for:
 
 Objects in `:visible` override the `:invisible` property - they represent "known" scenery
 that the player can always see and interact with when in that room.
+
+### Known Entities (Abstract Topics)
+
+Some entities represent abstract concepts (conversation topics, off-screen things) that are
+never physically present but can be used as arguments to behaviors like `:ask-about`. Set
+`:known true` to make them available in the agent's context:
+
+```scheme
+(object @students
+  :description "missing students"
+  :location nil
+  :properties (:invisible true :known true))
+```
+
+Known entities appear in a **"Known references"** section in the agent's context, allowing the
+agent to resolve natural language like "the missing students" → `@students`.
+
+To reveal entities during gameplay, use the `(expose @entity)` effect:
+
+```scheme
+:ask-about (fn (?topic)
+  (cond
+    ((= ?topic @keyring)
+      '((expose @master-key)
+        (say @hacker "This is a master key.")
+        (success "revealed master key")))))
+```
 
 ### The Player
 
@@ -801,6 +829,32 @@ Anonymous function (lambda). Creates a closure that can be called later.
 
 The `lambda` keyword is also supported as an alias for `fn`.
 
+**Parameter type annotations:** Parameters may have optional type annotations
+using a keyword after the parameter name:
+
+```scheme
+(fn (?seconds :number) (+ ?seconds 60))
+(fn (?level :symbol) (= ?level 'high))
+(fn (?value :string) (str "You typed: " ?value))
+(fn (?target :entity) (= ?target @door))   ; explicit, same as default
+```
+
+Available types: `:entity`, `:string`, `:number`, `:symbol`.
+
+For **behavior parameters**, the default type is `:entity` — the agent will
+resolve natural language references to `@object` IDs before passing them.
+Non-entity types (`:string`, `:number`, `:symbol`) must be annotated explicitly
+so the agent knows to pass literal values instead:
+
+```scheme
+(object @microwave
+  :behaviors (
+    :set-timer (fn (?seconds :number) ...)   ; agent passes a number
+    :set-temp (fn (?level :symbol) ...)      ; agent passes warm/low/medium/high
+    :open (fn () ...)                        ; no params
+    :put-in (fn (?item) ...)))               ; default: entity (@object ID)
+```
+
 #### `(defn NAME (PARAMS...) BODY)`
 Named function definition. At top level, defines a global function. Inside an
 entity (object/room), defines a scoped function visible only within that entity.
@@ -1169,6 +1223,7 @@ test `:setup` blocks, and the REPL (for debugging).
 | `inc` | OBJ :PROP [AMOUNT] | Increment numeric property (default: 1) |
 | `queue` | EVENT [COUNT] | Queue event (indefinite or countdown) |
 | `dequeue` | EVENT | Remove event from queue |
+| `expose` | OBJ | Set `:known true` on entity (makes it available in agent context) |
 
 ### Binding Model
 
@@ -1421,7 +1476,7 @@ works in `(assert ...)` via the evaluator fallback.
 
 ### Test Effects
 
-Setup can use any standard effect: `move`, `set`, `inc`, `queue`, `dequeue`, `take`.
+Setup can use any standard effect: `move`, `set`, `inc`, `queue`, `dequeue`, `take`, `expose`.
 
 ## Open Questions
 

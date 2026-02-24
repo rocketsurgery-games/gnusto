@@ -153,7 +153,7 @@
 (go south)                              ; Enter inner-lair
 
 === PHASE 15: FINAL BATTLE ===
-(do @pool :reach-in)                    ; Find power line
+(do @lair-pool :reach-in)                    ; Find power line
 (do @high-voltage :take)
 (do @high-voltage :cut @axe) x3         ; Cut power line with axe
 (do @repeater :open)

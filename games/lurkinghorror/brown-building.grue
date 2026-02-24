@@ -99,7 +99,7 @@
     ((in :to @brown-top-floor :via @roof-door-exit)
      (east :to @brown-top-floor :via @roof-door-exit)
      (up :to @inside-dome))
-  :visible (@roof-door @weather-dome @ladder)
+  :visible (@roof-door @weather-dome @dome-ladder)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -117,7 +117,7 @@
   :exits
     ((down :to @brown-roof :via @dome-exit)
      (out :to @brown-roof :via @dome-exit))
-  :visible (@ladder)
+  :visible (@dome-ladder)
 
   :behaviors (
     ; Trigger flier encounter when entering with smooth-stone
@@ -252,7 +252,7 @@
     :climb (fn ()
       (redirect :action (do (loc @player) :go up)))))
 
-(object @ladder
+(object @dome-ladder
   :location nil  ; Global, appears via room :visible
   :description "ladder"
   :properties (:nodesc true)

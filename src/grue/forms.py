@@ -11,7 +11,7 @@ FormDispatcher.dispatch().
 from typing import Any, Callable, Protocol
 from dataclasses import dataclass, field
 
-from .sexpr import SExpr, Symbol, Keyword, SList
+from .sexpr import SExpr, Symbol, Keyword, SList, parse_param_list
 
 
 class FormParseError(Exception):
@@ -84,6 +84,7 @@ class GrueBehavior:
     """
     verb: str
     params: list[str] = field(default_factory=list)  # Parameter names (without ?)
+    param_types: dict[str, str] = field(default_factory=dict)  # Explicit type annotations
     body: SExpr | None = None  # The function body expression
 
 
@@ -539,17 +540,21 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
             params_expr = fn_expr[1]
             body_expr = fn_expr[2]
 
-            # Parse parameter list
-            params = []
+            # Parse parameter list (with optional type annotations)
+            params: list[str] = []
+            param_types: dict[str, str] = {}
             if isinstance(params_expr, SList):
-                for p in params_expr.items:
-                    if isinstance(p, Symbol) and p.name.startswith("?"):
-                        params.append(p.name[1:])  # Strip leading ?
-                    else:
-                        raise FormParseError(f"Expected ?param in params list, got {p}")
+                try:
+                    params, param_types = parse_param_list(
+                        params_expr, require_question_mark=True,
+                    )
+                except ValueError as e:
+                    raise FormParseError(f"In :{verb} params: {e}") from e
 
             # Store the body expression directly
-            behavior = GrueBehavior(verb=verb, params=params, body=body_expr)
+            behavior = GrueBehavior(
+                verb=verb, params=params, param_types=param_types, body=body_expr,
+            )
             behaviors.append(behavior)
             i += 1
         else:
@@ -805,13 +810,10 @@ def _parse_defn(expr: SList, world: GrueWorld) -> None:
 
     if not isinstance(params_expr, SList):
         raise FormParseError(f"'defn' params must be a list, got: {params_expr}")
-    params: list[str] = []
-    for p in params_expr.items:
-        if not isinstance(p, Symbol):
-            raise FormParseError(f"'defn' parameter must be a symbol, got: {p}")
-        # Strip leading ? if present
-        param_name = p.name[1:] if p.name.startswith("?") else p.name
-        params.append(param_name)
+    try:
+        params, _param_types = parse_param_list(params_expr)
+    except ValueError as e:
+        raise FormParseError(f"In 'defn {name}' params: {e}") from e
 
     # Strip leading docstring from body if present (Scheme-style)
     if body_exprs and isinstance(body_exprs[0], str):

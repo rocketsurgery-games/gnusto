@@ -115,7 +115,7 @@
   :exits
     ((north :to @brick-tunnel)
      (up :to @alchemy-lab :via @alchemy-trapdoor-up-barrier))
-  :visible (@alchemy-trap-door @lab-global @ladder)
+  :visible (@alchemy-trap-door @lab-global @alchemy-ladder)
 
   :behaviors (
     :describe (fn ()
@@ -469,7 +469,7 @@
 
 ; === Ladder (global object for under-alchemy-lab) ===
 
-(object @ladder
+(object @alchemy-ladder
   :location nil  ; Global object
   :description "ladder"
   :properties (:nodesc true)
@@ -876,7 +876,7 @@
 (object @students
   :location nil  ; Global object
   :description "missing students"
-  :properties (:nodesc true :person true)
+  :properties (:invisible true :nodesc true :person true :known true)
   :behaviors (
     :examine (fn ()
       (success :message "You see no missing students."))

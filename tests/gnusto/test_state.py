@@ -233,6 +233,38 @@ class TestGameState:
         assert len(state.nearby_rooms) == 2
         assert state.nearby_rooms[0].id == "@north"
 
+    def test_to_context_string_with_known_entities(self):
+        state = GameState(
+            room="@terminal-room",
+            room_name="Terminal Room",
+            room_description="A dark room.",
+            visible_objects=[],
+            inventory=[],
+            exits=[],
+            known_entities=[
+                ObjectInfo(id="@students", description="missing students"),
+                ObjectInfo(id="@food", description="food"),
+            ],
+        )
+        context = state.to_context_string()
+
+        assert "**Known references:**" in context
+        assert "- @students: missing students" in context
+        assert "- @food: food" in context
+
+    def test_to_context_string_no_known_entities(self):
+        state = GameState(
+            room="@kitchen",
+            room_name="Kitchen",
+            room_description="A kitchen.",
+            visible_objects=[],
+            inventory=[],
+            exits=[],
+        )
+        context = state.to_context_string()
+
+        assert "Known references" not in context
+
 
 class TestFormatBehavior:
     """Test behavior formatting helper."""
@@ -242,12 +274,29 @@ class TestFormatBehavior:
 
         assert _format_behavior("take", []) == "take"
 
-    def test_format_single_param(self):
+    def test_format_single_param_default_entity(self):
         from gnusto.state import _format_behavior
 
-        assert _format_behavior("give", ["recipient"]) == "give <recipient>"
+        # Default type is entity, so params get @ prefix
+        assert _format_behavior("give", ["recipient"]) == "give <@recipient>"
 
-    def test_format_multiple_params(self):
+    def test_format_multiple_params_default_entity(self):
         from gnusto.state import _format_behavior
 
-        assert _format_behavior("put", ["item", "container"]) == "put <item> <container>"
+        assert _format_behavior("put", ["item", "container"]) == "put <@item> <@container>"
+
+    def test_format_param_with_explicit_type(self):
+        from gnusto.state import _format_behavior
+
+        # Non-entity types don't get @ prefix
+        assert _format_behavior(
+            "set-timer", ["seconds"], {"seconds": "number"},
+        ) == "set-timer <seconds>"
+
+    def test_format_mixed_types(self):
+        from gnusto.state import _format_behavior
+
+        # Mix of entity (default) and explicit types
+        assert _format_behavior(
+            "trade", ["offer", "want"], {"offer": "entity"},
+        ) == "trade <@offer> <@want>"

@@ -78,7 +78,7 @@
   :exits
     ((west :to @dead-storage)
      (down :to @brick-tunnel :via @manhole-passage))
-  :visible (@junk @pool @manhole @manhole-cover)
+  :visible (@junk @basement-pool @manhole @manhole-cover)
 
   :behaviors (
     :on-enter (fn (?from)
@@ -348,7 +348,7 @@
 
 ; === Pool (global object for puddles/water) ===
 
-(object @pool
+(object @basement-pool
   :location nil  ; Global object, present via room :visible
   :description "pool of water"
   :properties (:nodesc true)

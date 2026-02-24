@@ -168,7 +168,7 @@
 
     ; TYPE - Multi-step login flow: routes to :login or :password based on state
     ; In ZIL this was V-TYPE redirecting via NEW-VERB to V-LOGIN or V-PASSWORD
-    :type (fn (?value)
+    :type (fn (?value :string)
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))
@@ -187,7 +187,7 @@
     ; LOGIN - First step of login flow
     ; The parser converts "872325412" to "xyzzy" and that's the valid login ID.
     ; Any other input sets username to true but will fail at password stage.
-    :login (fn (?value)
+    :login (fn (?value :string)
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))
@@ -204,7 +204,7 @@
 
     ; PASSWORD - Second step of login flow
     ; Only "uhlersoth" or "plugh" work, and only if username was "xyzzy" (valid login)
-    :password (fn (?value)
+    :password (fn (?value :string)
       (cond
         ((prop ?self unplugged)
           (blocked :reason unplugged :message "Login on what?"))

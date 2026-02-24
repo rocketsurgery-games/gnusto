@@ -1089,6 +1089,53 @@ class TestEffectInterpreterSetup:
         assert effects_applied == []
 
 
+class TestExposeEffect:
+    """Test the (expose ...) effect."""
+
+    def test_expose_sets_known(self):
+        """(expose @entity) sets :known true on the entity."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret([
+            ["expose", "@students"],
+            ["success"]
+        ])
+        assert result.outcome == "success"
+        assert state.properties["@students"]["known"] is True
+        assert "expose @students" in result.effects_applied
+
+    def test_expose_in_setup(self):
+        """(expose) works in test :setup context."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        effects_applied = interp.interpret_setup([
+            ["expose", "@students"],
+        ])
+        assert state.properties["@students"]["known"] is True
+        assert len(effects_applied) == 1
+
+    def test_expose_wrong_arg_count(self):
+        """(expose) with wrong number of args raises error."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        with pytest.raises(EvalError) as excinfo:
+            interp.interpret([
+                ["expose", "@a", "@b"],
+                ["success"]
+            ])
+        assert "'expose' expects 1 argument" in str(excinfo.value)
+
+    def test_expose_with_variable(self):
+        """(expose ?topic) resolves variable binding."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state, bindings={"topic": "@lovecraft"})
+        result = interp.interpret([
+            ["expose", "?topic"],
+            ["success"]
+        ])
+        assert state.properties["@lovecraft"]["known"] is True
+
+
 class TestQuasiquote:
     """Tests for quasiquote, unquote, and unquote-splicing."""
 
@@ -1162,3 +1209,85 @@ class TestQuasiquote:
         """Quasiquote with deeply nested structure."""
         result = evaluator.eval(parse("`((outer (inner ,x)))"))
         assert result == [["outer", ["inner", 42]]]
+
+
+class TestParamTypeAnnotations:
+    """Test type annotations on fn parameters."""
+
+    def test_parse_param_list_no_types(self):
+        from grue.sexpr import parse_param_list, SList, Symbol
+
+        params, types = parse_param_list(SList([Symbol("?x"), Symbol("?y")]))
+        assert params == ["x", "y"]
+        assert types == {}
+
+    def test_parse_param_list_with_type(self):
+        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+
+        params, types = parse_param_list(
+            SList([Symbol("?seconds"), Keyword("number")])
+        )
+        assert params == ["seconds"]
+        assert types == {"seconds": "number"}
+
+    def test_parse_param_list_mixed_types(self):
+        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+
+        params, types = parse_param_list(
+            SList([Symbol("?target"), Symbol("?value"), Keyword("string")])
+        )
+        assert params == ["target", "value"]
+        assert types == {"value": "string"}
+
+    def test_parse_param_list_all_types(self):
+        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+
+        params, types = parse_param_list(SList([
+            Symbol("?a"), Keyword("entity"),
+            Symbol("?b"), Keyword("string"),
+            Symbol("?c"), Keyword("number"),
+            Symbol("?d"), Keyword("symbol"),
+        ]))
+        assert params == ["a", "b", "c", "d"]
+        assert types == {"a": "entity", "b": "string", "c": "number", "d": "symbol"}
+
+    def test_parse_param_list_unknown_type(self):
+        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+
+        with pytest.raises(ValueError, match="Unknown parameter type"):
+            parse_param_list(SList([Symbol("?x"), Keyword("bogus")]))
+
+    def test_parse_param_list_require_question_mark(self):
+        from grue.sexpr import parse_param_list, SList, Symbol
+
+        with pytest.raises(ValueError, match="Expected \\?param"):
+            parse_param_list(
+                SList([Symbol("x")]), require_question_mark=True,
+            )
+
+    def test_fn_with_type_annotation(self):
+        """fn form parses type annotations on parameters."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+
+        fn = evaluator.eval(parse("(fn (?x :number) (+ ?x 1))"))
+        assert fn.params == ["x"]
+        assert fn.param_types == {"x": "number"}
+
+    def test_fn_without_type_annotation(self):
+        """fn form works without type annotations (backward compatible)."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+
+        fn = evaluator.eval(parse("(fn (?x ?y) (+ ?x ?y))"))
+        assert fn.params == ["x", "y"]
+        assert fn.param_types == {}
+
+    def test_fn_with_type_still_callable(self):
+        """Functions with type annotations are still callable."""
+        state = MockWorldState()
+        evaluator = ExprEvaluator(state)
+
+        fn = evaluator.eval(parse("(fn (?x :number) (+ ?x 1))"))
+        result = evaluator.call_fn(fn, [5])
+        assert result == 6

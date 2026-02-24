@@ -109,7 +109,7 @@
 ;   (do @curtain-door :unlock @master-key)
 ;   (do @curtain-door :open)
 ;   (go south)                          ; Enter inner-lair
-;   (do @pool :reach-in)                ; Find power line
+;   (do @lair-pool :reach-in)                ; Find power line
 ;   (do @high-voltage :take)
 ;   (do @high-voltage :cut @axe) x3     ; Cut power line
 ;   (do @repeater :open)

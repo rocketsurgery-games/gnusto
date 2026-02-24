@@ -164,6 +164,8 @@
       (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))))
 
 ; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
+; NOTE: @students is defined in alchemy.grue, @urchins in urchins.grue,
+; @lovecraft in alchemy.grue (physical computer), @repeater in lair.grue (physical box).
 
 (object @keys
   :description "keys"
@@ -173,32 +175,12 @@
 (object @food
   :description "food"
   :location nil
-  :properties (:invisible true))
-
-(object @students
-  :description "missing students"
-  :location nil
-  :properties (:invisible true))
+  :properties (:invisible true :known true))
 
 (object @program
   :description "the program"
   :location nil
-  :properties (:invisible true))
-
-(object @lovecraft
-  :description "Lovecraft"
-  :location nil
-  :properties (:invisible true))
-
-(object @urchins
-  :description "urchins"
-  :location nil
-  :properties (:invisible true))
-
-(object @repeater
-  :description "repeater"
-  :location nil
-  :properties (:invisible true))
+  :properties (:invisible true :known true))
 
 (object @hand
   :description "your hand"

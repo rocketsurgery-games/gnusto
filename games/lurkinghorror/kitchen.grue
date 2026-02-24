@@ -95,7 +95,7 @@
 
     ; Set timer: (do @microwave :set-timer 300) for 5 minutes (300 seconds)
     ; Parameter is in SECONDS - 60 = 1 minute, 300 = 5 minutes
-    :set-timer (fn (?seconds)
+    :set-timer (fn (?seconds :number)
       (let ((mins (/ ?seconds 60))
             (secs (mod ?seconds 60))
             (display (str mins ":" (if (< secs 10) "0" "") secs)))
@@ -108,7 +108,7 @@
               (success :context ((description ,(str "The timer display now reads " display ".")))))))))
 
     ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
-    :set-temp (fn (?level)
+    :set-temp (fn (?level :symbol)
       (cond
         ((queued? microwave-running)
           (blocked :reason running

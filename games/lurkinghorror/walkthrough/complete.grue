@@ -245,7 +245,7 @@
 (go south)
 
 ; === PHASE 15: FINAL BATTLE ===
-(do @pool :reach-in)
+(do @lair-pool :reach-in)
 (do @high-voltage :take)
 (do @high-voltage :cut @axe)
 (do @high-voltage :cut @axe)

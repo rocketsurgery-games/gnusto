@@ -99,7 +99,7 @@ AGENT_RESPONSE_SCHEMA = {
                     "args": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "For do_action: additional arguments (object IDs)"
+                        "description": "For do_action: arguments for the behavior. For <@param> parameters, pass an entity ID (e.g., \"@master-key\"). For <param> parameters (no @), pass a literal value."
                     },
                     "direction": {
                         "type": "string",

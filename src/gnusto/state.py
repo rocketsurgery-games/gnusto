@@ -56,6 +56,7 @@ class GameState:
     visible_objects: list[ObjectInfo]
     inventory: list[ObjectInfo]
     exits: list[ExitInfo]  # Rich exit information for agent
+    known_entities: list[ObjectInfo] = field(default_factory=list)  # Entities with :known true not elsewhere
     nearby_rooms: list[RoomInfo] = field(default_factory=list)  # Unique adjacent rooms (for player)
     vehicle: tuple[str, str] | None = None  # (vehicle_name, preposition) if in vehicle
 
@@ -98,6 +99,13 @@ class GameState:
             self._render_objects(self.inventory, lines, indent=0)
         else:
             lines.append("**Inventory:** empty")
+
+        # Known references (abstract entities the player knows about)
+        if self.known_entities:
+            lines.append("")
+            lines.append("**Known references:**")
+            for obj in self.known_entities:
+                lines.append(f"- {obj.id}: {obj.description}")
 
         return "\n".join(lines)
 
@@ -180,6 +188,17 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
                 if dest_room_def:
                     nearby_rooms.append(RoomInfo(id=exit.to, description=dest_room_def.description))
 
+    # Known entities: :known true, not already in visible/inventory
+    already_shown = visible_set | inventory_set
+    known_entities = []
+    for name, obj_state in runtime.state.objects.items():
+        if name in already_shown:
+            continue
+        if obj_state.properties.get("known") is True:
+            desc = runtime.get_object_description(name)
+            if desc:
+                known_entities.append(ObjectInfo(id=name, description=desc))
+
     return GameState(
         room=room,
         room_name=room_name,
@@ -187,21 +206,36 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
         visible_objects=visible_objects,
         inventory=inventory,
         exits=exits,
+        known_entities=known_entities,
         nearby_rooms=nearby_rooms,
         vehicle=vehicle,
     )
 
 
-def _format_behavior(verb: str, params: list[str]) -> str:
+def _format_behavior(
+    verb: str, params: list[str], param_types: dict[str, str] | None = None,
+) -> str:
     """Format a behavior with its parameters for agent context.
 
+    Parameters typed as 'entity' (or untyped, which defaults to entity
+    for behaviors) are prefixed with @ to signal to the agent that it
+    should resolve the argument to a visible entity ID.
+
     Examples:
-        give, [item] -> "give <item>"
-        take, [] -> "take"
-        unlock, [key] -> "unlock <key>"
+        give, [item], {}            -> "give <@item>"
+        take, [], {}                -> "take"
+        set-timer, [seconds], {seconds: number} -> "set-timer <seconds>"
     """
     if params:
-        param_str = " ".join(f"<{p}>" for p in params)
+        types = param_types or {}
+        parts = []
+        for p in params:
+            ptype = types.get(p, "entity")  # Default to entity for behaviors
+            if ptype == "entity":
+                parts.append(f"<@{p}>")
+            else:
+                parts.append(f"<{p}>")
+        param_str = " ".join(parts)
         return f"{verb} {param_str}"
     return verb
 
@@ -223,7 +257,9 @@ def _get_object_info_with_contents(
         for b in obj_def.behaviors:
             # Skip internal behaviors (on-enter, describe, etc.)
             if not b.verb.startswith("on-") and b.verb not in ("describe", "through"):
-                behavior_map[b.verb] = _format_behavior(b.verb, b.params)
+                behavior_map[b.verb] = _format_behavior(
+                    b.verb, b.params, b.param_types,
+                )
 
     # Also check defaults for common behaviors
     # Objects can respond to default behaviors even without explicit definition

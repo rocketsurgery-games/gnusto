@@ -20,7 +20,7 @@
     ((up :to @tunnel-entrance)
      (east :to @tunnel-entrance)
      (down :to @large-chamber))
-  :visible (@pool))
+  :visible (@lair-pool))
 
 (room @large-chamber
   :description "Large Chamber"
