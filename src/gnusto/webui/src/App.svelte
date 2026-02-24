@@ -7,6 +7,7 @@
   import RoomHeader from './components/RoomHeader.svelte'
   import NarrativeStream from './components/NarrativeStream.svelte'
   import Sidebar from './components/Sidebar.svelte'
+  import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
 
@@ -27,6 +28,9 @@
 
   // Game ended state
   let gameEnded = $state(false)
+
+  // Mobile sidebar state
+  let rightSidebarOpen = $state(false)
 
   function handleMessage(message: ServerMessage) {
     if (message.type === 'scene_context') {
@@ -85,8 +89,9 @@
 
 <RoomHeader room={currentRoom} />
 <Sidebar side="left" />
-<Sidebar side="right" />
+<RightSidebar room={currentRoom} oncommand={handleCommand} open={rightSidebarOpen}
+  onclose={() => rightSidebarOpen = false} />
 <NarrativeStream {blocks} />
 <InputBar enabled={inputEnabled} {gameEnded} oncommand={handleCommand} />
 <PeekTab side="left" />
-<PeekTab side="right" />
+<PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />

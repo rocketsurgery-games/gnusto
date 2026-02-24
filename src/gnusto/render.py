@@ -17,14 +17,28 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class EntityInfo:
+    """Structured entity reference (id + display name)."""
+    id: str
+    name: str
+
+
+@dataclass
+class ExitDetail:
+    """Structured exit (direction + destination display name)."""
+    direction: str
+    destination: str
+
+
+@dataclass
 class RoomEnter:
     """Player has entered a room."""
     room_id: str
     name: str
     description: str
-    exits: list[str] = field(default_factory=list)  # Destination room names
-    objects: list[str] = field(default_factory=list)  # Just object descriptions
-    inventory: list[str] = field(default_factory=list)  # Just item descriptions
+    exits: list[ExitDetail] = field(default_factory=list)
+    objects: list[EntityInfo] = field(default_factory=list)
+    inventory: list[EntityInfo] = field(default_factory=list)
     image: str | None = None  # Path to room image, if any
 
 
@@ -126,21 +140,16 @@ def build_room_block(
     if room and has_render_spec(room):
         image_url = _resolve_image_url(room.render, state.room, runtime, game_dir)
 
-    # De-duplicate exits (multiple directions may lead to same room)
-    seen_exits: set[str] = set()
-    unique_exits: list[str] = []
-    for e in state.exits:
-        if e.destination_name not in seen_exits:
-            seen_exits.add(e.destination_name)
-            unique_exits.append(e.destination_name)
-
     return RoomEnter(
         room_id=state.room,
         name=state.room_name,
         description=state.room_description,
-        exits=unique_exits,
-        objects=[obj.description for obj in state.visible_objects],
-        inventory=[obj.description for obj in state.inventory],
+        exits=[ExitDetail(direction=e.direction, destination=e.destination_name)
+               for e in state.exits],
+        objects=[EntityInfo(id=obj.id, name=obj.description)
+                 for obj in state.visible_objects],
+        inventory=[EntityInfo(id=obj.id, name=obj.description)
+                   for obj in state.inventory],
         image=image_url,
     )
 
@@ -208,9 +217,9 @@ def format_room_enter(room: RoomEnter) -> str:
     if room.description:
         lines.append(room.description)
     if room.exits:
-        lines.append(f"Exits: {', '.join(room.exits)}")
+        lines.append(f"Exits: {', '.join(e.destination for e in room.exits)}")
     if room.inventory:
-        lines.append(f"Carrying: {', '.join(room.inventory)}")
+        lines.append(f"Carrying: {', '.join(item.name for item in room.inventory)}")
     if room.objects:
-        lines.append(f"You see: {', '.join(room.objects)}")
+        lines.append(f"You see: {', '.join(obj.name for obj in room.objects)}")
     return "\n".join(lines)

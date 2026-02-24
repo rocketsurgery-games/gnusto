@@ -38,9 +38,10 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "room_id": block.room_id,
             "name": block.name,
             "description": block.description,
-            "exits": block.exits,
-            "objects": block.objects,
-            "inventory": block.inventory,
+            "exits": [{"direction": e.direction, "destination": e.destination}
+                      for e in block.exits],
+            "objects": [{"id": o.id, "name": o.name} for o in block.objects],
+            "inventory": [{"id": o.id, "name": o.name} for o in block.inventory],
             "image": block.image,
         }
     elif isinstance(block, ActionResult):

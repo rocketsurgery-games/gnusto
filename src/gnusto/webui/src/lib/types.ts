@@ -1,13 +1,23 @@
 // Content block types (matching Python render.py)
 
+export interface EntityInfo {
+  id: string
+  name: string
+}
+
+export interface ExitDetail {
+  direction: string
+  destination: string
+}
+
 export interface RoomEnterBlock {
   type: 'room_enter'
   room_id: string
   name: string
   description: string
-  exits: string[]
-  objects: string[]
-  inventory: string[]
+  exits: ExitDetail[]
+  objects: EntityInfo[]
+  inventory: EntityInfo[]
   image: string | null
 }
 

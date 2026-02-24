@@ -1,14 +1,15 @@
 <script lang="ts">
   interface Props {
     side: 'left' | 'right'
+    ontoggle?: () => void
   }
 
-  let { side }: Props = $props()
+  let { side, ontoggle }: Props = $props()
 </script>
 
-<div class="peek-tab peek-{side}">
+<button class="peek-tab peek-{side}" onclick={ontoggle}>
   <span class="peek-icon">{side === 'left' ? '\u25B6' : '\u25C0'}</span>
-</div>
+</button>
 
 <style>
   .peek-tab {
@@ -19,6 +20,8 @@
     width: 24px;
     height: 48px;
     background: var(--border);
+    border: none;
+    padding: 0;
     border-radius: 0 4px 4px 0;
     align-items: center;
     justify-content: center;

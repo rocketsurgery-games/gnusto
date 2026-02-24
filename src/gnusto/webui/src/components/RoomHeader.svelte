@@ -17,19 +17,6 @@
       {/if}
       <h2>{room.name}</h2>
       <div class="room-desc">{@html styleText(room.description)}</div>
-      {#if room.exits.length > 0 || room.objects.length > 0 || room.inventory.length > 0}
-        <div class="room-meta">
-          {#if room.exits.length > 0}
-            <div>Exits: {room.exits.join(', ')}</div>
-          {/if}
-          {#if room.objects.length > 0}
-            <div>You see: {room.objects.join(', ')}</div>
-          {/if}
-          {#if room.inventory.length > 0}
-            <div>Carrying: {room.inventory.join(', ')}</div>
-          {/if}
-        </div>
-      {/if}
     </div>
   {:else}
     <h2>Gnusto</h2>
@@ -65,13 +52,5 @@
   .room-desc {
     color: var(--text-secondary);
     font-size: 0.95rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .room-meta {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-family: var(--font-ui);
-    clear: both;
   }
 </style>
