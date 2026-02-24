@@ -1,0 +1,38 @@
+id: gnusto-d4ui.3
+title: Interactive elements — clickable entities, autocomplete, quick actions
+type: task
+priority: 2
+created: '2026-02-24T12:00:00Z'
+updated: '2026-02-24T12:00:00Z'
+description: |
+  Make the UI interactive beyond typing. Players should be able to click on things
+  to act on them, both in the narrative and in the sidebar.
+
+  ## Scope
+
+  1. **Clickable entity references in narrative** — @entity references already render
+     in magenta. Make them clickable → opens a context menu of available behaviors
+     (examine, take, talk to, etc.). The menu items come from the entity's behaviors
+     as exposed in game state.
+
+  2. **Clickable sidebar items** — Same interaction: click an inventory/object/character
+     item → context menu of actions. This is the sidebar equivalent of inline clicks.
+
+  3. **Quick action buttons** — Common actions surfaced as buttons or icons on sidebar
+     items without requiring a menu (e.g., "take" on visible objects, "examine" on
+     anything, "go" on exits).
+
+  4. **Input autocomplete** — As the player types, suggest completions for entity names,
+     directions, and common verbs. Driven by current game state (visible entities,
+     available exits, inventory).
+
+  5. **Action generation** — When a player clicks an action, generate the natural language
+     command (e.g., "examine the hacker") and send it through the normal input pipeline.
+     The LLM still interprets; we're just providing shortcuts.
+
+  ## Design considerations
+
+  - Both inline and sidebar clicks should feel natural, not forced. Players who prefer
+    typing should never feel like they need to click.
+  - Context menus should be lightweight and dismissable (not modal).
+  - Autocomplete should be fast and non-intrusive.
