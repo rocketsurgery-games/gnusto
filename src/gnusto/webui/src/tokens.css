@@ -1,0 +1,51 @@
+/* Design tokens — extracted from style.css */
+
+:root {
+  --bg-primary: #ffffff;
+  --text-primary: #2a2a2a;
+  --text-secondary: #555;
+  --text-muted: #999;
+  --text-bright: #111;
+  --accent-cyan: #1a7a8a;
+  --accent-green: #2e7d32;
+  --accent-yellow: #b8860b;
+  --accent-magenta: #8e3a8e;
+  --accent-soft: #7c6a99;
+  --border: #d0d0d0;
+  --think-bg: #f5f0fa;
+  --think-text: #6a4f8a;
+  --think-border: #c4a8d8;
+  --ambient-color: #6a8a9a;
+  --reveal-text: #3a6a4a;
+
+  --font-body: Georgia, 'Times New Roman', serif;
+  --font-ui: 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Consolas', 'Monaco', monospace;
+
+  --panel-radius: 8px;
+  --block-gap: 1rem;
+  --image-overhang: 100px;
+
+  --sidebar-width: 220px;
+  --input-height: 3rem;
+
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --image-overhang: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    font-size: 16px;
+    --image-overhang: 0px;
+    --sidebar-width: 0px;
+  }
+}

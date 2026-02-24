@@ -1,0 +1,26 @@
+/* Global resets and shared utilities */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* Block enter animation */
+@keyframes block-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Utility: @reference highlighting */
+.ref {
+  color: var(--accent-magenta);
+}

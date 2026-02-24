@@ -1,0 +1,21 @@
+let sceneEntities = $state<Record<string, { name: string; image: string | null }>>({})
+
+export function updateEntities(entities: Record<string, { name: string; image: string | null }>) {
+  sceneEntities = entities
+}
+
+export function resolveEntityName(id: string): string {
+  const entity = sceneEntities[id]
+  if (entity) return entity.name
+  // Fallback: strip @ and capitalize
+  return id.replace(/^@/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+export function resolveEntityImage(id: string): string | null {
+  return sceneEntities[id]?.image || null
+}
+
+export function speakerInitial(name: string): string {
+  const clean = name.replace(/^(the|a|an)\s+/i, '')
+  return clean.charAt(0).toUpperCase()
+}
