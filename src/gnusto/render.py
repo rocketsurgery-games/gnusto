@@ -140,16 +140,29 @@ def build_room_block(
     if room and has_render_spec(room):
         image_url = _resolve_image_url(room.render, state.room, runtime, game_dir)
 
+    # De-duplicate exits: keep first direction per destination
+    seen_dests: set[str] = set()
+    exits: list[ExitDetail] = []
+    for e in state.exits:
+        if e.destination_name not in seen_dests:
+            seen_dests.add(e.destination_name)
+            exits.append(ExitDetail(direction=e.direction, destination=e.destination_name))
+
+    def _flatten_objects(obj_list: list) -> list[EntityInfo]:
+        result: list[EntityInfo] = []
+        for obj in obj_list:
+            result.append(EntityInfo(id=obj.id, name=obj.description))
+            if obj.contents:
+                result.extend(_flatten_objects(obj.contents))
+        return result
+
     return RoomEnter(
         room_id=state.room,
         name=state.room_name,
         description=state.room_description,
-        exits=[ExitDetail(direction=e.direction, destination=e.destination_name)
-               for e in state.exits],
-        objects=[EntityInfo(id=obj.id, name=obj.description)
-                 for obj in state.visible_objects],
-        inventory=[EntityInfo(id=obj.id, name=obj.description)
-                   for obj in state.inventory],
+        exits=exits,
+        objects=_flatten_objects(state.visible_objects),
+        inventory=_flatten_objects(state.inventory),
         image=image_url,
     )
 
