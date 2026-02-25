@@ -117,4 +117,11 @@ export interface SceneContextMessage {
   entities: Record<string, { name: string; image: string | null }>
 }
 
-export type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage | SceneContextMessage
+export interface StateUpdateMessage {
+  type: 'state_update'
+  exits: ExitDetail[]
+  objects: EntityInfo[]
+  inventory: EntityInfo[]
+}
+
+export type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage | SceneContextMessage | StateUpdateMessage

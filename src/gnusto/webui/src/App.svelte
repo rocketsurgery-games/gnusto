@@ -45,6 +45,14 @@
       blocks = []
       currentRoom = null
       imageBlockIndex = 0
+    } else if (message.type === 'state_update') {
+      if (currentRoom) {
+        currentRoom = { ...currentRoom,
+          exits: message.exits,
+          objects: message.objects,
+          inventory: message.inventory,
+        }
+      }
     } else if (message.type === 'quit') {
       gameEnded = true
       inputEnabled = false

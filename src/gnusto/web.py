@@ -334,20 +334,32 @@ async def handle_game_command(
     if send_futures:
         await asyncio.gather(*[asyncio.wrap_future(f) for f in send_futures], return_exceptions=True)
 
-    # Check for room change
     state = get_game_state(session.runtime)
+
+    # Always refresh scene context (entity images may have changed)
+    scene_ctx = build_scene_context(state, session.runtime, game_dir)
+    if scene_ctx:
+        await websocket.send_text(json.dumps({
+            "type": "scene_context",
+            "entities": scene_ctx,
+        }))
+
     if state.room != previous_room:
-        # Send updated scene context for the new room
-        scene_ctx = build_scene_context(state, session.runtime, game_dir)
-        if scene_ctx:
-            await websocket.send_text(json.dumps({
-                "type": "scene_context",
-                "entities": scene_ctx,
-            }))
+        # Full room transition
         room_block = build_room_block(state, session.runtime, game_dir)
         await websocket.send_text(json.dumps({
             "type": "blocks",
             "blocks": [block_to_dict(room_block)],
+        }))
+    else:
+        # Same room — update sidebar (exits, objects, inventory)
+        room_block = build_room_block(state, session.runtime, game_dir)
+        await websocket.send_text(json.dumps({
+            "type": "state_update",
+            "exits": [{"direction": e.direction, "destination": e.destination}
+                       for e in room_block.exits],
+            "objects": [{"id": o.id, "name": o.name} for o in room_block.objects],
+            "inventory": [{"id": o.id, "name": o.name} for o in room_block.inventory],
         }))
 
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
