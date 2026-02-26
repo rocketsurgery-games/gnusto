@@ -21,6 +21,7 @@ class EntityInfo:
     """Structured entity reference (id + display name)."""
     id: str
     name: str
+    behaviors: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -151,7 +152,7 @@ def build_room_block(
     def _flatten_objects(obj_list: list) -> list[EntityInfo]:
         result: list[EntityInfo] = []
         for obj in obj_list:
-            result.append(EntityInfo(id=obj.id, name=obj.description))
+            result.append(EntityInfo(id=obj.id, name=obj.description, behaviors=obj.behaviors))
             if obj.contents:
                 result.extend(_flatten_objects(obj.contents))
         return result

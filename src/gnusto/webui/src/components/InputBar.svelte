@@ -2,10 +2,14 @@
   interface Props {
     enabled: boolean
     gameEnded: boolean
+    prefill?: string | null
+    targetingPrompt?: string | null
     oncommand: (command: string) => void
+    onprefillconsumed?: () => void
+    oncanceltargeting?: () => void
   }
 
-  let { enabled, gameEnded, oncommand }: Props = $props()
+  let { enabled, gameEnded, prefill = null, targetingPrompt = null, oncommand, onprefillconsumed, oncanceltargeting }: Props = $props()
 
   let inputEl: HTMLInputElement | undefined = $state()
 
@@ -13,6 +17,15 @@
   $effect(() => {
     if (enabled && inputEl) {
       inputEl.focus()
+    }
+  })
+
+  // Fill input when prefill changes
+  $effect(() => {
+    if (prefill != null && inputEl) {
+      inputEl.value = prefill
+      inputEl.focus()
+      onprefillconsumed?.()
     }
   })
 
@@ -28,16 +41,23 @@
 </script>
 
 <footer class="input-bar">
-  <form onsubmit={handleSubmit}>
-    <span class="prompt">&gt;</span>
-    <input
-      bind:this={inputEl}
-      type="text"
-      placeholder={gameEnded ? 'Game ended. Refresh to restart.' : (enabled ? 'What do you want to do?' : 'Waiting...')}
-      disabled={!enabled || gameEnded}
-      autocomplete="off"
-    />
-  </form>
+  {#if targetingPrompt}
+    <div class="targeting-prompt">
+      <span>&#x2316; {targetingPrompt}</span>
+      <button class="cancel-btn" onclick={() => oncanceltargeting?.()}>Esc</button>
+    </div>
+  {:else}
+    <form onsubmit={handleSubmit}>
+      <span class="prompt">&gt;</span>
+      <input
+        bind:this={inputEl}
+        type="text"
+        placeholder={gameEnded ? 'Game ended. Refresh to restart.' : (enabled ? 'What do you want to do?' : 'Waiting...')}
+        disabled={!enabled || gameEnded}
+        autocomplete="off"
+      />
+    </form>
+  {/if}
 </footer>
 
 <style>

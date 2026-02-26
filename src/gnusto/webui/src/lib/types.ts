@@ -3,6 +3,7 @@
 export interface EntityInfo {
   id: string
   name: string
+  behaviors: string[]
 }
 
 export interface ExitDetail {

@@ -4,9 +4,10 @@
 
   interface Props {
     blocks: RenderableBlock[]
+    onentityclick?: (entityId: string, anchorEl: HTMLElement) => void
   }
 
-  let { blocks }: Props = $props()
+  let { blocks, onentityclick }: Props = $props()
 
   // Auto-scroll when new blocks arrive
   $effect(() => {
@@ -16,9 +17,27 @@
       })
     }
   })
+
+  function handleClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement).closest('.ref[data-entity]') as HTMLElement | null
+    if (target && onentityclick) {
+      onentityclick(target.dataset.entity!, target)
+    }
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const target = (e.target as HTMLElement).closest('.ref[data-entity]') as HTMLElement | null
+      if (target && onentityclick) {
+        e.preventDefault()
+        onentityclick(target.dataset.entity!, target)
+      }
+    }
+  }
 </script>
 
-<main class="stream">
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<main class="stream" onclick={handleClick} onkeydown={handleKeydown}>
   {#each blocks as block, i (i)}
     <BlockRenderer {block} />
   {/each}

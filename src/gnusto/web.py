@@ -40,8 +40,8 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "description": block.description,
             "exits": [{"direction": e.direction, "destination": e.destination}
                       for e in block.exits],
-            "objects": [{"id": o.id, "name": o.name} for o in block.objects],
-            "inventory": [{"id": o.id, "name": o.name} for o in block.inventory],
+            "objects": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in block.objects],
+            "inventory": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in block.inventory],
             "image": block.image,
         }
     elif isinstance(block, ActionResult):
@@ -358,8 +358,8 @@ async def handle_game_command(
             "type": "state_update",
             "exits": [{"direction": e.direction, "destination": e.destination}
                        for e in room_block.exits],
-            "objects": [{"id": o.id, "name": o.name} for o in room_block.objects],
-            "inventory": [{"id": o.id, "name": o.name} for o in room_block.inventory],
+            "objects": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in room_block.objects],
+            "inventory": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in room_block.inventory],
         }))
 
     await websocket.send_text(json.dumps({"type": "turn_complete"}))

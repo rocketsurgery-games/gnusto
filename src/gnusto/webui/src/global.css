@@ -23,4 +23,60 @@ body {
 /* Utility: @reference highlighting */
 .ref {
   color: var(--accent-magenta);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.ref:hover {
+  text-decoration-style: solid;
+}
+
+/* Targeting mode: pulsing glow on clickable entities */
+@keyframes target-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--accent-cyan); }
+  50%      { box-shadow: 0 0 12px var(--accent-cyan); }
+}
+
+body.targeting .ref {
+  color: var(--accent-cyan);
+  text-decoration-color: var(--accent-cyan);
+  animation: target-pulse 1.2s ease-in-out infinite;
+  border-radius: 2px;
+  cursor: crosshair;
+}
+
+body.targeting .entity-btn {
+  animation: target-pulse 1.2s ease-in-out infinite;
+  border-radius: 3px;
+  cursor: crosshair;
+}
+
+/* Targeting prompt in input bar */
+.targeting-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 800px;
+  margin: 0 auto;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.targeting-prompt .cancel-btn {
+  background: none;
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.targeting-prompt .cancel-btn:hover {
+  opacity: 1;
 }

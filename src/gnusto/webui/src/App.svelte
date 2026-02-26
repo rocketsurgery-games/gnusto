@@ -2,7 +2,8 @@
   import { onMount } from 'svelte'
   import type { RoomEnterBlock, ContentBlock, RenderableBlock, ServerMessage } from './lib/types'
   import { connect, onMessage, send } from './lib/websocket.svelte'
-  import { updateEntities } from './lib/entities.svelte'
+  import { updateEntities, updateBehaviors, resolveEntityName, resolveEntityBehaviors } from './lib/entities.svelte'
+  import { behaviorLabel, behaviorToTargetedCommand } from './lib/commands'
 
   import RoomHeader from './components/RoomHeader.svelte'
   import NarrativeStream from './components/NarrativeStream.svelte'
@@ -10,6 +11,7 @@
   import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
+  import EntityPopover from './components/EntityPopover.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -32,6 +34,75 @@
   // Mobile sidebar state
   let rightSidebarOpen = $state(false)
 
+  // Prefill text for input bar (from popover "fill" actions)
+  let inputPrefill = $state<string | null>(null)
+
+  // Entity popover state
+  let popover = $state<{
+    entityId: string
+    entityName: string
+    behaviors: string[]
+    anchorRect: DOMRect
+  } | null>(null)
+
+  // Targeting mode state
+  let targeting = $state<{
+    sourceEntityId: string
+    sourceEntityName: string
+    behavior: string
+    prompt: string
+  } | null>(null)
+
+  // Toggle body class for CSS cascade
+  $effect(() => {
+    document.body.classList.toggle('targeting', !!targeting)
+  })
+
+  function openPopover(entityId: string, anchorEl: HTMLElement) {
+    const name = resolveEntityName(entityId)
+    const behaviors = resolveEntityBehaviors(entityId)
+    popover = {
+      entityId,
+      entityName: name,
+      behaviors,
+      anchorRect: anchorEl.getBoundingClientRect(),
+    }
+  }
+
+  function handleEntityClick(entityId: string, anchorEl: HTMLElement) {
+    if (targeting) {
+      completeTargeting(entityId)
+    } else {
+      openPopover(entityId, anchorEl)
+    }
+  }
+
+  function enterTargetingMode(sourceEntityId: string, sourceEntityName: string, behavior: string) {
+    const label = behaviorLabel(behavior).toLowerCase()
+    targeting = {
+      sourceEntityId,
+      sourceEntityName,
+      behavior,
+      prompt: `${label} the ${sourceEntityName}... click a target`,
+    }
+  }
+
+  function completeTargeting(targetEntityId: string) {
+    if (!targeting) return
+    const targetName = resolveEntityName(targetEntityId)
+    const cmd = behaviorToTargetedCommand(
+      targeting.behavior,
+      targeting.sourceEntityName,
+      targetName,
+    )
+    targeting = null
+    handleCommand(cmd)
+  }
+
+  function cancelTargeting() {
+    targeting = null
+  }
+
   function handleMessage(message: ServerMessage) {
     if (message.type === 'scene_context') {
       updateEntities(message.entities)
@@ -46,6 +117,7 @@
       currentRoom = null
       imageBlockIndex = 0
     } else if (message.type === 'state_update') {
+      updateBehaviors([...message.objects, ...message.inventory])
       if (currentRoom) {
         currentRoom = { ...currentRoom,
           exits: message.exits,
@@ -69,6 +141,8 @@
       blocks = []
       imageBlockIndex = 0
       currentRoom = block
+      updateBehaviors([...block.objects, ...block.inventory])
+      targeting = null
       return
     }
 
@@ -95,11 +169,30 @@
   })
 </script>
 
-<RoomHeader room={currentRoom} />
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && targeting) { cancelTargeting(); e.preventDefault() } }} />
+
+<RoomHeader room={currentRoom} onentityclick={handleEntityClick} />
 <Sidebar side="left" />
-<RightSidebar room={currentRoom} oncommand={handleCommand} open={rightSidebarOpen}
-  onclose={() => rightSidebarOpen = false} />
-<NarrativeStream {blocks} />
-<InputBar enabled={inputEnabled} {gameEnded} oncommand={handleCommand} />
+<RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
+  open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
+<NarrativeStream {blocks} onentityclick={handleEntityClick} />
+<InputBar enabled={inputEnabled} {gameEnded} prefill={inputPrefill}
+  targetingPrompt={targeting?.prompt}
+  oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null}
+  oncanceltargeting={cancelTargeting} />
 <PeekTab side="left" />
 <PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
+
+{#if popover}
+  <EntityPopover
+    entityName={popover.entityName}
+    behaviors={popover.behaviors}
+    anchorRect={popover.anchorRect}
+    oncommand={handleCommand}
+    onfill={(text: string) => inputPrefill = text}
+    ontarget={(behavior: string) => {
+      if (popover) enterTargetingMode(popover.entityId, popover.entityName, behavior)
+    }}
+    onclose={() => popover = null}
+  />
+{/if}

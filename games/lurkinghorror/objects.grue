@@ -10,7 +10,8 @@
   :description "keyring"
   :location @hacker
   :properties (
-    :container true 
+    :container true
+    :open true
     :nodesc true   ; nodesc hides from room listing; searchable makes it searchable
     :searchable true)
 

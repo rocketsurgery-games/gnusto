@@ -6,11 +6,12 @@
   interface Props {
     room: RoomEnterBlock | null
     oncommand: (cmd: string) => void
+    onentityclick: (entityId: string, anchorEl: HTMLElement) => void
     open?: boolean
     onclose?: () => void
   }
 
-  let { room, oncommand, open = false, onclose }: Props = $props()
+  let { room, oncommand, onentityclick, open = false, onclose }: Props = $props()
 
   function handleExitClick(direction: string) {
     oncommand(`go ${direction}`)
@@ -50,14 +51,14 @@
           {#each room.objects as obj (obj.id)}
             {@const img = resolveEntityImage(obj.id)}
             <li transition:slide={{ duration: 150 }}>
-              <div class="entity-row">
+              <button class="entity-btn" onclick={(e: MouseEvent) => onentityclick(obj.id, e.currentTarget as HTMLElement)}>
                 {#if img}
                   <img class="entity-thumb" src={img} alt={obj.name} />
                 {:else}
                   <span class="entity-initial">{obj.name.charAt(0).toUpperCase()}</span>
                 {/if}
                 <span class="entity-name">{obj.name}</span>
-              </div>
+              </button>
             </li>
           {/each}
         </ul>
@@ -74,14 +75,14 @@
           {#each room.inventory as item (item.id)}
             {@const img = resolveEntityImage(item.id)}
             <li transition:slide={{ duration: 150 }}>
-              <div class="entity-row">
+              <button class="entity-btn" onclick={(e: MouseEvent) => onentityclick(item.id, e.currentTarget as HTMLElement)}>
                 {#if img}
                   <img class="entity-thumb" src={img} alt={item.name} />
                 {:else}
                   <span class="entity-initial">{item.name.charAt(0).toUpperCase()}</span>
                 {/if}
                 <span class="entity-name">{item.name}</span>
-              </div>
+              </button>
             </li>
           {/each}
         </ul>
@@ -134,10 +135,24 @@
     margin-bottom: 0.25rem;
   }
 
-  .entity-row {
+  .entity-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.25rem 0.4rem;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .entity-btn:hover {
+    border-color: var(--border);
+    background: rgba(0, 0, 0, 0.03);
   }
 
   .entity-thumb {

@@ -15,7 +15,8 @@ export function escapeHtml(text: string): string {
 /** Escape HTML, style @references, convert newlines to <br> */
 export function styleText(text: string): string {
   let html = escapeHtml(text)
-  html = html.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
+  html = html.replace(/@[\w-]+/g, (match) =>
+    `<span class="ref" data-entity="${match}" role="button" tabindex="0">${match}</span>`)
   html = html.replace(/\n/g, '<br>')
   return html
 }
@@ -24,7 +25,8 @@ export function styleText(text: string): string {
 export function styleNarrative(text: string): string {
   let html = marked.parse(text) as string
   html = html.replace(/>([^<]+)</g, (_, textContent: string) => {
-    const styled = textContent.replace(/@[\w-]+/g, '<span class="ref">$&</span>')
+    const styled = textContent.replace(/@[\w-]+/g, (match) =>
+      `<span class="ref" data-entity="${match}" role="button" tabindex="0">${match}</span>`)
     return '>' + styled + '<'
   })
   return html

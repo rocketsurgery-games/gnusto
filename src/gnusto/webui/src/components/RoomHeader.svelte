@@ -4,12 +4,31 @@
 
   interface Props {
     room: RoomEnterBlock | null
+    onentityclick?: (entityId: string, anchorEl: HTMLElement) => void
   }
 
-  let { room }: Props = $props()
+  let { room, onentityclick }: Props = $props()
+
+  function handleClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement).closest('.ref[data-entity]') as HTMLElement | null
+    if (target && onentityclick) {
+      onentityclick(target.dataset.entity!, target)
+    }
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const target = (e.target as HTMLElement).closest('.ref[data-entity]') as HTMLElement | null
+      if (target && onentityclick) {
+        e.preventDefault()
+        onentityclick(target.dataset.entity!, target)
+      }
+    }
+  }
 </script>
 
-<header class="header">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<header class="header" onclick={handleClick} onkeydown={handleKeydown}>
   {#if room}
     <div class="room-header">
       {#if room.image}

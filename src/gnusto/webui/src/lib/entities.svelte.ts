@@ -1,7 +1,16 @@
+import type { EntityInfo } from './types'
+
 let sceneEntities = $state<Record<string, { name: string; image: string | null }>>({})
+let entityBehaviors = $state<Record<string, string[]>>({})
 
 export function updateEntities(entities: Record<string, { name: string; image: string | null }>) {
   sceneEntities = entities
+}
+
+export function updateBehaviors(entities: EntityInfo[]) {
+  for (const e of entities) {
+    entityBehaviors[e.id] = e.behaviors
+  }
 }
 
 export function resolveEntityName(id: string): string {
@@ -13,6 +22,10 @@ export function resolveEntityName(id: string): string {
 
 export function resolveEntityImage(id: string): string | null {
   return sceneEntities[id]?.image || null
+}
+
+export function resolveEntityBehaviors(id: string): string[] {
+  return entityBehaviors[id] || []
 }
 
 export function speakerInitial(name: string): string {
