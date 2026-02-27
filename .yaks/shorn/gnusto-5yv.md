@@ -1,0 +1,10 @@
+---
+id: gnusto-5yv
+title: TUI prototype with Textual
+type: task
+priority: 2
+created: '2026-01-19T19:26:58.156845-05:00'
+updated: '2026-02-08T19:07:11.00626Z'
+---
+
+Initial prototype: room panel, input, debug toggle, basic keyboard shortcuts

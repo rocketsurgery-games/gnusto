@@ -1,9 +1,0 @@
-id: gnusto-gv2.20
-title: Add 'wait' action for turn-based NPC mechanics
-type: task
-priority: 2
-created: '2026-01-24T00:36:16.45451-05:00'
-updated: '2026-02-08T19:07:10.997095Z'
-description: Exploration has no way to advance every-turn events without a player
-  action. The floor-waxer patrols via every-turn, but we can't 'wait' for it to move.
-  Need a wait/pass action that advances time without other effects.

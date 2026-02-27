@@ -1,0 +1,12 @@
+---
+id: gnusto-jb2
+title: Make result predicates work in (assert ...)
+type: task
+priority: 1
+created: '2026-01-17T12:51:10.545211-05:00'
+updated: '2026-02-08T19:07:10.961811Z'
+depends_on:
+- gnusto-vdy
+---
+
+(outcome? x), (reason? x), (context? k v) should check last action result when used in assert context.

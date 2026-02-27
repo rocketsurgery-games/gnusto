@@ -1,0 +1,10 @@
+---
+id: gnusto-lp1.2
+title: Test small object visibility in complex scenes
+type: task
+priority: 1
+created: '2026-01-07T19:16:51.60845-05:00'
+updated: '2026-02-08T19:07:10.985676Z'
+---
+
+The jade figurine was missing/hard to see in the Hades scene. Test various approaches: stronger emphasis in prompt, foreground placement language, larger relative size descriptions. Determine if small important objects can be reliably rendered.

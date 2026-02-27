@@ -1,0 +1,34 @@
+---
+id: gnusto-7l2.19
+title: Chinese food heating requires nested container support
+type: task
+priority: 1
+created: '2026-01-13T15:00:43.504773-05:00'
+updated: '2026-02-08T19:07:10.971229Z'
+labels:
+- lh
+---
+
+When testing the microwave puzzle, discovered that `(in? @chinese-food @microwave)` returns false when chinese-food is in the carton which is in the microwave.
+
+## Current behavior:
+- Chinese food is in carton (@chinese-food location = @carton)
+- Carton is in microwave (@carton location = @microwave)
+- `(in? @chinese-food @microwave)` returns false
+- Microwave event doesn't heat the chinese-food
+
+## Expected behavior:
+For the food puzzle to work naturally, one of these needs to happen:
+1. `in?` should recurse through containers, OR
+2. The microwave event should heat the carton's contents, not just check for @chinese-food directly
+
+## Current workaround in kitchen.grue:
+The code checks both `(in? @chinese-food @microwave)` AND `(in? @carton @microwave)` separately. But the tests use `(move! @chinese-food @microwave)` to put food directly in microwave.
+
+## Design question:
+Should `in?` recurse through containers? Or should we have a separate `inside?` predicate that does recursive checking?
+
+## Options:
+1. Make `in?` recursive (might break other code that depends on direct containment)
+2. Add new `inside?` predicate for recursive check
+3. Update kitchen.grue to heat carton contents instead of checking for chinese-food directly

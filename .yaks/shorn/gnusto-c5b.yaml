@@ -1,9 +1,0 @@
-id: gnusto-c5b
-title: LLM-generated narrative/display text
-type: task
-priority: 3
-created: '2026-01-18T23:32:24.096596-05:00'
-updated: '2026-02-08T16:50:54.354969-05:00'
-description: Explore having the LLM generate or adapt display text (room descriptions,
-  action results, etc.) rather than purely programmatic rendering. Big can of worms
-  - defer until core mechanics are solid.

@@ -1,0 +1,10 @@
+---
+id: gnusto-lp1
+title: Evaluate OmniGen2 scene composition and reference-based consistency
+type: task
+priority: 1
+created: '2026-01-07T19:03:19.979777-05:00'
+updated: '2026-02-08T19:07:10.986277Z'
+---
+
+Systematically test OmniGen2's ability to: (1) reliably compose scenes with multiple objects in specified spatial relationships, (2) use reference images to maintain consistency of characters, objects, and style across generations. This will determine if we need additional tools like GLIGEN/ControlNet or if OmniGen2 alone is sufficient.

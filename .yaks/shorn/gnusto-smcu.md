@@ -1,0 +1,10 @@
+---
+id: gnusto-smcu
+title: Reorganize tests/ to mirror src/ package structure
+type: task
+priority: 3
+created: '2026-02-08T12:28:28.832866-05:00'
+updated: '2026-02-08T19:07:11.065173Z'
+---
+
+Reorganize tests/ directory to mirror src/ package structure. Currently 14 test files in flat structure. Create tests/grue/, tests/frotz/, tests/gnusto/, tests/zil/, tests/filfre/ subdirectories.

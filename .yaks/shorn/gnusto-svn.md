@@ -1,0 +1,22 @@
+---
+id: gnusto-svn
+title: (EPIC) Move convenience functions from Python to Grue
+type: task
+priority: 2
+created: '2026-01-18T15:09:16.926648-05:00'
+updated: '2026-02-08T19:07:11.010326Z'
+---
+
+Move simple predicate functions from Python expr.py to Grue builtins.grue. This clarifies the boundary between language primitives (Python) and IF convenience functions (Grue).
+
+Goals:
+- Remove ~100 lines of Python boilerplate
+- Cleaner separation: primitives vs convenience
+- Demonstrate Grue's expressiveness
+- Remove deprecated has-flag functions
+
+Categories to address:
+1. Remove deprecated has-flag/has-flag? (use keyword lookup)
+2. Move simple predicates: held?, here?, in?, held-by?, at?, loc?
+3. Move sequence sugar: first, empty?
+4. Add (player) primitive for use outside behaviors

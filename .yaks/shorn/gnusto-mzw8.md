@@ -1,0 +1,12 @@
+---
+id: gnusto-mzw8
+title: 'GFX mode: LLM integration'
+type: task
+priority: 2
+created: '2026-01-26T00:47:13.912174-05:00'
+updated: '2026-02-08T19:07:10.991965Z'
+depends_on:
+- gnusto-re4y
+---
+
+Phase 3: emit_panel tool for agent, modify agent to emit panels instead of plain text, image index loading and lookup. See docs/ui.md

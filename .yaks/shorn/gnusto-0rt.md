@@ -1,0 +1,12 @@
+---
+id: gnusto-0rt
+title: Build action executor with preconditions/effects
+type: task
+priority: 1
+created: '2026-01-08T21:18:35.648757-05:00'
+updated: '2026-02-08T19:07:10.982244Z'
+depends_on:
+- gnusto-r78
+---
+
+Extend the World model with an action execution system. Actions have preconditions (checked against state) and effects (state mutations). Return success/failure with reason.

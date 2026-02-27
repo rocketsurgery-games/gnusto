@@ -1,0 +1,20 @@
+---
+id: gnusto-jmw
+title: Unify flags and properties
+type: task
+priority: 2
+created: '2026-01-17T23:58:43.545956-05:00'
+updated: '2026-02-08T19:07:11.012075Z'
+---
+
+Replace the separate flags mechanism with boolean properties. Flags were a 70s-era memory optimization (bitfields) that adds unnecessary complexity to the language.
+
+Goals:
+- Single data model: everything about an object is in properties
+- Natural syntax: `(:open @door)` instead of `(has-flag @door OPENBIT)`
+- Consistent with Lisp/Clojure principles
+- Cleaner effects: `(set @obj :open true)` instead of `(set-flag @obj OPENBIT)`
+
+Naming conventions:
+- Use natural names: :open, :locked, :lit, :visible, :takeable
+- Article hints (AN, THE) become :article property with values :a/:an/:the/:none

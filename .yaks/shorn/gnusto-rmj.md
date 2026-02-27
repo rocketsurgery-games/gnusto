@@ -1,0 +1,13 @@
+---
+id: gnusto-rmj
+title: State assertion framework for Grue
+type: task
+priority: 1
+created: '2026-01-10T16:24:28.73791-05:00'
+updated: '2026-02-08T19:07:10.975969Z'
+depends_on:
+- gnusto-4ub
+- gnusto-n0d
+---
+
+Build framework to assert on game states, inputs, and transitions. Enable writing tests that validate expectations and defend against regressions.

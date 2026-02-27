@@ -1,0 +1,27 @@
+---
+id: gnusto-ntr.10
+title: Add for/doseq comprehension forms
+type: task
+priority: 3
+created: '2026-01-14T09:58:05.813065-05:00'
+updated: '2026-02-08T19:07:11.075479Z'
+labels:
+- lang
+---
+
+Clojure-style sequence comprehensions would make iterative code cleaner:
+
+```scheme
+; (for [BINDING SEQ ...] BODY) - returns lazy seq of results
+(for [(?i (range 4))]
+  (when (go-button-pressed? ?i)
+    (nth '("B" "1" "2" "3") ?i)))
+
+; (doseq [BINDING SEQ ...] BODY) - for side effects only
+(doseq [(?obj (contents @player))]
+  (print (desc ?obj)))
+```
+
+This depends on frotzlm-ntr.9 (collection functions) as `for` is typically implemented using `map` and `filter` internally.
+
+Lower priority than map/filter/reduce since those cover most use cases.

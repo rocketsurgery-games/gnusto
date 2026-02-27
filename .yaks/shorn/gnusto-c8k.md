@@ -1,0 +1,10 @@
+---
+id: gnusto-c8k
+title: Dead-strip unreferenced globals from converter output
+type: task
+priority: 3
+created: '2026-01-09T12:27:23.136888-05:00'
+updated: '2026-02-08T19:07:11.077599Z'
+---
+
+Many globals in the output are text fragments not referenced elsewhere. Analyze which symbols are actually used in the output and remove unreferenced ones. Consider denormalizing - copying text fragments inline where they're used.

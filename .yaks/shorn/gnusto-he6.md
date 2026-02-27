@@ -1,0 +1,12 @@
+---
+id: gnusto-he6
+title: Benchmark DPMSolver++ scheduler
+type: task
+priority: 2
+created: '2026-01-07T23:46:36.009658867-05:00'
+updated: '2026-02-08T19:07:11.0634Z'
+depends_on:
+- gnusto-luk
+---
+
+Test DPMSolver++ scheduler vs default Euler. DPMSolver++ may converge faster, allowing fewer steps for same quality. Test at 15, 20, 25 steps.

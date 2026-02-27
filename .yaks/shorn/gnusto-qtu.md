@@ -1,0 +1,10 @@
+---
+id: gnusto-qtu
+title: ?self binding missing in @pc :type behavior
+type: bug
+priority: 1
+created: '2026-01-14T22:49:36.475301-05:00'
+updated: '2026-02-08T19:07:10.966713Z'
+---
+
+When calling (do @pc :type "help"), the behavior body fails with 'Unknown object: ?self'. The ?self binding should be available in behavior evaluation but is not being set correctly for this case.

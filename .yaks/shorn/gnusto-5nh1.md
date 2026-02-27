@@ -1,0 +1,12 @@
+---
+id: gnusto-5nh1
+title: 'GFX mode: Overlays and polish'
+type: task
+priority: 3
+created: '2026-01-26T00:47:18.505438-05:00'
+updated: '2026-02-08T19:07:11.065893Z'
+depends_on:
+- gnusto-mzw8
+---
+
+Phase 4: Popup inventory display, smooth scrolling, interleave layout option, image caching/preloading. See docs/ui.md

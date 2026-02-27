@@ -1,0 +1,158 @@
+---
+id: gnusto-ntr.1
+title: Support nested defn inside object for scoped helpers
+type: task
+priority: 2
+created: '2026-01-12T21:27:40.271832-05:00'
+updated: '2026-02-08T19:07:11.035015Z'
+labels:
+- lang
+---
+
+Allow `defn` and `def` forms inside `(object ...)`, `(room ...)`, etc. to define scoped helpers and values, with a general mechanism for nested forms.
+
+## Motivation
+
+Currently, shared code/data used across behaviors requires globals:
+```lisp
+(defn hacker-foo () (success :context ((description "w00t"))))
+(def terminal-dark-desc "The room is pitch black...")
+
+(object @hacker
+  :behaviors (
+    :foo (fn () (hacker-foo))))
+```
+
+Problems:
+- Pollutes global namespace with many small functions/values
+- Naming conventions (hacker-foo, terminal-dark-desc) become unwieldy at scale
+- No clear ownership/scoping
+- Can't write `:foo hacker-foo` directly (parser expects `(fn ...)` form)
+
+## Proposed Syntax
+
+### 1. Object-scoped def/defn
+
+```lisp
+(object @hacker
+  (def greeting "Hello, world!")
+  (defn helper ()
+    (success :context ((description greeting))))
+
+  :behaviors (
+    :foo (fn () (helper))
+    :bar (fn () (helper))))
+```
+
+```lisp
+(room @terminal-room
+  (def dark-desc "The room is pitch black...")
+  (def lit-desc "Fluorescent lights illuminate...")
+
+  :description dark-desc
+  :behaviors (
+    :look (fn ()
+      (if (has-flag? ?self LIT)
+        (success :context ((description lit-desc)))
+        (success :context ((description dark-desc)))))))
+```
+
+### 2. Symbol references in behavior position
+
+```lisp
+(defn shared-examine ()
+  (success :context ((description "You see nothing special."))))
+
+(object @rock
+  :behaviors (
+    :examine shared-examine))  ; reference, not (fn () (shared-examine))
+
+(object @hacker
+  (defn hacker-examine () ...)
+
+  :behaviors (
+    :examine hacker-examine))  ; works with scoped fns too
+```
+
+## Semantics
+
+- `def`/`defn` inside entity creates bindings visible only within that entity's scope
+- Available to all behaviors, events, property expressions, and other scoped forms
+- NOT visible outside the entity (no export mechanism needed)
+- Can reference `?self` implicitly in `defn` bodies (it's the containing entity)
+- Symbol in behavior position is resolved: first in entity scope, then global scope
+- Scoped `def` values are static (evaluated once at parse/load time)
+- Scoped `defn` functions are evaluated at call time with current bindings
+
+## Implementation: General Nested Form Handling
+
+Rather than special-casing `def` and `defn`, implement a general mechanism:
+
+### Parser Side
+
+```python
+# In form parsing (object, room, etc.)
+def parse_entity(form):
+    name = ...
+    nested_forms = []
+    kwargs = {}
+
+    for item in form[2:]:  # after entity type and name
+        if is_list(item) and is_symbol(item[0]):
+            # It's a nested form like (def ...) or (defn ...)
+            nested_forms.append(item)
+        elif is_keyword(item):
+            # It's a property like :description
+            kwargs[item] = next_item
+
+    return Entity(name, nested_forms=nested_forms, **kwargs)
+```
+
+### Entity Dataclass
+
+```python
+@dataclass
+class GrueObject:
+    name: str
+    nested_forms: list[SExpr] = field(default_factory=list)  # raw (def), (defn), etc.
+    # ... other fields
+```
+
+### Evaluator Side
+
+```python
+def build_entity_scope(entity: GrueObject) -> dict[str, Any]:
+    """Process nested forms into a scope dict."""
+    scope = {}
+    for form in entity.nested_forms:
+        form_type = form[0].name
+        if form_type == "def":
+            name, value = parse_def(form)
+            scope[name] = evaluate(value)  # static evaluation
+        elif form_type == "defn":
+            name, params, body = parse_defn(form)
+            scope[name] = Function(params, body)  # deferred evaluation
+        # Future forms automatically work if they follow (form-name ...) pattern
+    return scope
+```
+
+### Benefits of General Approach
+
+1. Adding new nested forms (e.g., `defmacro`, `defconst`, `deftest`) requires no parser changes
+2. Entity dataclasses stay simple - just store raw forms
+3. Form-specific logic lives in evaluator where it belongs
+4. Consistent pattern across all entity types (object, room, npc, etc.)
+
+## Symbol Resolution Order
+
+When evaluating expressions within an entity:
+1. Local bindings (`?self`, behavior params, `let` bindings)
+2. Entity-scoped bindings (from nested `def`/`defn`)
+3. Global bindings (top-level `def`/`defn`)
+4. Built-in functions
+
+## Open Questions
+
+- Should scoped bindings be visible to contained objects? (probably no)
+- Should `def` values be lazily evaluated? (probably no - keep it simple)
+- Allow `def` to reference other `def`s in same entity? (yes, in order)

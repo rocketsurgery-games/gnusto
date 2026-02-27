@@ -1,0 +1,10 @@
+---
+id: gnusto-x18
+title: Unify (move)/(move!) and other mutation implementations
+type: task
+priority: 1
+created: '2026-01-17T12:51:10.246992-05:00'
+updated: '2026-02-08T19:07:10.962365Z'
+---
+
+Share core mutation logic between effect list processing and imperative EffectExecutor. The ! suffix becomes syntax-only, both call same underlying function.

@@ -1,0 +1,13 @@
+---
+id: gnusto-0g9
+title: Simplify REPL by moving inventory/look to Grue
+type: task
+priority: 2
+created: '2026-01-18T17:11:26.23306-05:00'
+updated: '2026-02-08T19:07:11.008062Z'
+---
+
+Move REPL functionality into Grue where possible:
+- Phase 1: Expose primitives (exits, visible, room-description) to Grue
+- Phase 2: Define inventory/look in builtins.grue
+- Phase 3: Simplify Python REPL to call Grue functions

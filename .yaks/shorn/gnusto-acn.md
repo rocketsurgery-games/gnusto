@@ -1,0 +1,33 @@
+---
+id: gnusto-acn
+title: Implement full walkthrough test for The Lurking Horror
+type: task
+priority: 2
+created: '2026-01-16T11:24:26.639146-05:00'
+updated: '2026-02-08T19:07:11.022639Z'
+depends_on:
+- gnusto-pwq
+---
+
+Create a complete happy-path walkthrough test that takes the game from start to victory using only player-accessible operations.
+
+**Requirements:**
+- Uses only (do) actions - no :setup cheats
+- Each segment assumes world state from prior steps
+- Organized into named action lists for readability
+- Assertions at key checkpoints
+
+**Structure:**
+```grue
+(def walkthrough/turn-on-pc
+  '((do @chair :sit)
+    (do @pc :turn-on)))
+
+(test "full-walkthrough"
+  (run walkthrough/turn-on-pc)
+  (assert (has-flag? @pc POWER))
+  ...
+  (assert (victory? true)))
+```
+
+**Segments:** PC & Assignment, Kitchen & Hacker, CS Building, Brown Building, Aero Building, Alchemy Lab, Steam Tunnels, Infinite Corridor, Great Dome, Urchins, The Lair & Endgame.

@@ -1,0 +1,10 @@
+---
+id: gnusto-z6to.1
+title: Standalone layout renderer & test scenarios
+type: task
+priority: 2
+created: '2026-02-13T18:17:51.389031-05:00'
+updated: '2026-02-13T18:17:55.962707-05:00'
+---
+
+Build the HTML/CSS/JS layout experiment in experiments/layout/. Define block vocabulary, implement renderer, create 5 Lurking Horror scenarios. DONE - committed in 89ac2f2.

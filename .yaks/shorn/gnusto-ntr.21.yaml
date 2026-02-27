@@ -1,9 +1,0 @@
-id: gnusto-ntr.21
-title: Remove global variable infrastructure (dead code)
-type: task
-priority: 3
-created: '2026-02-05T14:00:33.530149-05:00'
-updated: '2026-02-08T19:07:11.065382Z'
-description: 'Remove dead global variable infrastructure: get_global, set_global,
-  _eval_mutation_dispatch for globals, and related Python unit tests. All game state
-  lives on entities (e.g. score is @player :score). No .grue code uses defglobal.'

@@ -1,8 +1,0 @@
-id: gnusto-85aa
-title: Ensure room summaries can always scroll to the top
-type: task
-priority: 2
-created: '2026-02-22T06:56:54Z'
-updated: '2026-02-22T06:56:54Z'
-description: |
-  When a new room appears in the web ui, there often isn't enough text to allow the room summary to replace the previous one at the top of the viewport. We should ensure there's always enough blank space to push a new room to the top of the viewport, to replace the previous room.

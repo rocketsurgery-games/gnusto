@@ -1,0 +1,12 @@
+---
+id: gnusto-zwv
+title: Benchmark resolution scaling
+type: task
+priority: 2
+created: '2026-01-07T23:46:55.951585364-05:00'
+updated: '2026-02-08T19:07:11.062841Z'
+depends_on:
+- gnusto-luk
+---
+
+Test different output resolutions (512x512, 768x768, 1024x1024) to quantify the time/quality tradeoff. Document which resolution is acceptable for FrotzLM use case.

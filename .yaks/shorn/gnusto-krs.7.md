@@ -1,0 +1,18 @@
+---
+id: gnusto-krs.7
+title: Add threading macro (->)
+type: task
+priority: 3
+created: '2026-01-17T17:54:26.38076-05:00'
+updated: '2026-02-08T19:07:11.073818Z'
+---
+
+Implement thread-first macro for readable property chains:
+
+(-> @player :location :description)
+; expands to: (:description (:location @player))
+
+(-> @player :health (- 10) (max 0))
+; expands to: (max (- (:health @player) 10) 0)
+
+This could be impetus for implementing a proper macro system, or could be special-cased in the parser initially.

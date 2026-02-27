@@ -1,0 +1,30 @@
+---
+id: gnusto-ntr.7
+title: Add (do), multi-body (let), (nil?), (redirect :to)
+type: task
+priority: 2
+created: '2026-01-13T23:01:37.58182-05:00'
+updated: '2026-02-08T19:07:11.032701Z'
+labels:
+- lang
+---
+
+Language improvements made during elevator implementation:
+
+1. (do expr...) - sequence expressions, return last (like Clojure)
+   - Needed for let with multiple body expressions
+
+2. (let ...)  - now supports multiple body expressions
+   - Previously only allowed single body, now wraps in (do ...)
+
+3. (set!) and (inc!) in evaluator
+   - Previously only worked in EffectExecutor
+   - Now defn functions can have side effects
+
+4. (nil? x) - check for nil/None specifically
+   - (not 0) returns true, but (nil? 0) returns false
+   - Important for basement floor (floor 0)
+
+5. (redirect :to @room) for :through behaviors
+   - Redirects movement destination instead of requiring action redirect
+   - Stores redirect_to in context for runtime to handle

@@ -1,0 +1,10 @@
+---
+id: gnusto-8m1
+title: Test spatial composition with multiple objects
+type: task
+priority: 1
+created: '2026-01-07T19:03:28.359772-05:00'
+updated: '2026-02-08T19:07:10.985945Z'
+---
+
+Generate test images with explicit spatial relationships (e.g., 'object A to the left of object B', 'character blocking doorway', 'item in foreground'). Evaluate how reliably OmniGen2 places objects where specified. Include tests for: foreground/background placement, left/right/center positioning, blocking/occlusion relationships, relative size.

@@ -1,0 +1,18 @@
+---
+id: gnusto-gv2.5
+title: Fix precondition inference in backward analysis
+type: bug
+priority: 1
+created: '2026-01-21T12:25:10.226544-05:00'
+updated: '2026-02-08T19:07:10.957825Z'
+---
+
+The current precondition inference in backward.py _extract_preconditions() has a bug: it infers preconditions from what behaviors READ, not what they REQUIRE. For example, 'unlock' reads 'locked' to check current state, but the heuristic incorrectly infers 'locked=False' as a precondition (the opposite of what's needed).
+
+This causes infinite recursion in tree building because constraints become their own preconditions.
+
+The fix needs to either:
+1. Use semantic analysis of behavior bodies to infer actual preconditions
+2. Or skip precondition inference entirely and use a different approach
+
+For now we bypassed this by using terminal constraints directly for clustering, but proper backward propagation needs this fixed.

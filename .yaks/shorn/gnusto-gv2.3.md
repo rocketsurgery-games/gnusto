@@ -1,0 +1,10 @@
+---
+id: gnusto-gv2.3
+title: Backward constraint propagation
+type: task
+priority: 2
+created: '2026-01-21T00:06:52.094329-05:00'
+updated: '2026-02-08T19:07:11.003149Z'
+---
+
+Build abstract constraint trees from terminal conditions using effect analysis. Constraints like 'to reach victory, X must be true, which requires action Y, which requires Z'.

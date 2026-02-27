@@ -1,0 +1,50 @@
+---
+id: gnusto-1o5
+title: Split GRUE output into multiple files matching ZIL source structure
+type: task
+priority: 2
+created: '2026-01-09T22:07:28.64978-05:00'
+updated: '2026-02-08T19:07:11.060504Z'
+---
+
+Split GRUE converter output into multiple files following a structured directory layout.
+
+## Directory Structure
+```
+games/
+  lurkinghorror/
+    world.grue        # Game metadata, starting room
+    rooms.grue        # All room definitions
+    objects.grue      # All object definitions
+    barriers.grue     # Synthesized barrier objects
+    reference/
+      routines.grue   # Unreferenced routines (comments)
+      syntax.grue     # Syntax definitions (comments)
+      globals.grue    # Global variables (comments)
+      constants.grue  # Constants (comments)
+```
+
+## Benefits
+- Mirrors infocom/ submodule structure (games/lurkinghorror like infocom/lurkinghorror)
+- Smaller, focused files for easier editing
+- Reference material separated from executable content
+- Clear organization for LLM implementation agent
+
+## Implementation
+1. Update converter to accept output directory instead of single file
+2. Create games/<game>/ directory structure
+3. Split output by category:
+   - world.grue: (world ...) form with metadata
+   - rooms.grue: all (room ...) forms
+   - objects.grue: all (object ...) forms from ZIL
+   - barriers.grue: synthesized barrier objects
+   - reference/: all comment-only reference material
+4. Update convert script to use new structure
+5. Add (include "file.grue") support to parser for loading multi-file worlds
+
+## Acceptance Criteria
+- [ ] Converter outputs to games/<game>/ directory
+- [ ] Files split by logical category
+- [ ] Reference material in separate subdirectory
+- [ ] Parser can load multi-file worlds via includes
+- [ ] REPL works with new structure

@@ -1,0 +1,23 @@
+---
+id: gnusto-266
+title: Abstract interpretation framework for winnability analysis
+type: task
+priority: 1
+created: '2026-01-23T17:55:22.253816-05:00'
+updated: '2026-02-08T19:07:10.956436Z'
+---
+
+Replace ad-hoc StateRef special cases with principled abstract interpretation framework. See docs/design/abstract-interpretation.md for full design.
+
+Core principles:
+1. No special-case analyses - all emerges from unified dataflow
+2. Partial evaluation first - inline pure functions before analysis
+3. Runtime params/funcs as constrained symbols with domain specs
+4. Deterministic semantics
+5. Precise value tracking with inferred minimal domains
+
+Phases:
+1. Partial evaluator for Grue expressions
+2. Unified state model (StatePath + builtin specs)
+3. Value domain inference from reduced expressions
+4. Exploration with inferred domains

@@ -1,0 +1,25 @@
+---
+id: gnusto-98c
+title: Unify behavior/event evaluation, remove GrueCase
+type: task
+priority: 2
+created: '2026-01-12T19:12:46.03885-05:00'
+updated: '2026-02-08T19:07:11.036688Z'
+---
+
+Make events and behaviors use the same evaluation model.
+
+Currently:
+- Behaviors: can use `body` (SExpr evaluated at runtime) or `cases` (pre-parsed GrueCase list)
+- Events: only use `cases` (pre-parsed)
+
+Changes:
+1. Add `body` to GrueEvent, remove `cases`
+2. Update event parsing to store body directly
+3. Update _evaluate_event to evaluate body like behaviors
+4. Remove `cases` from GrueBehavior (was deprecated)
+5. Remove GrueCase entirely
+6. Remove parse_cond and related legacy functions
+7. Remove _evaluate_behavior_cases (legacy path)
+
+No deprecation - just delete the old code.

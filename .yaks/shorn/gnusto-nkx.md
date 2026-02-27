@@ -1,0 +1,10 @@
+---
+id: gnusto-nkx
+title: Add :fdesc and :ldesc support to GrueObject parser
+type: bug
+priority: 1
+created: '2026-01-10T11:02:27.351337-05:00'
+updated: '2026-02-08T19:07:10.976801Z'
+---
+
+Converter emits :fdesc and :ldesc on objects but parser may not handle them. Need to verify and add support if missing.

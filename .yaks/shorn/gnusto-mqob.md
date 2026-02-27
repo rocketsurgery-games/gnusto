@@ -1,0 +1,10 @@
+---
+id: gnusto-mqob
+title: Contents of held open containers appear as room-level visible objects
+type: bug
+priority: 2
+created: '2026-02-05T12:59:02.317897-05:00'
+updated: '2026-02-08T19:07:10.986877Z'
+---
+
+When the player carries an open container (like @carton with :open true, or @flask), the contents (@chinese-food, @nitrogen) appear in the room's 'Visible:' list alongside actual room objects. This is confusing because it looks like the items are on the ground rather than inside a held container. The REPL's visibility display should filter out contents of held containers from the room-level visible list, or display them indented/nested under their container.

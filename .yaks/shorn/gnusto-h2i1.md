@@ -1,0 +1,10 @@
+---
+id: gnusto-h2i1
+title: REPL set-flag!/clear-flag! listed but not implemented in EffectExecutor
+type: bug
+priority: 3
+created: '2026-02-05T12:59:02.46025-05:00'
+updated: '2026-02-08T19:07:11.065635Z'
+---
+
+The REPL's effects list includes set-flag\! and clear-flag\! but the EffectExecutor doesn't implement them (error: 'Unknown effect: set-flag\!'). Either implement these in the EffectExecutor or remove them from the REPL's effects list. Users currently need to use set-prop\! as a workaround. Also, the REPL doesn't route (set @obj :prop val) through the effect executor even though it's a standard effect form - it falls through to the base evaluator which rejects it.

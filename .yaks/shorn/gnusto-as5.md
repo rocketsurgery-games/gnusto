@@ -1,0 +1,52 @@
+---
+id: gnusto-as5
+title: Room behaviors with :before-action hook
+type: feature
+priority: 1
+created: '2026-01-12T00:16:31.011734-05:00'
+updated: '2026-02-08T19:07:10.973578Z'
+---
+
+## Summary
+
+Add behaviors to rooms, similar to object behaviors. Start with `:before-action` hook that runs before any action in the room.
+
+## Motivation
+
+ZIL room action routines can intercept actions before they happen. This is used for:
+- Hacker blocking screen interactions while helping with PC
+- Compulsion (possession) overriding player agency during the cursed document sequence
+
+## Design
+
+```scheme
+(room @terminal-room
+  :behaviors (
+    :before-action (fn (?verb ?target)
+      (cond
+        ; Block and handle locally
+        ((some-condition)
+          (blocked :reason ... :message "..."))
+        ; Fall through to normal action
+        (true (default))))))
+```
+
+## Semantics
+
+- `(blocked ...)` - Stop the action, return this result
+- `(default)` - Continue to normal object behavior dispatch
+- `(redirect ...)` - Redirect to different action (future)
+
+## Bindings
+
+- `?verb` - The verb being attempted
+- `?target` - The object being acted upon
+- `?actor` - Who is performing the action (usually @player)
+- `?args` - List of additional arguments (if any)
+
+## Implementation
+
+1. Add `behaviors` field to `GrueRoom` dataclass
+2. Update room parsing to handle `:behaviors`
+3. In `runtime.do()`, check room's `:before-action` before object dispatch
+4. If blocked, return that result; if default, proceed normally

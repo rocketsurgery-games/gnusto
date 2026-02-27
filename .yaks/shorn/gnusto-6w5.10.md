@@ -1,0 +1,19 @@
+---
+id: gnusto-6w5.10
+title: Convert custom mutation functions to standard effects
+type: task
+priority: 2
+created: '2026-01-17T10:04:28.880544-05:00'
+updated: '2026-02-08T19:07:11.020589Z'
+---
+
+Replace custom mutation helpers with standard effect primitives.
+
+**Problem:** Functions like `set-go-button!`, `set-up-button!` do mutations that aren't representable as standard effects.
+
+**Solution:** Analyze these helpers and either:
+1. Replace with equivalent `(set-prop ...)` or `(set ...)` effects
+2. Add new effect types if needed (e.g., `(set-global-prop name key val)`)
+
+**Affected:**
+- elevator.grue: set-go-button!, set-up-button!, set-down-button!, clear-all-buttons-at!

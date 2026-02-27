@@ -1,0 +1,10 @@
+---
+id: gnusto-5xg
+title: Default :open behavior not applied for :openable objects
+type: bug
+priority: 1
+created: '2026-01-24T00:38:51.920864-05:00'
+updated: '2026-02-08T19:07:10.954975Z'
+---
+
+Objects with :openable true (like @refrigerator) should get a default :open/:close behavior from the runtime. Currently returns 'no-behavior' instead of toggling the :open property. This blocks the master-key puzzle chain (fridge -> carton -> hacker trade).

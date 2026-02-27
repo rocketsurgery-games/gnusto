@@ -1,0 +1,34 @@
+---
+id: gnusto-fnh
+title: Establish symbol naming conventions and remove case aliasing
+type: task
+priority: 2
+created: '2026-01-11T11:49:59.78545-05:00'
+updated: '2026-02-08T19:07:11.054102Z'
+---
+
+**Decision: Use `@` prefix for game entities**
+
+Convention:
+| Prefix | Meaning | Example |
+|--------|---------|---------|
+| `@` | Game entity (room, object) | `@terminal-room`, `@chair`, `@player` |
+| `?` | Contextual binding | `?self`, `?actor`, `?with` |
+| `:` | Keyword (map keys) | `:description`, `:flags` |
+| (none) | Function/predicate/verb/flag | `has-flag`, `move\!`, `TAKEBIT` |
+
+Benefits:
+- Clear visual distinction for game entities
+- Always lowercase after `@` (no more CAPS-LOCK)
+- Case-sensitive (no aliasing needed in REPL)
+- Consistent with other prefixed symbols
+
+Implementation:
+1. Update sexpr.py: add `@` to is_symbol_start() and is_symbol_char()
+2. Update all .grue files: `TERMINAL-ROOM` -> `@terminal-room`, `CHAIR` -> `@chair`, etc.
+3. Update builtins.grue
+4. Update ZIL converter to emit `@` prefixed lowercase names
+5. Remove case-normalization from repl.py
+6. Update documentation
+
+Note: Flags like `TAKEBIT`, `LOCKED` remain ALL-CAPS (they're enum-like constants, not entity references).

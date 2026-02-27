@@ -1,0 +1,10 @@
+---
+id: gnusto-dk41
+title: Hierarchical scene composition for filfre
+type: task
+priority: 2
+created: '2026-01-29T20:59:09.223928818-05:00'
+updated: '2026-02-08T19:07:10.991583Z'
+---
+
+Build a system for generating consistent illustrations across a game using layered composition: atomic refs → composites → scenes. Render specs integrate into Grue object definitions.

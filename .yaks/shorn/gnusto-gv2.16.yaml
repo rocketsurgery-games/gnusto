@@ -1,8 +1,0 @@
-id: gnusto-gv2.16
-title: Action pruning for irrelevant behaviors
-type: task
-priority: 2
-created: '2026-01-23T11:51:36.292203-05:00'
-updated: '2026-02-08T19:07:10.998934Z'
-description: Filter out actions that don't change constraint-relevant state (examine,
-  reversible movement). Could significantly reduce branching factor.

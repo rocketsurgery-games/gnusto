@@ -1,9 +1,0 @@
-id: gnusto-luk
-title: Add optimization flags to test_omnigen2.py
-type: task
-priority: 1
-created: '2026-01-07T23:46:19.721217822-05:00'
-updated: '2026-02-08T19:07:10.983892Z'
-description: 'Add CLI flags for: --taylorseer, --teacache (with threshold), --scheduler
-  (euler/dpmsolver++), --cfg-range-end. These will enable benchmarking the various
-  speedup options.'

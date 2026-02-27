@@ -1,0 +1,8 @@
+---
+id: gnusto-6w5.2
+title: Remove mutation from ExprEvaluator
+type: task
+priority: 1
+created: '2026-01-16T18:20:02.995786-05:00'
+updated: '2026-02-08T19:07:10.963357Z'
+---

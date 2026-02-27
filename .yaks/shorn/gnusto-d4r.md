@@ -1,0 +1,8 @@
+---
+id: gnusto-d4r
+title: 'Missing test assertion functions: not-flag?, death?, victory?'
+type: bug
+priority: 2
+created: '2026-01-15T18:54:46.478653-05:00'
+updated: '2026-02-08T19:07:11.0243Z'
+---

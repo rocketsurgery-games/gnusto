@@ -1,0 +1,31 @@
+---
+id: gnusto-5ib
+title: Unify binding variable conventions (self vs ?self)
+type: task
+priority: 2
+created: '2026-01-11T11:49:31.251885-05:00'
+updated: '2026-02-08T19:07:11.054667Z'
+---
+
+Current inconsistency:
+- `?actor`, `?with`, `?on`, `?to` - prefixed with `?`, looked up via get_global() with ? stripping
+- `self` - no prefix, handled specially in _resolve_symbol()
+
+Both are dynamically bound at action evaluation time, but use different lookup mechanisms.
+
+**Decision: Use `?self` for consistency**
+
+All contextual bindings will use the `?` prefix:
+- `?self` - the target object of the action
+- `?actor` - who performs the action (usually PLAYER)
+- `?with` - instrument (e.g., open door with key)
+- `?on` - indirect object
+- `?to` - destination
+- `?direction` - movement direction
+
+Implementation:
+1. Update builtins.grue: `self` -> `?self`
+2. Update all .grue files in games/
+3. Simplify runtime.py: remove _resolve_symbol() special case, unify in get_global()
+4. Update documentation
+5. Update ZIL converter to emit `?self`

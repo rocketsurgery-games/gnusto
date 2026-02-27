@@ -1,0 +1,17 @@
+---
+id: gnusto-q8l
+title: Migrate remaining .grue files to cond syntax
+type: task
+priority: 3
+created: '2026-01-11T01:41:49.472846-05:00'
+updated: '2026-02-08T19:07:11.07689Z'
+---
+
+Several .grue files still use the old case syntax:
+- games/examples/outside-door.grue (also needs redirect->default rename)
+- games/lurkinghorror/barriers.grue (stub barriers)
+- games/lurkinghorror/objects.grue
+
+The old syntax still works (parser is backwards compatible), but these should be migrated for consistency.
+
+Depends on frotzlm-9e7.

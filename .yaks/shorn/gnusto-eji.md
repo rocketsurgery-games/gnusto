@@ -1,0 +1,37 @@
+---
+id: gnusto-eji
+title: Define default behaviors in Grue instead of Python
+type: task
+priority: 2
+created: '2026-01-10T23:59:28.753431-05:00'
+updated: '2026-02-08T19:07:11.059006Z'
+---
+
+The runtime's _try_default_behavior(), do(), _do_go(), and _evaluate_behavior() methods contain logic that could be expressed in Grue code instead of Python.
+
+## Current State
+- Default take/drop behaviors are hardcoded in Python
+- Movement logic is in Python
+- Actor parameter now generalized (no longer hardcoded to PLAYER)
+
+## Proposed Approach
+Define default behaviors in a defaults.grue file that gets loaded with every world:
+
+```lisp
+(behavior take
+  (case (not (has-flag self TAKEBIT))
+    :outcome blocked :reason not-takeable)
+  (case (and (not (here? self)) (not (held? self)))
+    :outcome blocked :reason not-here)
+  (case (held? self)
+    :outcome blocked :reason already-held)
+  (case true
+    :outcome success
+    :effects ((move! self ?actor))))
+```
+
+## Benefits
+- Default behaviors become data, not code
+- Easier to override/extend per-game
+- Same execution path for all behaviors
+- Validates that Grue is expressive enough for core logic

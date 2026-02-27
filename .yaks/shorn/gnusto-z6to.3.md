@@ -1,0 +1,17 @@
+---
+id: gnusto-z6to.3
+title: Iterate on layout CSS and block vocabulary
+type: task
+priority: 2
+created: '2026-02-13T18:18:04.650438-05:00'
+updated: '2026-02-20T02:30:27Z'
+---
+
+Iterated on layout CSS and block vocabulary. Key changes:
+- Scene transition block folded into scene header
+- Ambient text flows inline (not centered/dim)
+- Narrate blocks: no left border, transparent bg
+- Speak blocks: dropped speaker name, larger avatar, subtle quotes, no background
+- Focus/reveal blocks: larger images, no entity headers, left/right alternation
+- Think blocks: lighter, no "You think:" prefix
+DONE.

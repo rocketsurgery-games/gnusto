@@ -1,0 +1,29 @@
+---
+id: gnusto-3g0.7
+title: Room connectivity analysis for decomposer
+type: task
+priority: 2
+created: '2026-01-24T20:09:14.470237-05:00'
+updated: '2026-02-08T19:07:10.994529Z'
+---
+
+The decomposer currently treats all runtime:go actions as having NO preconditions (fix from frotzlm-3g0.8), but this misses room-specific barrier constraints.
+
+Room transitions are gated by barrier objects with :through behaviors:
+- @waxer-exit-barrier: floor-wax poured, maintenance-man defeated, power-cord severed
+- @rats-barrier: cable mounted
+- @brick-wall-barrier: brick-wall broken
+- @urchins-barrier: urchins freed
+- @access-hatch-barrier: hatch open
+- etc. (16 barriers total)
+
+Implementation:
+1. Build room connectivity graph from world.rooms[].exits
+2. When decomposing @player:location = X:
+   - Find all exits that lead to room X
+   - For each exit with a :via barrier, get the barrier's :through behavior
+   - Use effect analysis to find what the barrier reads
+   - Convert those reads to preconditions
+3. This replaces skipping all runtime:go preconditions with proper barrier-specific ones
+
+This will unlock the full game decomposition - currently only 32 subproblems discovered, should be 100+.

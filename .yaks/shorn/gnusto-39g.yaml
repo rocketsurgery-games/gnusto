@@ -1,8 +1,0 @@
-id: gnusto-39g
-title: Set up litellm integration
-type: task
-priority: 1
-created: '2026-01-18T19:24:55.734669-05:00'
-updated: '2026-02-08T19:07:10.960105Z'
-description: Add litellm dependency and create a thin wrapper for LLM calls. Should
-  support model switching via config/env var.

@@ -1,0 +1,12 @@
+---
+id: gnusto-bgb
+title: Design LLM latitude system (deterministic vs stochastic actions)
+type: task
+priority: 2
+created: '2026-01-08T22:08:28.893892-05:00'
+updated: '2026-02-08T16:50:54.769872-05:00'
+depends_on:
+- gnusto-9mf
+---
+
+Define how actions can specify LLM latitude: strict (deterministic), flexible (LLM interprets within constraints), generative (LLM creates response). Include constraint specification for flexible actions.

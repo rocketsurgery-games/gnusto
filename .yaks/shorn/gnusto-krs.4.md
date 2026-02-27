@@ -1,0 +1,14 @@
+---
+id: gnusto-krs.4
+title: Add (set-in) effect for nested property mutation
+type: task
+priority: 2
+created: '2026-01-17T17:54:08.313087-05:00'
+updated: '2026-02-08T19:07:11.01498Z'
+---
+
+Add a (set-in @obj path value) effect for mutating nested properties:
+
+(success :effects ((set-in @elevator '(:buttons :go 2) true)))
+
+Companion to get-in, allows setting values deep in nested property structures.

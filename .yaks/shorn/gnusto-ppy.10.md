@@ -1,0 +1,42 @@
+---
+id: gnusto-ppy.10
+title: Complete hacker behaviors - blocking issues
+type: task
+priority: 2
+created: '2026-01-11T17:44:11.805451-05:00'
+updated: '2026-02-08T19:07:11.052411Z'
+depends_on:
+- gnusto-ppy.9
+- gnusto-ppy.3
+- gnusto-ppy.4
+---
+
+Tracking bead for issues blocking complete hacker behavior translation.
+
+## Current State
+Basic hacker behaviors are translated in terminal-room.grue:
+- describe, examine, smell, listen, thank, show, give (partial), attack, kill
+
+## What's Missing
+
+### 1. Globals Initialization (frotzlm-ppy.9)
+Need to declare/initialize in GRUE files:
+- LAIR-CNT: possession state (> 6 = possessed)
+- HACKER-HELP: help interaction state
+- HACKER-TRADE?: trade proposal flag
+
+### 2. Conversation System (frotzlm-ppy.3)
+TELL-ME-ABOUT, ASK-ABOUT, WHAT verbs
+- See design discussion in this bead's comments
+
+### 3. Give/Trade Puzzle (frotzlm-ppy.4)
+Mostly implemented in basic behaviors, but:
+- Needs HACKER-TRADE? global
+- Needs full heat/RMUNGBIT checking
+
+### 4. Turn-Based Events (frotzlm-ppy.7)
+Lower priority - for I-HACKER-HELPS multi-turn sequence
+
+## Completion Criteria
+All hacker behaviors from ZIL faithfully translated to GRUE,
+including state-dependent variations (possessed, helping, etc.)

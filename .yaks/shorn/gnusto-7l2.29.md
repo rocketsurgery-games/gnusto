@@ -1,0 +1,32 @@
+---
+id: gnusto-7l2.29
+title: Refactor hacker.grue ask-about/tell-about duplication
+type: task
+priority: 2
+created: '2026-01-14T14:11:54.984052-05:00'
+updated: '2026-02-08T19:07:11.027185Z'
+labels:
+- lh
+---
+
+hacker.grue has :tell-about (lines 230-236) that mostly duplicates :ask-about:
+
+```scheme
+:tell-about (fn (?topic) (cond
+  ; Possessed state
+  ((> lair-cnt 6) (success :context ((response "The hacker replies, \"Meld!\""))))
+
+  ; For most topics, redirect to ask-about behavior
+  ; The hacker treats "tell about" the same as "ask about"
+  (true (success :context ((response "The hacker studiously ignores you..."))))))
+```
+
+This should redirect to :ask-about instead of duplicating the possessed check and default response:
+
+```scheme
+:tell-about (fn (?topic)
+  (redirect :action (do @hacker :ask-about ?topic)))
+```
+
+However, the current code has a different default response than :ask-about.
+Need to decide if that's intentional or if redirect is correct.

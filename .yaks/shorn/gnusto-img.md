@@ -1,0 +1,10 @@
+---
+id: gnusto-img
+title: Build GRUE runtime for behavior execution
+type: task
+priority: 1
+created: '2026-01-09T19:40:09.475046-05:00'
+updated: '2026-02-08T19:07:10.977623Z'
+---
+
+Create a runtime that executes GRUE behaviors against game state. Takes a GrueWorld and provides: (1) State management for objects/rooms, (2) Action dispatch to object behaviors, (3) Behavior case evaluation using the expression evaluator, (4) Effect execution to update state. This enables manual testing of GRUE world definitions.

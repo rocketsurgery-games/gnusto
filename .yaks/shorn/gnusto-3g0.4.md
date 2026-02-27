@@ -1,0 +1,21 @@
+---
+id: gnusto-3g0.4
+title: Track action argument constraints in effect analysis
+type: task
+priority: 2
+created: '2026-01-24T18:24:28.293072-05:00'
+updated: '2026-02-08T19:07:10.995075Z'
+---
+
+When a behavior checks (= ?tool @axe), this implies the player must be holding @axe. Currently we don't track this.
+
+The pattern appears in behaviors like:
+- @high-voltage:cut checks (= ?tool @axe)
+- @output-cable:cut checks (= ?tool @axe) or (= ?tool @bolt-cutters)
+
+Need to:
+1. In effects.py, detect patterns like (= ?param @object) in success branches
+2. Record these as 'argument_constraints' mapping param -> required objects
+3. In decomposer, convert argument constraints to held? preconditions
+
+This is the bigger fix that requires changes to effect analysis.

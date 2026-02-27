@@ -1,8 +1,0 @@
-id: gnusto-3ul
-title: Fix YAML multiline string formatting
-type: bug
-priority: 3
-created: '2026-01-09T12:27:27.214884-05:00'
-updated: '2026-02-08T19:07:11.077394Z'
-description: Multiline strings in YAML output have extra blank lines in the middle.
-  Fix the serialization to produce cleaner output.

@@ -1,0 +1,12 @@
+---
+id: gnusto-9mf
+title: Build DSL runtime executor
+type: task
+priority: 1
+created: '2026-01-08T22:08:14.341295-05:00'
+updated: '2026-02-08T19:07:10.978608Z'
+depends_on:
+- gnusto-a71
+---
+
+Execute actions against world state. Evaluate preconditions, apply effects, enforce invariants. State is immutable - each action produces new state.
