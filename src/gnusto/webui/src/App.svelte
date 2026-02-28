@@ -14,6 +14,7 @@
   import EntityPopover from './components/EntityPopover.svelte'
   import HelpOverlay from './components/HelpOverlay.svelte'
   import StateOverlay from './components/StateOverlay.svelte'
+  import SettingsOverlay from './components/SettingsOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -38,6 +39,9 @@
 
   // Prefill text for input bar (from popover "fill" actions)
   let inputPrefill = $state<string | null>(null)
+
+  // Debug mode (tracked from server responses)
+  let debugMode = $state(false)
 
   // Active overlay panel (null = none)
   let activeOverlay = $state<string | null>(null)
@@ -155,6 +159,11 @@
       return
     }
 
+    // Track debug mode from system messages
+    if (block.type === 'system' && block.text.startsWith('Debug mode: ')) {
+      debugMode = block.text === 'Debug mode: on'
+    }
+
     // Stamp image side for focus/reveal blocks
     const renderable: RenderableBlock = { ...block }
     if (block.type === 'focus' || block.type === 'reveal') {
@@ -178,6 +187,11 @@
       activeOverlay = 'state'
       return
     }
+    if (normalized === 'settings') {
+      blocks = [...blocks, { type: 'command', text: command }]
+      activeOverlay = 'settings'
+      return
+    }
 
     inputEnabled = false
     // Show command locally
@@ -186,6 +200,12 @@
   }
 
   onMount(() => {
+    // Restore persisted font size
+    const savedSize = localStorage.getItem('gnusto-font-size')
+    if (savedSize) {
+      document.documentElement.style.fontSize = `${savedSize}px`
+    }
+
     onMessage(handleMessage)
     connect()
   })
@@ -228,4 +248,6 @@
   <HelpOverlay onclose={closeOverlay} />
 {:else if activeOverlay === 'state'}
   <StateOverlay room={currentRoom} onclose={closeOverlay} onentityclick={handleEntityClick} />
+{:else if activeOverlay === 'settings'}
+  <SettingsOverlay {debugMode} onclose={closeOverlay} oncommand={handleCommand} />
 {/if}

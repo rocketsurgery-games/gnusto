@@ -49,6 +49,7 @@
       <tr><td class="cmd">/reset</td><td class="alias"></td><td>Restart game</td></tr>
       <tr><td class="cmd">/quit</td><td class="alias">/q</td><td>Quit game</td></tr>
       <tr><td class="cmd">/help</td><td class="alias">/h, /?</td><td>Show this help</td></tr>
+      <tr><td class="cmd">/settings</td><td class="alias"></td><td>Open settings panel</td></tr>
     </tbody></table>
   </section>
 
