@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import type { RoomEnterBlock, ContentBlock, RenderableBlock, ServerMessage } from './lib/types'
   import { connect, onMessage, send } from './lib/websocket.svelte'
-  import { updateEntities, updateBehaviors, resolveEntityName, resolveEntityBehaviors } from './lib/entities.svelte'
+  import { updateEntities, updateBehaviors, resolveEntityName, resolveEntityImage, resolveEntityBehaviors } from './lib/entities.svelte'
   import { behaviorLabel, behaviorToTargetedCommand } from './lib/commands'
 
   import RoomHeader from './components/RoomHeader.svelte'
@@ -15,6 +15,7 @@
   import HelpOverlay from './components/HelpOverlay.svelte'
   import StateOverlay from './components/StateOverlay.svelte'
   import SettingsOverlay from './components/SettingsOverlay.svelte'
+  import ObjectDetailOverlay from './components/ObjectDetailOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -43,11 +44,30 @@
   // Debug mode (tracked from server responses)
   let debugMode = $state(false)
 
+  // Object detail overlay state
+  let detailEntity = $state<{
+    id: string
+    name: string
+    image: string | null
+    behaviors: string[]
+  } | null>(null)
+
   // Active overlay panel (null = none)
   let activeOverlay = $state<string | null>(null)
 
   function closeOverlay() {
     activeOverlay = null
+    detailEntity = null
+  }
+
+  function openDetailOverlay(entityId: string) {
+    detailEntity = {
+      id: entityId,
+      name: resolveEntityName(entityId),
+      image: resolveEntityImage(entityId),
+      behaviors: resolveEntityBehaviors(entityId),
+    }
+    activeOverlay = 'object-detail'
   }
 
   // Entity popover state
@@ -240,6 +260,7 @@
     ontarget={(behavior: string) => {
       if (popover) enterTargetingMode(popover.entityId, popover.entityName, behavior)
     }}
+    ondetail={() => { if (popover) openDetailOverlay(popover.entityId) }}
     onclose={() => popover = null}
   />
 {/if}
@@ -250,4 +271,17 @@
   <StateOverlay room={currentRoom} onclose={closeOverlay} onentityclick={handleEntityClick} />
 {:else if activeOverlay === 'settings'}
   <SettingsOverlay {debugMode} onclose={closeOverlay} oncommand={handleCommand} />
+{:else if activeOverlay === 'object-detail' && detailEntity}
+  <ObjectDetailOverlay
+    entityId={detailEntity.id}
+    entityName={detailEntity.name}
+    entityImage={detailEntity.image}
+    behaviors={detailEntity.behaviors}
+    onclose={closeOverlay}
+    oncommand={handleCommand}
+    onfill={(text: string) => inputPrefill = text}
+    ontarget={(behavior: string) => {
+      if (detailEntity) enterTargetingMode(detailEntity.id, detailEntity.name, behavior)
+    }}
+  />
 {/if}

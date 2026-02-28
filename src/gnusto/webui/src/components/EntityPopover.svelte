@@ -9,10 +9,11 @@
     oncommand: (cmd: string) => void
     onfill: (text: string) => void
     ontarget: (behavior: string) => void
+    ondetail: () => void
     onclose: () => void
   }
 
-  let { entityName, behaviors, anchorRect, oncommand, onfill, ontarget, onclose }: Props = $props()
+  let { entityName, behaviors, anchorRect, oncommand, onfill, ontarget, ondetail, onclose }: Props = $props()
 
   let popoverEl: HTMLDivElement | undefined = $state()
 
@@ -76,6 +77,9 @@
   {:else}
     <div class="popover-empty">No actions available</div>
   {/if}
+  <div class="popover-footer">
+    <button class="detail-btn" onclick={() => { ondetail(); onclose() }}>Details</button>
+  </div>
 </div>
 
 <style>
@@ -136,5 +140,29 @@
     font-size: 0.8rem;
     color: var(--text-muted);
     font-style: italic;
+  }
+
+  .popover-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 0.2rem;
+    padding-top: 0.2rem;
+  }
+
+  .detail-btn {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    text-align: left;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .detail-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
   }
 </style>
