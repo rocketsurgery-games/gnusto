@@ -5,6 +5,7 @@ Provides a unified command processor that returns content blocks,
 allowing both interfaces to handle commands identically.
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TYPE_CHECKING
@@ -62,8 +63,25 @@ def render_blocks_to_text(blocks: list[ContentBlock]) -> str:
     return "\n".join(render_block_to_text(b) for b in blocks)
 
 
+HINT_PROMPT = """\
+You are a helpful hint system for an interactive fiction game. \
+The player is stuck and wants suggestions for what to try next.
+
+Based on the current game state and recent history, suggest 2-4 concrete, \
+actionable next steps. Each suggestion should be something the player could \
+actually type as a command.
+
+Rules:
+- Be specific: reference actual objects, characters, and locations from the game state
+- Suggest actions using the available behaviors shown on objects
+- Don't give away puzzle solutions outright — nudge toward discovery
+- Frame suggestions as natural language commands (e.g., "Try examining the desk" or "Ask the hacker about the key")
+- Keep it brief — one line per suggestion
+"""
+
 HELP_TEXT = """Available commands:
   /help, /h, /?     Show this help
+  /hint             Get suggestions for what to try next
   /look, /l         Show current room
   /save [slot]      Save game (default slot: "default")
   /load [slot]      Load game
@@ -182,6 +200,34 @@ def handle_command(
                 if turn.actions:
                     lines.append(f"   Actions: {', '.join(turn.actions)}")
             result.blocks.append(SystemMessage(text="\n".join(lines)))
+
+    elif cmd == "hint":
+        from .llm import LLMClient, LLMConfig
+
+        state = get_game_state(session.runtime)
+        state_context = state.to_context_string()
+
+        history_lines = []
+        if session.summaries:
+            history_lines.append(f"Earlier: {session.summaries[-1]}")
+        for turn in session.turn_history[-5:]:
+            history_lines.append(turn.to_summary())
+        history_text = "\n".join(history_lines) if history_lines else "(no history yet)"
+
+        hint_model = os.getenv("GRUE_HINT_MODEL", "anthropic/claude-haiku-4-5-20251001")
+        hint_llm = LLMClient(LLMConfig(
+            model=hint_model,
+            temperature=0.8,
+            max_tokens=512,
+        ))
+        try:
+            response = hint_llm.chat([
+                {"role": "system", "content": HINT_PROMPT},
+                {"role": "user", "content": f"{state_context}\n\n## Recent history\n{history_text}"},
+            ])
+            result.blocks.append(SystemMessage(text=response.content or "No hints available."))
+        except Exception as e:
+            result.blocks.append(SystemMessage(text=f"Error getting hints: {e}", level="error"))
 
     elif cmd == "eval":
         if not arg:
