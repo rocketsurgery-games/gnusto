@@ -16,7 +16,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from .agent import GameSession
+from grue.save import save_game, load_game, list_saves
+
+from .agent import GameSession, TurnRecord
 from .commands import handle_command as handle_slash_command
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
@@ -159,6 +161,69 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                                 websocket, session, command,
                                 last_room, app.state.game_dir,
                             )
+
+                elif msg_type == "list_saves":
+                    game_name = session.runtime.world.name or "unknown"
+                    saves = list_saves(game_name)
+                    await websocket.send_text(json.dumps({
+                        "type": "saves_list",
+                        "saves": [
+                            {"slot": slot, "timestamp": ts}
+                            for slot, ts, _ in saves
+                        ],
+                    }))
+
+                elif msg_type == "save":
+                    slot = message.get("slot", "default")
+                    try:
+                        save_game(session.runtime, slot, session.turn_history, session.summaries)
+                        await websocket.send_text(json.dumps({
+                            "type": "save_result",
+                            "success": True,
+                            "message": f"Saved to slot '{slot}'",
+                        }))
+                    except Exception as e:
+                        await websocket.send_text(json.dumps({
+                            "type": "save_result",
+                            "success": False,
+                            "message": str(e),
+                        }))
+
+                elif msg_type == "load":
+                    slot = message.get("slot", "default")
+                    try:
+                        history_data, summaries_data, warnings = load_game(session.runtime, slot)
+                        session.turn_history.clear()
+                        for turn_data in history_data:
+                            turn = TurnRecord(
+                                room=turn_data.get("room", ""),
+                                player_command=turn_data.get("command", ""),
+                                actions=turn_data.get("actions", []),
+                                results=turn_data.get("results", []),
+                                narrative=turn_data.get("narrative", ""),
+                            )
+                            session.turn_history.append(turn)
+                        session.summaries = summaries_data
+                        await websocket.send_text(json.dumps({
+                            "type": "load_result",
+                            "success": True,
+                            "message": f"Loaded slot '{slot}' ({len(session.turn_history)} turns)",
+                        }))
+                        # Reset client and send fresh state
+                        await websocket.send_text(json.dumps({"type": "clear"}))
+                        await send_initial_state(websocket, session, app.state.game_dir)
+                    except FileNotFoundError:
+                        await websocket.send_text(json.dumps({
+                            "type": "load_result",
+                            "success": False,
+                            "message": f"No save found for slot '{slot}'",
+                        }))
+                    except Exception as e:
+                        await websocket.send_text(json.dumps({
+                            "type": "load_result",
+                            "success": False,
+                            "message": str(e),
+                        }))
 
         except WebSocketDisconnect:
             pass

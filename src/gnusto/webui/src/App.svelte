@@ -16,6 +16,7 @@
   import StateOverlay from './components/StateOverlay.svelte'
   import SettingsOverlay from './components/SettingsOverlay.svelte'
   import ObjectDetailOverlay from './components/ObjectDetailOverlay.svelte'
+  import SaveLoadOverlay from './components/SaveLoadOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -51,6 +52,12 @@
     image: string | null
     behaviors: string[]
   } | null>(null)
+
+  // Save/load overlay state
+  let savesList = $state<{ slot: string; timestamp: string }[]>([])
+  let savesLoading = $state(true)
+  let savesStatus = $state<string | null>(null)
+  let savesStatusError = $state(false)
 
   // Active overlay panel (null = none)
   let activeOverlay = $state<string | null>(null)
@@ -161,6 +168,22 @@
     } else if (message.type === 'quit') {
       gameEnded = true
       inputEnabled = false
+    } else if (message.type === 'saves_list') {
+      savesList = message.saves
+      savesLoading = false
+    } else if (message.type === 'save_result') {
+      savesStatus = message.message
+      savesStatusError = !message.success
+      if (message.success) {
+        send({ type: 'list_saves' })
+      }
+    } else if (message.type === 'load_result') {
+      if (message.success) {
+        closeOverlay()
+      } else {
+        savesStatus = message.message
+        savesStatusError = true
+      }
     }
   }
 
@@ -210,6 +233,15 @@
     if (normalized === 'settings') {
       blocks = [...blocks, { type: 'command', text: command }]
       activeOverlay = 'settings'
+      return
+    }
+    if (normalized === 'saves') {
+      blocks = [...blocks, { type: 'command', text: command }]
+      savesLoading = true
+      savesStatus = null
+      savesStatusError = false
+      activeOverlay = 'saves'
+      send({ type: 'list_saves' })
       return
     }
 
@@ -271,6 +303,22 @@
   <StateOverlay room={currentRoom} onclose={closeOverlay} onentityclick={handleEntityClick} />
 {:else if activeOverlay === 'settings'}
   <SettingsOverlay {debugMode} onclose={closeOverlay} oncommand={handleCommand} />
+{:else if activeOverlay === 'saves'}
+  <SaveLoadOverlay
+    saves={savesList}
+    loading={savesLoading}
+    statusMessage={savesStatus}
+    statusError={savesStatusError}
+    onclose={closeOverlay}
+    onsave={(slot: string) => {
+      savesStatus = null
+      send({ type: 'save', slot })
+    }}
+    onload={(slot: string) => {
+      savesStatus = null
+      send({ type: 'load', slot })
+    }}
+  />
 {:else if activeOverlay === 'object-detail' && detailEntity}
   <ObjectDetailOverlay
     entityId={detailEntity.id}
