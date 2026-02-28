@@ -125,6 +125,11 @@ export interface StateUpdateMessage {
   inventory: EntityInfo[]
 }
 
+export interface StateContextMessage {
+  type: 'state-context'
+  content: string
+}
+
 export interface SavesListMessage {
   type: 'saves_list'
   saves: { slot: string; timestamp: string }[]
@@ -143,5 +148,5 @@ export interface LoadResultMessage {
 }
 
 export type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage
-  | SceneContextMessage | StateUpdateMessage
+  | SceneContextMessage | StateUpdateMessage | StateContextMessage
   | SavesListMessage | SaveResultMessage | LoadResultMessage

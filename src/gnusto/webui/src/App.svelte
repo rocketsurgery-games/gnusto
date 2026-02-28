@@ -53,6 +53,9 @@
     behaviors: string[]
   } | null>(null)
 
+  // State overlay content (from backend)
+  let stateContent = $state<string | null>(null)
+
   // Save/load overlay state
   let savesList = $state<{ slot: string; timestamp: string }[]>([])
   let savesLoading = $state(true)
@@ -168,6 +171,8 @@
     } else if (message.type === 'quit') {
       gameEnded = true
       inputEnabled = false
+    } else if (message.type === 'state-context') {
+      stateContent = message.content
     } else if (message.type === 'saves_list') {
       savesList = message.saves
       savesLoading = false
@@ -227,7 +232,9 @@
     }
     if (normalized === 'state' || normalized === 's') {
       blocks = [...blocks, { type: 'command', text: command }]
+      stateContent = null
       activeOverlay = 'state'
+      send({ type: 'get-state' })
       return
     }
     if (normalized === 'settings') {
@@ -300,7 +307,7 @@
 {#if activeOverlay === 'help'}
   <HelpOverlay onclose={closeOverlay} />
 {:else if activeOverlay === 'state'}
-  <StateOverlay room={currentRoom} onclose={closeOverlay} onentityclick={handleEntityClick} />
+  <StateOverlay content={stateContent} onclose={closeOverlay} />
 {:else if activeOverlay === 'settings'}
   <SettingsOverlay {debugMode} onclose={closeOverlay} oncommand={handleCommand} />
 {:else if activeOverlay === 'saves'}

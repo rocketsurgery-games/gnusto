@@ -162,6 +162,13 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                                 last_room, app.state.game_dir,
                             )
 
+                elif msg_type == "get-state":
+                    context = session.format_debug_context()
+                    await websocket.send_text(json.dumps({
+                        "type": "state-context",
+                        "content": context,
+                    }))
+
                 elif msg_type == "list_saves":
                     game_name = session.runtime.world.name or "unknown"
                     saves = list_saves(game_name)
