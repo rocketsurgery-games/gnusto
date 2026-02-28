@@ -131,18 +131,18 @@ export interface StateContextMessage {
 }
 
 export interface SavesListMessage {
-  type: 'saves_list'
+  type: 'saves-list'
   saves: { slot: string; timestamp: string }[]
 }
 
 export interface SaveResultMessage {
-  type: 'save_result'
+  type: 'save-result'
   success: boolean
   message: string
 }
 
 export interface LoadResultMessage {
-  type: 'load_result'
+  type: 'load-result'
   success: boolean
   message: string
 }

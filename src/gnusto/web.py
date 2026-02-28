@@ -169,11 +169,11 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                         "content": context,
                     }))
 
-                elif msg_type == "list_saves":
+                elif msg_type == "list-saves":
                     game_name = session.runtime.world.name or "unknown"
                     saves = list_saves(game_name)
                     await websocket.send_text(json.dumps({
-                        "type": "saves_list",
+                        "type": "saves-list",
                         "saves": [
                             {"slot": slot, "timestamp": ts}
                             for slot, ts, _ in saves
@@ -185,13 +185,13 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                     try:
                         save_game(session.runtime, slot, session.turn_history, session.summaries)
                         await websocket.send_text(json.dumps({
-                            "type": "save_result",
+                            "type": "save-result",
                             "success": True,
                             "message": f"Saved to slot '{slot}'",
                         }))
                     except Exception as e:
                         await websocket.send_text(json.dumps({
-                            "type": "save_result",
+                            "type": "save-result",
                             "success": False,
                             "message": str(e),
                         }))
@@ -212,7 +212,7 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                             session.turn_history.append(turn)
                         session.summaries = summaries_data
                         await websocket.send_text(json.dumps({
-                            "type": "load_result",
+                            "type": "load-result",
                             "success": True,
                             "message": f"Loaded slot '{slot}' ({len(session.turn_history)} turns)",
                         }))
@@ -221,13 +221,13 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                         await send_initial_state(websocket, session, app.state.game_dir)
                     except FileNotFoundError:
                         await websocket.send_text(json.dumps({
-                            "type": "load_result",
+                            "type": "load-result",
                             "success": False,
                             "message": f"No save found for slot '{slot}'",
                         }))
                     except Exception as e:
                         await websocket.send_text(json.dumps({
-                            "type": "load_result",
+                            "type": "load-result",
                             "success": False,
                             "message": str(e),
                         }))

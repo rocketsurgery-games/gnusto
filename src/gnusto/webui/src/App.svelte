@@ -173,16 +173,16 @@
       inputEnabled = false
     } else if (message.type === 'state-context') {
       stateContent = message.content
-    } else if (message.type === 'saves_list') {
+    } else if (message.type === 'saves-list') {
       savesList = message.saves
       savesLoading = false
-    } else if (message.type === 'save_result') {
+    } else if (message.type === 'save-result') {
       savesStatus = message.message
       savesStatusError = !message.success
       if (message.success) {
-        send({ type: 'list_saves' })
+        send({ type: 'list-saves' })
       }
-    } else if (message.type === 'load_result') {
+    } else if (message.type === 'load-result') {
       if (message.success) {
         closeOverlay()
       } else {
@@ -242,14 +242,26 @@
       activeOverlay = 'settings'
       return
     }
-    if (normalized === 'saves') {
-      blocks = [...blocks, { type: 'command', text: command }]
-      savesLoading = true
-      savesStatus = null
-      savesStatusError = false
-      activeOverlay = 'saves'
-      send({ type: 'list_saves' })
-      return
+    if (normalized === 'saves' || normalized.startsWith('save') || normalized.startsWith('load')) {
+      const parts = normalized.split(/\s+/)
+      const cmd = parts[0]
+      const slot = parts[1] || ''
+
+      if (cmd === 'saves' || cmd === 'save' || cmd === 'load') {
+        blocks = [...blocks, { type: 'command', text: command }]
+        savesLoading = true
+        savesStatus = null
+        savesStatusError = false
+        activeOverlay = 'saves'
+        send({ type: 'list-saves' })
+        // Auto-trigger save/load if a slot was specified
+        if (cmd === 'save' && slot) {
+          send({ type: 'save', slot })
+        } else if (cmd === 'load' && slot) {
+          send({ type: 'load', slot })
+        }
+        return
+      }
     }
 
     inputEnabled = false
