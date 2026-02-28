@@ -13,6 +13,7 @@
   import PeekTab from './components/PeekTab.svelte'
   import EntityPopover from './components/EntityPopover.svelte'
   import HelpOverlay from './components/HelpOverlay.svelte'
+  import StateOverlay from './components/StateOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -172,6 +173,11 @@
       activeOverlay = 'help'
       return
     }
+    if (normalized === 'state' || normalized === 's') {
+      blocks = [...blocks, { type: 'command', text: command }]
+      activeOverlay = 'state'
+      return
+    }
 
     inputEnabled = false
     // Show command locally
@@ -220,4 +226,6 @@
 
 {#if activeOverlay === 'help'}
   <HelpOverlay onclose={closeOverlay} />
+{:else if activeOverlay === 'state'}
+  <StateOverlay room={currentRoom} onclose={closeOverlay} onentityclick={handleEntityClick} />
 {/if}

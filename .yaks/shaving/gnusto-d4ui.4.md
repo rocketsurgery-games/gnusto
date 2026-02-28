@@ -4,7 +4,8 @@ title: Overlay panels — /state, /help, save/load, object detail
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-02-28T17:08:01Z'
+updated: '2026-02-28T17:29:03Z'
+commit: f8037b6
 ---
 
 Commands like /state, /help, and save/load currently dump text into the scrolling
