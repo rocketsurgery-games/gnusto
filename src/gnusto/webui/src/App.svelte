@@ -12,6 +12,7 @@
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
   import EntityPopover from './components/EntityPopover.svelte'
+  import HelpOverlay from './components/HelpOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -36,6 +37,13 @@
 
   // Prefill text for input bar (from popover "fill" actions)
   let inputPrefill = $state<string | null>(null)
+
+  // Active overlay panel (null = none)
+  let activeOverlay = $state<string | null>(null)
+
+  function closeOverlay() {
+    activeOverlay = null
+  }
 
   // Entity popover state
   let popover = $state<{
@@ -157,6 +165,14 @@
   }
 
   function handleCommand(command: string) {
+    // Intercept client-side commands
+    const normalized = command.replace(/^\//, '').toLowerCase()
+    if (normalized === 'help' || normalized === 'h' || normalized === '?') {
+      blocks = [...blocks, { type: 'command', text: command }]
+      activeOverlay = 'help'
+      return
+    }
+
     inputEnabled = false
     // Show command locally
     blocks = [...blocks, { type: 'command', text: command }]
@@ -169,7 +185,12 @@
   })
 </script>
 
-<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && targeting) { cancelTargeting(); e.preventDefault() } }} />
+<svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape') {
+    if (activeOverlay) { closeOverlay(); e.preventDefault() }
+    else if (targeting) { cancelTargeting(); e.preventDefault() }
+  }
+}} />
 
 <RoomHeader room={currentRoom} onentityclick={handleEntityClick} />
 <Sidebar side="left" />
@@ -195,4 +216,8 @@
     }}
     onclose={() => popover = null}
   />
+{/if}
+
+{#if activeOverlay === 'help'}
+  <HelpOverlay onclose={closeOverlay} />
 {/if}
