@@ -4,7 +4,8 @@ title: Room transitions and visual polish
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-02-24T12:00:00Z'
+updated: '2026-03-01T01:12:22Z'
+commit: e39306d
 ---
 
 Make room changes feel like transitions, not just content swaps. Polish the overall

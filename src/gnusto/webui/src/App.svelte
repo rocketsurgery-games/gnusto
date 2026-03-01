@@ -30,6 +30,14 @@
   // Image alternation counter
   let imageBlockIndex = 0
 
+  // Room transition state
+  // When a room_enter arrives mid-turn, we buffer it and any subsequent blocks.
+  // On turn_complete, we fade out the old content, swap, and fade in.
+  let pendingRoom = $state<RoomEnterBlock | null>(null)
+  let pendingBlocks: RenderableBlock[] = []
+  let pendingImageBlockIndex = 0
+  let transitionPhase = $state<'out' | 'in' | null>(null)
+
   // Input enabled state
   let inputEnabled = $state(false)
 
@@ -154,11 +162,27 @@
         addBlock(block)
       }
     } else if (message.type === 'turn_complete') {
-      inputEnabled = true
+      if (pendingRoom) {
+        // Room changed this turn — animate the transition
+        const willAnimate = !!currentRoom
+        startRoomTransition()
+        if (willAnimate) {
+          // Enable input after transition completes (~250ms out + 350ms in)
+          setTimeout(() => { inputEnabled = true }, 700)
+        } else {
+          inputEnabled = true
+        }
+      } else {
+        inputEnabled = true
+      }
     } else if (message.type === 'clear') {
       blocks = []
       currentRoom = null
       imageBlockIndex = 0
+      pendingRoom = null
+      pendingBlocks = []
+      pendingImageBlockIndex = 0
+      transitionPhase = null
     } else if (message.type === 'state_update') {
       updateBehaviors([...message.objects, ...message.inventory])
       if (currentRoom) {
@@ -193,17 +217,11 @@
   }
 
   function addBlock(block: ContentBlock) {
-    // RoomEnter → header, not stream
+    // RoomEnter → buffer for transition (don't clear yet)
     if (block.type === 'room_enter') {
-      // Archive current blocks and start fresh
-      if (blocks.length > 0) {
-        _archive.push([...blocks])
-      }
-      blocks = []
-      imageBlockIndex = 0
-      currentRoom = block
-      updateBehaviors([...block.objects, ...block.inventory])
-      targeting = null
+      pendingRoom = block
+      pendingBlocks = []
+      pendingImageBlockIndex = 0
       return
     }
 
@@ -214,12 +232,80 @@
 
     // Stamp image side for focus/reveal blocks
     const renderable: RenderableBlock = { ...block }
+
+    // If we have a pending room, buffer blocks for after the transition
+    if (pendingRoom) {
+      if (block.type === 'focus' || block.type === 'reveal') {
+        renderable._side = (pendingImageBlockIndex % 2 === 1) ? 'image-right' : 'image-left'
+        pendingImageBlockIndex++
+      }
+      pendingBlocks = [...pendingBlocks, renderable]
+      return
+    }
+
     if (block.type === 'focus' || block.type === 'reveal') {
       renderable._side = (imageBlockIndex % 2 === 1) ? 'image-right' : 'image-left'
       imageBlockIndex++
     }
 
     blocks = [...blocks, renderable]
+  }
+
+  function commitRoomTransition() {
+    if (!pendingRoom) return
+    // Archive old blocks
+    if (blocks.length > 0) {
+      _archive.push([...blocks])
+    }
+    // Swap in new room
+    currentRoom = pendingRoom
+    blocks = [...pendingBlocks]
+    imageBlockIndex = pendingImageBlockIndex
+    updateBehaviors([...pendingRoom.objects, ...pendingRoom.inventory])
+    targeting = null
+    // Clear pending state
+    pendingRoom = null
+    pendingBlocks = []
+    pendingImageBlockIndex = 0
+  }
+
+  function startRoomTransition() {
+    // First room (game start / after clear) — no fade, just commit
+    if (!currentRoom) {
+      commitRoomTransition()
+      return
+    }
+    transitionPhase = 'out'
+    // Fallback timer in case transitionend doesn't fire
+    setTimeout(() => {
+      if (transitionPhase === 'out') onFadeOutDone()
+    }, 400)
+  }
+
+  function onFadeOutDone() {
+    commitRoomTransition()
+    // Scroll to top for the new room
+    window.scrollTo({ top: 0 })
+    transitionPhase = 'in'
+    // Fallback timer for fade-in completion
+    setTimeout(() => {
+      if (transitionPhase === 'in') onFadeInDone()
+    }, 500)
+  }
+
+  function onFadeInDone() {
+    transitionPhase = null
+  }
+
+  function handleTransitionEnd(e: TransitionEvent) {
+    if (e.propertyName !== 'opacity') return
+    if (transitionPhase === 'out') onFadeOutDone()
+  }
+
+  function handleAnimationEnd(e: AnimationEvent) {
+    if (e.animationName === 'room-fade-in' && transitionPhase === 'in') {
+      onFadeInDone()
+    }
   }
 
   function handleCommand(command: string) {
@@ -289,11 +375,20 @@
   }
 }} />
 
-<RoomHeader room={currentRoom} onentityclick={handleEntityClick} />
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+  class="game-content"
+  class:fade-out={transitionPhase === 'out'}
+  class:fade-in={transitionPhase === 'in'}
+  ontransitionend={handleTransitionEnd}
+  onanimationend={handleAnimationEnd}
+>
+  <RoomHeader room={currentRoom} onentityclick={handleEntityClick} />
+  <NarrativeStream {blocks} onentityclick={handleEntityClick} />
+</div>
 <Sidebar side="left" />
 <RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
   open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
-<NarrativeStream {blocks} onentityclick={handleEntityClick} />
 <InputBar enabled={inputEnabled} {gameEnded} prefill={inputPrefill}
   targetingPrompt={targeting?.prompt}
   oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null}
