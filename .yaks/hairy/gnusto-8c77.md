@@ -1,10 +1,10 @@
 ---
-id: gnusto-d4ui.6
+id: gnusto-8c77
 title: Auto-map
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-02-24T12:00:00Z'
+updated: '2026-03-01T01:24:04Z'
 ---
 
 A map that builds as the player explores. Lives in the left sidebar (or expands to

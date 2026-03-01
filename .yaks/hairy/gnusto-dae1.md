@@ -1,10 +1,10 @@
 ---
-id: gnusto-d4ui.5
+id: gnusto-dae1
 title: Left sidebar — history, journal, player notes
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-02-24T12:00:00Z'
+updated: '2026-03-01T01:23:57Z'
 ---
 
 The left sidebar surfaces the player's accumulated knowledge and history. Since the

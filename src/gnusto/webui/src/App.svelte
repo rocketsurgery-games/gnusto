@@ -7,7 +7,6 @@
 
   import RoomHeader from './components/RoomHeader.svelte'
   import NarrativeStream from './components/NarrativeStream.svelte'
-  import Sidebar from './components/Sidebar.svelte'
   import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
@@ -386,14 +385,12 @@
   <RoomHeader room={currentRoom} onentityclick={handleEntityClick} />
   <NarrativeStream {blocks} onentityclick={handleEntityClick} />
 </div>
-<Sidebar side="left" />
 <RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
   open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
 <InputBar enabled={inputEnabled} {gameEnded} prefill={inputPrefill}
   targetingPrompt={targeting?.prompt}
   oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null}
   oncanceltargeting={cancelTargeting} />
-<PeekTab side="left" />
 <PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
 
 {#if popover}

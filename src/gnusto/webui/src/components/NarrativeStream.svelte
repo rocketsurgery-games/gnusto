@@ -45,7 +45,6 @@
 
 <style>
   .stream {
-    margin-left: var(--sidebar-width);
     margin-right: var(--sidebar-width);
     padding: 2rem;
     padding-bottom: var(--input-height);

@@ -4,7 +4,8 @@ title: Web UI redesign
 type: task
 priority: 2
 created: '2026-02-24T12:00:00Z'
-updated: '2026-02-25T17:39:43Z'
+updated: '2026-03-01T01:24:10Z'
+commit: 235c528
 ---
 
 Redesign the web UI from infinite-scroll to a structured three-zone layout optimized

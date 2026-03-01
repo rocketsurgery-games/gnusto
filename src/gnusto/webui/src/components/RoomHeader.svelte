@@ -47,7 +47,6 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    margin-left: var(--sidebar-width);
     margin-right: var(--sidebar-width);
     padding: 1rem 2rem;
     background: var(--bg-primary);
