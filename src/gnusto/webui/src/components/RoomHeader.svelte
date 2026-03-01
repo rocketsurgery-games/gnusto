@@ -31,6 +31,9 @@
 <header class="header" onclick={handleClick} onkeydown={handleKeydown}>
   {#if room}
     <div class="room-header">
+      {#if room.preamble}
+        <p class="preamble">{room.preamble}</p>
+      {/if}
       {#if room.image}
         <img class="room-image" src={room.image} alt={room.name} />
       {/if}
@@ -50,6 +53,13 @@
     margin-right: var(--sidebar-width);
     padding: 1rem 2rem;
     background: var(--bg-primary);
+  }
+
+  .preamble {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
   }
 
   h2 {

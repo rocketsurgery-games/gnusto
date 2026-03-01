@@ -20,6 +20,7 @@ export interface RoomEnterBlock {
   objects: EntityInfo[]
   inventory: EntityInfo[]
   image: string | null
+  preamble: string | null
 }
 
 export interface ActionResultBlock {
