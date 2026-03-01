@@ -4,7 +4,7 @@ title: WebUI input improvements
 type: task
 priority: 2
 created: '2026-02-21T02:07:58Z'
-updated: '2026-02-25T14:22:57Z'
+updated: '2026-03-01T00:12:27Z'
 ---
 
 - Make it pin / overlay at the bottom of the viewport.

@@ -29,6 +29,18 @@
     }
   })
 
+  function handleGlobalKeydown(e: KeyboardEvent) {
+    if (!enabled || gameEnded || targetingPrompt) return
+    if (!inputEl || inputEl === document.activeElement) return
+    // Ignore modifier combos (Ctrl+C, Cmd+V, etc.) and non-printable keys
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+    if (e.key.length !== 1) return
+    // Don't steal focus from other inputs/textareas
+    const tag = (e.target as HTMLElement)?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    inputEl.focus()
+  }
+
   function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
     if (!inputEl) return
@@ -39,6 +51,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <footer class="input-bar">
   {#if targetingPrompt}
