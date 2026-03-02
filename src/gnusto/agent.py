@@ -49,6 +49,20 @@ You MUST respond with valid JSON matching this schema:
 - **move**: Navigate rooms. Requires `direction` (north, south, up, down, etc.)
 - **wait**: Pass time. No additional fields needed.
 
+## Knowledge Queries
+
+Query your accumulated knowledge without spending a turn. Use these to look up details
+about things the player has seen, places visited, or events that happened earlier.
+
+- **recall**: What do you know about an entity? Set `target` to the entity ID (e.g., @key, @hallway). Returns description, location, observations, and related events.
+- **map**: Review all explored rooms and connections. No target needed.
+- **history**: Review what happened. Set `target` to a room or entity ID to filter, or omit for recent events.
+- **search**: Search knowledge for a keyword. Set `target` to the search term.
+
+Knowledge queries don't advance the game — they return information for you to use.
+Use them when the player refers to something from earlier, or when you need context
+about an entity or location before deciding what to do.
+
 ## Entity References and Action Arguments
 
 Each object in the game state has an entity ID starting with `@` (like `@hacker`, `@master-key`).
@@ -627,6 +641,20 @@ class GameSession:
             return self._move(action.direction or "")
         elif action.tool == "wait":
             return self._wait()
+        elif action.tool == "recall":
+            return ([], self.knowledge.recall(action.target or ""))
+        elif action.tool == "map":
+            return ([], self.knowledge.map_summary())
+        elif action.tool == "history":
+            if action.target:
+                # Detect whether target is a room or entity
+                node = self.knowledge.nodes.get(action.target)
+                if node and node.kind == 'room':
+                    return ([], self.knowledge.history(room_id=action.target))
+                return ([], self.knowledge.history(entity_id=action.target))
+            return ([], self.knowledge.history())
+        elif action.tool == "search":
+            return ([], self.knowledge.search(action.target or ""))
         else:
             return ([], f"Unknown action: {action.tool}")
 
@@ -640,6 +668,10 @@ class GameSession:
             return f"go {action.direction}"
         elif action.tool == "wait":
             return "wait"
+        elif action.tool in ("recall", "map", "history", "search"):
+            if action.target:
+                return f"{action.tool} {action.target}"
+            return action.tool
         else:
             return f"{action.tool}(...)"
 
@@ -654,6 +686,10 @@ class GameSession:
             return f"(go {action.direction})"
         elif action.tool == "wait":
             return "(wait)"
+        elif action.tool in ("recall", "map", "history", "search"):
+            if action.target:
+                return f"(kg:{action.tool} {action.target})"
+            return f"(kg:{action.tool})"
         else:
             return f"({action.tool} ...)"
 

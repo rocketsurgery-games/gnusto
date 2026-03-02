@@ -37,9 +37,9 @@ class LLMConfig:
 
 @dataclass
 class ActionRequest:
-    """A game action to execute."""
-    tool: Literal["do_action", "move", "wait"]
-    target: str | None = None  # For do_action
+    """A game action or knowledge query to execute."""
+    tool: Literal["do_action", "move", "wait", "recall", "map", "history", "search"]
+    target: str | None = None  # For do_action (entity ID), recall/history/search (scope/keyword)
     verb: str | None = None    # For do_action
     args: list[str] = field(default_factory=list)  # For do_action
     direction: str | None = None  # For move
@@ -85,8 +85,8 @@ AGENT_RESPONSE_SCHEMA = {
                 "properties": {
                     "tool": {
                         "type": "string",
-                        "enum": ["do_action", "move", "wait"],
-                        "description": "The type of action"
+                        "enum": ["do_action", "move", "wait", "recall", "map", "history", "search"],
+                        "description": "The type of action or knowledge query"
                     },
                     "target": {
                         "type": "string",
