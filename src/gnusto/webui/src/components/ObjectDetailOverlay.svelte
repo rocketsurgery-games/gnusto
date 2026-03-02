@@ -39,7 +39,7 @@
       </div>
     {:else}
       <div class="image-container">
-        <div class="entity-placeholder">{entityName.charAt(0).toUpperCase()}</div>
+        <div class="entity-placeholder">{(entityName || '?').charAt(0).toUpperCase()}</div>
       </div>
     {/if}
 

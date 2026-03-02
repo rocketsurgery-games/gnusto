@@ -21,6 +21,7 @@ from grue.save import save_game, load_game, list_saves
 
 from .agent import GameSession, TurnRecord
 from .commands import handle_command as handle_slash_command
+from .knowledge import KnowledgeGraph
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
     Reveal, Focus, Image, SystemMessage, DebugInfo,
@@ -218,6 +219,7 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                     slot = message.get("slot", "default")
                     try:
                         save_game(session.runtime, slot, session.turn_history, session.summaries)
+                        session.knowledge.save(session.runtime.world.name or "unknown", slot)
                         await websocket.send_text(json.dumps({
                             "type": "save-result",
                             "success": True,
@@ -245,6 +247,9 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                             )
                             session.turn_history.append(turn)
                         session.summaries = summaries_data
+                        session.knowledge = KnowledgeGraph.load(
+                            session.runtime.world.name or "unknown", slot,
+                        )
                         await websocket.send_text(json.dumps({
                             "type": "load-result",
                             "success": True,

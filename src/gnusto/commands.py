@@ -89,6 +89,7 @@ HELP_TEXT = """Available commands:
   /debug [on|off]   Toggle debug mode, or show context
   /state, /s        Show current game state
   /history          Show turn history
+  /kg [entity|map]  Query knowledge graph
   /eval <expr>      Evaluate a Grue expression
   /clear            Clear screen
   /reset            Restart game
@@ -228,6 +229,22 @@ def handle_command(
             result.blocks.append(SystemMessage(text=response.content or "No hints available."))
         except Exception as e:
             result.blocks.append(SystemMessage(text=f"Error getting hints: {e}", level="error"))
+
+    elif cmd == "kg":
+        if not arg:
+            # Default: show map + entities + recent history
+            sections = [
+                session.knowledge.map_summary(),
+                session.knowledge.entities_summary(),
+                session.knowledge.history(last_n=10),
+            ]
+            result.blocks.append(SystemMessage(text="\n\n".join(sections)))
+        elif arg.lower() == "map":
+            result.blocks.append(SystemMessage(text=session.knowledge.map_summary()))
+        elif arg.startswith("@"):
+            result.blocks.append(SystemMessage(text=session.knowledge.recall(arg)))
+        else:
+            result.blocks.append(SystemMessage(text=session.knowledge.search(arg)))
 
     elif cmd == "eval":
         if not arg:

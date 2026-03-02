@@ -18,6 +18,7 @@ from grue.save import save_game, load_game, list_saves
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .commands import handle_command, render_blocks_to_text
+from .knowledge import KnowledgeGraph
 from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ContentBlockData, content_block_data_to_render
 from .render import ContentBlock
 from .state import GameState, ObjectInfo, get_game_state
@@ -263,6 +264,7 @@ class GameSession:
     game_dir: Path
     turn_history: list[TurnRecord] = field(default_factory=list)
     summaries: list[str] = field(default_factory=list)  # Narrative summary blocks
+    knowledge: KnowledgeGraph = field(default_factory=KnowledgeGraph)
     debug: bool = False
 
     @classmethod
@@ -288,6 +290,14 @@ class GameSession:
             llm=llm,
             game_dir=game_dir,
             debug=debug,
+        )
+        # Observe initial game state (turn 0, no command)
+        session.knowledge.observe_turn(
+            state=session.get_state(),
+            command=None,
+            actions=[],
+            results=[],
+            blocks=[],
         )
         return session
 
@@ -499,6 +509,7 @@ class GameSession:
         all_actions: list[str] = []  # Action summaries for TurnRecord
         all_action_results: list[str] = []  # Results paired with actions for TurnRecord
         all_narratives: list[str] = []  # Flattened block text for history
+        all_render_blocks: list[ContentBlock] = []  # For knowledge graph
         iteration = 0
 
         while iteration < max_iterations:
@@ -516,6 +527,7 @@ class GameSession:
             # Convert and emit content blocks
             if response.blocks:
                 render_blocks = [content_block_data_to_render(b) for b in response.blocks]
+                all_render_blocks.extend(render_blocks)
                 if on_blocks:
                     on_blocks(render_blocks)
                 # Flatten block text for history
@@ -587,6 +599,16 @@ class GameSession:
             narrative=final_response_text,
         )
         self.turn_history.append(turn_record)
+
+        # Update knowledge graph with what the player learned
+        final_state = self.get_state()
+        self.knowledge.observe_turn(
+            state=final_state,
+            command=user_input,
+            actions=all_actions,
+            results=all_action_results,
+            blocks=all_render_blocks,
+        )
 
         # Check if we need to summarize older turns
         self._maybe_summarize()

@@ -4,7 +4,9 @@ title: Left sidebar — history, journal, player notes
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-03-01T01:23:57Z'
+updated: '2026-03-01T18:01:17Z'
+depends_on:
+- gnusto-6ba8
 ---
 
 The left sidebar surfaces the player's accumulated knowledge and history. Since the

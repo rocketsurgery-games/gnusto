@@ -29,6 +29,7 @@ export function resolveEntityBehaviors(id: string): string[] {
 }
 
 export function speakerInitial(name: string): string {
+  if (!name) return '?'
   const clean = name.replace(/^(the|a|an)\s+/i, '')
   return clean.charAt(0).toUpperCase()
 }

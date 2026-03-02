@@ -4,7 +4,9 @@ title: Auto-map
 type: task
 priority: 3
 created: '2026-02-24T12:00:00Z'
-updated: '2026-03-01T01:24:04Z'
+updated: '2026-03-01T18:01:18Z'
+depends_on:
+- gnusto-6ba8
 ---
 
 A map that builds as the player explores. Lives in the left sidebar (or expands to

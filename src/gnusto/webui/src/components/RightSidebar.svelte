@@ -55,9 +55,9 @@
                 {#if img}
                   <img class="entity-thumb" src={img} alt={obj.name} />
                 {:else}
-                  <span class="entity-initial">{obj.name.charAt(0).toUpperCase()}</span>
+                  <span class="entity-initial">{(obj.name || '?').charAt(0).toUpperCase()}</span>
                 {/if}
-                <span class="entity-name">{obj.name}</span>
+                <span class="entity-name">{obj.name || obj.id}</span>
               </button>
             </li>
           {/each}
@@ -79,9 +79,9 @@
                 {#if img}
                   <img class="entity-thumb" src={img} alt={item.name} />
                 {:else}
-                  <span class="entity-initial">{item.name.charAt(0).toUpperCase()}</span>
+                  <span class="entity-initial">{(item.name || '?').charAt(0).toUpperCase()}</span>
                 {/if}
-                <span class="entity-name">{item.name}</span>
+                <span class="entity-name">{item.name || item.id}</span>
               </button>
             </li>
           {/each}
