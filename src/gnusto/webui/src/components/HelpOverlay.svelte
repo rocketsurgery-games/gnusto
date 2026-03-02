@@ -22,6 +22,7 @@
       <tr><td class="cmd">/state</td><td class="alias">/s</td><td>Show current game state</td></tr>
       <tr><td class="cmd">/hint</td><td class="alias"></td><td>Get suggestions for what to try next</td></tr>
       <tr><td class="cmd">/history</td><td class="alias"></td><td>Show turn history</td></tr>
+      <tr><td class="cmd">/kg <em>[entity|map]</em></td><td class="alias"></td><td>Knowledge graph</td></tr>
       <tr><td class="cmd">/eval <em>expr</em></td><td class="alias"></td><td>Evaluate a Grue expression</td></tr>
     </tbody></table>
   </section>

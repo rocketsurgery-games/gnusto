@@ -148,6 +148,12 @@ export interface LoadResultMessage {
   message: string
 }
 
+export interface KgContextMessage {
+  type: 'kg-context'
+  content: string
+}
+
 export type ServerMessage = BlocksMessage | TurnCompleteMessage | ClearMessage | QuitMessage
   | SceneContextMessage | StateUpdateMessage | StateContextMessage
   | SavesListMessage | SaveResultMessage | LoadResultMessage
+  | KgContextMessage

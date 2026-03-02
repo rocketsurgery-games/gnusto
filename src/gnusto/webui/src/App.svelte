@@ -16,6 +16,7 @@
   import SettingsOverlay from './components/SettingsOverlay.svelte'
   import ObjectDetailOverlay from './components/ObjectDetailOverlay.svelte'
   import SaveLoadOverlay from './components/SaveLoadOverlay.svelte'
+  import KnowledgeOverlay from './components/KnowledgeOverlay.svelte'
 
   // Current room header data
   let currentRoom = $state<RoomEnterBlock | null>(null)
@@ -62,6 +63,9 @@
 
   // State overlay content (from backend)
   let stateContent = $state<string | null>(null)
+
+  // Knowledge overlay content (from backend)
+  let kgContent = $state<string | null>(null)
 
   // Save/load overlay state
   let savesList = $state<{ slot: string; timestamp: string }[]>([])
@@ -196,6 +200,8 @@
       inputEnabled = false
     } else if (message.type === 'state-context') {
       stateContent = message.content
+    } else if (message.type === 'kg-context') {
+      kgContent = message.content
     } else if (message.type === 'saves-list') {
       savesList = message.saves
       savesLoading = false
@@ -349,6 +355,15 @@
       }
     }
 
+    if (normalized === 'kg' || normalized.startsWith('kg ')) {
+      const arg = normalized.slice(2).trim()
+      blocks = [...blocks, { type: 'command', text: command }]
+      kgContent = null
+      activeOverlay = 'kg'
+      send({ type: 'get-kg', arg })
+      return
+    }
+
     inputEnabled = false
     // Show command locally
     blocks = [...blocks, { type: 'command', text: command }]
@@ -430,6 +445,8 @@
       send({ type: 'load', slot })
     }}
   />
+{:else if activeOverlay === 'kg'}
+  <KnowledgeOverlay content={kgContent} onclose={closeOverlay} />
 {:else if activeOverlay === 'object-detail' && detailEntity}
   <ObjectDetailOverlay
     entityId={detailEntity.id}

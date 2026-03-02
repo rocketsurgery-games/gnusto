@@ -204,6 +204,27 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                         "content": context,
                     }))
 
+                elif msg_type == "get-kg":
+                    arg = message.get("arg", "").strip()
+                    kg = session.knowledge
+                    if not arg:
+                        sections = [
+                            kg.map_summary(),
+                            kg.entities_summary(),
+                            kg.history(last_n=10),
+                        ]
+                        content = "\n\n".join(sections)
+                    elif arg.lower() == "map":
+                        content = kg.map_summary()
+                    elif arg.startswith("@"):
+                        content = kg.recall(arg)
+                    else:
+                        content = kg.search(arg)
+                    await websocket.send_text(json.dumps({
+                        "type": "kg-context",
+                        "content": content,
+                    }))
+
                 elif msg_type == "list-saves":
                     game_name = session.runtime.world.name or "unknown"
                     saves = list_saves(game_name)

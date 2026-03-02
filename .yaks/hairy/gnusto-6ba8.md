@@ -4,7 +4,8 @@ title: Player knowledge graph
 type: feature
 priority: 2
 created: '2026-03-01T18:00:59Z'
-updated: '2026-03-02T00:21:56Z'
+updated: '2026-03-02T02:33:38Z'
+commit: 1ae7fff
 ---
 
 A graph-based model of accumulated player knowledge. Foundation for history/journal (gnusto-dae1), auto-mapping (gnusto-8c77), entity recall, and agent context tools.

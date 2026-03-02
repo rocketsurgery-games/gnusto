@@ -167,7 +167,7 @@ class TestObserveTurn:
         # Also adds observation to entity node
         assert len(kg.nodes["@safe"].observations) == 1
 
-    def test_focus_blocks_add_observations(self):
+    def test_focus_blocks_add_observations_and_events(self):
         kg = KnowledgeGraph()
         state = _make_state(
             visible_objects=[ObjectInfo(id="@lantern", description="a brass lantern")],
@@ -176,6 +176,10 @@ class TestObserveTurn:
         kg.observe_turn(state, command="examine lantern", actions=[], results=[], blocks=blocks)
 
         assert "FIAT LUX" in kg.nodes["@lantern"].observations[0]
+        # Focus blocks now also create events
+        focus_events = [e for e in kg.events if "[focus]" in e.text]
+        assert len(focus_events) == 1
+        assert "@lantern" in focus_events[0].entities
 
 
 class TestQueries:
@@ -276,6 +280,32 @@ class TestQueries:
         result = kg.history(entity_id="@lantern")
 
         assert "lantern" in result.lower()
+
+    def test_history_falls_back_to_recall(self):
+        """When no events mention an entity, history() returns recall data instead."""
+        kg = KnowledgeGraph()
+        state = _make_state(
+            visible_objects=[ObjectInfo(id="@paper", description="a crumpled paper")],
+        )
+        # Focus block adds observations but the command doesn't mention @paper
+        blocks = [Focus(text="The paper has strange writing.", entity="@paper")]
+        kg.observe_turn(state, command="examine paper", actions=[], results=[], blocks=blocks)
+
+        # Now query history for an entity that has NO events but DOES have observations
+        # (create a node with observations but no events referencing it)
+        kg2 = KnowledgeGraph()
+        state2 = _make_state(
+            visible_objects=[ObjectInfo(id="@gem", description="a glowing gem")],
+        )
+        # Only observe state (no blocks, no commands mentioning @gem)
+        kg2.observe_turn(state2, command=None, actions=[], results=[], blocks=[])
+        # Manually add an observation
+        kg2.nodes["@gem"].observations.append("Turn 0: It pulses with inner light.")
+
+        result = kg2.history(entity_id="@gem")
+        # Should fall back to recall data
+        assert "glowing gem" in result
+        assert "pulses with inner light" in result
 
     def test_search(self):
         kg = self._build_explored_graph()

@@ -242,7 +242,9 @@ class KnowledgeGraph:
                         f"Turn {turn}: {block.text}"
                     )
                 # Also record as event
-                entities = [block.entity] if block.entity else []
+                entities = _extract_entity_ids(block.text)
+                if block.entity:
+                    entities = _unique([block.entity] + entities)
                 self.events.append(KEvent(
                     turn=turn, room=room,
                     text=f"[reveal] {block.text}",
@@ -254,6 +256,15 @@ class KnowledgeGraph:
                     self.nodes[block.entity].observations.append(
                         f"Turn {turn}: {block.text}"
                     )
+                # Also record as event
+                entities = _extract_entity_ids(block.text)
+                if block.entity:
+                    entities = _unique([block.entity] + entities)
+                self.events.append(KEvent(
+                    turn=turn, room=room,
+                    text=f"[focus] {block.text}",
+                    entities=entities,
+                ))
 
     # ── Queries ─────────────────────────────────────────────────
 
@@ -356,7 +367,10 @@ class KnowledgeGraph:
             events = [e for e in events if e.room == room_id]
 
         if not events:
-            scope = entity_id or room_id or "this game"
+            # Fall back to recall data so the agent always gets something
+            if entity_id:
+                return self.recall(entity_id)
+            scope = room_id or "this game"
             return f"No events recorded for {scope}."
 
         # Take last N
