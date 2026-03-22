@@ -13,6 +13,7 @@ from rich.rule import Rule
 
 from .agent import GameSession
 from .commands import handle_command
+from .llm import LLMConfig
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
     Reveal, Focus, Image, SystemMessage, DebugInfo,
@@ -58,6 +59,7 @@ class SimpleTUI:
         game_path: str,
         debug: bool = False,
         plain: bool = False,
+        llm_config: LLMConfig | None = None,
     ):
         self.game_path = game_path
         self.game_dir = Path(game_path).resolve()
@@ -65,6 +67,7 @@ class SimpleTUI:
             self.game_dir = self.game_dir.parent
         self.debug = debug
         self.plain = plain
+        self.llm_config = llm_config
         self.session: GameSession | None = None
         self.console = Console(highlight=False, force_terminal=not plain, no_color=plain)
         self._last_room: str | None = None
@@ -189,7 +192,7 @@ class SimpleTUI:
         elif result.action == "clear":
             self.console.clear()
         elif result.action == "reset":
-            self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
+            self.session = GameSession.from_game_file(self.game_path, llm_config=self.llm_config, debug=self.debug)
             state = get_game_state(self.session.runtime)
             room_block = build_room_block(state, self.session.runtime, self.game_dir)
             self.render_block(room_block)
@@ -202,7 +205,7 @@ class SimpleTUI:
         if self.debug:
             self.render_block(SystemMessage("Debug mode enabled"))
 
-        self.session = GameSession.from_game_file(self.game_path, debug=self.debug)
+        self.session = GameSession.from_game_file(self.game_path, llm_config=self.llm_config, debug=self.debug)
 
         self.console.print()
         self.console.print(Rule("Game Start"))
@@ -272,13 +275,14 @@ class SimpleTUI:
                 self.render_block(room_block)
 
 
-def run_tui(game_path: str, debug: bool = False, plain: bool = False) -> None:
+def run_tui(game_path: str, debug: bool = False, plain: bool = False, llm_config: LLMConfig | None = None) -> None:
     """Run the simple TUI.
 
     Args:
         game_path: Path to the game directory or main .grue file
         debug: Enable debug mode (show LLM tool calls)
         plain: Text-only mode (no images, no colors)
+        llm_config: Optional LLM configuration override
     """
-    tui = SimpleTUI(game_path, debug=debug, plain=plain)
+    tui = SimpleTUI(game_path, debug=debug, plain=plain, llm_config=llm_config)
     tui.run()

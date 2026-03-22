@@ -34,6 +34,9 @@ render = [
     "scipy",
     "omegaconf",
 ]
+mlx = [
+    "mlx-lm>=0.31.0",
+]
 dev = [
     "ipython",
 ]

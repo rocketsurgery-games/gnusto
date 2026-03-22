@@ -92,6 +92,44 @@ The agent's job is to make sense of the world model for the player, describe it 
 
 In the original Infocom games, wrestling with the text parser and identifying possible actions could be extraordinarily frustrating. This was an unavoidable consequence of using hand-written text parsers on the simple micros of the era. But a modern language model is capable of parsing arbitrary input and matching the user's intentions to the world state, and available actions. This should dramatically reduce the frustration of wrestling with the parser, figuring out exactly which terminology the implementor expected, and so forth.
 
+## Model Configuration
+
+By default, Gnusto uses Claude Sonnet 4 via the Anthropic API. You can switch models using environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GRUE_LLM_MODEL` | `anthropic/claude-sonnet-4-20250514` | Model ID (litellm format) |
+| `GRUE_LLM_API_BASE` | *(none)* | API base URL for local servers |
+| `GRUE_LLM_TEMPERATURE` | `0.7` | Sampling temperature |
+| `GRUE_LLM_MAX_TOKENS` | `2048` | Max response tokens |
+| `GRUE_HINT_MODEL` | `anthropic/claude-haiku-4-5-20251001` | Model for hint generation |
+
+### Local models via MLX
+
+On Apple Silicon, you can run a local model using `mlx-lm`:
+
+```bash
+pip install gnusto[mlx]
+
+# Start the MLX server (downloads model on first run)
+mlx_lm.server --model mlx-community/Qwen3-4B-4bit --port 8800
+
+# Use a model alias
+gnusto games/lurkinghorror/ --model local    # Qwen3-4B
+gnusto games/lurkinghorror/ --model local8b  # Qwen3-8B
+```
+
+The `--model` flag accepts aliases (`local`, `local8b`) or any litellm model ID. Local
+models auto-configure `api_base` to `localhost:8800`. You can also use env vars directly:
+
+```bash
+GRUE_LLM_MODEL=openai/mlx-community/Qwen3-4B-4bit \
+GRUE_LLM_API_BASE=http://localhost:8800/v1 \
+gnusto games/lurkinghorror/
+```
+
+Any OpenAI-compatible local server works (llama.cpp, vLLM, etc.) — just set the model ID with an `openai/` prefix and point `GRUE_LLM_API_BASE` at the server.
+
 ## Narrative Generation
 
 The agent's primary job is to **interpret Grue output faithfully** while **stitching it together coherently**. The game's Grue code provides the narrative soul -- room descriptions, action results, character dialogue -- and the agent provides the glue that makes it flow naturally.

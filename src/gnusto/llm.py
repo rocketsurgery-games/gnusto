@@ -7,6 +7,7 @@ Supports structured JSON output for the agent's response schema.
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -20,6 +21,7 @@ class LLMConfig:
     model: str = "anthropic/claude-sonnet-4-20250514"
     temperature: float = 0.7
     max_tokens: int = 2048
+    api_base: str | None = None
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
@@ -28,6 +30,7 @@ class LLMConfig:
             model=os.getenv("GRUE_LLM_MODEL", cls.model),
             temperature=float(os.getenv("GRUE_LLM_TEMPERATURE", cls.temperature)),
             max_tokens=int(os.getenv("GRUE_LLM_MAX_TOKENS", cls.max_tokens)),
+            api_base=os.getenv("GRUE_LLM_API_BASE"),
         )
 
 
@@ -191,12 +194,21 @@ class LLMClient:
         Returns:
             LLMResponse with content and/or tool calls
         """
+        # Inject /no_think for local models to suppress reasoning tokens
+        if self.config.api_base:
+            messages = list(messages)
+            if messages and messages[0].get("role") == "system":
+                messages[0] = {**messages[0], "content": "/no_think\n" + messages[0]["content"]}
+
         kwargs: dict[str, Any] = {
             "model": self.config.model,
             "messages": messages,
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
         }
+
+        if self.config.api_base:
+            kwargs["api_base"] = self.config.api_base
 
         if tools:
             kwargs["tools"] = tools
@@ -252,20 +264,35 @@ class LLMClient:
         Returns:
             AgentResponse parsed from JSON
         """
-        kwargs: dict[str, Any] = {
-            "model": self.config.model,
-            "messages": messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
-            "response_format": {
+        # Local models (via api_base) use json_object mode and get /no_think
+        # injected to suppress expensive reasoning tokens.
+        # Cloud models use the full json_schema mode with strict validation.
+        if self.config.api_base:
+            response_format: dict[str, Any] = {"type": "json_object"}
+            # Prepend /no_think to suppress Qwen3-style thinking tokens
+            messages = list(messages)
+            if messages and messages[0].get("role") == "system":
+                messages[0] = {**messages[0], "content": "/no_think\n" + messages[0]["content"]}
+        else:
+            response_format = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "agent_response",
                     "strict": True,
                     "schema": AGENT_RESPONSE_SCHEMA,
                 }
-            },
+            }
+
+        kwargs: dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+            "response_format": response_format,
         }
+
+        if self.config.api_base:
+            kwargs["api_base"] = self.config.api_base
 
         last_error = None
         for attempt in range(max_retries):
@@ -288,6 +315,9 @@ class LLMClient:
         """Parse structured JSON response into AgentResponse."""
         message = response.choices[0].message
         content = message.content
+
+        # Strip Qwen3-style <think>...</think> tags from response
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
         try:
             data = json.loads(content)

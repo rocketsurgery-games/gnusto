@@ -6,11 +6,42 @@ Usage:
   python -m gnusto <game_path> --debug      # Show agent tool calls
   python -m gnusto <game_path> --plain      # Text only, no images or colors
   python -m gnusto <game_path> --web        # Web UI
+  python -m gnusto <game_path> --model local  # Use local MLX model
 """
 
 import argparse
 
+from .llm import LLMConfig
 from .tui import run_tui
+
+# Well-known model aliases
+MODEL_ALIASES = {
+    "local": "openai/mlx-community/Qwen3-4B-4bit",
+    "local8b": "openai/mlx-community/Qwen3-8B-4bit",
+}
+
+# Models that need a local server
+LOCAL_API_BASE = "http://localhost:8800/v1"
+
+
+def resolve_llm_config(model_arg: str | None) -> LLMConfig | None:
+    """Resolve --model argument into an LLMConfig, or None for env/default."""
+    if model_arg is None:
+        return None  # Use env vars / defaults
+
+    model = MODEL_ALIASES.get(model_arg, model_arg)
+
+    # If model starts with openai/ and no GRUE_LLM_API_BASE is set,
+    # assume a local server
+    import os
+    api_base = os.getenv("GRUE_LLM_API_BASE")
+    if model.startswith("openai/") and not api_base:
+        api_base = LOCAL_API_BASE
+        # Set a dummy API key if none exists
+        if not os.getenv("OPENAI_API_KEY"):
+            os.environ["OPENAI_API_KEY"] = "not-needed"
+
+    return LLMConfig(model=model, api_base=api_base)
 
 
 def main() -> None:
@@ -24,11 +55,19 @@ Examples:
   gnusto games/lurkinghorror/ --debug        # Show agent tool calls
   gnusto games/lurkinghorror/ --plain        # Text only mode
   gnusto games/lurkinghorror/ --web          # Web UI
+  gnusto games/lurkinghorror/ --model local  # Local Qwen3-4B via MLX
+  gnusto games/lurkinghorror/ -m local8b    # Local Qwen3-8B via MLX
 """,
     )
     parser.add_argument(
         "game_path",
         help="Path to game directory containing .grue files",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        help="LLM model to use. Aliases: 'local' (Qwen3-4B), 'local8b' (Qwen3-8B). "
+             "Or a litellm model ID (e.g., 'anthropic/claude-sonnet-4-20250514')",
     )
     parser.add_argument(
         "--debug",
@@ -61,15 +100,17 @@ Examples:
     )
 
     args = parser.parse_args()
+    llm_config = resolve_llm_config(args.model)
 
     if args.web:
         from .web import run_server
-        run_server(args.game_path, host=args.host, port=args.port, debug=args.debug)
+        run_server(args.game_path, host=args.host, port=args.port, debug=args.debug, llm_config=llm_config)
     else:
         run_tui(
             args.game_path,
             debug=args.debug,
             plain=args.plain,
+            llm_config=llm_config,
         )
 
 

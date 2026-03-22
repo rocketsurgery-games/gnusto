@@ -22,6 +22,7 @@ from grue.save import save_game, load_game, list_saves
 from .agent import GameSession, TurnRecord
 from .commands import handle_command as handle_slash_command
 from .knowledge import KnowledgeGraph
+from .llm import LLMConfig
 from .render import (
     ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
     Reveal, Focus, Image, SystemMessage, DebugInfo,
@@ -144,7 +145,7 @@ def _build_preamble(blocks: list[ContentBlock]) -> str | None:
     return truncated + "..."
 
 
-def create_app(game_path: str, debug: bool = False) -> FastAPI:
+def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None = None) -> FastAPI:
     """Create the FastAPI application for a game."""
     app = FastAPI(title="Gnusto", debug=debug)
 
@@ -155,6 +156,7 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
     app.state.game_path = game_path
     app.state.game_dir = game_dir
     app.state.debug = debug
+    app.state.llm_config = llm_config
 
     @app.websocket("/ws")
     async def game_websocket(websocket: WebSocket):
@@ -164,7 +166,8 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
         # Create a new game session for this connection
         session = GameSession.from_game_file(
             app.state.game_path,
-            debug=app.state.debug
+            llm_config=app.state.llm_config,
+            debug=app.state.debug,
         )
 
         try:
@@ -184,7 +187,8 @@ def create_app(game_path: str, debug: bool = False) -> FastAPI:
                         if command.startswith("/"):
                             session, should_continue = await handle_slash_command_ws(
                                 websocket, session, command,
-                                app.state.game_path, app.state.game_dir, app.state.debug
+                                app.state.game_path, app.state.game_dir, app.state.debug,
+                                app.state.llm_config,
                             )
                             if not should_continue:
                                 break
@@ -389,6 +393,7 @@ async def handle_slash_command_ws(
     game_path: str,
     game_dir: Path,
     debug: bool,
+    llm_config: LLMConfig | None = None,
 ) -> tuple[GameSession, bool]:
     """Handle a slash command via websocket."""
     result = handle_slash_command(command, session, game_dir)
@@ -401,7 +406,7 @@ async def handle_slash_command_ws(
         await websocket.send_text(json.dumps({"type": "clear"}))
 
     elif result.action == "reset":
-        session = GameSession.from_game_file(game_path, debug=debug)
+        session = GameSession.from_game_file(game_path, llm_config=llm_config, debug=debug)
         await websocket.send_text(json.dumps({"type": "clear"}))
         await send_initial_state(websocket, session, game_dir)
         return session, True
@@ -504,11 +509,11 @@ async def handle_game_command(
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
-def run_server(game_path: str, host: str = "127.0.0.1", port: int = 8000, debug: bool = False) -> None:
+def run_server(game_path: str, host: str = "127.0.0.1", port: int = 8000, debug: bool = False, llm_config: LLMConfig | None = None) -> None:
     """Run the web server."""
     import uvicorn
 
-    app = create_app(game_path, debug=debug)
+    app = create_app(game_path, debug=debug, llm_config=llm_config)
 
     print(f"Starting Gnusto web server...")
     print(f"Game: {game_path}")
