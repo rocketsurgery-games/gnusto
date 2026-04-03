@@ -27,20 +27,15 @@
     grid-template-columns: 1fr;
     gap: 1rem;
     padding: 0.5rem 0;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .block-focus.has-image {
     grid-template-columns: 180px 1fr;
   }
 
-  .block-focus.has-image.image-left {
-    margin-left: calc(-1 * var(--image-overhang));
-  }
-
   .block-focus.has-image.image-right {
     grid-template-columns: 1fr 180px;
-    margin-right: calc(-1 * var(--image-overhang));
   }
 
   .focus-image {
@@ -74,8 +69,6 @@
   @media (max-width: 768px) {
     .block-focus.has-image {
       grid-template-columns: 1fr;
-      margin-left: 0;
-      margin-right: 0;
     }
 
     .focus-image {

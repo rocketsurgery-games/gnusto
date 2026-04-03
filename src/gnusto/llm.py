@@ -318,6 +318,9 @@ class LLMClient:
 
         # Strip Qwen3-style <think>...</think> tags from response
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        # Strip markdown code fences (```json ... ```)
+        content = re.sub(r"^```(?:json)?\s*\n?", "", content)
+        content = re.sub(r"\n?```\s*$", "", content).strip()
 
         try:
             data = json.loads(content)

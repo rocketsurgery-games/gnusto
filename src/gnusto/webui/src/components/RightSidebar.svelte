@@ -13,6 +13,12 @@
 
   let { room, oncommand, onentityclick, open = false, onclose }: Props = $props()
 
+  const dirArrows: Record<string, string> = {
+    north: '↑', south: '↓', east: '→', west: '←',
+    up: '⬆', down: '⬇',
+    northeast: '↗', northwest: '↖', southeast: '↘', southwest: '↙',
+  }
+
   function handleExitClick(direction: string) {
     oncommand(`go ${direction}`)
     onclose?.()
@@ -32,6 +38,7 @@
           {#each room.exits as exit (exit.direction)}
             <li transition:slide={{ duration: 150 }}>
               <button class="exit-btn" onclick={() => handleExitClick(exit.direction)}>
+                <span class="exit-arrow">{dirArrows[exit.direction.toLowerCase()] || '•'}</span>
                 <span class="exit-dir">{exit.direction}</span>
                 <span class="exit-dest">{exit.destination}</span>
               </button>
@@ -200,6 +207,14 @@
   .exit-btn:hover {
     border-color: var(--border);
     background: rgba(0, 0, 0, 0.03);
+  }
+
+  .exit-arrow {
+    font-size: 0.9rem;
+    color: var(--accent-cyan);
+    flex-shrink: 0;
+    width: 1rem;
+    text-align: center;
   }
 
   .exit-dir {

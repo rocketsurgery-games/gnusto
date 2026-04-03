@@ -146,6 +146,36 @@ After seeing action results, narrate what happened:
 ```
 """
 
+# Simplified prompt for parsing-only mode: LLM just picks actions, no narrative generation.
+PARSING_ONLY_PROMPT = """\
+You are a command parser for an interactive fiction game. Your ONLY job is to translate
+the player's natural language into structured game actions. Do NOT generate any narrative,
+descriptions, or dialogue — the game engine handles all text output.
+
+Respond with JSON:
+```json
+{
+  "actions": [{"tool": "do_action|move|wait", "target": "@entity-id", "verb": "action-verb", "args": ["@arg"], "direction": "dir"}],
+  "needs_player_input": true
+}
+```
+
+## Action types
+- **do_action**: Interact with objects. Requires `target` (entity ID) and `verb` (from the object's available behaviors). Optional `args` for parameters.
+- **move**: Navigate. Requires `direction` (must match an available exit).
+- **wait**: Pass time.
+
+## Rules
+1. Match player intent to available objects and their behaviors
+2. Entity IDs start with @ (e.g., @hacker, @pc). Resolve "the hacker" → @hacker
+3. Only use verbs listed in an object's behaviors
+4. Only use directions listed in exits
+5. For behavior params marked <@param>, pass an entity ID. For <param>, pass a literal.
+6. If the player's intent doesn't match any available action, return empty actions with needs_player_input: true
+7. Set needs_player_input: true after every action sequence (you never need to narrate)
+8. NEVER include a "blocks" field — the game engine generates all text
+"""
+
 
 def render_game_state(state: GameState, debug: bool = False) -> None:
     """Render game state as plain text.
@@ -280,6 +310,7 @@ class GameSession:
     summaries: list[str] = field(default_factory=list)  # Narrative summary blocks
     knowledge: KnowledgeGraph = field(default_factory=KnowledgeGraph)
     debug: bool = False
+    parsing_only: bool = False  # LLM only picks actions; engine generates all text
 
     @classmethod
     def from_game_file(
@@ -287,6 +318,7 @@ class GameSession:
         game_path: str,
         llm_config: LLMConfig | None = None,
         debug: bool = False,
+        parsing_only: bool | None = None,
     ) -> "GameSession":
         """Create a new game session from a game file."""
         game_dir = Path(game_path).resolve()
@@ -298,12 +330,18 @@ class GameSession:
         evaluator = ReplEvaluator(runtime)
         llm = LLMClient(llm_config)
 
+        # Auto-enable parsing-only mode for local models
+        if parsing_only is None:
+            config = llm_config or LLMConfig.from_env()
+            parsing_only = config.api_base is not None
+
         session = cls(
             runtime=runtime,
             evaluator=evaluator,
             llm=llm,
             game_dir=game_dir,
             debug=debug,
+            parsing_only=parsing_only,
         )
         # Observe initial game state (turn 0, no command)
         session.knowledge.observe_turn(
@@ -401,8 +439,9 @@ class GameSession:
         3. Recent full turns (as user/assistant pairs)
         4. Current game state + player command
         """
+        prompt = PARSING_ONLY_PROMPT if self.parsing_only else SYSTEM_PROMPT
         messages: list[dict[str, Any]] = [
-            {"role": "system", "content": SYSTEM_PROMPT}
+            {"role": "system", "content": prompt}
         ]
 
         # Add summaries as "story so far" context
@@ -538,8 +577,8 @@ class GameSession:
                     error_msg = error_msg[:200] + "..."
                 return f"[LLM error: {error_msg}. Please try again.]", []
 
-            # Convert and emit content blocks
-            if response.blocks:
+            # Convert and emit content blocks (full agent mode only)
+            if not self.parsing_only and response.blocks:
                 render_blocks = [content_block_data_to_render(b) for b in response.blocks]
                 all_render_blocks.extend(render_blocks)
                 if on_blocks:
@@ -548,8 +587,12 @@ class GameSession:
                 for b in response.blocks:
                     all_narratives.append(b.text)
 
-            # If no actions or needs player input, we're done
-            if not response.actions or response.needs_player_input:
+            # If no actions, we're done.
+            # In full agent mode, also stop if needs_player_input (LLM narrates first).
+            # In parsing-only mode, execute actions first then stop.
+            if not response.actions:
+                break
+            if response.needs_player_input and not self.parsing_only:
                 break
 
             # Execute actions
@@ -570,6 +613,21 @@ class GameSession:
                     action_sexpr = self._format_action_sexpr(action)
                     result_debug = self._format_compact_debug(raw_results)
                     on_debug(action_sexpr, result_debug)
+
+                # In parsing-only mode, generate content blocks from engine results
+                if self.parsing_only:
+                    engine_blocks = self._blocks_from_results(raw_results)
+                    if engine_blocks:
+                        all_render_blocks.extend(engine_blocks)
+                        if on_blocks:
+                            on_blocks(engine_blocks)
+                        for b in engine_blocks:
+                            if hasattr(b, 'text'):
+                                all_narratives.append(b.text)
+
+            # In parsing-only mode, we're done after executing — no multi-turn narration
+            if self.parsing_only:
+                break
 
             # Add assistant response to messages (as JSON)
             working_messages.append({
@@ -657,6 +715,40 @@ class GameSession:
             return ([], self.knowledge.search(action.target or ""))
         else:
             return ([], f"Unknown action: {action.tool}")
+
+    def _blocks_from_results(self, raw_results: list[Any]) -> list[ContentBlock]:
+        """Convert raw engine results into content blocks for parsing-only mode."""
+        from . import render
+        blocks: list[ContentBlock] = []
+        for result in raw_results:
+            # Blocked actions — show the player-facing message
+            if isinstance(result, ActionBlocked):
+                if result.message:
+                    blocks.append(render.Narrate(text=result.message))
+                continue
+            # Error actions
+            if isinstance(result, ActionError):
+                blocks.append(render.Narrate(text=result.message))
+                continue
+            if not hasattr(result, 'output'):
+                continue
+            # Structured output from effects (narrate/say)
+            for out_type, entity, text in result.output:
+                if not text:
+                    continue
+                if out_type == "narrate":
+                    blocks.append(render.Narrate(text=text))
+                elif out_type == "say":
+                    blocks.append(render.Speak(speaker=entity or "unknown", text=text))
+            # Reason text (used for examine/describe results)
+            if hasattr(result, 'reason') and result.reason:
+                blocks.append(render.Narrate(text=result.reason))
+            # Fall back to context fields
+            if not blocks and hasattr(result, 'context'):
+                for key, value in result.context:
+                    if key in ("description", "message", "response") and str(value):
+                        blocks.append(render.Narrate(text=str(value)))
+        return blocks
 
     def _summarize_action(self, action: ActionRequest) -> str:
         """Generate a compact summary of an action for history."""
