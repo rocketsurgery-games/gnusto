@@ -4,7 +4,7 @@ title: 'Input parsing: NL → structured actions (no generation)'
 type: task
 priority: 1
 created: '2026-03-22T17:31:47Z'
-updated: '2026-03-22T17:31:47Z'
+updated: '2026-03-22T17:39:27Z'
 ---
 
 Focus the local model solely on input interpretation: given game state + player text,
