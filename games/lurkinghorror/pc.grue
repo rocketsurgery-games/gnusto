@@ -228,6 +228,7 @@
 (object @mouse
   :description "mouse"
   :location @pc
+  :render "mouse.png"
   :properties (:nodesc true)
   :behaviors (
     :examine (fn () (success :message "It's a plastic pointing device."))
@@ -242,6 +243,7 @@
 (object @help-key
   :description "HELP key"
   :location @pc
+  :render "help-key.png"
   :properties (:nodesc true :readable true :text "It says \"HELP\" in reassuring blue letters.")
   :behaviors (
     :examine (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
