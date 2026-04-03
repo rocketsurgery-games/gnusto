@@ -1,0 +1,107 @@
+version: 1
+
+components:
+  - name: RoomHeader
+    selector: ".header"
+    source: src/gnusto/webui/src/components/RoomHeader.svelte
+    description: Sticky header showing current room title, description, and image
+    memory:
+      - Shows room name as heading, room description text, and optional room image
+      - Includes preamble text for room-entry narration
+    children:
+      - name: room-title
+        selector: "h2"
+      - name: room-description
+        selector: ".room-desc, .description"
+      - name: room-image
+        selector: ".room-image, img"
+
+  - name: NarrativeStream
+    selector: "main.stream"
+    source: src/gnusto/webui/src/components/NarrativeStream.svelte
+    description: Main scrollable area for game narrative blocks
+    memory:
+      - Contains all narrative output blocks (narrate, speak, think, focus, etc.)
+      - Blocks animate in with slide-up entrance
+    children:
+      - name: narrate-block
+        selector: ".block-narrate"
+      - name: speak-block
+        selector: ".block-speak"
+      - name: think-block
+        selector: ".block-think"
+      - name: focus-block
+        selector: ".block-focus"
+      - name: ambient-block
+        selector: ".block-ambient"
+      - name: reveal-block
+        selector: ".block-reveal"
+      - name: action-result-block
+        selector: ".block-action-result"
+      - name: command-block
+        selector: ".block-command"
+      - name: system-block
+        selector: ".block-system"
+      - name: debug-block
+        selector: ".block-debug"
+
+  - name: Sidebar
+    selector: "[role='complementary']"
+    source: src/gnusto/webui/src/components/RightSidebar.svelte
+    description: Right sidebar showing exits, nearby objects, and player inventory
+    memory:
+      - Three panels: EXITS, HERE (objects in room), INVENTORY
+      - Entity buttons are clickable to open action popovers
+      - Entity thumbnails are 32x32 circles
+    children:
+      - name: exits-panel
+        selector: ".panel:has(.exit-btn), div:has(> h3:first-child)"
+      - name: exit-button
+        selector: ".exit-btn, button:has(> .entity-initial)"
+      - name: entity-button
+        selector: ".entity-btn"
+      - name: entity-thumbnail
+        selector: ".entity-thumb"
+
+  - name: InputBar
+    selector: "[role='contentinfo'], .input-bar"
+    source: src/gnusto/webui/src/components/InputBar.svelte
+    description: Fixed footer with command input field
+    memory:
+      - Green ">" prompt symbol followed by text input
+      - Shows "Waiting..." placeholder when processing
+      - Supports targeting mode with pulsing prompt
+    children:
+      - name: prompt-symbol
+        selector: ".prompt"
+      - name: command-input
+        selector: "input[type='text'], input"
+
+  - name: EntityPopover
+    selector: ".popover"
+    source: src/gnusto/webui/src/components/EntityPopover.svelte
+    description: Context menu popup showing available actions for an entity
+    memory:
+      - Appears when clicking entity buttons in sidebar or entity refs in narrative
+      - Lists available behavior actions as buttons
+    children:
+      - name: action-button
+        selector: ".action-btn, button"
+
+  - name: OverlayPanel
+    selector: ".overlay-panel"
+    source: src/gnusto/webui/src/components/OverlayPanel.svelte
+    description: Modal overlay for help, settings, save/load, state inspection
+    children:
+      - name: overlay-backdrop
+        selector: ".overlay-backdrop"
+
+views:
+  - name: Game
+    route: "/"
+    description: Main game view - interactive fiction gameplay
+
+requests:
+  - name: GameWebSocket
+    route: "/ws"
+    description: WebSocket connection for game commands and narrative streaming
