@@ -8,12 +8,14 @@
   }
 
   let { blocks, onentityclick }: Props = $props()
+  let streamEl: HTMLElement | undefined
 
-  // Auto-scroll when new blocks arrive
+  // Auto-scroll when new blocks arrive — scroll the last block into view
+  // (not scrollHeight, which would scroll into the padding-bottom reserve)
   $effect(() => {
     if (blocks.length > 0) {
       requestAnimationFrame(() => {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+        streamEl?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       })
     }
   })
@@ -37,7 +39,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<main class="stream" onclick={handleClick} onkeydown={handleKeydown}>
+<main class="stream" bind:this={streamEl} onclick={handleClick} onkeydown={handleKeydown}>
   {#each blocks as block, i (i)}
     <BlockRenderer {block} />
   {/each}
@@ -47,7 +49,7 @@
   .stream {
     margin-right: var(--sidebar-width);
     padding: 2rem;
-    padding-bottom: var(--input-height);
+    padding-bottom: 100vh; /* reserve ensures room header can always scroll to top */
   }
 
   @media (max-width: 768px) {
@@ -55,7 +57,7 @@
       margin-left: 0;
       margin-right: 0;
       padding: 1rem;
-      padding-bottom: var(--input-height);
+      padding-bottom: 100vh;
     }
   }
 </style>
