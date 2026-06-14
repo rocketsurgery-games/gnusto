@@ -19,6 +19,9 @@ dependencies = [
 
 [project.optional-dependencies]
 render = [
+    # External image API (NanoBanana / Gemini)
+    "google-genai>=1.0.0",
+    # Local FLUX.2 Klein pipeline (optional GPU path)
     "torch>=2.6.0",
     "torchvision",
     "transformers>=4.45.0",
@@ -26,13 +29,6 @@ render = [
     "diffusers>=0.32.0",
     "sentencepiece",
     "protobuf",
-    "google-genai>=1.0.0",
-    # OmniGen2 dependencies (vendor/omnigen2)
-    "einops",
-    "timm",
-    "opencv-python-headless",
-    "scipy",
-    "omegaconf",
 ]
 mlx = [
     "mlx-lm>=0.31.0",

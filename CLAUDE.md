@@ -114,7 +114,7 @@ parser-level distinctions.
 
 IMPORTANT: As you convert to Grue, always look for opportunities to improve the language design for flexibility and expressiveness. If you see such an opportunity, or any language construct that isn't generalized, or doesn't behave as an experienced Scheme/Clojure developer might expect, stop and initiate a discussion with the user.
 
-We're keeping the yak "Language & runtime design tweaks" (frotzlm-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
+We're keeping the yak "Language & runtime design tweaks" (gnusto-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
 
 **Documentation:** When adding new language features, entity fields, or changing behavior, update the relevant docs:
 - `docs/grue.md` - Language reference (syntax, semantics, entity fields)

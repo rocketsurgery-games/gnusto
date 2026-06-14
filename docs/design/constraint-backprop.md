@@ -297,7 +297,7 @@ positions affect navigation critically, set `include_locations=True`.
 
 ## Known Gaps and Future Work
 
-### Abstract Object Predicates (frotzlm-gv2.14)
+### Abstract Object Predicates (gnusto-gv2.14)
 
 **Problem**: Tracking `@object:location` for portable objects creates state
 explosion (N objects × M possible locations).
@@ -446,4 +446,4 @@ being tracked.
 - `src/frotz/effects.py` - Effect analysis implementation
 - `src/frotz/backward.py` - Back-propagation implementation
 - `games/lurkinghorror/` - LH game files
-- Beads: frotzlm-gv2.13 (navigation barriers), frotzlm-gv2.14 (abstract predicates)
+- Yaks: gnusto-gv2.13 (navigation barriers), gnusto-gv2.14 (abstract predicates)

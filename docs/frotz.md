@@ -187,7 +187,7 @@ Key insight: Most state is irrelevant for winnability. We reduce via:
 
 ## Future Work
 
-See the IF Design Tools epic (frotzlm-otr) for planned tools:
+See the IF Design Tools epic (gnusto-otr) for planned tools:
 - `requires` - Precondition analysis
 - `blockers` - Progress blocker detection
 - `deadends` - Unwinnable state detection
