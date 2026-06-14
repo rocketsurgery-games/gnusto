@@ -1,0 +1,1 @@
+{"serve_cmd": "uv run python -m gnusto games/lurkinghorror/ --web --host 0.0.0.0 --port 8000", "serve_port": 8000}

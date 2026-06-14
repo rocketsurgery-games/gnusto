@@ -13,12 +13,38 @@ from typing import Any, Literal
 
 import litellm
 
+# LiteLLM OAuth token fix: two problems to solve for sk-ant-oat tokens.
+#
+# 1. LiteLLM always sets x-api-key from api_key. Anthropic rejects OAuth tokens
+#    in x-api-key, so we strip it and inject Authorization: Bearer instead.
+#
+# 2. When extra_headers contains "authorization: Bearer sk-ant-oat...", LiteLLM's
+#    optionally_handle_anthropic_oauth() adds "anthropic-dangerous-direct-browser-access: true".
+#    That header routes the request through Claude.ai's rate-limit bucket (not the API
+#    bucket), causing persistent 429s. Fix: don't use extra_headers for the token at all —
+#    inject Authorization: Bearer directly in get_anthropic_headers instead.
+try:
+    from litellm.llms.anthropic.chat.transformation import AnthropicConfig as _AC
+    _orig_get_anthropic_headers = _AC.get_anthropic_headers
+
+    def _oauth_aware_get_anthropic_headers(self, api_key, **kwargs):
+        result = _orig_get_anthropic_headers(self, api_key=api_key, **kwargs)
+        if isinstance(api_key, str) and api_key.startswith("sk-ant-oat"):
+            result.pop("x-api-key", None)
+            result["Authorization"] = f"Bearer {api_key}"
+            result["anthropic-beta"] = "oauth-2025-04-20"
+        return result
+
+    _AC.get_anthropic_headers = _oauth_aware_get_anthropic_headers
+except Exception:
+    pass
+
 
 @dataclass
 class LLMConfig:
     """Configuration for LLM calls."""
 
-    model: str = "anthropic/claude-sonnet-4-20250514"
+    model: str = "anthropic/claude-haiku-4-5-20251001"
     temperature: float = 0.7
     max_tokens: int = 2048
     api_base: str | None = None
@@ -174,6 +200,15 @@ class LLMClient:
 
     def __init__(self, config: LLMConfig | None = None):
         self.config = config or LLMConfig.from_env()
+        # ANTHROPIC_OAUTH_TOKEN: Claude Max/Pro subscription token. LiteLLM routes
+        # it as Authorization: Bearer when passed via extra_headers, which triggers
+        # Anthropic's OAuth path (no API key credits needed).
+        self._oauth_token = os.getenv("ANTHROPIC_OAUTH_TOKEN")
+
+    def _auth_kwargs(self) -> dict[str, Any]:
+        if self._oauth_token:
+            return {"api_key": self._oauth_token}
+        return {}
 
     def chat(
         self,
@@ -205,6 +240,7 @@ class LLMClient:
             "messages": messages,
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
+            **self._auth_kwargs(),
         }
 
         if self.config.api_base:
@@ -289,6 +325,7 @@ class LLMClient:
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
             "response_format": response_format,
+            **self._auth_kwargs(),
         }
 
         if self.config.api_base:

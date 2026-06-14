@@ -346,9 +346,13 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    # Mount web UI static files (must be last)
+    # Mount web UI static files (must be last). html=True serves directory
+    # index.html for bare directory paths (e.g. /subpath/) and prevents
+    # unmatched-path 404s from being re-dispatched through the middleware
+    # chain, which would cause BaseHTTPMiddleware recursion on WebSocket opens
+    # in some Starlette configurations.
     if WEBUI_DIR.exists():
-        app.mount("/", StaticFiles(directory=WEBUI_DIR), name="static")
+        app.mount("/", StaticFiles(directory=WEBUI_DIR, html=True), name="static")
 
     return app
 
