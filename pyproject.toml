@@ -21,14 +21,6 @@ dependencies = [
 render = [
     # External image API (NanoBanana / Gemini)
     "google-genai>=1.0.0",
-    # Local FLUX.2 Klein pipeline (optional GPU path)
-    "torch>=2.6.0",
-    "torchvision",
-    "transformers>=4.45.0",
-    "accelerate>=0.34.0",
-    "diffusers>=0.32.0",
-    "sentencepiece",
-    "protobuf",
 ]
 mlx = [
     "mlx-lm>=0.31.0",

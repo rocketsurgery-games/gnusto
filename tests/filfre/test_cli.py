@@ -1,39 +1,6 @@
 """Tests for filfre CLI utilities."""
 
 import pytest
-from pathlib import Path
-
-
-class TestGetGameDirs:
-    """Test the get_game_dirs utility."""
-
-    def test_directory_path(self, tmp_path):
-        from filfre.cli import get_game_dirs
-
-        game_dir, renders_dir, assets_dir = get_game_dirs(tmp_path)
-
-        assert game_dir == tmp_path
-        assert renders_dir == tmp_path / "assets" / "renders"
-        assert assets_dir == tmp_path / "assets"
-
-    def test_file_path(self, tmp_path):
-        from filfre.cli import get_game_dirs
-
-        game_file = tmp_path / "game.grue"
-        game_file.write_text("test")
-
-        game_dir, renders_dir, assets_dir = get_game_dirs(game_file)
-
-        # Should use parent directory
-        assert game_dir == tmp_path
-        assert renders_dir == tmp_path / "assets" / "renders"
-
-    def test_string_path(self, tmp_path):
-        from filfre.cli import get_game_dirs
-
-        game_dir, renders_dir, assets_dir = get_game_dirs(str(tmp_path))
-
-        assert game_dir == tmp_path
 
 
 class TestTimedContextManager:
@@ -54,8 +21,9 @@ class TestLoadReferenceImages:
     """Test loading and preprocessing reference images."""
 
     def test_load_single_image(self, tmp_path):
-        from filfre.cli import load_reference_images
         from PIL import Image
+
+        from filfre.cli import load_reference_images
 
         # Create a test image
         img_path = tmp_path / "test.png"
@@ -69,8 +37,9 @@ class TestLoadReferenceImages:
         assert images[0].size == (100, 100)
 
     def test_load_with_resize(self, tmp_path):
-        from filfre.cli import load_reference_images
         from PIL import Image
+
+        from filfre.cli import load_reference_images
 
         img_path = tmp_path / "test.png"
         img = Image.new("RGB", (200, 200), color="blue")
@@ -81,8 +50,9 @@ class TestLoadReferenceImages:
         assert images[0].size == (64, 64)
 
     def test_load_multiple_images(self, tmp_path):
-        from filfre.cli import load_reference_images
         from PIL import Image
+
+        from filfre.cli import load_reference_images
 
         paths = []
         for i in range(3):
@@ -96,53 +66,34 @@ class TestLoadReferenceImages:
 
 
 class TestModelConstants:
-    """Test model name constants."""
+    """Test model constants."""
 
-    def test_valid_models_list(self):
-        from filfre.cli import VALID_MODELS, MODEL_FLUX, MODEL_NANOBANANA
+    def test_nanobanana_model_id(self):
+        from filfre.cli import NANOBANANA_MODEL_ID
 
-        assert MODEL_FLUX in VALID_MODELS
-        assert MODEL_NANOBANANA in VALID_MODELS
-
-    def test_model_versions(self):
-        from filfre.cli import MODEL_VERSIONS, MODEL_FLUX, MODEL_NANOBANANA
-
-        assert MODEL_FLUX in MODEL_VERSIONS
-        assert MODEL_NANOBANANA in MODEL_VERSIONS
-        assert "flux" in MODEL_VERSIONS[MODEL_FLUX]
-        assert "gemini" in MODEL_VERSIONS[MODEL_NANOBANANA]
+        assert "gemini" in NANOBANANA_MODEL_ID
 
 
 class TestCLIParsing:
     """Test CLI argument parsing."""
 
-    def test_generate_requires_model(self):
-        from filfre.cli import main
-        import sys
-
-        original_argv = sys.argv
-        try:
-            sys.argv = ["filfre", "generate", "--prompt", "test"]
-            with pytest.raises(SystemExit):
-                main()
-        finally:
-            sys.argv = original_argv
-
     def test_generate_requires_prompt(self):
-        from filfre.cli import main
         import sys
+
+        from filfre.cli import main
 
         original_argv = sys.argv
         try:
-            sys.argv = ["filfre", "generate", "--model", "flux"]
+            sys.argv = ["filfre", "generate"]
             with pytest.raises(SystemExit):
                 main()
         finally:
             sys.argv = original_argv
 
     def test_no_command_shows_help(self, capsys):
-        from filfre.cli import main
         import sys
+
+        from filfre.cli import main
 
         original_argv = sys.argv
         try:

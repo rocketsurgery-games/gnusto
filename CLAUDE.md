@@ -71,21 +71,15 @@ zilch path/to/zil-game/ --stdout     # Print to stdout
 
 ## filfre - Scene Generation
 
-Generate illustrations using FLUX.2 Klein 4B. Named after the Enchanter spell
-that creates gratuitous fireworks. See `docs/filfre.md` for detailed documentation.
+Generate illustrations using the NanoBanana (Google Gemini 2.5 Flash Image) cloud
+backend. Named after the Enchanter spell that creates gratuitous fireworks. See
+`docs/render.md` for the pipeline/visual-style design and `docs/filfre.md` for the CLI.
 
 ```bash
-# Direct image generation
+# Direct image generation (requires GEMINI_API_KEY)
 filfre generate --prompt "A troll under a bridge" --output troll.png
 filfre generate --prompt "A scene" -r lantern.png -r table.png -o scene.png
-
-# Manage render cache
-filfre list games/lurkinghorror
-filfre log games/lurkinghorror
-filfre clear games/lurkinghorror
 ```
-
-**Performance:** ~7-10s for 512x512 with 3 references on CUDA GPU
 
 
 # Converting ZIL to Grue

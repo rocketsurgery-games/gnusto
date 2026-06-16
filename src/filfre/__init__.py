@@ -1,5 +1,5 @@
 """Illustration generation for text adventure games.
 
-Generates static image assets via an external image API (NanoBanana / Gemini)
-or a local FLUX.2 Klein pipeline. Standalone tool — not wired into the runtime.
+Generates static image assets via the NanoBanana (Google Gemini 2.5 Flash Image)
+cloud backend. Standalone tool — not wired into the runtime.
 """

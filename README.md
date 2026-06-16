@@ -81,18 +81,18 @@ a broader suite of authoring/design tools is planned.
 
 *Status: 🚧 experimental, standalone*
 
-Generates *static* illustrations for rooms, characters, and objects — via an external
-image API (NanoBanana / Gemini) or a local FLUX.2 Klein pipeline. Named after the Enchanter
-spell for gratuitous fireworks. Standalone — not wired into the runtime loop; it produces
-and caches image assets that the web UI consumes. (The earlier on-the-fly composition
-system has been retired; the direction is pre-rendering art keyed to reachable game
-states.)
+Generates *static* illustrations for rooms, characters, and objects via the NanoBanana
+(Google Gemini 2.5 Flash Image) cloud backend. Named after the Enchanter spell for
+gratuitous fireworks. Standalone — not wired into the runtime loop; it produces image
+assets that the web UI consumes. (The earlier on-the-fly composition system has been
+retired; the direction is pre-rendering art keyed to reachable game states — see
+[`docs/render.md`](docs/render.md).)
 
 - Code: [`src/filfre/`](src/filfre/)
-- Docs: [`docs/filfre.md`](docs/filfre.md)
-- CLI: `filfre generate`, `filfre list`, `filfre log`, `filfre clear`
+- Docs: [`docs/render.md`](docs/render.md) (pipeline & visual style), [`docs/filfre.md`](docs/filfre.md) (CLI)
+- CLI: `filfre generate`
 - Related art/composition R&D lives in [`experiments/`](experiments/)
-  (composition overlays, layout, and [art-sourcing research](experiments/art-sourcing-research.md)).
+  (archived dynamic composition, overlays, layout, and [art-sourcing research](experiments/art-sourcing-research.md)).
 
 ### ZIL → Grue conversion stack
 
@@ -156,7 +156,7 @@ gnusto games/lurkinghorror/ --debug     # show the agent's tool calls
 | `grue-repl <game>/` | Interactive REPL over a Grue world |
 | `frotz reach \| analyze <game>` | Static reachability / winnability analysis |
 | `zilch <zil-dir>/ -d out/` | Convert ZIL source to Grue |
-| `filfre generate --prompt … -o out.png` | Generate scene illustrations (GPU) |
+| `filfre generate --prompt … -o out.png` | Generate scene illustrations (NanoBanana) |
 
 ```bash
 # A few examples
@@ -174,7 +174,7 @@ src/
   grue/          # Grue language: parser, runtime, REPL, converter, save
   gnusto/        # LLM player: agent, llm, state, render + webui/ (Svelte)
   frotz/         # Static analysis (reach/analyze + planned tooling)
-  filfre/        # Scene illustration (FLUX.2 Klein 4B)
+  filfre/        # Scene illustration (NanoBanana / Gemini)
   zil/           # ZIL tokenizer/parser/AST for the conversion stack
 games/           # Game worlds + ZIL sources (lurkinghorror is the lead)
 experiments/     # Art composition/layout + art-sourcing research
@@ -253,6 +253,7 @@ yaks stats                # progress overview
 | [`docs/gnusto.md`](docs/gnusto.md) | Runtime architecture and the LLM interface |
 | [`docs/ui.md`](docs/ui.md) | UI modes (terminal / web / voice) |
 | [`docs/frotz.md`](docs/frotz.md) | Static analysis tools |
-| [`docs/filfre.md`](docs/filfre.md) | Scene rendering and illustration |
+| [`docs/render.md`](docs/render.md) | Rendering pipeline & visual style (static illustration, panel stream) |
+| [`docs/filfre.md`](docs/filfre.md) | The `filfre` image-generation CLI |
 | [`CLAUDE.md`](CLAUDE.md) | Conventions for AI assistants working in this repo |
 | [`games/lurkinghorror/README.md`](games/lurkinghorror/README.md) | Lead conversion notes (ZIL → Grue) |
