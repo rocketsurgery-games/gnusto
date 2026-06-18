@@ -4,7 +4,7 @@ title: Render-config enumeration + explosion-guard lint
 type: feature
 priority: 2
 created: '2026-06-16T02:16:54Z'
-updated: '2026-06-16T02:18:47Z'
+updated: '2026-06-18T22:53:45Z'
 depends_on:
 - gnusto-eaec.2
 ---

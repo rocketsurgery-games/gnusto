@@ -5,13 +5,19 @@ import pytest
 from grue import parse_grue
 from grue.render import (
     RenderError,
+    RenderRead,
     assemble_brief,
+    assemble_style,
     asset_base,
     brief_for_variant,
+    build_render_manifest,
     get_render_spec,
     has_render_spec,
     is_renderable,
+    lint_render,
+    render_codomain,
     render_keyset,
+    render_reads,
     render_variants,
     resolve_asset_key,
 )
@@ -196,8 +202,23 @@ class TestVisualStyle:
         assert world.visual_style == {}
 
 
+class TestAssembleStyle:
+    """The shared style preamble (hoisted, not repeated per entry)."""
+
+    def test_prompt_and_palette(self):
+        style = {"prompt": "Inked.", "palette": "dark blues"}
+        assert assemble_style(style) == "Inked. Palette: dark blues."
+
+    def test_prompt_only(self):
+        assert assemble_style({"prompt": "Inked."}) == "Inked."
+
+    def test_empty(self):
+        assert assemble_style(None) == ""
+        assert assemble_style({}) == ""
+
+
 class TestAssembleBrief:
-    """Test assembling a generation prompt from style + brief."""
+    """Test assembling a full generation prompt: style preamble + brief."""
 
     def test_style_prefix_and_brief(self):
         style = {"prompt": "Color graphic-novel horror."}
@@ -205,11 +226,12 @@ class TestAssembleBrief:
             "Color graphic-novel horror. A brass lantern."
         )
 
-    def test_palette_hint_appended(self):
+    def test_palette_in_style_preamble(self):
+        # Palette is part of the shared style preamble, so it leads the brief.
         style = {"prompt": "Inked.", "palette": "dark blues"}
         assert (
             assemble_brief(style, "A lantern.")
-            == "Inked. A lantern. Palette: dark blues."
+            == "Inked. Palette: dark blues. A lantern."
         )
 
     def test_empty_style(self):
@@ -245,6 +267,171 @@ class TestEndToEnd:
         assert full == (
             "Color graphic-novel horror. A microwave, door open, above a counter."
         )
+        # The manifest carries the per-entity brief without the shared style.
+        entry = {e.key: e for e in build_render_manifest(world)}["microwave-open"]
+        assert entry.brief == "A microwave, door open, above a counter."
+
+
+class TestRenderReads:
+    """Static extraction of state paths a :render selector reads."""
+
+    def test_self_property_read(self):
+        spec = parse('(fn () (if (:open self) "open" "closed"))')
+        reads = render_reads(spec)
+        assert RenderRead("prop", "self", "open") in reads
+
+    def test_foreign_property_read(self):
+        spec = parse('(fn () (if (:open @microwave) "a" "b"))')
+        reads = render_reads(spec)
+        assert RenderRead("prop", "@microwave", "open") in reads
+
+    def test_queue_read(self):
+        spec = parse('(fn () (if (queued? microwave-running) "running" "idle"))')
+        reads = render_reads(spec)
+        assert RenderRead("queue", None, "microwave-running") in reads
+
+    def test_held_and_loc_reads(self):
+        spec = parse('(fn () (cond ((held? @lamp) "held") ((loc @lamp) "loose")))')
+        reads = render_reads(spec)
+        assert RenderRead("loc", "@lamp") in reads
+
+    def test_literal_selector_no_reads(self):
+        assert render_reads("cs-elevator-room") == set()
+        assert render_reads(None) == set()
+
+
+class TestRenderCodomain:
+    """Static extraction of the variant tokens a selector can return."""
+
+    def test_if_codomain(self):
+        spec = parse('(fn () (if (:open self) "open" "closed"))')
+        assert render_codomain(spec) == {"open", "closed"}
+
+    def test_cond_codomain(self):
+        spec = parse(
+            '(fn () (cond ((:open self) "open") '
+            '((queued? e) "running") (true "closed")))'
+        )
+        assert render_codomain(spec) == {"open", "running", "closed"}
+
+    def test_nested_codomain(self):
+        spec = parse('(fn () (if a "x" (if b "y" "z")))')
+        assert render_codomain(spec) == {"x", "y", "z"}
+
+    def test_unbounded_codomain_is_none(self):
+        # Returns a computed value, not a literal -> not statically bounded.
+        spec = parse('(fn () (str "variant-" (:n self)))')
+        assert render_codomain(spec) is None
+
+    def test_literal_selector_codomain_none(self):
+        # Literal-string selectors are their own key; not a fn codomain.
+        assert render_codomain("cs-elevator-room") is None
+
+
+class TestBuildManifest:
+    """Manifest enumeration over a whole world."""
+
+    def test_manifest_keys_and_briefs(self):
+        source = """
+        (world :name "Test" :player @player
+          :visual-style (:prompt "Color graphic-novel horror."))
+        (room @lab :description "Lab" :rdesc "A dingy lab.")
+        (object @player :description "you")
+        (object @microwave
+          :description "microwave"
+          :render (fn () (if (:open self) "open" "closed"))
+          :rdesc (:open "Microwave open." :closed "Microwave closed."))
+        """
+        world = parse_grue(source)
+        manifest = build_render_manifest(world)
+        by_key = {e.key: e for e in manifest}
+        assert set(by_key) == {"lab", "microwave-open", "microwave-closed"}
+        assert by_key["lab"].kind == "room"
+        assert by_key["microwave-open"].kind == "object"
+        assert by_key["microwave-open"].variant == "open"
+        # Entry brief is the raw :rdesc only; the world style is hoisted out.
+        assert by_key["microwave-open"].brief == "Microwave open."
+        assert assemble_brief(world.visual_style, by_key["microwave-open"].brief) == (
+            "Color graphic-novel horror. Microwave open."
+        )
+
+    def test_shared_alias_key_deduped(self):
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (room @elevator :description "Elevator" :rdesc "An elevator interior.")
+        (object @elevator-door :render "elevator")
+        """
+        world = parse_grue(source)
+        keys = [e.key for e in build_render_manifest(world)]
+        # The door reuses the room's key; it appears exactly once.
+        assert keys.count("elevator") == 1
+
+
+class TestLintRender:
+    """The explosion-guard lint."""
+
+    def test_clean_object_selector(self):
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (object @microwave
+          :render (fn () (cond ((:open self) "open")
+                               ((queued? microwave-running) "running")
+                               (true "closed")))
+          :rdesc (:open "o" :running "r" :closed "c"))
+        """
+        assert lint_render(parse_grue(source)) == []
+
+    def test_codomain_not_subset_of_variants(self):
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (object @microwave
+          :render (fn () (if (:open self) "open" "shut"))
+          :rdesc (:open "o" :closed "c"))
+        """
+        errors = lint_render(parse_grue(source))
+        assert len(errors) == 1
+        assert "shut" in errors[0].message
+        assert errors[0].severity == "error"
+
+    def test_room_reading_object_state_is_error(self):
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (object @microwave :description "microwave")
+        (room @kitchen
+          :description "Kitchen"
+          :render (fn () (if (:open @microwave) "open" "closed"))
+          :rdesc (:open "k open" :closed "k closed"))
+        """
+        errors = lint_render(parse_grue(source))
+        assert any("foreign object state" in e.message for e in errors)
+        assert any(e.entity == "@kitchen" for e in errors)
+
+    def test_object_reading_foreign_state_is_error(self):
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (object @fridge :description "fridge")
+        (object @magnet
+          :render (fn () (if (:open @fridge) "on" "off"))
+          :rdesc (:on "on" :off "off"))
+        """
+        errors = lint_render(parse_grue(source))
+        assert any("foreign state" in e.message for e in errors)
+
+    def test_self_read_via_at_name_is_own_state(self):
+        # Referring to the entity by its own @name counts as own state.
+        source = """
+        (world :name "Test" :player @player)
+        (object @player :description "you")
+        (object @microwave
+          :render (fn () (if (:open @microwave) "open" "closed"))
+          :rdesc (:open "o" :closed "c"))
+        """
+        assert lint_render(parse_grue(source)) == []
 
 
 class MockState:

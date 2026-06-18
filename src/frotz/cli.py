@@ -7,11 +7,13 @@ Usage:
 Commands:
     reach     - Check if a state is reachable
     analyze   - Full state space analysis with victory path
+    render    - Enumerate the render manifest + explosion-guard lint
 
 Examples:
     frotz reach --to "@key@player" games/testgame
     frotz reach --to "(= (:location @player) @inf-2)" games/lurkinghorror
     frotz analyze games/testgame --dot states.dot
+    frotz render games/lurkinghorror --briefs
 """
 
 import argparse
@@ -22,16 +24,20 @@ from pathlib import Path
 from typing import Any
 
 from grue import load_grue
-from grue.sexpr import parse, SList, Symbol, Keyword
+from grue.sexpr import Keyword, SList, Symbol, parse
 
-from .effects import analyze_effects, LocationRef, PropertyRef, QueueRef, StateRef
-from .backward import build_victory_constraints, collect_constraint_refs, collect_navigation_refs
-from .explorer import explore_state_space, StateGraph, ExplorationMode
-
+from .backward import (
+    build_victory_constraints,
+    collect_constraint_refs,
+    collect_navigation_refs,
+)
+from .effects import LocationRef, PropertyRef, QueueRef, StateRef, analyze_effects
+from .explorer import ExplorationMode, StateGraph, explore_state_space
 
 # =============================================================================
 # Constraint Parsing - Convert Grue syntax to internal StateRef/target pairs
 # =============================================================================
+
 
 def parse_constraint_expr(expr_str: str) -> list[tuple[StateRef, str, Any]]:
     """Parse a Grue constraint expression into (StateRef, op, value) tuples.
@@ -71,23 +77,23 @@ def _parse_shorthand(expr: str) -> list[tuple[StateRef, str, Any]] | None:
     """Parse shorthand constraint syntax."""
 
     # @obj@room - location shorthand
-    loc_match = re.match(r'^(@[\w-]+)@([\w-]+)$', expr)
+    loc_match = re.match(r"^(@[\w-]+)@([\w-]+)$", expr)
     if loc_match:
         obj, room = loc_match.groups()
-        return [(LocationRef(obj), '=', f'@{room}')]
+        return [(LocationRef(obj), "=", f"@{room}")]
 
     # @obj:prop>=value - property comparison
-    prop_match = re.match(r'^(@[\w-]+):([\w-]+)(>=|<=|!=|=)(.+)$', expr)
+    prop_match = re.match(r"^(@[\w-]+):([\w-]+)(>=|<=|!=|=)(.+)$", expr)
     if prop_match:
         obj, prop, op, value = prop_match.groups()
         value = _parse_value(value)
         return [(PropertyRef(obj, prop), op, value)]
 
     # queue:event=true/false
-    queue_match = re.match(r'^queue:([\w-]+)(=)(true|false)$', expr, re.IGNORECASE)
+    queue_match = re.match(r"^queue:([\w-]+)(=)(true|false)$", expr, re.IGNORECASE)
     if queue_match:
         event, op, value = queue_match.groups()
-        return [(QueueRef(event), op, value.lower() == 'true')]
+        return [(QueueRef(event), op, value.lower() == "true")]
 
     return None
 
@@ -96,11 +102,11 @@ def _parse_value(value_str: str) -> Any:
     """Parse a value string to Python type."""
     value_str = value_str.strip()
 
-    if value_str.lower() == 'true':
+    if value_str.lower() == "true":
         return True
-    if value_str.lower() == 'false':
+    if value_str.lower() == "false":
         return False
-    if value_str.lower() in ('nil', 'none', 'null'):
+    if value_str.lower() in ("nil", "none", "null"):
         return None
 
     # Try integer
@@ -110,7 +116,7 @@ def _parse_value(value_str: str) -> Any:
         pass
 
     # Object reference
-    if value_str.startswith('@'):
+    if value_str.startswith("@"):
         return value_str
 
     # String
@@ -129,24 +135,24 @@ def _parse_sexpr_constraint(sexpr: Any) -> list[tuple[StateRef, str, Any]]:
     op_name = head.name
 
     # Handle (not ...)
-    if op_name == 'not':
+    if op_name == "not":
         inner = _parse_sexpr_constraint(sexpr[1])
         # Flip the operator
         result = []
         for ref, op, val in inner:
-            new_op = '!=' if op == '=' else '=' if op == '!=' else op
+            new_op = "!=" if op == "=" else "=" if op == "!=" else op
             result.append((ref, new_op, val))
         return result
 
     # Handle (and ...) - multiple constraints
-    if op_name == 'and':
+    if op_name == "and":
         result = []
         for item in sexpr[1:]:
             result.extend(_parse_sexpr_constraint(item))
         return result
 
     # Comparison operators: =, !=, >=, <=, >, <
-    if op_name in ('=', '!=', '>=', '<=', '>', '<'):
+    if op_name in ("=", "!=", ">=", "<=", ">", "<"):
         if len(sexpr) != 3:
             raise ValueError(f"Comparison needs 2 args: {sexpr}")
 
@@ -172,17 +178,17 @@ def _parse_state_accessor(sexpr: Any) -> StateRef:
     head = sexpr[0]
     if isinstance(head, Keyword):
         kw = head.name
-    elif isinstance(head, Symbol) and str(head).startswith(':'):
+    elif isinstance(head, Symbol) and str(head).startswith(":"):
         kw = str(head)[1:]
     else:
         raise ValueError(f"Expected keyword accessor, got: {head}")
 
-    if kw == 'location':
+    if kw == "location":
         # (:location @obj)
         obj = _parse_object_ref(sexpr[1])
         return LocationRef(obj)
 
-    if kw in ('prop', 'property'):
+    if kw in ("prop", "property"):
         # (:prop @obj name)
         if len(sexpr) < 3:
             raise ValueError(f":prop needs object and property name")
@@ -190,10 +196,10 @@ def _parse_state_accessor(sexpr: Any) -> StateRef:
         prop = _parse_symbol_name(sexpr[2])
         return PropertyRef(obj, prop)
 
-    if kw == 'count':
+    if kw == "count":
         # (:count @obj) -> PropertyRef(@obj, 'count')
         obj = _parse_object_ref(sexpr[1])
-        return PropertyRef(obj, 'count')
+        return PropertyRef(obj, "count")
 
     # Generic property access: (:propname @obj)
     obj = _parse_object_ref(sexpr[1])
@@ -204,9 +210,9 @@ def _parse_object_ref(sexpr: Any) -> str:
     """Parse @object reference."""
     if isinstance(sexpr, Symbol):
         name = sexpr.name
-        if name.startswith('@'):
+        if name.startswith("@"):
             return name
-        return f'@{name}'
+        return f"@{name}"
     raise ValueError(f"Expected object reference, got: {sexpr}")
 
 
@@ -225,13 +231,13 @@ def _parse_sexpr_value(sexpr: Any) -> Any:
     """Parse a value from s-expression."""
     if isinstance(sexpr, Symbol):
         name = sexpr.name
-        if name == 'true':
+        if name == "true":
             return True
-        if name == 'false':
+        if name == "false":
             return False
-        if name in ('nil', 'none'):
+        if name in ("nil", "none"):
             return None
-        if name.startswith('@'):
+        if name.startswith("@"):
             return name
         return name
     if isinstance(sexpr, (int, float, bool)):
@@ -245,8 +251,10 @@ def _parse_sexpr_value(sexpr: Any) -> Any:
 # State Matching - Check if a state satisfies constraints
 # =============================================================================
 
-def state_satisfies(state_values: list[tuple[str, Any]],
-                    constraints: list[tuple[StateRef, str, Any]]) -> tuple[bool, list[str]]:
+
+def state_satisfies(
+    state_values: list[tuple[str, Any]], constraints: list[tuple[StateRef, str, Any]]
+) -> tuple[bool, list[str]]:
     """Check if state values satisfy all constraints.
 
     State values use string keys like '@obj:location' or '@obj:prop'.
@@ -263,22 +271,22 @@ def state_satisfies(state_values: list[tuple[str, Any]],
         ref_key = str(ref)  # e.g., '@key:location'
         actual = state_dict.get(ref_key)
 
-        if op == '=':
+        if op == "=":
             if actual != expected:
                 missing.append(f"{ref} = {expected} (actual: {actual})")
-        elif op == '!=':
+        elif op == "!=":
             if actual == expected:
                 missing.append(f"{ref} != {expected}")
-        elif op == '>=':
+        elif op == ">=":
             if actual is None or actual < expected:
                 missing.append(f"{ref} >= {expected} (actual: {actual})")
-        elif op == '<=':
+        elif op == "<=":
             if actual is None or actual > expected:
                 missing.append(f"{ref} <= {expected} (actual: {actual})")
-        elif op == '>':
+        elif op == ">":
             if actual is None or actual <= expected:
                 missing.append(f"{ref} > {expected} (actual: {actual})")
-        elif op == '<':
+        elif op == "<":
             if actual is None or actual >= expected:
                 missing.append(f"{ref} < {expected} (actual: {actual})")
 
@@ -289,13 +297,16 @@ def state_satisfies(state_values: list[tuple[str, Any]],
 # DOT Graph Generation
 # =============================================================================
 
-def generate_state_graph_dot(graph: StateGraph, highlight_path: list | None = None) -> str:
+
+def generate_state_graph_dot(
+    graph: StateGraph, highlight_path: list | None = None
+) -> str:
     """Generate DOT graph of the actual state transition graph."""
     lines = [
         "digraph states {",
-        '  rankdir=LR;',
-        '  node [shape=box fontsize=10];',
-        '  edge [fontsize=9];',
+        "  rankdir=LR;",
+        "  node [shape=box fontsize=10];",
+        "  edge [fontsize=9];",
         "",
     ]
 
@@ -328,31 +339,31 @@ def generate_state_graph_dot(graph: StateGraph, highlight_path: list | None = No
         label_lines.extend(other_props)
 
         if node.is_victory:
-            style = 'style=filled fillcolor=green'
+            style = "style=filled fillcolor=green"
             label_lines.insert(0, "<b>VICTORY</b>")
             victory_nodes.append(f"s{node_id}")
         elif node.is_defeat:
-            style = 'style=filled fillcolor=red'
+            style = "style=filled fillcolor=red"
             label_lines.insert(0, "<b>DEFEAT</b>")
             defeat_nodes.append(f"s{node_id}")
         elif node_id == graph.initial_id:
-            style = 'style=filled fillcolor=lightblue'
+            style = "style=filled fillcolor=lightblue"
             label_lines.insert(0, "<b>START</b>")
             start_nodes.append(f"s{node_id}")
         elif node_id in path_nodes:
-            style = 'style=filled fillcolor=lightyellow'
+            style = "style=filled fillcolor=lightyellow"
         else:
-            style = ''
+            style = ""
 
         html_label = "<br/>".join(label_lines)
-        lines.append(f'  s{node_id} [label=<{html_label}> {style}];')
+        lines.append(f"  s{node_id} [label=<{html_label}> {style}];")
 
     lines.append("")
     if start_nodes:
-        lines.append(f'  {{ rank=min; {"; ".join(start_nodes)}; }}')
+        lines.append(f"  {{ rank=min; {'; '.join(start_nodes)}; }}")
     if victory_nodes or defeat_nodes:
         terminals = victory_nodes + defeat_nodes
-        lines.append(f'  {{ rank=max; {"; ".join(terminals)}; }}')
+        lines.append(f"  {{ rank=max; {'; '.join(terminals)}; }}")
 
     lines.append("")
 
@@ -375,9 +386,13 @@ def generate_state_graph_dot(graph: StateGraph, highlight_path: list | None = No
 
         is_path_edge = (from_id, to_id) in path_edges
         if from_id == to_id:
-            lines.append(f'  s{from_id} -> s{to_id} [label="{label}" style=dashed color=gray];')
+            lines.append(
+                f'  s{from_id} -> s{to_id} [label="{label}" style=dashed color=gray];'
+            )
         elif is_path_edge:
-            lines.append(f'  s{from_id} -> s{to_id} [label="{label}" penwidth=2 color=blue];')
+            lines.append(
+                f'  s{from_id} -> s{to_id} [label="{label}" penwidth=2 color=blue];'
+            )
         else:
             lines.append(f'  s{from_id} -> s{to_id} [label="{label}"];')
 
@@ -388,6 +403,7 @@ def generate_state_graph_dot(graph: StateGraph, highlight_path: list | None = No
 # =============================================================================
 # reach command - Reachability query
 # =============================================================================
+
 
 def cmd_reach(args: argparse.Namespace) -> int:
     """Execute the reach command."""
@@ -429,7 +445,7 @@ def cmd_reach(args: argparse.Namespace) -> int:
 
     # Extract state refs to track from constraints
     target_refs: set[StateRef] = {ref for ref, _, _ in target_constraints}
-    target_refs.add(LocationRef('@player'))  # Always track player
+    target_refs.add(LocationRef("@player"))  # Always track player
 
     # If from_constraints specified, we'd need to find matching start state
     # For now, always start from initial state
@@ -470,7 +486,9 @@ def cmd_reach(args: argparse.Namespace) -> int:
     closest_match = (0, None, [])  # (satisfied_count, node_id, missing)
 
     for node_id, node in graph.nodes.items():
-        satisfied, missing = state_satisfies(list(node.state.values), target_constraints)
+        satisfied, missing = state_satisfies(
+            list(node.state.values), target_constraints
+        )
         if satisfied:
             matching_states.append(node_id)
         else:
@@ -486,7 +504,9 @@ def cmd_reach(args: argparse.Namespace) -> int:
 
         for node_id in matching_states:
             path = graph.get_path_to(node_id)
-            if path is not None and (shortest_path is None or len(path) < len(shortest_path)):
+            if path is not None and (
+                shortest_path is None or len(path) < len(shortest_path)
+            ):
                 shortest_path = path
                 target_node_id = node_id
 
@@ -520,7 +540,9 @@ def cmd_reach(args: argparse.Namespace) -> int:
 
         if closest_match[1] is not None:
             satisfied, _, missing = closest_match
-            print(f"\nClosest approach: {satisfied}/{len(target_constraints)} constraints satisfied")
+            print(
+                f"\nClosest approach: {satisfied}/{len(target_constraints)} constraints satisfied"
+            )
             print("Missing:")
             for m in missing:
                 print(f"  - {m}")
@@ -537,6 +559,7 @@ def cmd_reach(args: argparse.Namespace) -> int:
 # =============================================================================
 # analyze command - Full state space analysis
 # =============================================================================
+
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     """Execute the analyze command (full state space exploration)."""
@@ -561,7 +584,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.verbose:
         print(f"\n{'=' * 60}")
         print("Effect Analysis")
-        print('=' * 60)
+        print("=" * 60)
         print(effects.summary())
 
     if not world.victory:
@@ -574,12 +597,12 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.verbose:
         print(f"\n{'=' * 60}")
         print("Constraint Back-Propagation")
-        print('=' * 60)
+        print("=" * 60)
         print(f"Built {len(victory_trees)} constraint trees")
 
     # Collect state refs from constraints
     constraint_refs = collect_constraint_refs(victory_trees)
-    constraint_refs.add(LocationRef('@player'))
+    constraint_refs.add(LocationRef("@player"))
 
     # Add navigation-relevant state refs
     nav_refs = collect_navigation_refs(effects)
@@ -621,7 +644,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     # Results
     print(f"\n{'=' * 60}")
     print("Results")
-    print('=' * 60)
+    print("=" * 60)
     if victory_path is not None:
         print(f"WINNABLE - Victory reachable in {len(victory_path)} steps")
         print(f"  States: {len(graph.nodes)}")
@@ -646,122 +669,297 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
 
 # =============================================================================
+# render command - Enumerate the render manifest + explosion-guard lint
+# =============================================================================
+
+# Image formats tried (in order) when resolving an extension-less asset key.
+SUPPORTED_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def _assets_dir(game_path: Path) -> Path:
+    """Locate the assets directory for a game path (dir or entrypoint file)."""
+    base = game_path if game_path.is_dir() else game_path.parent
+    return base / "assets"
+
+
+def _resolve_on_disk(assets: Path, key: str) -> Path | None:
+    """Find the file for an extension-less asset key, or None if missing."""
+    if (assets / key).is_file():  # literal key already carrying an extension
+        return assets / key
+    for ext in SUPPORTED_IMAGE_EXTS:
+        if (assets / f"{key}{ext}").is_file():
+            return assets / f"{key}{ext}"
+    return None
+
+
+def cmd_render(args: argparse.Namespace) -> int:
+    """Enumerate the render manifest and run the explosion-guard lint."""
+    from grue.render import assemble_style, build_render_manifest, lint_render
+
+    game_path = Path(args.game)
+    if not game_path.exists():
+        print(f"Error: {game_path} not found", file=sys.stderr)
+        return 1
+
+    try:
+        world = load_grue(str(game_path))
+    except Exception as e:
+        print(f"Error loading game: {e}", file=sys.stderr)
+        return 1
+
+    manifest = build_render_manifest(world)
+    lint_errors = lint_render(world)
+    # Shared style preamble, carried once rather than repeated per entry.
+    style = assemble_style(getattr(world, "visual_style", None))
+
+    # JSON dump (for external artist handoff / tooling).
+    if args.json:
+        import json
+
+        payload = {
+            "game": world.name or str(game_path),
+            "style": style,
+            "entries": [
+                {
+                    "key": e.key,
+                    "entity": e.entity,
+                    "kind": e.kind,
+                    "variant": e.variant,
+                    "brief": e.brief,
+                }
+                for e in manifest
+            ],
+            "lint": [
+                {"entity": e.entity, "severity": e.severity, "message": e.message}
+                for e in lint_errors
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+        return 1 if any(e.severity == "error" for e in lint_errors) else 0
+
+    assets = _assets_dir(game_path)
+    if not args.quiet:
+        print(f"Game: {world.name or game_path}")
+        print(f"Assets: {assets}")
+        print(f"Render keys: {len(manifest)}")
+        if args.briefs and style:
+            print(f"\nStyle (prepended to every brief):\n  {style}")
+        print()
+
+    # Manifest listing, with on-disk presence + the brief if requested.
+    missing: list[str] = []
+    manifest_keys = {e.key for e in manifest}
+    for e in manifest:
+        on_disk = _resolve_on_disk(assets, e.key)
+        if on_disk is None:
+            missing.append(e.key)
+        mark = "ok " if on_disk else "MISS"
+        variant = f" [{e.variant}]" if e.variant else ""
+        print(f"  [{mark}] {e.key:<28} {e.entity}{variant}")
+        if args.briefs:
+            print(f"         {e.brief}")
+
+    # Orphans: image files on disk with no corresponding manifest key.
+    orphans: list[str] = []
+    if assets.is_dir():
+        for f in sorted(assets.iterdir()):
+            if f.suffix.lower() in SUPPORTED_IMAGE_EXTS and f.stem not in manifest_keys:
+                orphans.append(f.name)
+
+    print()
+    print(
+        f"Resolved: {len(manifest) - len(missing)}/{len(manifest)}  "
+        f"Missing: {len(missing)}  Orphans: {len(orphans)}"
+    )
+    if missing and args.verbose:
+        print("Missing keys:")
+        for k in missing:
+            print(f"  - {k}")
+    if orphans and args.verbose:
+        print("Orphan files (no manifest key):")
+        for o in orphans:
+            print(f"  - {o}")
+
+    # Lint results.
+    errors = [e for e in lint_errors if e.severity == "error"]
+    if lint_errors:
+        print("\nLint:")
+        for e in lint_errors:
+            print(f"  {e}")
+    else:
+        print("\nLint: clean")
+
+    if args.strict and (missing or orphans):
+        return 1
+    return 1 if errors else 0
+
+
+# =============================================================================
 # Main CLI entry point
 # =============================================================================
+
 
 def main(args: list[str] | None = None) -> int:
     """Main entry point for frotz CLI."""
     parser = argparse.ArgumentParser(
-        prog='frotz',
-        description='IF Design Tools - Game design validation and analysis',
+        prog="frotz",
+        description="IF Design Tools - Game design validation and analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # reach subcommand
     reach_parser = subparsers.add_parser(
-        'reach',
-        help='Check if a state is reachable',
-        description='Check if a target state is reachable from the initial state.',
+        "reach",
+        help="Check if a state is reachable",
+        description="Check if a target state is reachable from the initial state.",
     )
     reach_parser.add_argument(
-        '--to',
+        "--to",
         required=True,
-        help='Target state constraint (Grue syntax or shorthand)',
+        help="Target state constraint (Grue syntax or shorthand)",
     )
     reach_parser.add_argument(
-        '--from',
-        dest='from_state',
-        help='Starting state constraint (default: initial state)',
+        "--from",
+        dest="from_state",
+        help="Starting state constraint (default: initial state)",
     )
     reach_parser.add_argument(
-        'game',
-        help='Path to game directory or .grue file',
+        "game",
+        help="Path to game directory or .grue file",
     )
     reach_parser.add_argument(
-        '--max-depth',
+        "--max-depth",
         type=int,
         default=100,
-        help='Maximum exploration depth (default: 100)',
+        help="Maximum exploration depth (default: 100)",
     )
     reach_parser.add_argument(
-        '--max-states',
+        "--max-states",
         type=int,
         default=10000,
-        help='Maximum states to explore (default: 10000)',
+        help="Maximum states to explore (default: 10000)",
     )
     reach_parser.add_argument(
-        '-q', '--quiet',
-        action='store_true',
-        help='Minimal output',
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Minimal output",
     )
     reach_parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Verbose output',
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Verbose output",
     )
     reach_parser.add_argument(
-        '--deep',
-        action='store_true',
-        help='Use backward analysis to track more relevant state (slower)',
+        "--deep",
+        action="store_true",
+        help="Use backward analysis to track more relevant state (slower)",
     )
     reach_parser.add_argument(
-        '--dot',
-        metavar='FILE',
-        help='Output state graph in DOT format',
+        "--dot",
+        metavar="FILE",
+        help="Output state graph in DOT format",
     )
     reach_parser.set_defaults(func=cmd_reach)
 
     # analyze subcommand
     analyze_parser = subparsers.add_parser(
-        'analyze',
-        help='Full state space analysis',
-        description='Analyze game state space and find victory path.',
+        "analyze",
+        help="Full state space analysis",
+        description="Analyze game state space and find victory path.",
     )
     analyze_parser.add_argument(
-        'game',
-        help='Path to game directory or .grue file',
+        "game",
+        help="Path to game directory or .grue file",
     )
     analyze_parser.add_argument(
-        '--max-depth',
+        "--max-depth",
         type=int,
         default=100,
-        help='Maximum exploration depth (default: 100)',
+        help="Maximum exploration depth (default: 100)",
     )
     analyze_parser.add_argument(
-        '--max-states',
+        "--max-states",
         type=int,
         default=None,
-        help='Maximum states to explore (default: unlimited)',
+        help="Maximum states to explore (default: unlimited)",
     )
     analyze_parser.add_argument(
-        '--dot',
-        metavar='FILE',
-        help='Output state graph in DOT format',
+        "--dot",
+        metavar="FILE",
+        help="Output state graph in DOT format",
     )
     analyze_parser.add_argument(
-        '-q', '--quiet',
-        action='store_true',
-        help='Minimal output',
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Minimal output",
     )
     analyze_parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Verbose output (show effects, constraints)',
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Verbose output (show effects, constraints)",
     )
     analyze_parser.add_argument(
-        '--walkthrough',
-        action='store_true',
-        help='Output just the victory path as a walkthrough',
+        "--walkthrough",
+        action="store_true",
+        help="Output just the victory path as a walkthrough",
     )
     analyze_parser.add_argument(
-        '--fast',
-        action='store_true',
-        help='Stop at first victory (faster but less complete)',
+        "--fast",
+        action="store_true",
+        help="Stop at first victory (faster but less complete)",
     )
     analyze_parser.set_defaults(func=cmd_analyze)
+
+    # render subcommand
+    render_parser = subparsers.add_parser(
+        "render",
+        help="Enumerate the render manifest and run the explosion-guard lint",
+        description=(
+            "Enumerate every pre-generatable image key from the game's :render / "
+            ":rdesc specs, check on-disk coverage, and run the explosion-guard "
+            "lint (room renders may not bake in object state; selector codomain "
+            "must match declared :rdesc variants)."
+        ),
+    )
+    render_parser.add_argument(
+        "game",
+        help="Path to game directory or .grue file",
+    )
+    render_parser.add_argument(
+        "--briefs",
+        action="store_true",
+        help="Print the assembled generation brief for each key",
+    )
+    render_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the manifest + lint results as JSON (for artist/tooling handoff)",
+    )
+    render_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Also fail (exit 1) on missing or orphaned assets, not just lint errors",
+    )
+    render_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Minimal output",
+    )
+    render_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="List missing keys and orphan files",
+    )
+    render_parser.set_defaults(func=cmd_render)
 
     # Parse args
     opts = parser.parse_args(args)
@@ -773,5 +971,5 @@ def main(args: list[str] | None = None) -> int:
     return opts.func(opts)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

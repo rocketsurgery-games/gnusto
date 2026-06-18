@@ -55,7 +55,19 @@ A room render that reads e.g. `(:open @microwave)` is a lint error. The finite
 set of asset keys a render spec can return (its codomain), optionally intersected
 with frotz reachability, **is** the set of images to pre-generate.
 
-> Not built yet — see `gnusto-eaec.3`.
+The lint and the keyset enumeration both run via `frotz render`:
+
+```bash
+frotz render games/lurkinghorror            # coverage + lint
+frotz render games/lurkinghorror --briefs   # also print each assembled brief
+frotz render games/lurkinghorror --json     # manifest + lint as JSON (artist handoff)
+frotz render games/lurkinghorror --strict   # also fail on missing / orphan assets
+```
+
+It lists every render key, marks which resolve on disk (`ok`/`MISS`), flags
+orphan image files with no manifest key, and reports any lint violations
+(non-zero exit on error). Implemented in `grue.render`
+(`build_render_manifest`, `lint_render`, `render_reads`, `render_codomain`).
 
 ## Pipeline
 
@@ -110,8 +122,11 @@ An entity's art is keyed by a small set of **variants**, and filenames are
 ```
 
 The set of keys an entity can resolve to, intersected with reachable state, is
-exactly what gets generated. Each `{key, assemble_brief(visual-style, rdesc)}`
-pair becomes a manifest entry.
+exactly what gets generated. Each manifest entry is a `{key, entity, kind,
+variant, brief}` record where `brief` is the entity's own `:rdesc` text. The
+world `:visual-style` preamble is *not* repeated per entry — it is carried once
+for the whole manifest (`assemble_style`), and the full per-key generation prompt
+is `assemble_brief(visual-style, brief)` (style preamble + entity brief).
 
 Presentation **theme** (fonts, colors, panel chrome, UI imagery) lives in
 per-game CSS (`theme.css` / `game.json`), *not* in Grue — push content/briefs into

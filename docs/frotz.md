@@ -155,6 +155,41 @@ frotz analyze games/testgame --fast
 frotz analyze games/testgame --dot states.dot
 ```
 
+### `frotz render` - Render Manifest + Explosion-Guard Lint
+
+Enumerate every pre-generatable image key from the game's `:render` / `:rdesc`
+specs, check on-disk coverage, and run the **explosion-guard lint** that keeps the
+scene-variant cross-product bounded by construction:
+
+```bash
+# Coverage report + lint
+frotz render games/lurkinghorror
+
+# Also print the assembled generation brief for each key
+frotz render games/lurkinghorror --briefs
+
+# Emit the manifest + lint as JSON (for an artist or external tooling)
+frotz render games/lurkinghorror --json
+
+# Treat missing/orphan assets as failures too (CI gate)
+frotz render games/lurkinghorror --strict
+```
+
+Each line marks whether the key resolves on disk (`ok` / `MISS`); the summary
+reports resolved/missing/orphan counts (use `-v` to list them). The lint enforces
+two invariants via abstract interpretation over the `:render` selector:
+
+1. **Codomain ⊆ declared variants** — every variant token a selector can return
+   must have a matching `:rdesc` brief.
+2. **Locality** — a *room* render may not read foreign object state (the thing
+   that makes the cross-product explode); an *object* render may read only its
+   own state. Reads of `self` and queues are always allowed.
+
+Exits non-zero on a lint error (or, with `--strict`, on missing/orphan assets).
+The manifest builder and lint live in `grue.render`; this is the enumeration
+step that feeds `filfre brief` / `filfre fill` (see [`docs/render.md`](render.md)
+and [`docs/filfre.md`](filfre.md)).
+
 ## State Specification Syntax
 
 Constraints use Grue syntax or shorthand:

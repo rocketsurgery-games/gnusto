@@ -30,10 +30,11 @@ makes the keyset trivially enumerable for static pre-generation. The world-level
 must be pure, so the same state always selects the same variant.
 """
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from .expr import Environment, ExprEvaluator, GrueFn
-from .sexpr import SExpr, SList, Symbol
+from .sexpr import Keyword, SExpr, SList, Symbol
 
 
 class RenderError(Exception):
@@ -145,23 +146,32 @@ def brief_for_variant(entity: Any, variant: str | None = None) -> str | None:
     return desc if isinstance(desc, str) else None
 
 
-def assemble_brief(visual_style: dict[str, Any] | None, brief_text: str | None) -> str:
-    """Assemble a generation prompt from the world style and an entity brief.
+def assemble_style(visual_style: dict[str, Any] | None) -> str:
+    """The shared style preamble prepended to every brief.
 
-    Basic assembly: style ``:prompt`` prefix + entity brief + ``:palette`` hint.
-    Spatial framing and reference images are layered on later (filfre fill,
-    gnusto-eaec.4). Pure; safe for static manifest building.
+    Built from the world ``:visual-style`` (``:prompt`` + ``:palette``). It does
+    not vary per entity, so the manifest carries it once rather than repeating
+    it in every entry's brief.
     """
     style = visual_style or {}
     parts: list[str] = []
     prompt_prefix = style.get("prompt")
     if prompt_prefix:
         parts.append(str(prompt_prefix))
-    if brief_text:
-        parts.append(brief_text)
     palette = style.get("palette")
     if palette:
         parts.append(f"Palette: {palette}.")
+    return " ".join(parts)
+
+
+def assemble_brief(visual_style: dict[str, Any] | None, brief_text: str | None) -> str:
+    """Assemble a full generation prompt: shared style preamble + entity brief.
+
+    The style preamble (``assemble_style``) leads, followed by the entity's
+    per-variant brief. Spatial framing and reference images are layered on later
+    (filfre fill, gnusto-eaec.4). Pure; safe for static manifest building.
+    """
+    parts = [p for p in (assemble_style(visual_style), brief_text) if p]
     return " ".join(parts)
 
 
@@ -173,3 +183,326 @@ def has_render_spec(entity: Any) -> bool:
 def get_render_spec(entity: Any) -> SExpr | None:
     """Get the :render selector from an entity, or None if not present."""
     return getattr(entity, "render", None)
+
+
+# =============================================================================
+# Static analysis of :render selectors (the "explosion guard")
+#
+# These functions interpret a :render selector *abstractly* — without running
+# it — to recover (a) the finite set of variant tokens it can return (its
+# codomain) and (b) the set of state paths it reads. Together with the
+# declarative variant set (the :rdesc keys), this lets us enumerate the exact
+# image keyset for pre-generation and statically guarantee the scene-variant
+# cross-product stays bounded.
+# =============================================================================
+
+
+def _selector_body(spec: SExpr | None) -> SExpr | None:
+    """The body of a ``(fn () body)`` :render selector, or None if not a fn."""
+    if isinstance(spec, SList) and len(spec) >= 3:
+        first = spec[0]
+        if isinstance(first, Symbol) and first.name == "fn":
+            return spec[2]
+    return None
+
+
+def _owner_of(ref: SExpr) -> str | None:
+    """Resolve the owning entity of a read target.
+
+    ``self`` / ``?self`` -> "self"; ``@name`` -> "@name"; anything else -> None
+    (a non-entity expression, e.g. a computed value, which we can't attribute).
+    """
+    if isinstance(ref, Symbol):
+        if ref.name in ("self", "?self"):
+            return "self"
+        if ref.name.startswith("@"):
+            return ref.name
+    return None
+
+
+@dataclass(frozen=True)
+class RenderRead:
+    """A state path read by a :render selector.
+
+    - ``kind``  : "prop" | "loc" | "queue"
+    - ``owner`` : "self", an "@entity" name, or None (unattributable); for
+                  queues this is None (queues are not owned by an entity).
+    - ``detail``: property name for "prop", event name for "queue", else None.
+    """
+
+    kind: Literal["prop", "loc", "queue"]
+    owner: str | None
+    detail: str | None = None
+
+
+def render_reads(spec: SExpr | None) -> set[RenderRead]:
+    """Collect the state paths a :render selector reads (static walk).
+
+    Returns an empty set for literal/absent selectors. Recognizes the read
+    forms a pure selector can use: ``(:prop X ...)``, ``(queued? E)``,
+    ``(held? X)``, ``(loc X)``, ``(in-room? X ...)``.
+    """
+    body = _selector_body(spec)
+    if body is None:
+        return set()
+    reads: set[RenderRead] = set()
+
+    def walk(expr: SExpr) -> None:
+        if not isinstance(expr, SList) or len(expr) == 0:
+            return
+        head = expr[0]
+        if isinstance(head, Keyword) and len(expr) >= 2:
+            # (:prop X ...) - property read
+            reads.add(RenderRead("prop", _owner_of(expr[1]), head.name))
+            for item in expr.items[2:]:
+                walk(item)
+            return
+        if isinstance(head, Symbol):
+            name = head.name
+            if name in ("loc", "held?", "in-room?") and len(expr) >= 2:
+                reads.add(RenderRead("loc", _owner_of(expr[1])))
+                for item in expr.items[2:]:
+                    walk(item)
+                return
+            if name == "queued?" and len(expr) >= 2:
+                ev = expr[1]
+                ev_name = ev.name if isinstance(ev, Symbol) else None
+                reads.add(RenderRead("queue", None, ev_name))
+                return
+        for item in expr.items:
+            walk(item)
+
+    walk(body)
+    return reads
+
+
+def render_codomain(spec: SExpr | None) -> set[str] | None:
+    """The finite set of variant tokens a selector can return, or None.
+
+    Statically evaluates the *shape* of the selector body (``if`` / ``cond`` /
+    ``when`` / ``do`` / string literals). Branches that yield nil/empty map to
+    the base key and contribute no token. Returns ``None`` when any reachable
+    branch can produce a value we cannot prove is a literal token (i.e. the
+    codomain is not statically bounded).
+    """
+    body = _selector_body(spec)
+    if body is None:
+        # A literal-string selector is its own (single) key, handled elsewhere.
+        return None
+    tokens, exact = _codomain_of(body)
+    return tokens if exact else None
+
+
+def _codomain_of(expr: SExpr) -> tuple[set[str], bool]:
+    """(literal tokens, exact?) for an expression's return value.
+
+    ``exact`` is False if some branch can return an unprovable (non-literal)
+    value. nil/empty results contribute no token but keep ``exact`` True.
+    """
+    if expr is None or (isinstance(expr, str) and expr == ""):
+        return set(), True
+    if isinstance(expr, str):
+        return {expr}, True
+    if isinstance(expr, bool):
+        # true/false branch markers (e.g. cond's `true`) carry no token.
+        return set(), True
+    if not isinstance(expr, SList) or len(expr) == 0:
+        return set(), False
+
+    head = expr[0]
+    if isinstance(head, Symbol):
+        name = head.name
+        if name == "if":
+            # (if test then [else])
+            branches = expr.items[2:]
+            if not branches:
+                return set(), False
+            tokens: set[str] = set()
+            exact = True
+            for br in branches:
+                t, e = _codomain_of(br)
+                tokens |= t
+                exact = exact and e
+            if len(branches) == 1:
+                # No else -> may fall through to nil (base key); still exact.
+                pass
+            return tokens, exact
+        if name in ("when", "unless"):
+            # (when test body...) -> last body expr, or nil if test fails.
+            if len(expr) >= 3:
+                return _codomain_of(expr.items[-1])
+            return set(), True
+        if name == "cond":
+            # (cond (test body...) ...) -> union of each clause's last expr.
+            tokens = set()
+            exact = True
+            for clause in expr.items[1:]:
+                if isinstance(clause, SList) and len(clause) >= 2:
+                    t, e = _codomain_of(clause.items[-1])
+                    tokens |= t
+                    exact = exact and e
+                else:
+                    exact = False
+            return tokens, exact
+        if name in ("do", "begin", "progn"):
+            if len(expr) >= 2:
+                return _codomain_of(expr.items[-1])
+            return set(), True
+    # Any other call form: value is not a provable literal token.
+    return set(), False
+
+
+# =============================================================================
+# Render manifest + explosion-guard lint
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class RenderManifestEntry:
+    """One pre-generatable image: an asset key plus its per-entity brief.
+
+    ``brief`` is the entity's own brief text only (its ``:rdesc``); the shared
+    world style preamble is carried once on the manifest, not repeated here. The
+    full generation prompt is ``assemble_brief(visual_style, brief)``.
+    """
+
+    key: str  # extension-less asset key, e.g. "microwave-open"
+    entity: str  # owning entity name, e.g. "@microwave"
+    kind: Literal["room", "object"]
+    variant: str | None  # variant token, or None for single-variant entities
+    brief: str | None  # per-entity brief (rdesc), without the shared style
+
+
+@dataclass
+class RenderLintError:
+    """A static render-config violation."""
+
+    entity: str
+    message: str
+    severity: Literal["error", "warning"] = "error"
+
+    def __str__(self) -> str:
+        return f"[{self.severity}] {self.entity}: {self.message}"
+
+
+def _iter_renderable(world: Any):
+    """Yield (entity_name, entity, kind) for every renderable room/object."""
+    for name, room in getattr(world, "rooms", {}).items():
+        if is_renderable(room):
+            yield name, room, "room"
+    for name, obj in getattr(world, "objects", {}).items():
+        if is_renderable(obj):
+            yield name, obj, "object"
+
+
+def build_render_manifest(world: Any) -> list[RenderManifestEntry]:
+    """Enumerate every pre-generatable image keyed by the world's render specs.
+
+    For each renderable entity, emit one entry per asset key in its declarative
+    keyset (``render_keyset``). Each entry carries only its per-variant
+    ``:rdesc`` brief; the shared world style preamble is not folded in here (use
+    ``assemble_style(world.visual_style)`` once, or ``assemble_brief`` for the
+    full per-key prompt). Pure and deterministic; sorted by key for stable
+    output.
+    """
+    entries: list[RenderManifestEntry] = []
+    seen: set[str] = set()
+    for name, entity, kind in _iter_renderable(world):
+        variants = render_variants(entity)
+        # Map each asset key back to the variant token that produced it.
+        if variants:
+            base = asset_base(name)
+            key_variant = {f"{base}-{v}": v for v in variants}
+        else:
+            key_variant = {k: None for k in render_keyset(name, entity)}
+        for key in sorted(render_keyset(name, entity)):
+            if key in seen:
+                # Shared/aliased key (e.g. a door reusing its room art) — the
+                # owning entity already contributed the manifest entry.
+                continue
+            seen.add(key)
+            variant = key_variant.get(key)
+            brief = brief_for_variant(entity, variant)
+            entries.append(
+                RenderManifestEntry(
+                    key=key, entity=name, kind=kind, variant=variant, brief=brief
+                )
+            )
+    entries.sort(key=lambda e: e.key)
+    return entries
+
+
+def lint_render(world: Any) -> list[RenderLintError]:
+    """Statically check render specs for the explosion-guard invariants.
+
+    Two rules:
+
+    1. **Codomain ⊆ declared variants.** Every variant token a ``(fn)`` selector
+       can return must have a matching ``:rdesc`` brief, so every selected key
+       is generatable (and the keyset is exactly enumerable).
+    2. **Locality (the explosion guard).** A *room* render may not read any
+       foreign object/room state — baking object state into a room image is
+       what makes the scene-variant cross-product explode. An *object* render
+       may read only its own state. Reads of ``self`` (own properties) and
+       queues are always allowed.
+    """
+    errors: list[RenderLintError] = []
+    for name, entity, kind in _iter_renderable(world):
+        spec = getattr(entity, "render", None)
+        if _selector_body(spec) is None:
+            continue  # literal / absent selector: nothing to interpret
+
+        # Rule 1: codomain ⊆ declared variants.
+        variants = render_variants(entity)
+        codomain = render_codomain(spec)
+        if variants is not None and codomain is not None:
+            extra = codomain - set(variants)
+            if extra:
+                errors.append(
+                    RenderLintError(
+                        name,
+                        f":render can return {sorted(extra)} which have no "
+                        f":rdesc variant (declared: {sorted(variants)}).",
+                    )
+                )
+        elif variants is not None and codomain is None:
+            errors.append(
+                RenderLintError(
+                    name,
+                    ":render selector is not statically bounded; its returned "
+                    "variant tokens cannot be enumerated for pre-generation.",
+                    severity="warning",
+                )
+            )
+
+        # Rule 2: locality.
+        for read in render_reads(spec):
+            if read.kind == "queue":
+                continue  # queues are global/temporal axes, always allowed
+            owner = read.owner
+            if owner in (None, "self", name):
+                continue  # own state is always fine
+            # A foreign entity read.
+            what = (
+                f"(:{read.detail} {owner})"
+                if read.kind == "prop"
+                else f"{read.kind} of {owner}"
+            )
+            if kind == "room":
+                errors.append(
+                    RenderLintError(
+                        name,
+                        f"room :render reads foreign object state {what}; "
+                        f"object state must live in floated subject panels, not "
+                        f"baked into the room image.",
+                    )
+                )
+            else:
+                errors.append(
+                    RenderLintError(
+                        name,
+                        f"object :render reads foreign state {what}; an object's "
+                        f"variant must depend only on its own state.",
+                    )
+                )
+    return errors
