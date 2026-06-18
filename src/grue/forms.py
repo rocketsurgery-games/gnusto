@@ -8,20 +8,22 @@ Form handlers are registered via the @form decorator and dispatched by
 FormDispatcher.dispatch().
 """
 
-from typing import Any, Callable, Protocol
 from dataclasses import dataclass, field
+from typing import Any, Callable, Protocol
 
-from .sexpr import SExpr, Symbol, Keyword, SList, parse_param_list
+from .sexpr import Keyword, SExpr, SList, Symbol, parse_param_list
 
 
 class FormParseError(Exception):
     """Error during form interpretation."""
+
     pass
 
 
 # Type aliases for form handlers
 class FormHandler(Protocol):
     """Protocol for form handler functions."""
+
     def __call__(self, expr: SList, world: "GrueWorld") -> None: ...
 
 
@@ -37,9 +39,11 @@ def form(name: str) -> Callable[[FormHandler], FormHandler]:
         def parse_room(expr: SList, world: GrueWorld) -> None:
             ...
     """
+
     def decorator(fn: FormHandler) -> FormHandler:
         _form_handlers[name.lower()] = fn
         return fn
+
     return decorator
 
 
@@ -55,9 +59,11 @@ def list_form_handlers() -> list[str]:
 
 # === Dataclasses (moved from parser.py for shared access) ===
 
+
 @dataclass
 class GrueExit:
     """An exit from a room."""
+
     direction: str
     to: str
     via: str | None = None  # Door/boundary object
@@ -82,9 +88,12 @@ class GrueBehavior:
         ?self  - The object whose behavior is invoked
         ?actor - Who is performing the action (usually @player)
     """
+
     verb: str
     params: list[str] = field(default_factory=list)  # Parameter names (without ?)
-    param_types: dict[str, str] = field(default_factory=dict)  # Explicit type annotations
+    param_types: dict[str, str] = field(
+        default_factory=dict
+    )  # Explicit type annotations
     body: SExpr | None = None  # The function body expression
 
 
@@ -109,10 +118,17 @@ class GrueRoom:
         :ldesc (fn () (str "The door is " (if (:open @door) "open" "closed") "."))
 
     Render spec (:render):
-        A string or function that evaluates to a string (image filename or prompt):
-        :render "A dusty room"
-        :render (fn () (if (:lit ?self) "bright room" "dark room"))
+        A string or function that evaluates to an asset key (image filename):
+        :render "dusty-room.png"
+        :render (fn () (if (:lit ?self) "room-lit.png" "room-dark.png"))
+
+    Render brief (:rdesc):
+        A string or function describing the scene for image generation / artist
+        briefs, distinct from the player-facing :description. State-aware like
+        :render. Falls back to :description when absent.
+        :rdesc "A dingy 1980s computer lab, fluorescent-lit, empty of people."
     """
+
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
@@ -120,9 +136,14 @@ class GrueRoom:
     exits: list[GrueExit] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list["GrueBehavior"] = field(default_factory=list)
-    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
-    visible: list[str] = field(default_factory=list)  # Objects visible in this room (via :visible)
-    render: SExpr | None = None  # Render spec: string or (fn () ...)
+    nested_forms: list[SExpr] = field(
+        default_factory=list
+    )  # (def ...), (defn ...) etc.
+    visible: list[str] = field(
+        default_factory=list
+    )  # Objects visible in this room (via :visible)
+    render: SExpr | None = None  # :render variant selector: token string or (fn () ...)
+    rdesc: "str | dict[str, Any] | None" = None  # brief string or variant->brief map
 
 
 @dataclass
@@ -152,10 +173,18 @@ class GrueObject:
         :ldesc (fn () (str "The lantern is " (if (:lit ?self) "glowing" "dark") "."))
 
     Render spec (:render):
-        A string or function that evaluates to a string (image filename or prompt):
-        :render "A brass lantern"
-        :render (fn () (if (:lit ?self) "glowing lantern" "dark lantern"))
+        A string or function that evaluates to an asset key (image filename):
+        :render "lantern.png"
+        :render (fn () (if (:lit ?self) "lantern-lit.png" "lantern-dark.png"))
+
+    Render brief (:rdesc):
+        A string or function describing the subject for image generation / artist
+        briefs, distinct from the player-facing :description. State-aware like
+        :render. Falls back to :description when absent. Fixed objects may carry
+        contextual briefs (in-situ); movable objects neutral (white background).
+        :rdesc "A brass lantern with glass panels, on a solid white background."
     """
+
     name: str
     description: SExpr | None = None  # Short description: string or (fn () ...)
     ldesc: SExpr | None = None  # Long description: string or (fn () ...)
@@ -163,13 +192,17 @@ class GrueObject:
     flags: list[str] = field(default_factory=list)
     properties: dict[str, Any] = field(default_factory=dict)
     behaviors: list[GrueBehavior] = field(default_factory=list)
-    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
-    render: SExpr | None = None  # Render spec: string or (fn () ...)
+    nested_forms: list[SExpr] = field(
+        default_factory=list
+    )  # (def ...), (defn ...) etc.
+    render: SExpr | None = None  # :render variant selector: token string or (fn () ...)
+    rdesc: "str | dict[str, Any] | None" = None  # brief string or variant->brief map
 
 
 @dataclass
 class GrueVictory:
     """Victory condition."""
+
     when: SExpr
     context: list[tuple[str, Any]] = field(default_factory=list)
 
@@ -177,6 +210,7 @@ class GrueVictory:
 @dataclass
 class GrueDefeat:
     """Defeat condition."""
+
     name: str
     when: SExpr
     context: list[tuple[str, Any]] = field(default_factory=list)
@@ -199,15 +233,19 @@ class GrueEvent:
             (true
               '((dequeue hacker-helps) (success)))))
     """
+
     name: str
     location: str | None  # If set, event only fires when player is here
     body: SExpr | None = None  # The :on-turn handler expression
-    nested_forms: list[SExpr] = field(default_factory=list)  # (def ...), (defn ...) etc.
+    nested_forms: list[SExpr] = field(
+        default_factory=list
+    )  # (def ...), (defn ...) etc.
 
 
 @dataclass
 class GrueFunction:
     """A named function defined with (defn name (params) body)."""
+
     name: str
     params: list[str]
     body: SExpr
@@ -218,6 +256,7 @@ class GrueWorld:
     """
     Complete GRUE world definition.
     """
+
     name: str = ""
     description: str = ""
     intro: str = ""  # Introductory text shown at game start
@@ -226,15 +265,29 @@ class GrueWorld:
     objects: dict[str, GrueObject] = field(default_factory=dict)
     victory: GrueVictory | None = None
     defeat: dict[str, GrueDefeat] = field(default_factory=dict)
-    defaults: dict[str, GrueBehavior] = field(default_factory=dict)  # verb -> default behavior
-    constants: dict[str, Any] = field(default_factory=dict)  # immutable constants from (def name value)
-    events: dict[str, GrueEvent] = field(default_factory=dict)  # name -> turn-based event handler
-    functions: dict[str, GrueFunction] = field(default_factory=dict)  # name -> function definition
+    defaults: dict[str, GrueBehavior] = field(
+        default_factory=dict
+    )  # verb -> default behavior
+    constants: dict[str, Any] = field(
+        default_factory=dict
+    )  # immutable constants from (def name value)
+    events: dict[str, GrueEvent] = field(
+        default_factory=dict
+    )  # name -> turn-based event handler
+    functions: dict[str, GrueFunction] = field(
+        default_factory=dict
+    )  # name -> function definition
+    visual_style: dict[str, Any] = field(
+        default_factory=dict
+    )  # world-level render style (:prompt, :palette, :aspect-ratio, ...)
 
 
 # === Helper functions for form handlers ===
 
-def parse_entity_body(items: list[SExpr], entity_type: str) -> tuple[list[SExpr], dict[str, SExpr]]:
+
+def parse_entity_body(
+    items: list[SExpr], entity_type: str
+) -> tuple[list[SExpr], dict[str, SExpr]]:
     """Parse entity body into nested forms and keyword arguments.
 
     Handles interleaved nested forms (def, defn) and keyword arguments.
@@ -261,7 +314,9 @@ def parse_entity_body(items: list[SExpr], entity_type: str) -> tuple[list[SExpr]
             # Keyword argument - consume key and value
             key = item.name
             if i + 1 >= len(items):
-                raise FormParseError(f"Missing value for keyword :{key} in {entity_type}")
+                raise FormParseError(
+                    f"Missing value for keyword :{key} in {entity_type}"
+                )
             kwargs[key] = items[i + 1]
             i += 2
 
@@ -411,6 +466,21 @@ def parse_properties(expr: SExpr) -> dict[str, Any]:
     return props
 
 
+def parse_rdesc(expr: SExpr, where: str) -> "str | dict[str, Any]":
+    """Parse :rdesc into a single brief string or a variant->brief map.
+
+    - "a brief..."                       -> str (single-variant brief)
+    - (:open "..." :closed "...")        -> dict[str, str] (variant -> brief)
+    """
+    if isinstance(expr, str):
+        return expr
+    if isinstance(expr, SList):
+        return parse_properties(expr)
+    raise FormParseError(
+        f'{where} :rdesc must be a string or a (:variant "brief" ...) map, got {expr}'
+    )
+
+
 def parse_context(expr: SExpr) -> list[tuple[str, Any]]:
     """Parse context like ((mechanism push-bar) (note auto-closing))."""
     if not isinstance(expr, SList):
@@ -423,7 +493,11 @@ def parse_context(expr: SExpr) -> list[tuple[str, Any]]:
 
         key = expect_symbol(item[0], "context key")
         # Keep the raw value - might be symbol, list, etc.
-        value = sexpr_to_value(item[1]) if len(item) == 2 else [sexpr_to_value(v) for v in item.items[1:]]
+        value = (
+            sexpr_to_value(item[1])
+            if len(item) == 2
+            else [sexpr_to_value(v) for v in item.items[1:]]
+        )
         context.append((key, value))
 
     return context
@@ -456,7 +530,9 @@ def parse_exits(expr: SExpr) -> list[GrueExit]:
     return exits
 
 
-def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueBehavior]:
+def parse_behaviors(
+    expr: SExpr, world: "GrueWorld | None" = None
+) -> list[GrueBehavior]:
     """Parse behaviors list: (:verb (fn (?params) body) ...) or (:verb fn-reference ...)
 
     The body can be any expression - not limited to (cond ...).
@@ -485,8 +561,12 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
         if name in world.constants:
             expr = world.constants[name]
             # Unwrap (quote ...) if present - def stores raw AST including quote
-            if (isinstance(expr, SList) and len(expr) == 2 and
-                isinstance(expr[0], Symbol) and expr[0].name == "quote"):
+            if (
+                isinstance(expr, SList)
+                and len(expr) == 2
+                and isinstance(expr[0], Symbol)
+                and expr[0].name == "quote"
+            ):
                 expr = expr[1]
             # The constant value should be an SList (the behaviors list)
             if not isinstance(expr, SList):
@@ -527,11 +607,15 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
 
             # Case 2: (fn ...) inline definition
             if not isinstance(fn_expr, SList) or len(fn_expr) < 1:
-                raise FormParseError(f"Expected (fn ...) or symbol after :{verb}, got {fn_expr}")
+                raise FormParseError(
+                    f"Expected (fn ...) or symbol after :{verb}, got {fn_expr}"
+                )
 
             first = fn_expr[0]
             if not isinstance(first, Symbol) or first.name != "fn":
-                raise FormParseError(f"Expected 'fn' or symbol after :{verb}, got {first}")
+                raise FormParseError(
+                    f"Expected 'fn' or symbol after :{verb}, got {first}"
+                )
 
             # Parse (fn (?param1 ?param2) body)
             if len(fn_expr) < 3:
@@ -546,14 +630,18 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
             if isinstance(params_expr, SList):
                 try:
                     params, param_types = parse_param_list(
-                        params_expr, require_question_mark=True,
+                        params_expr,
+                        require_question_mark=True,
                     )
                 except ValueError as e:
                     raise FormParseError(f"In :{verb} params: {e}") from e
 
             # Store the body expression directly
             behavior = GrueBehavior(
-                verb=verb, params=params, param_types=param_types, body=body_expr,
+                verb=verb,
+                params=params,
+                param_types=param_types,
+                body=body_expr,
             )
             behaviors.append(behavior)
             i += 1
@@ -564,6 +652,7 @@ def parse_behaviors(expr: SExpr, world: "GrueWorld | None" = None) -> list[GrueB
 
 
 # === Form Handlers ===
+
 
 @form("world")
 def _parse_world(expr: SList, world: GrueWorld) -> None:
@@ -576,6 +665,9 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
         world.description = expect_string(kwargs["description"], "world description")
     if "intro" in kwargs:
         world.intro = expect_string(kwargs["intro"], "world intro")
+    if "visual-style" in kwargs:
+        # Keyword-map of static render-style hooks (:prompt, :palette, ...).
+        world.visual_style = parse_properties(kwargs["visual-style"])
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
 
@@ -616,12 +708,18 @@ def _parse_room(expr: SList, world: GrueWorld) -> None:
         # Parse :visible (@obj1 @obj2 ...) - list of objects visible in this room
         visible_expr = kwargs["visible"]
         if isinstance(visible_expr, SList):
-            room.visible = [expect_symbol(item, "visible item") for item in visible_expr]
+            room.visible = [
+                expect_symbol(item, "visible item") for item in visible_expr
+            ]
         else:
-            raise FormParseError(f"room :visible must be a list, got {type(visible_expr)}")
+            raise FormParseError(
+                f"room :visible must be a list, got {type(visible_expr)}"
+            )
     if "render" in kwargs:
-        # Store render spec as-is for later evaluation
+        # :render selector (variant token string or (fn () ...)); stored as-is
         room.render = kwargs["render"]
+    if "rdesc" in kwargs:
+        room.rdesc = parse_rdesc(kwargs["rdesc"], f"room {name}")
 
     world.rooms[room.name] = room
 
@@ -660,8 +758,10 @@ def _parse_object(expr: SList, world: GrueWorld) -> None:
     if "behaviors" in kwargs:
         obj.behaviors = parse_behaviors(kwargs["behaviors"], world)
     if "render" in kwargs:
-        # Store render spec as-is for later evaluation
+        # :render selector (variant token string or (fn () ...)); stored as-is
         obj.render = kwargs["render"]
+    if "rdesc" in kwargs:
+        obj.rdesc = parse_rdesc(kwargs["rdesc"], f"object {name}")
 
     world.objects[obj.name] = obj
 
@@ -743,7 +843,9 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
     # Store the body expression directly (evaluated at runtime)
     body = kwargs["on-turn"]
 
-    event = GrueEvent(name=name, location=location, body=body, nested_forms=nested_forms)
+    event = GrueEvent(
+        name=name, location=location, body=body, nested_forms=nested_forms
+    )
     world.events[event.name] = event
 
 
@@ -790,7 +892,9 @@ def _parse_defn(expr: SList, world: GrueWorld) -> None:
     Multiple body expressions are wrapped in (do ...).
     """
     if len(expr) < 4:
-        raise FormParseError(f"'defn' expects at least 3 arguments, got {len(expr) - 1}")
+        raise FormParseError(
+            f"'defn' expects at least 3 arguments, got {len(expr) - 1}"
+        )
 
     name_expr = expr[1]
     if not isinstance(name_expr, Symbol):
@@ -838,7 +942,9 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
     as an unevaluated S-expression to be evaluated when first accessed.
     """
     if len(expr) != 3:
-        raise FormParseError(f"'def' expects 2 arguments (name, value), got {len(expr) - 1}")
+        raise FormParseError(
+            f"'def' expects 2 arguments (name, value), got {len(expr) - 1}"
+        )
 
     name_expr = expr[1]
     if not isinstance(name_expr, Symbol):
@@ -850,6 +956,7 @@ def _parse_def(expr: SList, world: GrueWorld) -> None:
 
 
 # === Form Dispatcher ===
+
 
 class FormDispatcher:
     """Dispatch S-expression forms to their handlers."""

@@ -82,28 +82,36 @@ frontier image model     OR     printable artist briefs
 The same manifest drives either a frontier image model **or** a human artist —
 both fill the identical keyset.
 
-## `:render` today
+## The variant model (`:render` / `:rdesc` / `:visual-style`)
 
-`:render` evaluates (statically and at runtime) to an **asset key** — a filename
-relative to the game's `assets/` directory:
+An entity's art is keyed by a small set of **variants**, and filenames are
+*derived* (`<base>-<token>.png`) — authors never hand-maintain filenames.
+
+- **`:render`** is the **variant selector**: a pure `(fn () ...)` returning a
+  variant token (e.g. `"open"`). Omit it for single-variant entities
+  (key = `<base>.png`). A literal string is an escape hatch meaning "use this
+  exact key" (e.g. a door reusing its room's image).
+- **`:rdesc`** declares the **brief per variant** — a `(:open "..." :closed "...")`
+  map, or a single brief string. The map keys *are* the variant set, so the
+  keyset is declarative (no need to run the selector to enumerate it). Falls
+  back to `:description` when absent.
+- **world `:visual-style`** — a keyword-map (`:prompt`, `:palette`,
+  `:aspect-ratio`) prepended to every brief for a consistent look.
 
 ```scheme
-:render "cs-elevator-room.png"
-
-; state-conditional: the set of strings it can return is the keyset
-:render (fn ()
-  (cond
-    ((:open self) "microwave-open.png")
-    ((queued? microwave-running) "microwave-running.png")
-    (else "microwave.png")))
+(object @microwave
+  :render (fn () (cond ((:open self)               "open")
+                       ((queued? microwave-running) "running")
+                       (true                        "closed")))
+  :rdesc (:open    "A 1980s microwave, door open, interior visible, above a counter."
+          :running "A 1980s microwave running, interior light on, above a counter."
+          :closed  "A 1980s microwave, door closed, above a counter."))
+; keys: microwave-open.png / microwave-running.png / microwave-closed.png
 ```
 
-Planned additions (`gnusto-eaec.2`):
-
-- **`:rdesc`** — a render *brief* distinct from the player-facing `:description`,
-  possibly state-aware. Drives generation prompts / artist briefs.
-- **world `:visual-style`** — a static style prefix + palette hooks prepended to
-  briefs (e.g. "Color graphic-novel horror, dark blue palette, inked.").
+The set of keys an entity can resolve to, intersected with reachable state, is
+exactly what gets generated. Each `{key, assemble_brief(visual-style, rdesc)}`
+pair becomes a manifest entry.
 
 Presentation **theme** (fonts, colors, panel chrome, UI imagery) lives in
 per-game CSS (`theme.css` / `game.json`), *not* in Grue — push content/briefs into

@@ -724,6 +724,18 @@ Game metadata and player declaration.
 - `:description` - Game description (optional)
 - `:player` - Entity name of the player object (**required**)
 - `:intro` - Introductory text displayed at game start (optional)
+- `:visual-style` - Render style keyword-map (optional). A static style prefix
+  and hooks prepended to generation briefs. Keys:
+  - `:prompt` - Style sentence prepended to every brief (e.g. `"Color graphic-novel horror, inked."`)
+  - `:palette` - Palette hint woven into briefs (e.g. `"dark blues, sickly greens"`)
+  - `:aspect-ratio` - Default aspect ratio (e.g. `"16:9"`)
+
+```scheme
+(world :name "The Lurking Horror" :player @player
+  :visual-style (:prompt "Color graphic-novel horror, inked, painted shading."
+                 :palette "dark blues, sickly fluorescent greens"
+                 :aspect-ratio "16:9"))
+```
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:
@@ -732,7 +744,13 @@ Room definition. Rooms are named entities with:
 - `:exits` - List of exit forms `(DIRECTION :to ROOM [:via OBJECT] [:when EXPR])`
 - `:properties` - Key-value properties
 - `:behaviors` - Room-level action handlers (see Room Hooks below)
-- `:render` - Image filename or `(fn () ...)` returning filename
+- `:render` - Variant selector (only needed when the room has more than one
+  variant): a `(fn () ...)` returning a variant token string, or a literal
+  asset-key string to reuse a shared image. Absent ⇒ a single variant. Room
+  variants should depend only on room-global state (see Rendering below).
+- `:rdesc` - Render brief(s): a string (single variant) or a
+  `(:variant "brief" ...)` map (one brief per variant token). Falls back to
+  `:description` when absent.
 
 **Room Hooks:**
 
@@ -772,7 +790,48 @@ Object definition. Objects are named entities with:
 - `:flags` - Boolean markers (e.g., `TAKEBIT`, `LOCKED`, `PERSON`)
 - `:properties` - Key-value properties
 - `:behaviors` - Verb-to-handler mappings (see Behaviors section)
-- `:render` - Image filename or `(fn () ...)` returning filename
+- `:render` - Variant selector (only needed when the object has more than one
+  variant): a `(fn () ...)` returning a variant token string, or a literal
+  asset-key string to reuse a shared image. Absent ⇒ a single variant.
+- `:rdesc` - Render brief(s): a string (single variant) or a
+  `(:variant "brief" ...)` map (one brief per variant token). Falls back to
+  `:description` when absent. Fixed objects may carry contextual briefs
+  (in-situ); movable objects neutral (white background).
+
+#### Rendering (`:render`, `:rdesc`, `:visual-style`)
+
+Illustrations are **pre-generated**. An entity's art is keyed by a small set of
+**variants**, and filenames are *derived* — authors never hand-maintain them:
+
+```
+base name (entity sans @) + variant token  ->  <base>-<token>.png
+@microwave + "open"                         ->  microwave-open.png
+```
+
+- `:render` is the **variant selector**: a pure `(fn () ...)` returning a token
+  (e.g. `"open"`). Omit it for single-variant entities (key = `<base>.png`). A
+  literal string is an escape hatch meaning "use this exact key" (e.g. a door
+  reusing its room's image).
+- `:rdesc` declares the **brief per variant** (a `(:open "..." :closed "...")`
+  map), or a single brief string. The map keys *are* the variant set, so the
+  keyset is declarative and enumerable without running the selector.
+- The world `:visual-style` prefixes a consistent look.
+
+```scheme
+(object @microwave
+  :render (fn () (cond ((:open self) "open")
+                       ((queued? microwave-running) "running")
+                       (true "closed")))
+  :rdesc (:open    "A 1980s microwave, door open, interior visible, above a counter."
+          :running "A 1980s microwave running, interior light on, above a counter."
+          :closed  "A 1980s microwave, door closed, above a counter."))
+; keys: microwave-open.png / microwave-running.png / microwave-closed.png
+```
+
+The **stage-vs-subject** rule keeps this bounded: a room selector keys only on
+room-global state (lights, flood, power), while an object selector keys only on
+its own state; per-object state is shown as separate floated panels, never baked
+into the room. See [`render.md`](render.md) for the full pipeline and design.
 
 #### `(victory :when EXPR :context (...))`
 Win condition. The `:when` expression is evaluated each turn.

@@ -4,7 +4,7 @@ title: Static :render model (stage-vs-subject, :rdesc, :visual-style)
 type: feature
 priority: 2
 created: '2026-06-16T02:16:39Z'
-updated: '2026-06-16T02:16:39Z'
+updated: '2026-06-18T04:05:37Z'
 ---
 
 Extend the Grue :render model from a bare filename string into a static, keyed, brief-bearing spec. Language work — also track under the language epic (gnusto-ntr per CLAUDE.md).

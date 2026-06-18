@@ -10,81 +10,81 @@ A declarative language for defining interactive fiction worlds, designed to be:
 File extension: .grue
 """
 
-from .sexpr import (
-    parse,
-    parse_all,
-    to_string,
-    Symbol,
-    Keyword,
-    SList,
-    SExpr,
-    SExprError,
+from .converter import (
+    ConversionResult,
+    ZILtoGRUEConverter,
+    ast_to_zil,
+    convert_zil_to_grue,
+    routine_to_zil,
 )
-
 from .expr import (
-    ExprEvaluator,
     EffectExecutor,
     EffectInterpreter,
     EffectOutcome,
     EvalError,
-    WorldState,
+    ExprEvaluator,
     MutableWorldState,
+    WorldState,
     eval_predicate,
     execute_effect,
 )
-
 from .parser import (
-    GrueParser,
-    GrueParseError,
-    GrueWorld,
-    GrueRoom,
-    GrueObject,
-    GrueExit,
     GrueBehavior,
-    GrueVictory,
     GrueDefeat,
     GrueEvent,
+    GrueExit,
+    GrueObject,
+    GrueParseError,
+    GrueParser,
+    GrueRoom,
+    GrueVictory,
+    GrueWorld,
     load_grue,
     parse_grue,
 )
-
+from .render import (
+    ASSET_EXT,
+    RenderError,
+    assemble_brief,
+    asset_base,
+    brief_for_variant,
+    get_render_spec,
+    has_render_spec,
+    is_renderable,
+    render_keyset,
+    render_variants,
+    resolve_asset_key,
+)
 from .runtime import (
-    GrueRuntime,
-    GameState,
-    ObjectState,
     ActionResult,
+    GameState,
+    GrueRuntime,
+    ObjectState,
 )
-
-from .converter import (
-    ZILtoGRUEConverter,
-    convert_zil_to_grue,
-    ConversionResult,
-    ast_to_zil,
-    routine_to_zil,
+from .sexpr import (
+    Keyword,
+    SExpr,
+    SExprError,
+    SList,
+    Symbol,
+    parse,
+    parse_all,
+    to_string,
 )
-
 from .test import (
+    ActionTrace,
+    GrueTestCase,
     # Python/pytest testing
     GrueTestHarness,
-    GrueTestCase,
     StateSnapshot,
-    ActionTrace,
-    pytest_harness,
+    TestResult,
     # DSL-based testing
     TestRunner,
-    TestResult,
     TestSuiteResult,
+    pytest_harness,
     run_tests,
     run_tests_from_string,
 )
-
-from .render import (
-    RenderError,
-    evaluate_render_spec,
-    has_render_spec,
-    get_render_spec,
-)
-
 
 __all__ = [
     # S-expression parser
@@ -141,9 +141,16 @@ __all__ = [
     "TestSuiteResult",
     "run_tests",
     "run_tests_from_string",
-    # Render specs
+    # Render specs & briefs (variant model)
     "RenderError",
-    "evaluate_render_spec",
+    "ASSET_EXT",
+    "asset_base",
+    "is_renderable",
+    "resolve_asset_key",
+    "render_variants",
+    "render_keyset",
+    "brief_for_variant",
+    "assemble_brief",
     "has_render_spec",
     "get_render_spec",
 ]

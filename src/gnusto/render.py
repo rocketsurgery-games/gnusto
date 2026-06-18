@@ -7,18 +7,20 @@ differently by TUI (colored text) and web UI (HTML with images).
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
-from grue.render import evaluate_render_spec, has_render_spec
+from grue.render import is_renderable, resolve_asset_key
 
 if TYPE_CHECKING:
-    from .state import GameState
     from grue.runtime import GrueRuntime
+
+    from .state import GameState
 
 
 @dataclass
 class EntityInfo:
     """Structured entity reference (id + display name)."""
+
     id: str
     name: str
     behaviors: list[str] = field(default_factory=list)
@@ -27,6 +29,7 @@ class EntityInfo:
 @dataclass
 class ExitDetail:
     """Structured exit (direction + destination display name)."""
+
     direction: str
     destination: str
 
@@ -34,6 +37,7 @@ class ExitDetail:
 @dataclass
 class RoomEnter:
     """Player has entered a room."""
+
     room_id: str
     name: str
     description: str
@@ -46,18 +50,21 @@ class RoomEnter:
 @dataclass
 class ActionResult:
     """Result of a game action (from effects)."""
+
     text: str
 
 
 @dataclass
 class Narrate:
     """LLM-generated second-person prose."""
+
     text: str
 
 
 @dataclass
 class Speak:
     """Character dialogue."""
+
     speaker: str  # Entity ID, e.g. "@hacker"
     text: str
     manner: str | None = None  # e.g. "whispering", "shouting"
@@ -66,18 +73,21 @@ class Speak:
 @dataclass
 class Think:
     """Player's inner monologue / dramatic moment."""
+
     text: str
 
 
 @dataclass
 class Ambient:
     """Atmospheric detail."""
+
     text: str
 
 
 @dataclass
 class Reveal:
     """Discovery of something new."""
+
     text: str
     entity: str | None = None  # Entity ID for image lookup
 
@@ -85,6 +95,7 @@ class Reveal:
 @dataclass
 class Focus:
     """Close-up on an entity."""
+
     text: str
     entity: str | None = None  # Entity ID for image lookup
 
@@ -92,6 +103,7 @@ class Focus:
 @dataclass
 class Image:
     """An image to display (system-generated, not from LLM)."""
+
     src: str  # Path relative to game directory
     alt: str = ""
     layout: Literal["inline", "float-left", "float-right", "background"] = "inline"
@@ -101,6 +113,7 @@ class Image:
 @dataclass
 class SystemMessage:
     """System message (save/load, errors, etc.)."""
+
     text: str
     level: Literal["info", "warning", "error"] = "info"
 
@@ -108,14 +121,24 @@ class SystemMessage:
 @dataclass
 class DebugInfo:
     """Debug information (action execution, grue I/O, etc.)."""
+
     label: str
     content: str
 
 
 # Union type for all content blocks
 ContentBlock = (
-    RoomEnter | ActionResult | Narrate | Speak | Think | Ambient | Reveal | Focus
-    | Image | SystemMessage | DebugInfo
+    RoomEnter
+    | ActionResult
+    | Narrate
+    | Speak
+    | Think
+    | Ambient
+    | Reveal
+    | Focus
+    | Image
+    | SystemMessage
+    | DebugInfo
 )
 
 
@@ -135,10 +158,10 @@ def build_room_block(
     Returns:
         RoomEnter block with room info
     """
-    # Evaluate render spec to get image filename
+    # Resolve the room's current asset key to an image URL
     image_url = None
     room = runtime.world.rooms.get(state.room)
-    if room and has_render_spec(room):
+    if room and is_renderable(room):
         image_url = _resolve_image_url(room.render, state.room, runtime, game_dir)
 
     # De-duplicate exits: keep first direction per destination
@@ -147,12 +170,18 @@ def build_room_block(
     for e in state.exits:
         if e.destination_name not in seen_dests:
             seen_dests.add(e.destination_name)
-            exits.append(ExitDetail(direction=e.direction, destination=e.destination_name))
+            exits.append(
+                ExitDetail(direction=e.direction, destination=e.destination_name)
+            )
 
     def _flatten_objects(obj_list: list) -> list[EntityInfo]:
         result: list[EntityInfo] = []
         for obj in obj_list:
-            result.append(EntityInfo(id=obj.id, name=obj.description or obj.id, behaviors=obj.behaviors))
+            result.append(
+                EntityInfo(
+                    id=obj.id, name=obj.description or obj.id, behaviors=obj.behaviors
+                )
+            )
             if obj.contents:
                 result.extend(_flatten_objects(obj.contents))
         return result
@@ -174,16 +203,16 @@ def _resolve_image_url(
     runtime: "GrueRuntime",
     game_dir: Path | None,
 ) -> str | None:
-    """Evaluate a render spec and resolve to a /assets/ URL, or None."""
+    """Resolve an entity's :render selector to a /assets/ URL, or None."""
     try:
-        filename = evaluate_render_spec(spec, entity_name, runtime)
-        if not filename:
+        key = resolve_asset_key(entity_name, spec, runtime)
+        if not key:
             return None
         if game_dir:
-            image_path = game_dir / "assets" / filename
+            image_path = game_dir / "assets" / key
             if not image_path.exists():
                 return None
-        return f"/assets/{filename}"
+        return f"/assets/{key}"
     except Exception:
         return None
 
@@ -205,17 +234,23 @@ def build_scene_context(
 
     # Current room
     room_def = runtime.world.rooms.get(state.room)
-    if room_def and has_render_spec(room_def):
+    if room_def and is_renderable(room_def):
         image_url = _resolve_image_url(room_def.render, state.room, runtime, game_dir)
-        entities[state.room] = {"name": str(room_def.description or ""), "image": image_url}
+        entities[state.room] = {
+            "name": str(room_def.description or ""),
+            "image": image_url,
+        }
 
     # Visible objects + inventory (recursing into containers)
     def _add_objects(obj_list: list) -> None:
         for obj_info in obj_list:
             obj_def = runtime.world.objects.get(obj_info.id)
-            if obj_def and has_render_spec(obj_def):
+            if obj_def and is_renderable(obj_def):
                 url = _resolve_image_url(obj_def.render, obj_info.id, runtime, game_dir)
-                entities[obj_info.id] = {"name": str(obj_def.description or ""), "image": url}
+                entities[obj_info.id] = {
+                    "name": str(obj_def.description or ""),
+                    "image": url,
+                }
             if obj_info.contents:
                 _add_objects(obj_info.contents)
 
