@@ -88,31 +88,27 @@ class TestResolveAssetKey:
     """Test runtime resolution of the current asset key."""
 
     def test_none_render_single_variant(self):
-        # No selector -> base name
-        assert resolve_asset_key("@chair", None, MockState()) == "chair.png"
+        # No selector -> base name (extension-less)
+        assert resolve_asset_key("@chair", None, MockState()) == "chair"
 
     def test_literal_render_used_verbatim(self):
         # Literal string -> the exact key (alias / shared image)
         assert (
-            resolve_asset_key("@elevator-door", "cs-elevator-room.png", MockState())
-            == "cs-elevator-room.png"
+            resolve_asset_key("@elevator-door", "cs-elevator-room", MockState())
+            == "cs-elevator-room"
         )
 
     def test_fn_selector_derives_key(self):
         spec = parse('(fn () (if true "open" "closed"))')
-        assert (
-            resolve_asset_key("@microwave", spec, MockState()) == "microwave-open.png"
-        )
+        assert resolve_asset_key("@microwave", spec, MockState()) == "microwave-open"
 
     def test_fn_selector_other_branch(self):
         spec = parse('(fn () (if false "open" "closed"))')
-        assert (
-            resolve_asset_key("@microwave", spec, MockState()) == "microwave-closed.png"
-        )
+        assert resolve_asset_key("@microwave", spec, MockState()) == "microwave-closed"
 
     def test_empty_token_falls_back_to_base(self):
         spec = parse('(fn () (when false "never"))')  # returns nil -> ""
-        assert resolve_asset_key("@thing", spec, MockState()) == "thing.png"
+        assert resolve_asset_key("@thing", spec, MockState()) == "thing"
 
     def test_bad_selector_raises(self):
         with pytest.raises(RenderError):
@@ -131,21 +127,21 @@ class TestKeysetAndVariants:
         obj = parse_grue(source).objects["@microwave"]
         assert set(render_variants(obj)) == {"open", "closed", "running"}
         assert render_keyset("@microwave", obj) == {
-            "microwave-open.png",
-            "microwave-closed.png",
-            "microwave-running.png",
+            "microwave-open",
+            "microwave-closed",
+            "microwave-running",
         }
 
     def test_single_variant_keyset(self):
         source = '(object @chair :rdesc "A chair.")'
         obj = parse_grue(source).objects["@chair"]
         assert render_variants(obj) is None
-        assert render_keyset("@chair", obj) == {"chair.png"}
+        assert render_keyset("@chair", obj) == {"chair"}
 
     def test_literal_render_keyset(self):
-        source = '(object @door :render "cs-elevator-room.png")'
+        source = '(object @door :render "cs-elevator-room")'
         obj = parse_grue(source).objects["@door"]
-        assert render_keyset("@door", obj) == {"cs-elevator-room.png"}
+        assert render_keyset("@door", obj) == {"cs-elevator-room"}
 
     def test_not_renderable_empty_keyset(self):
         source = '(object @key :description "a key")'
@@ -242,8 +238,8 @@ class TestEndToEnd:
 
         # Every declared variant has a key and a brief.
         assert render_keyset("@microwave", obj) == {
-            "microwave-open.png",
-            "microwave-closed.png",
+            "microwave-open",
+            "microwave-closed",
         }
         full = assemble_brief(world.visual_style, brief_for_variant(obj, "open"))
         assert full == (

@@ -3,7 +3,7 @@
   :location @terminal-room
 
   ; TODO: Deal with different states the hacker can be in.
-  :render "hacker.png"
+  :rdesc "A scruffy, innocent-looking young man in his twenties: blue jeans, an old work shirt, worn running shoes, and a large ring of keys hanging from his belt. He looks like he needs a bath. Solid white background."
 
   :properties (
     :searchable true
@@ -264,4 +264,3 @@
 
     :attack (fn () '((narrate "The hacker retreats.") (say @hacker "I know karate!") (narrate "he says, somewhat unconvincingly.") (blocked "hacker retreats")))
     :kill (fn () '((narrate "The hacker retreats.") (say @hacker "I know karate!") (narrate "he says, somewhat unconvincingly.") (blocked "hacker retreats")))))
-

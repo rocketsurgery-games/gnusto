@@ -11,6 +11,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from grue.render import is_renderable, resolve_asset_key
 
+# Image formats tried (in order) when resolving an extension-less asset key.
+SUPPORTED_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
 if TYPE_CHECKING:
     from grue.runtime import GrueRuntime
 
@@ -203,16 +206,26 @@ def _resolve_image_url(
     runtime: "GrueRuntime",
     game_dir: Path | None,
 ) -> str | None:
-    """Resolve an entity's :render selector to a /assets/ URL, or None."""
+    """Resolve an entity's :render selector to a /assets/ URL, or None.
+
+    Keys are extension-less; the file is located on disk by trying the
+    supported image formats in order.
+    """
     try:
         key = resolve_asset_key(entity_name, spec, runtime)
         if not key:
             return None
-        if game_dir:
-            image_path = game_dir / "assets" / key
-            if not image_path.exists():
-                return None
-        return f"/assets/{key}"
+        if not game_dir:
+            return f"/assets/{key}"
+        assets = game_dir / "assets"
+        # Literal key that already carries an extension.
+        if (assets / key).is_file():
+            return f"/assets/{key}"
+        # Extension-less key: find the file across supported formats.
+        for ext in SUPPORTED_IMAGE_EXTS:
+            if (assets / f"{key}{ext}").is_file():
+                return f"/assets/{key}{ext}"
+        return None
     except Exception:
         return None
 

@@ -4,12 +4,7 @@
           hallway. A large, noisy room is to the north. Stairs lead up and down. To the west a corridor leads into a smaller
           room."
 
-  ; cs-2nd.jpg:
-  ; University building hallway at night, fluorescent lights, institutional architecture,
-  ; stairs leading up and down visible in background, empty and eerie, wide angle view, no people.
-  ; A forward doorway leads into the kitchen. To the right a door leads to the computer lab.
-  ; To the left, an elevator with call buttons.
-  :render "cs-2nd.png"
+  :rdesc "A 1980s university building hallway at night, institutional architecture under fluorescent light, stairs leading up and down in the background, empty and eerie. A doorway leads ahead into the kitchen and an elevator with call buttons stands to one side."
 
   :properties (
     :lit true
@@ -24,4 +19,3 @@
      (in :to @cs-elevator-room :via @elevator-door-2))
 
   :visible (@up-button @down-button))
-

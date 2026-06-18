@@ -10,6 +10,7 @@ stale imports. The durable design decisions distilled from this work live in
 | [`dynamic-composition/`](dynamic-composition/) | **Archived** runtime scene-composition system (retired). `scene_renderer.py`, `render_cache.py`, and a `README.md` post-mortem of what worked / didn't. Imports are stale (the Grue render API it depended on was simplified). |
 | [`composition/`](composition/) | Transparent-overlay & stepwise composition experiments (`overlay.py`) with findings in `REPORT.md` — empty stages, stepwise > single-shot, spatial-text framing. |
 | [`layout/`](layout/) | Standalone graphic-novel **layout** prototype (HTML/CSS/JS) plus `compose.py` and Lurking Horror scenarios. Seeded the content-block vocabulary now in the real UI. |
+| [`old-art/`](old-art/) | Superseded / unused source art pulled out of the games' `assets/` so there's no confusion (e.g. the black-and-white pencil era, unused alternate refs, old prompt notes). |
 | [`art-sourcing-research.md`](art-sourcing-research.md) | Notes on finding contract artists for hand-drawn reference art. |
 
 ## Why these are kept

@@ -121,7 +121,7 @@
          "an open button, a close button, a stop switch, and an alarm button. Below these is "
          "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
 
-  :render "cs-elevator-room.png"
+  :rdesc "The interior of a battered, dirty 1980s elevator: scratched, graffitied fake-wood panel walls under fluorescent light, with a control panel of floor buttons on the right wall and the doors straight ahead."
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -159,7 +159,8 @@
   :location @cs-elevator-room
   :properties (:nodesc true :door true :openable true)
 
-  :render "cs-elevator-room.png"
+  ; Part of the elevator interior — reuse the room's image.
+  :render "cs-elevator-room"
 
   :behaviors (
     :examine (fn ()
@@ -303,13 +304,13 @@
   :description "access panel"
   :location @cs-elevator-room
   :properties (
-    :nodesc true 
-    :container true 
-    :searchable true 
-    :openable true 
+    :nodesc true
+    :container true
+    :searchable true
+    :openable true
     :capacity 20)
 
-  :render "access-panel.png"
+  :rdesc "An elevator control panel: floor buttons (B, 1, 2, 3), open and close buttons, a stop switch and an alarm button, with a small access panel below."
 
   :behaviors (
     :examine (fn ()
@@ -443,13 +444,13 @@
   :description "elevator doors"
   :location @cs-2nd
   :properties (
-    :door true 
-    :openable true 
-    :searchable true 
-    :container true 
+    :door true
+    :openable true
+    :searchable true
+    :container true
     :floor 2)
 
-  :render "elevator-doors.png"
+  :rdesc "Closed 1980s elevator doors of brushed metal set into a university building hallway wall."
 
   :behaviors elevator-door-behaviors)
 
@@ -550,4 +551,3 @@
                 (success :context ((description ,(if (here? @cs-elevator-room)
                                                      (str "The elevator continues to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
                                                      nil)))))))))))
-

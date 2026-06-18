@@ -43,7 +43,6 @@ from .parser import (
     parse_grue,
 )
 from .render import (
-    ASSET_EXT,
     RenderError,
     assemble_brief,
     asset_base,
@@ -143,7 +142,6 @@ __all__ = [
     "run_tests_from_string",
     # Render specs & briefs (variant model)
     "RenderError",
-    "ASSET_EXT",
     "asset_base",
     "is_renderable",
     "resolve_asset_key",

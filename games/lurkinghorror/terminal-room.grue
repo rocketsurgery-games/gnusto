@@ -5,11 +5,7 @@
   Banners, posters, and signs festoon the walls. Most of the tables are covered with waste paper, old pizza boxes, and
   empty Coke cans. There are usually a lot of people here, but tonight it's almost deserted."
 
-  ; terminal-room.jpg:
-  ; A large 1980s university computer lab at night. Rows of CRT monitors and old terminals on desks.
-  ; Pizza boxes and empty Coke cans scattered on tables. Banners, posters, and signs on the walls.
-  ; Dim fluorescent lighting. The room is completely empty of people - no one is here.
-  :render "terminal-room.png"
+  :rdesc "A large 1980s university computer lab at night: rows of CRT monitors and old terminals on desks, pizza boxes and empty Coke cans scattered on the tables, banners and posters on the walls, dim fluorescent lighting. Completely empty of people."
 
   :properties (
     :lit true
@@ -146,4 +142,3 @@
         (move @player @yuggoth)
         (success :page 4 :description ,page4-desc :transition "You faint, and when you awaken..."))
     '((dequeue compulsion) (success))))
-

@@ -7,6 +7,12 @@
           Law, right?), and you practically froze to death slogging over here from the dorm. Not to mention jumping at every
           shadow, what with all the recent disappearances. Time to find a free machine, get to work, and write that twenty page
           paper."
+
+  ; Visual style for all generated illustrations (graphic-novel horror).
+  :visual-style (:prompt "Full-color graphic-novel horror illustration. Bold ink linework with painted cel shading, moody cinematic lighting, deep shadows, heavy atmosphere. Gritty 1980s setting."
+                 :palette "desaturated dark blues and teals, sickly fluorescent greens, warm incandescent highlights"
+                 :aspect-ratio "1:1")
+
   :player @player)
 
 ; Victory: Defeat the Frob
@@ -27,4 +33,3 @@
     :freeze-count 0
     :score 0
     :moves 0))
-

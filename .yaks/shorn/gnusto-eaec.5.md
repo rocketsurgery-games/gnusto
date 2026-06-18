@@ -4,9 +4,7 @@ title: Re-style Lurking Horror assets (graphic-novel horror)
 type: task
 priority: 3
 created: '2026-06-16T02:17:13Z'
-updated: '2026-06-16T02:18:47Z'
-depends_on:
-- gnusto-eaec.4
+updated: '2026-06-18T04:39:00Z'
 ---
 
 Replace the black-and-white pencil-sketch assets with full-color 'graphic novel horror' art matching the vibe of games/lurkinghorror/assets/refs/*.jpg.

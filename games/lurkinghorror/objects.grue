@@ -2,8 +2,8 @@
   :description "master key"
   :location nil  ; Starts hidden - moves to @keyring when hacker reveals it
   :properties (
-    :takeable true 
-    :key true 
+    :takeable true
+    :key true
     :touched false))
 
 (object @keyring
@@ -15,24 +15,18 @@
     :nodesc true   ; nodesc hides from room listing; searchable makes it searchable
     :searchable true)
 
-  ; keyring.jpg:
-  ; Normal keyring with many keys hanging from it. Solid white background.
-  :render "keyring.png")
+  :rdesc "A keyring crowded with many keys hanging from it. Solid white background.")
 
 (object @carton
   :description "white carton"
   :location @refrigerator  ; In the kitchen refrigerator
   :properties (
-    :takeable true 
-    :container true 
-    :open true 
+    :takeable true
+    :container true
+    :open true
     :heat 0)  ; Heatable object - can be warmed in microwave
 
-  ; carton.jpg:
-  ; A Chinese food carton with a symbol on the front. The symbol doesn't look like Chinese, English,
-  ; or any other language you know. It looks more like an occult symbol. This is a carton of
-  ; Szechuan shrimp. Lovely red peppers poke out of the sauce.
-  :render "carton.png"
+  :rdesc "A white Chinese-food takeout carton with a strange, occult-looking symbol on the front. Solid white background."
 
   :behaviors (
     :examine (fn ()
@@ -187,4 +181,3 @@
   :description "your hand"
   :location @player
   :properties (:invisible true :nodesc true))
-

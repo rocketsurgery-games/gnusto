@@ -9,20 +9,20 @@
   :description "PC"
   :fdesc "A really whiz-bang pc is right inside the door."
   :location @terminal-room
-  :render "pc.png"
+  :rdesc "A late-1980s workstation PC in the corner of a computer lab: a CRT monitor with overlapping text windows on the screen, a keyboard, and a mouse."
 
   ; Login state: logged-in becomes true after valid password, username is set to login ID (or true for invalid)
   :properties (
-    :takeable true 
-    :trytake true 
-    :open true 
-    :container true 
-    :searchable true 
-    :surface true 
-    :size 30 
-    :unplugged false 
-    :logged-in false 
-    :username false 
+    :takeable true
+    :trytake true
+    :open true
+    :container true
+    :searchable true
+    :surface true
+    :size 30
+    :unplugged false
+    :logged-in false
+    :username false
     :powered false)
 
   (def pc-desc "This is a beyond-state-of-the-art personal computer. It has a 1024 by 1024 pixel color monitor, a mouse, an attached hard disk, and a local area network connection. Fortunately, one of its features is a prominent HELP key.")
@@ -228,7 +228,6 @@
 (object @mouse
   :description "mouse"
   :location @pc
-  :render "mouse.png"
   :properties (:nodesc true)
   :behaviors (
     :examine (fn () (success :message "It's a plastic pointing device."))
@@ -243,7 +242,6 @@
 (object @help-key
   :description "HELP key"
   :location @pc
-  :render "help-key.png"
   :properties (:nodesc true :readable true :text "It says \"HELP\" in reassuring blue letters.")
   :behaviors (
     :examine (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
@@ -362,4 +360,3 @@
         (true
           '((set-prop @odd-paper read-page false)
             (success :message "You touch the MORE box, and a new page appears.")))))))
-

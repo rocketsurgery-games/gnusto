@@ -117,12 +117,36 @@ Presentation **theme** (fonts, colors, panel chrome, UI imagery) lives in
 per-game CSS (`theme.css` / `game.json`), *not* in Grue — push content/briefs into
 Grue, keep CSS in CSS (`gnusto-eaec.6`).
 
+## On disk
+
+All keyed art lives **flat** in `games/<game>/assets/`. There is no `refs/` vs
+`renders/` split anymore — there is just the one keyed asset set.
+
+Keys are **extension-less**; the runtime resolver finds the file by trying
+supported formats in order (`.jpg`, `.jpeg`, `.png`, `.webp`). We store art as
+**JPG** — full-color painted scenes compress far better as JPG than PNG, and we
+do not rely on alpha (image models don't reliably emit it, and composition is
+done by the UI layer, not by stacking transparent cutouts).
+
+```
+games/lurkinghorror/assets/
+  terminal-room.jpg          # @terminal-room  (single variant)
+  microwave-open.jpg         # @microwave      (variant "open")
+  microwave-closed.jpg       #                 (variant "closed")
+  microwave-running.jpg      #                 (variant "running")
+  cs-elevator-room.jpg       # @cs-elevator-room — also reused by @elevator-door
+  ...
+```
+
+Superseded / unused source art is kept out of the asset path entirely under
+[`experiments/old-art/`](../experiments/old-art/) so there's no confusion.
+
 ## Visual style: Lurking Horror
 
-Target aesthetic is full-color **graphic-novel horror** — dark, moody, comic ink
-plus painted shading, dark-blue palette, panel-border framing. See the reference
-art in `games/lurkinghorror/assets/refs/*.jpg`. This replaces the earlier
-black-and-white pencil sketches (`gnusto-eaec.5`).
+The aesthetic is full-color **graphic-novel horror** — dark, moody, comic ink
+plus painted shading, desaturated dark-blue palette. It is declared in the game's
+world `:visual-style` and carried by the art in `games/lurkinghorror/assets/`,
+replacing the earlier black-and-white pencil sketches (`gnusto-eaec.5`).
 
 ## History (retired dynamic system)
 

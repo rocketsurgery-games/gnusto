@@ -3,18 +3,16 @@
   :fdesc "Nearby is one of those ugly molded plastic chairs."
   :location @terminal-room
 
-  ; chair.jpg:
-  ; A molded blue plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.
-  :render "chair.png"
+  :rdesc "A molded blue plastic chair, a cheap knock-off of a designer chair and even more uncomfortable. Solid white background."
 
   :properties (
-    :takeable true 
-    :vehicle true 
-    :searchable true 
-    :container true 
-    :open true 
-    :furniture true 
-    :surface true 
+    :takeable true
+    :vehicle true
+    :searchable true
+    :container true
+    :open true
+    :furniture true
+    :surface true
     :size 100)
 
   :behaviors (
@@ -47,4 +45,3 @@
             (success :message "You get out of the chair.")))
         (true
           (blocked :reason not-in-vehicle :message "You're not in the chair."))))))
-

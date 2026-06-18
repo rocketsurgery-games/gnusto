@@ -2,19 +2,20 @@
 Render spec & brief evaluation for Grue entities (the "variant" model).
 
 An entity's illustration is keyed by a small, finite set of **variants**. Asset
-filenames are *derived* from the entity name plus a variant token, so authors
-never hand-maintain filenames:
+keys are *derived* from the entity name plus a variant token, so authors never
+hand-maintain filenames. Keys are **extension-less**; the runtime resolver finds
+the file on disk across supported formats (.jpg/.png/.webp):
 
-    @microwave + "open"  ->  microwave-open.png
+    @microwave + "open"  ->  microwave-open   ->  assets/microwave-open.jpg
 
 Two fields describe an entity's art:
 
 - ``:render`` selects the current **variant** (only needed when an entity has
   more than one). It is one of:
-    * absent      -> a single variant; key = ``<base>.png``
+    * absent      -> a single variant; key = ``<base>``
     * a string    -> a literal asset key (escape hatch for sharing one image
                      across entities, e.g. a door that reuses its room's art)
-    * ``(fn () ...)`` returning a variant token string -> key ``<base>-<token>.png``
+    * ``(fn () ...)`` returning a variant token string -> key ``<base>-<token>``
 
 - ``:rdesc`` is the generation **brief** (prompt text), one of:
     * a string                          -> the brief for the single variant
@@ -33,9 +34,6 @@ from typing import Any
 
 from .expr import Environment, ExprEvaluator, GrueFn
 from .sexpr import SExpr, SList, Symbol
-
-# Derived-filename extension. All pre-generated assets are PNGs for now.
-ASSET_EXT = ".png"
 
 
 class RenderError(Exception):
@@ -85,23 +83,24 @@ def resolve_asset_key(
     state: Any,  # WorldState protocol
     functions: dict[str, GrueFn] | None = None,
 ) -> str:
-    """Resolve the asset key (filename) for an entity's current state.
+    """Resolve the extension-less asset key for an entity's current state.
 
-    - render is None   -> "<base>.png" (single variant)
+    - render is None   -> "<base>" (single variant)
     - render is a str  -> the string verbatim (literal alias / shared key)
-    - render is (fn..) -> "<base>-<token>.png" (or "<base>.png" if token empty)
+    - render is (fn..) -> "<base>-<token>" (or "<base>" if the token is empty)
 
-    Callers should gate on is_renderable() first.
+    The runtime resolver maps a key to a file on disk by trying supported
+    extensions. Callers should gate on is_renderable() first.
     """
     base = asset_base(entity_name)
     if render is None:
-        return base + ASSET_EXT
+        return base
     if isinstance(render, str):
         return render
     token = _eval_selector(render, entity_name, state, functions)
     if not token:
-        return base + ASSET_EXT
-    return f"{base}-{token}{ASSET_EXT}"
+        return base
+    return f"{base}-{token}"
 
 
 def render_variants(entity: Any) -> list[str] | None:
@@ -124,9 +123,9 @@ def render_keyset(entity_name: str, entity: Any) -> set[str]:
     base = asset_base(entity_name)
     variants = render_variants(entity)
     if variants:
-        return {f"{base}-{v}{ASSET_EXT}" for v in variants}
+        return {f"{base}-{v}" for v in variants}
     if is_renderable(entity):
-        return {base + ASSET_EXT}
+        return {base}
     return set()
 
 
