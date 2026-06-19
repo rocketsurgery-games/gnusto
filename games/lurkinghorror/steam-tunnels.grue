@@ -27,6 +27,7 @@
 
 (room @cave-altar
   :description "Before the Altar"
+  :rdesc "The bottom of a huge cave-like vault reinforced with massive beams of wood, iron and steel. In the center a great flat stone slab serves as an altar, carved with strange, disturbing symbols and obscured by rusty red stains. An iron plate is set in the rough concrete floor. Dim, ominous light. Empty."
   :exits
     ((up :to @cave-room))
   :visible (@carvings)
@@ -660,4 +661,3 @@
   :behaviors (
     :examine (fn ()
       (success :message "This brick looks newer and more recent than the others. It must have been used to patch the wall."))))
-

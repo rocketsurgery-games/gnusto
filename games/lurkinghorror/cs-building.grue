@@ -59,6 +59,7 @@
 (room @cs-basement
   :description "Basement"
   :ldesc "Bare concrete walls line a wide corridor leading east and west. The elevator is to the south. Stairs lead up. From floor to ceiling run wire channels and steam pipes."
+  :rdesc "A bare concrete basement corridor stretching away east and west, floor-to-ceiling wire channels and steam pipes running along the walls, a battered elevator door set into one side and a dim stairwell beyond, harsh overhead light. Empty and oppressive."
   :properties (:lit true :floor 0)
   :exits
     ((up :to @comp-center)
@@ -73,6 +74,7 @@
 (room @smith-st
   :description "Smith Street"
   :ldesc "Smith Street runs east and west along the north side of the main campus area. At the moment, it is an arctic wasteland of howling wind and drifting snow. On the other side of the street, barely visible, are the lidless eyes of streetlights. The street hasn't been plowed, or if it has been, it did no good."
+  :rdesc "A deserted campus street at night in the worst blizzard of winter: an arctic wasteland of howling wind and deep drifting snow, the lidless eyes of streetlights barely visible across the road, institutional buildings looming unlit in the dark. Empty and bitterly cold."
   :properties (:lit true :outside true)
   :exits
     ((south :to @comp-center)
@@ -169,4 +171,3 @@
     :examine (fn () (success :message "The offices are dark and locked."))
     :open (fn () (blocked :reason locked :message "The offices are inaccessible."))
     :knock (fn () (blocked :reason no-answer :message "No one answers."))))
-

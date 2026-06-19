@@ -121,7 +121,9 @@
          "an open button, a close button, a stop switch, and an alarm button. Below these is "
          "an access panel which is " (if (:open @access-panel) "open" "closed") "."))
 
-  :rdesc "The interior of a battered, dirty 1980s elevator: scratched, graffitied fake-wood panel walls under fluorescent light, with a control panel of floor buttons on the right wall and the doors straight ahead."
+  :rdesc "The interior of a battered, dirty 1980s elevator: scratched, graffitied fake-wood panel
+  walls under fluorescent light, with a control panel of floor buttons on the right wall and the
+  doors straight ahead."
 
   :properties (:lit true :in-elevator true
                :floor 1                                   ; Current floor (0-3)
@@ -310,7 +312,8 @@
     :openable true
     :capacity 20)
 
-  :rdesc "An elevator control panel: floor buttons (B, 1, 2, 3), open and close buttons, a stop switch and an alarm button, with a small access panel below."
+  :rdesc "An elevator control panel: floor buttons (B, 1, 2, 3), open and close buttons, a stop
+  switch and an alarm button, with a small access panel below."
 
   :behaviors (
     :examine (fn ()

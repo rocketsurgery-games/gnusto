@@ -17,14 +17,20 @@
 
 (room @aero-basement
   :description "Aero Basement"
-  :ldesc "This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast harsh shadows. To the west is a stairway, and to the east the basement area continues."
+  :ldesc "This basement level room is made of smooth, damp-seeming concrete. Fluorescent lights cast
+  harsh shadows. To the west is a stairway, and to the east the basement area continues."
+
   :properties (:lit true)
   :exits ((east :to @cs-basement)
           (west :to @aero-stairs)))
 
 (room @temporary-lab
   :description "Temporary Lab"
-  :ldesc "This is a laboratory of some sort. It takes up most of the building on this level, all the interior walls having been knocked down. (One reason these temporary buildings are still here is their flexibility: no one cares if they get more or less destroyed.) A stairway leads down, and a door leads north."
+  :ldesc "This is a laboratory of some sort. It takes up most of the building on this level, all the
+  interior walls having been knocked down. (One reason these temporary buildings are still here is
+  their flexibility: no one cares if they get more or less destroyed.) A stairway leads down, and a
+  door leads north."
+
   :properties (:lit true)
   :exits ((down :to @temporary-basement)
           (north :to @smith-st-2)
@@ -47,7 +53,10 @@
 
 (room @temporary-basement
   :description "Temporary Basement"
-  :ldesc "During the Second World War, some temporary buildings were built to house war-related research. Naturally, these buildings, though flimsy and ugly, are still around. This is the basement of one of them. The basement extends west, a stairway leads up, and a large passage is to the east."
+  :ldesc "During the Second World War, some temporary buildings were built to house war-related
+  research. Naturally, these buildings, though flimsy and ugly, are still around. This is the
+  basement of one of them. The basement extends west, a stairway leads up, and a large passage is to
+  the east."
   :properties (:lit true)
   :exits
     ((west :to @cs-basement)
@@ -66,14 +75,19 @@
     :describe (fn ()
       (success :context
         ((description
-          (str "This is a storage room. It contains an incredible assemblage of discarded junk. Some of it is so old and mouldering that you can't be sure where one bit of junk stops and the next begins. It's piled to the ceiling on ancient, rotting pallets"
+          (str "This is a storage room. It contains an incredible assemblage of discarded junk. Some
+          of it is so old and mouldering that you can't be sure where one bit of junk stops and the
+          next begins. It's piled to the ceiling on ancient, rotting pallets"
                (if (> (:moved @junk) junk-moves-needed)
                  ". A narrow path winds eastward through the junk."
                  ". you can't even see the east wall."))))))))
 
 (room @storage-room
   :description "Ancient Storage"
-  :ldesc "What's deader than dead storage? That's what's in this room. Most of the contents have collapsed or rusted back to the primordial ooze. There is mold growing on some of the unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old some of these foundations are said to be."
+  :ldesc "What's deader than dead storage? That's what's in this room. Most of the contents have
+  collapsed or rusted back to the primordial ooze. There is mold growing on some of the
+  unidentifiable piles. Stagnant puddles of water pollute the floor. You can now believe how old
+  some of these foundations are said to be."
   :properties (:lit true)
   :exits
     ((west :to @dead-storage)
@@ -315,6 +329,7 @@
 (object @crowbar
   :location @temporary-basement
   :description "crowbar"
+  :rdesc "A rusty, battered iron crowbar. Solid white background."
   :properties (:takeable true :weapon true :size 10)
 
   :behaviors (
@@ -507,4 +522,3 @@
         '((move @mist nil)
           (dequeue mist-dissipates)
           (success)))))
-

@@ -27,10 +27,11 @@
     :describe (fn ()
       (success :context
         ((description
-          (str "This corridor is lined with closed, dark offices. At the south end of the corridor is a door with a light shining behind it. "
-               (if (:open @alchemy-door)
-                 "The door is open."
-                 "There is something written on the door."))))))
+          (str "This corridor is lined with closed, dark offices. At the south end of the corridor
+          is a door with a light shining behind it. "
+            (if (:open @alchemy-door)
+                "The door is open."
+                "There is something written on the door."))))))
 
     :on-enter (fn (?from-room)
       (cond
@@ -71,6 +72,9 @@
 
 (room @alchemy-lab
   :description "Lab"
+  :rdesc "An ultramodern, fully-equipped university chemistry lab: gleaming glassware and fume
+  hoods, benches crowded with apparatus and tangled tubing, a low stone archway set into one wall,
+  cold fluorescent light. Empty of people."
   :properties (:lit false :touched false)  ; Initially dark until lit by professor's lantern/ritual
   :exits
     ((north :to @alchemy-dept :via @alchemy-lab-exit-barrier)
@@ -138,12 +142,17 @@
         ; Can't enter if professor present and hasn't seen note
         ((and (in? @professor @alchemy-dept) (not (:seen-note @professor)))
           (blocked :reason professor-blocks
-                   :message "The professor stops you, not too gently. \"Sorry,\" he says, although he doesn't sound too sorry. \"There are very delicate experiments going on in the lab. You might hurt something.\" All you can see before he guides you away from the archway is a great deal of odd apparatus and equipment."))
+                   :message "The professor stops you, not too gently. \"Sorry,\" he says, although
+                   he doesn't sound too sorry. \"There are very delicate experiments going on in the
+                   lab. You might hurt something.\" All you can see before he guides you away from
+                   the archway is a great deal of odd apparatus and equipment."))
         ; Professor escorts you in if he's seen the note
         ((in? @professor @alchemy-dept)
           '((move @professor @alchemy-lab)
             (set @alchemy-lab :lit true)
-            (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather unctuous tone. \"Come right in!\" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.")))
+            (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather
+            unctuous tone. \"Come right in!\" He ushers you through the archway into the lab,
+            following quickly behind you and turning on the lights.")))
         (true (success))))))
 
 ; Barrier for exiting alchemy lab to dept
@@ -157,7 +166,8 @@
         ; Can't leave during ritual
         ((and (> (:ritual-stage @professor) 0) (not (:rmung @pentagram)))
           (blocked :reason trapped-in-pentagram
-                   :message "You find it very hard to move. Your feet reach the chalk line and then seem to meet resistance, though there is nothing there but the chalk."))
+                   :message "You find it very hard to move. Your feet reach the chalk line and then
+                   seem to meet resistance, though there is nothing there but the chalk."))
         ((> (:ritual-stage @professor) 0)
           (blocked :reason magical-barrier
                    :message "You find the archway barred by a force you can't push through."))
@@ -515,6 +525,7 @@
 (object @pentagram
   :location @alchemy-lab
   :description "pentagram"
+  :rdesc "An odd, roughly five-sided figure chalked on the concrete floor of a chemistry lab, the white lines smudged and scuffed. Seen in-situ on the lab floor, angled overhead view."
   :properties (:nodesc true :vehicle true :open true :container true :searchable true :capacity 200 :rmung false)
 
   :behaviors (
@@ -580,9 +591,13 @@
 (object @vat
   :location @lab-bench
   :description "vat"
+  :rdesc "A large glass pyrex vat, a couple of liters, half-full of thick tarry dark liquid, a
+  handwritten label reading 'Elixir of Life' stuck to its side. Solid white background."
+
   :properties (:takeable true :readable true :open true :container true :transparent true :searchable true
                :capacity 20 :size 20
-               :text "The text is a long chemical-sounding name typed on a label affixed to the container. Below is written in pencil \"Elixir of Life.\"")
+               :text "The text is a long chemical-sounding name typed on a label affixed to the
+               container. Below is written in pencil \"Elixir of Life.\"")
 
   :behaviors (
     :examine (fn ()
@@ -626,13 +641,15 @@
   :properties (:takeable true :trytake true)
   :behaviors (
     :examine (fn ()
-      (success :message "The elixir is thick and tarry. Torpid bubbles break the surface every so often, though you can find no source of heat to produce them."))
+      (success :message "The elixir is thick and tarry. Torpid bubbles break the surface every so
+      often, though you can find no source of heat to produce them."))
 
     :drink (fn ()
       (blocked :reason too-thick :message "It would be like drinking road tar."))
 
     :rub (fn ()
-      (success :message "You touch the liquid with your finger. It's very unpleasant. The liquid is stingingly hot. You pull your finger out, and it is some time before it feels normal again."))
+      (success :message "You touch the liquid with your finger. It's very unpleasant. The liquid is
+      stingingly hot. You pull your finger out, and it is some time before it feels normal again."))
 
     :take (fn ()
       (cond
@@ -642,7 +659,9 @@
 
     :pour (fn ()
       (blocked :reason too-slow
-               :message "Remember those ketchup commercials? Remember how slow the winning ketchup was? Well, this is a lot slower. The liquid has a very high surface tension, and pours so slowly that you'd be here all night waiting for it to finish."))
+               :message "Remember those ketchup commercials? Remember how slow the winning ketchup
+               was? Well, this is a lot slower. The liquid has a very high surface tension, and
+               pours so slowly that you'd be here all night waiting for it to finish."))
 
     :drop (fn ()
       (redirect :action (do ?self :pour)))
@@ -677,7 +696,9 @@
         (true
           `((set ?self :powered true)
             (success :message
-              ,(str "You turn the machine on, it performs a quick self-check, and then displays a message on the screen: \"Unable to boot because: No disk inserted. Please insert a dismountable disk.\""
+              ,(str "You turn the machine on, it performs a quick self-check, and then displays a
+              message on the screen: \"Unable to boot because: No disk inserted. Please insert a
+              dismountable disk.\""
                    (if (in? @professor (loc @player))
                      " The professor, who has been watching you, smiles."
                      "")))))))
@@ -698,7 +719,8 @@
   :properties (:takeable true :trytake true :touched true :wearable false)
   :behaviors (
     :examine (fn ()
-      (success :message "The G.U.E. Tech class ring is a gold ring depicting a hyrax eating a twig. Such rings are familiarly known as \"brass hyraxes.\""))
+      (success :message "The G.U.E. Tech class ring is a gold ring depicting a hyrax eating a twig.
+      Such rings are familiarly known as \"brass hyraxes.\""))
 
     :wear (fn ()
       (cond
@@ -739,7 +761,17 @@
 (object @professor
   :location @alchemy-dept
   :description "professor"
-  :properties (:person true :open true :container true :searchable true :value 5 :seen-note false :mad false :dead false :ritual-stage 0 :visited false)
+  :properties (
+    :person true
+    :open true
+    :container true
+    :searchable true
+    :value 5
+    :seen-note false
+    :mad false
+    :dead false
+    :ritual-stage 0
+    :visited false)
 
   :behaviors (
     :describe (fn ()
@@ -759,7 +791,8 @@
           (blocked :reason dead :message "The professor is no more."))
         (true
           (success :message
-            (str "The man looks like a professor. He's wearing a white lab coat, rather stained with chemicals, and a G.U.E. Tech class ring. "
+            (str "The man looks like a professor. He's wearing a white lab coat, rather stained with
+                  chemicals, and a G.U.E. Tech class ring. "
                  (if (= (loc @player) @alchemy-dept)
                    "He watches you with an ambiguously predatory air."
                    "He's working on something at the lab bench in front of him."))))))
@@ -781,10 +814,14 @@
             ((:seen-note @professor)
               '((move @professor @alchemy-lab)
                 (set @alchemy-lab :lit true)
-                (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather unctuous tone. \"Come right in!\" He ushers you through the archway into the lab, following quickly behind you and turning on the lights.")))
+                (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather
+                unctuous tone. \"Come right in!\" He ushers you through the archway into the lab,
+                following quickly behind you and turning on the lights.")))
             (true
               (blocked :reason professor-blocks
-                       :message "The professor stops you, not too gently. \"Sorry,\" he says, although he doesn't sound too sorry. \"There are very delicate experiments going on in the lab. You might hurt something.\""))))
+                       :message "The professor stops you, not too gently. \"Sorry,\" he says,
+                       although he doesn't sound too sorry. \"There are very delicate experiments
+                       going on in the lab. You might hurt something.\""))))
         ((= ?topic @signup)
           (success :message "\"We don't have much lab space. Everyone has to sign up for lab time.\""))
         ((= ?topic @students)
@@ -792,13 +829,16 @@
         ((= ?topic @note)
           (cond
             ((:seen-note @professor)
-              (success :message "\"Obviously a nut case. He knew he was going to flunk out, and this is clearly an attempt to put the blame somewhere else.\""))
+              (success :message "\"Obviously a nut case. He knew he was going to flunk out, and this
+              is clearly an attempt to put the blame somewhere else.\""))
             (true
               (success :message "\"What note is that?\" he asks, nervously."))))
         ((= ?topic @vat)
           (success :message "\"Just a little experiment of mine. The label is just a joke.\""))
         ((= ?topic @lovecraft)
-          (success :message "\"The machines in our department have names like that. Lovecraft wrote some stories about alchemy. We've got Paracelsus, Dunsany, and a couple of others, too.\""))
+          (success :message "\"The machines in our department have names like that. Lovecraft wrote
+          some stories about alchemy. We've got Paracelsus, Dunsany, and a couple of others,
+          too.\""))
         (true
           (cond
             ((> (:ritual-stage @professor) 0)
@@ -827,7 +867,9 @@
           '((set @professor :seen-note true)
             (set @professor :mad true)
             (move ?obj @professor)
-            (success :message "He reads it carefully. \"What drivel! This just confirms my suspicions. He had clearly gone over the edge. Drug use, drinking, insanity. It's only too bad that I didn't realize what was happening. I might have helped him.\"")))
+            (success :message "He reads it carefully. \"What drivel! This just confirms my
+            suspicions. He had clearly gone over the edge. Drug use, drinking, insanity. It's only
+            too bad that I didn't realize what was happening. I might have helped him.\"")))
         (true
           (success :message "He doesn't seem interested."))))
 
@@ -848,7 +890,9 @@
             ((and ?weapon (:weapon ?weapon))
               `((set @professor :mad true)
                 (move ?weapon @professor)
-                (success :message ,(str "With contemptuous ease, the professor prevents you. \"I'll take this,\" he says. \"Just for safekeeping.\" He makes the " (desc ?weapon) " disappear."))))
+                (success :message ,(str "With contemptuous ease, the professor prevents you. \"I'll
+                take this,\" he says. \"Just for safekeeping.\" He makes the " (desc ?weapon) "
+                disappear."))))
             (true
               '((set @professor :mad true)
                 (success :message "With contemptuous ease, the professor prevents you.")))))))
@@ -929,7 +973,9 @@
   :on-turn
     '((set @signup :remembered true)
       (dequeue remember-student)
-      (success :message "Suddenly, you remember why the graduate student's name was familiar. He was a missing student, until his body was found smashed and broken at the base of the tallest building on campus.")))
+      (success :message "Suddenly, you remember why the graduate student's name was familiar. He was
+      a missing student, until his body was found smashed and broken at the base of the tallest
+      building on campus.")))
 
 ; Animate hand event - hand comes to life in vat
 (event animate-hand
@@ -942,11 +988,13 @@
         ((:person @mummified-hand)
           ; Already animated, just trying to escape
           '((queue animate-hand)
-            (success :message "The hand is trying to crawl out of the vat. The fingers flex and grab at the slippery sides, but in vain.")))
+            (success :message "The hand is trying to crawl out of the vat. The fingers flex and grab
+            at the slippery sides, but in vain.")))
         ((= (:animation-count @mummified-hand) 0)
           `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
-            (success :message "The hand bobs to the surface. It's odd, but it looked like one of the fingers moved.")))
+            (success :message "The hand bobs to the surface. It's odd, but it looked like one of the
+            fingers moved.")))
         ((= (:animation-count @mummified-hand) 1)
           `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
@@ -959,15 +1007,48 @@
 ; Professor ritual event - the 8-stage cutscene in the lab
 ; This is triggered when player enters the lab with professor
 (event professor-ritual
-  (def stage1 "The professor guides you to the center of the lab, where a strange pentagonal symbol is chalked on the floor. He cuts one of the chalk lines with a small knife you had not previously noticed, pushes you into the center of the chalked symbol, and redraws the line, muttering softly and rhythmically as he does so. \"There, that's done. Don't move from there, it'll only make things worse for you.\" He makes some odd gestures at the archway and then goes over to the lab bench.")
-  (def stage2 "The professor is preparing something at the lab bench. \"Alchemy is my chosen field, and I've gotten ridiculed for it. It's like chemistry, except that chemists don't recognize that some natural laws are enforced by persons, not physics. Some of them will grant power, or knowledge, but they must be placated, or even bribed. They're not of this earth, not demons or devils, and they aren't always friendly. To me it's just an unpleasant necessity on the path to power. When I'm done, they won't laugh anymore!\"")
-  (def stage3 "The professor enters another pentagram, and begins a highly choreographed ritual. \"This may seem a little silly to you, but the symbology is what's important. Certain alignments, certain aspects. In a few moments, it won't matter anyway,\" he remarks. \"There is very little room for error here, so be calm.\" He chants, he brandishes strange instruments, moves about inside the pentagram, and occasionally points to you. It becomes clear exactly what he meant by the word \"bribe.\"")
-  (def stage4 "The chant grows more complex, with rhythms and cadences that make you want to stop your ears. The room appears to be getting darker.")
-  (def stage5 "A thick black mist begins to form in the room. Parts are darker, and parts lighter, and the dark parts form a disturbing shape. The professor chants and calls more loudly now, and you realize the calls are being answered.")
-  (def stage6 "The room is now freezing cold, though the windows are shuttered and tightly curtained. Low, bone-rattling vibrations shake the room in cadence with the chant. The black mist is growing thicker.")
-  (def stage7 "The black mist swirls wildly around the room, and a deep bass voice gibbers out of thin air.")
-  (def stage8-death "A thing like a tentacle with a demonic face wraps slowly around you. The room recedes into a great distance as you are pulled away. Before you die, you see what the tentacle is a part of.")
-  (def stage8-survive "From above, you hear a thunderous noise, a maniacal scream, and then the sound of equipment smashing. Around the trapdoor pours a blinding flash of light. Finally you hear an almost inaudible whimper, then nothing. The light fades.")
+  (def stage1 "The professor guides you to the center of the lab, where a strange pentagonal symbol
+  is chalked on the floor. He cuts one of the chalk lines with a small knife you had not previously
+  noticed, pushes you into the center of the chalked symbol, and redraws the line, muttering softly
+  and rhythmically as he does so. \"There, that's done. Don't move from there, it'll only make
+  things worse for you.\" He makes some odd gestures at the archway and then goes over to the lab
+  bench.")
+
+  (def stage2 "The professor is preparing something at the lab bench. \"Alchemy is my chosen field,
+  and I've gotten ridiculed for it. It's like chemistry, except that chemists don't recognize that
+  some natural laws are enforced by persons, not physics. Some of them will grant power, or
+  knowledge, but they must be placated, or even bribed. They're not of this earth, not demons or
+  devils, and they aren't always friendly. To me it's just an unpleasant necessity on the path to
+  power. When I'm done, they won't laugh anymore!\"")
+
+  (def stage3 "The professor enters another pentagram, and begins a highly choreographed ritual.
+  \"This may seem a little silly to you, but the symbology is what's important. Certain alignments,
+  certain aspects. In a few moments, it won't matter anyway,\" he remarks. \"There is very little
+  room for error here, so be calm.\" He chants, he brandishes strange instruments, moves about
+  inside the pentagram, and occasionally points to you. It becomes clear exactly what he meant by
+  the word \"bribe.\"")
+
+  (def stage4 "The chant grows more complex, with rhythms and cadences that make you want to stop
+  your ears. The room appears to be getting darker.")
+
+  (def stage5 "A thick black mist begins to form in the room. Parts are darker, and parts lighter,
+  and the dark parts form a disturbing shape. The professor chants and calls more loudly now, and
+  you realize the calls are being answered.")
+
+  (def stage6 "The room is now freezing cold, though the windows are shuttered and tightly
+  curtained. Low, bone-rattling vibrations shake the room in cadence with the chant. The black mist
+  is growing thicker.")
+
+  (def stage7 "The black mist swirls wildly around the room, and a deep bass voice gibbers out of
+  thin air.")
+
+  (def stage8-death "A thing like a tentacle with a demonic face wraps slowly around you. The room
+  recedes into a great distance as you are pulled away. Before you die, you see what the tentacle is
+  a part of.")
+
+  (def stage8-survive "From above, you hear a thunderous noise, a maniacal scream, and then the
+  sound of equipment smashing. Around the trapdoor pours a blinding flash of light. Finally you hear
+  an almost inaudible whimper, then nothing. The light fades.")
 
   ; No :location filter - event handles location checks internally
   ; to allow running in alchemy-lab, under-alchemy-lab, or brick-tunnel
@@ -982,20 +1063,24 @@
                   (= (loc @player) @brick-tunnel)))
           '((dequeue professor-ritual)
             (success)))
+
         ; Stage 1 - trap player in pentagram
         ((= (:ritual-stage @professor) 0)
           `((set @professor :ritual-stage ,?next-stage)
             (move @player @pentagram)
             (queue professor-ritual)
             (success :stage 1 :message ,stage1)))
+
         ((= (:ritual-stage @professor) 1)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 2 :message ,stage2)))
+
         ((= (:ritual-stage @professor) 2)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 3 :message ,stage3)))
+
         ((= (:ritual-stage @professor) 3)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
@@ -1004,34 +1089,41 @@
                                     (if (:rmung @pentagram)
                                       ", the professor having difficulty with the almost unpronounceable words"
                                       "")))))
+
         ((= (:ritual-stage @professor) 4)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 5 :message ,stage5)))
+
         ((= (:ritual-stage @professor) 5)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 6
                      :message ,(str stage6 " The professor "
-                                    (cond
-                                      ((not (in? @player @pentagram))
-                                       "is alternately looking at you and at the mist.")
-                                      ((:rmung @pentagram)
-                                       "gestures in your direction, an overtone of terror in his voice.")
-                                      (true
-                                       "chants more rapidly, producing strange guttural sounds, scarcely human."))))))
+                        (cond
+                            ((not (in? @player @pentagram))
+                                "is alternately looking at you and at the mist.")
+                            ((:rmung @pentagram)
+                                "gestures in your direction, an overtone of terror in his voice.")
+                            (true
+                                "chants more rapidly, producing strange guttural sounds, scarcely human."))))))
+
         ((= (:ritual-stage @professor) 6)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
             (success :stage 7
-                     :message ,(str stage7
-                                    (cond
-                                      ((not (in? @player @pentagram))
-                                       " \"No!\" screams the professor, and jumps toward you out of his own pentagram. He realizes what he has done, and tries to reenter, but the mist grabs at him.")
-                                      ((:rmung @pentagram)
-                                       " The professor points madly toward you, and the mist follows.")
-                                      (true
-                                       " The professor's brow drips with sweat."))))))
+                     :message ,(
+                        str stage7
+                        (cond
+                            ((not (in? @player @pentagram))
+                                " \"No!\" screams the professor, and jumps toward you out of his own
+                                pentagram. He realizes what he has done, and tries to reenter, but
+                                the mist grabs at him.")
+                            ((:rmung @pentagram)
+                                " The professor points madly toward you, and the mist follows.")
+                            (true
+                                " The professor's brow drips with sweat."))))))
+
         ; Stage 8 - death or escape
         ((= (:ritual-stage @professor) 7)
           (cond
@@ -1040,6 +1132,7 @@
               '((dequeue professor-ritual)
                 (blocked :reason death
                          :context ((death true) (description stage8-death)))))
+
             ; Player escaped = survive
             (true
               `((set @professor :ritual-stage 0)
@@ -1053,6 +1146,7 @@
                       '())
                 (dequeue professor-ritual)
                 (success :stage 8 :message ,stage8-survive)))))
+
         (true
           '((dequeue professor-ritual)
             (success))))))
