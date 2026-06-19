@@ -74,6 +74,123 @@ class TestModelConstants:
         assert "gemini" in NANOBANANA_MODEL_ID
 
 
+# A minimal game world used by the manifest-driven brief/fill tests.
+_GAME_SRC = """
+(world :name "Test Game" :player @player
+  :visual-style (:prompt "Inked horror." :palette "dark blues" :aspect-ratio "1:1"))
+(object @player :description "you")
+(room @lab :description "Lab" :rdesc "An empty dingy lab.")
+(object @microwave
+  :description "microwave"
+  :render (fn () (if (:open self) "open" "closed"))
+  :rdesc (:open "Microwave, door open." :closed "Microwave, door closed."))
+"""
+
+
+def _make_game(tmp_path):
+    """Write a minimal game dir and return its path."""
+    game = tmp_path / "game"
+    game.mkdir()
+    (game / "game.grue").write_text(_GAME_SRC)
+    return game
+
+
+class TestBriefCommand:
+    """filfre brief: per-key briefs (no network)."""
+
+    def test_brief_print_hoists_style(self, tmp_path, capsys):
+        from argparse import Namespace
+
+        from filfre.cli import cmd_brief
+
+        cmd_brief(Namespace(game=str(_make_game(tmp_path)), out=None, key=None))
+        out = capsys.readouterr().out
+        # Shared style printed once, briefs listed per key.
+        assert out.count("Inked horror.") == 1
+        assert "microwave-open" in out
+        assert "microwave-closed" in out
+        assert "lab" in out
+
+    def test_brief_out_writes_full_prompts(self, tmp_path):
+        from argparse import Namespace
+
+        from filfre.cli import cmd_brief
+
+        out_dir = tmp_path / "briefs"
+        cmd_brief(Namespace(game=str(_make_game(tmp_path)), out=str(out_dir), key=None))
+        text = (out_dir / "microwave-open.txt").read_text()
+        # Each file carries the full prompt: style preamble + entity brief.
+        assert text.startswith(
+            "Inked horror. Palette: dark blues. Microwave, door open."
+        )
+        assert {p.name for p in out_dir.glob("*.txt")} == {
+            "lab.txt",
+            "microwave-open.txt",
+            "microwave-closed.txt",
+        }
+
+    def test_brief_key_filter(self, tmp_path, capsys):
+        from argparse import Namespace
+
+        from filfre.cli import cmd_brief
+
+        cmd_brief(Namespace(game=str(_make_game(tmp_path)), out=None, key=["lab"]))
+        out = capsys.readouterr().out
+        assert "lab" in out
+        assert "microwave-open" not in out
+
+
+class TestFillDryRun:
+    """filfre fill --dry-run: prompt preview without calling the model."""
+
+    def test_dry_run_lists_all_when_no_assets(self, tmp_path, capsys):
+        from argparse import Namespace
+
+        from filfre.cli import cmd_fill
+
+        cmd_fill(
+            Namespace(
+                game=str(_make_game(tmp_path)),
+                key=None,
+                force=False,
+                aspect_ratio=None,
+                seed=0,
+                dry_run=True,
+            )
+        )
+        out = capsys.readouterr().out
+        assert "To generate: 3" in out
+        assert "microwave-open.jpg" in out
+        # Full prompt previewed (style preamble + brief).
+        assert "Inked horror. Palette: dark blues. Microwave, door open." in out
+
+    def test_dry_run_skips_existing(self, tmp_path, capsys):
+        from argparse import Namespace
+
+        from PIL import Image
+
+        from filfre.cli import cmd_fill
+
+        game = _make_game(tmp_path)
+        assets = game / "assets"
+        assets.mkdir()
+        Image.new("RGB", (8, 8)).save(assets / "lab.jpg")
+
+        cmd_fill(
+            Namespace(
+                game=str(game),
+                key=None,
+                force=False,
+                aspect_ratio=None,
+                seed=0,
+                dry_run=True,
+            )
+        )
+        out = capsys.readouterr().out
+        assert "To generate: 2" in out
+        assert "skipping 1" in out
+
+
 class TestCLIParsing:
     """Test CLI argument parsing."""
 

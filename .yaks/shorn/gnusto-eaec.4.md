@@ -4,7 +4,7 @@ title: 'filfre brief/fill: manifest -> images or artist briefs'
 type: feature
 priority: 2
 created: '2026-06-16T02:17:03Z'
-updated: '2026-06-16T02:18:47Z'
+updated: '2026-06-19T22:28:16Z'
 depends_on:
 - gnusto-eaec.3
 ---

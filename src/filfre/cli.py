@@ -5,13 +5,19 @@ CLI for image generation.
 Uses the NanoBanana (Google Gemini 2.5 Flash Image) cloud backend. Requires a
 ``GEMINI_API_KEY`` (or ``GOOGLE_API_KEY``) environment variable.
 
+Subcommands:
+    brief     Emit per-key generation briefs from a game's render manifest
+              (printable for a human artist, or written as <key>.txt files)
+    fill      Generate a game's keyed assets from its render manifest
+    generate  Generate a single image from a direct text prompt
+
 Usage:
+    # Manifest-driven (the static pre-generation pipeline)
+    filfre brief games/lurkinghorror
+    filfre fill games/lurkinghorror --dry-run
+
     # Direct generation
     filfre generate --prompt "A dragon in a cave" --output dragon.png
-
-    # With reference images for composition
-    filfre generate --prompt "A brass lantern on a stone altar" \
-        --reference lantern.png --output scene.png
 """
 
 import argparse
@@ -125,6 +131,48 @@ def generate_image_nanobanana(
     )
 
 
+# Image formats tried (in order) when resolving an extension-less asset key.
+SUPPORTED_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def _assets_dir(game_path: Path) -> Path:
+    """Locate the assets directory for a game path (dir or entrypoint file)."""
+    base = game_path if game_path.is_dir() else game_path.parent
+    return base / "assets"
+
+
+def _existing_asset(assets: Path, key: str) -> Path | None:
+    """Find the on-disk file for an extension-less asset key, or None."""
+    if (assets / key).is_file():  # literal key already carrying an extension
+        return assets / key
+    for ext in SUPPORTED_IMAGE_EXTS:
+        if (assets / f"{key}{ext}").is_file():
+            return assets / f"{key}{ext}"
+    return None
+
+
+def _load_manifest(game: str):
+    """Load a game world and build its render manifest + shared style.
+
+    Returns (world, manifest_entries, style_str). Exits via SystemExit on error.
+    """
+    from grue import load_grue
+    from grue.render import assemble_style, build_render_manifest
+
+    game_path = Path(game)
+    if not game_path.exists():
+        print(f"Error: {game_path} not found", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        world = load_grue(str(game_path))
+    except Exception as e:
+        print(f"Error loading game: {e}", file=sys.stderr)
+        raise SystemExit(1)
+    manifest = build_render_manifest(world)
+    style = assemble_style(getattr(world, "visual_style", None))
+    return world, manifest, style
+
+
 # =============================================================================
 # Subcommand: generate
 # =============================================================================
@@ -189,6 +237,124 @@ def cmd_generate(args):
             display_image(output_path, width=60)
     except ImportError:
         pass
+
+
+# =============================================================================
+# Subcommand: brief
+# =============================================================================
+
+
+def cmd_brief(args):
+    """Emit per-key generation briefs from a game's render manifest.
+
+    The same keyset a frontier model would fill, packaged for a human artist:
+    one brief per asset key, each = the shared visual-style preamble + the
+    entity's :rdesc. Print to stdout, or write ``<key>.txt`` files with ``--out``.
+    """
+    from grue.render import assemble_brief
+
+    world, manifest, style = _load_manifest(args.game)
+    visual_style = getattr(world, "visual_style", None)
+    if args.key:
+        wanted = set(args.key)
+        manifest = [e for e in manifest if e.key in wanted]
+        missing = wanted - {e.key for e in manifest}
+        for k in sorted(missing):
+            print(f"Warning: no render key '{k}'", file=sys.stderr)
+
+    if args.out:
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for e in manifest:
+            prompt = assemble_brief(visual_style, e.brief)
+            (out_dir / f"{e.key}.txt").write_text(prompt + "\n")
+        print(f"Wrote {len(manifest)} brief(s) to {out_dir}/")
+        return
+
+    if style:
+        print(f"Style (prepended to every brief):\n  {style}\n")
+    for e in manifest:
+        variant = f" [{e.variant}]" if e.variant else ""
+        print(f"{e.key}  ({e.entity}{variant})")
+        print(f"  {e.brief or '(no brief)'}\n")
+
+
+# =============================================================================
+# Subcommand: fill
+# =============================================================================
+
+
+def cmd_fill(args):
+    """Generate the game's keyed assets from its render manifest via NanoBanana.
+
+    Each entry's full prompt (shared style + entity :rdesc) is sent to the
+    model and the result saved as ``assets/<key>.jpg``. By default only keys
+    missing on disk are generated; ``--force`` regenerates, ``--key`` targets
+    specific keys. Honors the single-subject discipline already encoded in the
+    briefs (rooms = empty stages, objects = single subjects).
+    """
+    from grue.render import assemble_brief
+
+    world, manifest, style = _load_manifest(args.game)
+    assets = _assets_dir(Path(args.game))
+    visual_style = getattr(world, "visual_style", None)
+    aspect_ratio = args.aspect_ratio or (visual_style or {}).get("aspect-ratio", "1:1")
+
+    if args.key:
+        wanted = set(args.key)
+        manifest = [e for e in manifest if e.key in wanted]
+        for k in sorted(wanted - {e.key for e in manifest}):
+            print(f"Warning: no render key '{k}'", file=sys.stderr)
+
+    # Decide what to (re)generate.
+    todo = []
+    skipped = 0
+    for e in manifest:
+        existing = _existing_asset(assets, e.key)
+        if existing and not args.force:
+            skipped += 1
+            continue
+        todo.append((e, existing))
+
+    print(f"Game: {world.name or args.game}")
+    print(f"Assets: {assets}")
+    print(f"Aspect ratio: {aspect_ratio}")
+    print(f"To generate: {len(todo)}  (skipping {skipped} already on disk)\n")
+
+    if args.dry_run:
+        for e, _ in todo:
+            print(f"{e.key}.jpg")
+            print(f"  {assemble_brief(visual_style, e.brief)}\n")
+        return
+
+    if not todo:
+        return
+
+    from io import BytesIO
+
+    from PIL import Image as PILImage
+
+    assets.mkdir(parents=True, exist_ok=True)
+    for i, (e, existing) in enumerate(todo, 1):
+        prompt = assemble_brief(visual_style, e.brief)
+        print(f"[{i}/{len(todo)}] {e.key} ...", flush=True)
+        start = time.time()
+        image = generate_image_nanobanana(
+            prompt=prompt, aspect_ratio=aspect_ratio, seed=args.seed
+        )
+        # The backend returns a genai types.Image; decode its bytes to a PIL
+        # image, normalize to RGB, and write JPG (the contract: JPG everywhere,
+        # no alpha).
+        pil = PILImage.open(BytesIO(image.image_bytes)).convert("RGB")
+        # Remove any pre-existing file under a different extension to avoid
+        # ambiguous duplicate keys on disk.
+        if existing and existing.suffix.lower() != ".jpg":
+            existing.unlink()
+        out_path = assets / f"{e.key}.jpg"
+        pil.save(out_path, quality=90)
+        print(f"      saved {out_path} ({time.time() - start:.1f}s)")
+
+    print(f"\nGenerated {len(todo)} image(s).")
 
 
 # =============================================================================
@@ -264,6 +430,89 @@ Examples:
         help="Number of images to generate (for timing analysis)",
     )
     gen_parser.set_defaults(func=cmd_generate)
+
+    # ---------------------------------------------------------------------
+    # brief subcommand
+    # ---------------------------------------------------------------------
+    brief_parser = subparsers.add_parser(
+        "brief",
+        help="Emit per-key generation briefs from a game's render manifest",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+Examples:
+  # Print every brief (shared style shown once at the top)
+  filfre brief games/lurkinghorror
+
+  # Write one <key>.txt per asset for a human artist to fill
+  filfre brief games/lurkinghorror --out briefs/
+
+  # Just a couple of keys
+  filfre brief games/lurkinghorror --key microwave-open --key kitchen
+        """,
+    )
+    brief_parser.add_argument("game", help="Path to game directory or .grue file")
+    brief_parser.add_argument(
+        "--out",
+        type=str,
+        help="Write one <key>.txt brief per asset into this directory",
+    )
+    brief_parser.add_argument(
+        "--key",
+        action="append",
+        metavar="KEY",
+        help="Limit to specific asset key(s) (repeatable)",
+    )
+    brief_parser.set_defaults(func=cmd_brief)
+
+    # ---------------------------------------------------------------------
+    # fill subcommand
+    # ---------------------------------------------------------------------
+    fill_parser = subparsers.add_parser(
+        "fill",
+        help="Generate a game's keyed assets from its render manifest",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+Examples:
+  # Generate only the assets missing on disk
+  filfre fill games/lurkinghorror
+
+  # Preview prompts without calling the model
+  filfre fill games/lurkinghorror --dry-run
+
+  # Regenerate a specific key
+  filfre fill games/lurkinghorror --key microwave-open --force
+        """,
+    )
+    fill_parser.add_argument("game", help="Path to game directory or .grue file")
+    fill_parser.add_argument(
+        "--key",
+        action="append",
+        metavar="KEY",
+        help="Limit to specific asset key(s) (repeatable)",
+    )
+    fill_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Regenerate keys even if an asset already exists on disk",
+    )
+    fill_parser.add_argument(
+        "--aspect-ratio",
+        type=str,
+        default=None,
+        help="Override the world :visual-style aspect ratio",
+    )
+    fill_parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Random seed (default: 0)",
+    )
+    fill_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List what would be generated, with prompts, without calling the model",
+    )
+    fill_parser.set_defaults(func=cmd_fill)
 
     # ---------------------------------------------------------------------
     # Parse and dispatch

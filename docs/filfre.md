@@ -10,10 +10,67 @@ generate images for game assets.
 
 > For how illustrations fit into the game (the static pre-generation pipeline and
 > the stage-vs-subject model), see [`docs/render.md`](render.md). `filfre` is the
-> generation backend that pipeline drives; the manifest-driven `brief`/`fill`
-> subcommands are not built yet (`gnusto-eaec.4`).
+> generation backend that pipeline drives. The manifest-driven `brief` / `fill`
+> subcommands consume the keyset enumerated by `frotz render` (see
+> [`docs/frotz.md`](frotz.md)).
 
 ## Commands
+
+### `filfre brief` - Per-Key Generation Briefs
+
+Turn a game's render manifest into one brief per asset key — the same keyset a
+frontier model would fill, but packaged so a **human artist** can fill it instead.
+Each brief is the shared world `:visual-style` preamble followed by the entity's
+`:rdesc`.
+
+```bash
+# Print every brief (the shared style is shown once at the top)
+filfre brief games/lurkinghorror
+
+# Write one <key>.txt per asset into a directory, ready to hand to an artist
+filfre brief games/lurkinghorror --out briefs/
+
+# Limit to specific keys
+filfre brief games/lurkinghorror --key microwave-open --key kitchen
+```
+
+| Option | Description |
+|--------|-------------|
+| `game` | Path to the game directory (or `.grue` file) |
+| `--out DIR` | Write one `<key>.txt` brief per asset into `DIR` (full assembled prompt) |
+| `--key KEY` | Limit to specific asset key(s); repeatable |
+
+### `filfre fill` - Generate Keyed Assets
+
+Generate the game's keyed assets from its render manifest via NanoBanana, writing
+`assets/<key>.jpg`. By default only keys **missing on disk** are generated, so it
+is safe to re-run as you add entities; `--force` regenerates existing keys.
+
+```bash
+# Generate only the assets missing on disk
+filfre fill games/lurkinghorror
+
+# Preview the prompts without calling the model
+filfre fill games/lurkinghorror --dry-run
+
+# Regenerate one key
+filfre fill games/lurkinghorror --key microwave-open --force
+```
+
+| Option | Description |
+|--------|-------------|
+| `game` | Path to the game directory (or `.grue` file) |
+| `--key KEY` | Limit to specific asset key(s); repeatable |
+| `--force` | Regenerate keys even if an asset already exists |
+| `--aspect-ratio` | Override the world `:visual-style` aspect ratio |
+| `--seed` | Random seed (default: 0) |
+| `--dry-run` | List what would be generated, with prompts, without calling the model |
+
+Output is always normalized to **RGB JPG** (no alpha — composition is the UI
+layer's job). The single-subject discipline (rooms as empty stages, objects as
+single subjects) is carried by the `:rdesc` briefs themselves; see
+[`docs/render.md`](render.md). Run `frotz render <game>` first to lint the specs
+and check coverage.
 
 ### `filfre generate` - Direct Image Generation
 
