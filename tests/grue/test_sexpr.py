@@ -1,11 +1,38 @@
 """Tests for S-expression parser."""
 
 import pytest
+
 from grue.sexpr import (
-    parse, parse_all, to_string,
-    Symbol, Keyword, SList,
-    SExprError, Tokenizer, TokenType
+    Keyword,
+    SExprError,
+    SList,
+    Symbol,
+    Tokenizer,
+    TokenType,
+    parse,
+    parse_all,
+    to_string,
 )
+
+
+class TestKeyword:
+    """Keywords are self-denoting names, distinct from strings."""
+
+    def test_value_equal_by_name(self):
+        assert Keyword("open") == Keyword("open")
+        assert Keyword("open") != Keyword("closed")
+
+    def test_not_equal_to_same_named_string(self):
+        assert Keyword("open") != "open"
+        assert "open" != Keyword("open")
+
+    def test_hashable_as_map_key_and_set_member(self):
+        # Must be usable as a dict key / set member (e.g. variant tags).
+        d = {Keyword("open"): 1}
+        assert d[Keyword("open")] == 1
+        assert {Keyword("open"), Keyword("open")} == {Keyword("open")}
+        # And distinct from the same-named string key.
+        assert Keyword("open") not in {"open": 1}
 
 
 class TestTokenizer:
@@ -122,7 +149,7 @@ class TestParser:
         assert isinstance(expr[2], SList)
 
     def test_mixed_types(self):
-        expr = parse('(set obj :locked false)')
+        expr = parse("(set obj :locked false)")
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("set")
         assert expr[1] == Symbol("obj")
@@ -193,7 +220,7 @@ class TestRealWorldExamples:
         assert expr[0] == Symbol("when")
 
     def test_quantifier(self):
-        expr = parse('(some (fn (?obj) (:lightbit ?obj)) (inventory))')
+        expr = parse("(some (fn (?obj) (:lightbit ?obj)) (inventory))")
         assert isinstance(expr, SList)
         assert expr[0] == Symbol("some")
 
@@ -250,7 +277,7 @@ class TestToString:
         assert to_string(expr) == original
 
     def test_roundtrip_complex(self):
-        original = '(set obj :locked false)'
+        original = "(set obj :locked false)"
         expr = parse(original)
         assert to_string(expr) == original
 

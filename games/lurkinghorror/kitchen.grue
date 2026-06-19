@@ -36,9 +36,10 @@
 
 (room @kitchen
   :description "Kitchen"
-  :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a
-          counter are a refrigerator and a microwave."
-  :rdesc "A grubby 1980s university break-room kitchen: a dirty counter under fluorescent light, no windows, a refrigerator and a microwave against the wall."
+  :ldesc "This is a filthy kitchen. The exit is to the east. On the wall near a counter are a
+  refrigerator and a microwave."
+  :rdesc "A grubby 1980s university break-room kitchen: a dirty counter under fluorescent light, no
+  windows, a refrigerator and a microwave against the wall."
 
   :properties (:lit true)
   :exits ((east :to @cs-2nd)))
@@ -53,9 +54,9 @@
 
   :render (fn ()
     (cond
-      ((:open self) "open")
-      ((queued? microwave-running) "running")
-      (true "closed")))
+      ((:open self) :open)
+      ((queued? microwave-running) :running)
+      (true :closed)))
   :rdesc (:open    "A 1980s microwave oven, door open, interior visible, mounted above a kitchen counter."
           :running "A 1980s microwave oven running, interior light on, mounted above a kitchen counter."
           :closed  "A 1980s microwave oven, door closed, mounted above a kitchen counter.")
@@ -65,8 +66,11 @@
       (success :context
         ((description
           (if (queued? microwave-running)
-            "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is on."
-            (str "The microwave oven hangs over the kitchen counter. It has more complicated controls than your PC. There is an LED readout above the controls. The microwave is off and it's "
+            "The microwave oven hangs over the kitchen counter. It has more complicated controls
+            than your PC. There is an LED readout above the controls. The microwave is on."
+            (str "The microwave oven hangs over the kitchen counter. It has more complicated
+                 controls than your PC. There is an LED readout above the controls. The microwave is off
+                 and it's "
                  (if (:open ?self) "open" "closed")
                  "."))))))
 
@@ -236,7 +240,7 @@
   :properties (:nodesc true :searchable true :container true :openable true :readable true :capacity 200)
 
   :render (fn ()
-    (if (:open self) "open" "closed"))
+    (if (:open self) :open :closed))
   :rdesc (:open   "An old white refrigerator, door open, revealing cluttered shelves with soggy lunch bags and old food containers."
           :closed "An old white refrigerator with notes and papers stuck to the front, door closed.")
 

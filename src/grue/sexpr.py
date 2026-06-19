@@ -24,8 +24,8 @@ Examples:
 """
 
 from dataclasses import dataclass
-from typing import Union
 from enum import Enum, auto
+from typing import Union
 
 
 class TokenType(Enum):
@@ -68,6 +68,7 @@ class SExprError(Exception):
 @dataclass
 class Symbol:
     """An identifier/symbol like 'has-flag' or 'TAKEBIT'."""
+
     name: str
 
     def __repr__(self) -> str:
@@ -84,16 +85,34 @@ class Symbol:
 
 @dataclass
 class Keyword:
-    """A keyword like ':locked' or ':description'."""
+    """A keyword like ':locked' or ':description'.
+
+    Keywords are self-denoting, interned-by-name values in the Lisp/Clojure
+    sense and are DISTINCT from strings: ``Keyword("open") != "open"``. They are
+    value-equal and hashable by name, so they can serve as map keys / set
+    members (e.g. render variant tags). A string with the same characters is a
+    different kind of value (arbitrary text / a literal key), never equal to a
+    keyword.
+    """
+
     name: str
 
     def __repr__(self) -> str:
         return f":{self.name}"
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Keyword):
+            return self.name == other.name
+        return False
+
+    def __hash__(self) -> int:
+        return hash(("keyword", self.name))
+
 
 @dataclass
 class SList:
     """A list/form like (has-flag obj TAKEBIT)."""
+
     items: list["SExpr"]
 
     def __repr__(self) -> str:
@@ -248,11 +267,11 @@ class Tokenizer:
     def is_symbol_start(self, ch: str) -> bool:
         """Check if character can start a symbol."""
         return (
-            ch.isalpha() or
-            ch == "_" or
-            ch == "@" or  # Entity prefix
-            ch in "=<>!?+-*/" or
-            ch == ":"
+            ch.isalpha()
+            or ch == "_"
+            or ch == "@"  # Entity prefix
+            or ch in "=<>!?+-*/"
+            or ch == ":"
         )
 
     def is_symbol_char(self, ch: str) -> bool:
@@ -278,10 +297,7 @@ class Tokenizer:
         text = "".join(result)
 
         if not text:
-            raise SExprError(
-                f"Expected symbol after ':'",
-                start_line, start_col
-            )
+            raise SExprError(f"Expected symbol after ':'", start_line, start_col)
 
         # Check for booleans
         if text.lower() == "true":
@@ -408,25 +424,20 @@ class Parser:
         elif tok.type == TokenType.EOF:
             raise SExprError("Unexpected end of input", tok.line, tok.col)
         else:
-            raise SExprError(
-                f"Unexpected token: {tok.type}",
-                tok.line, tok.col
-            )
+            raise SExprError(f"Unexpected token: {tok.type}", tok.line, tok.col)
 
     def parse_list(self) -> SList:
         lparen = self.advance()
         if lparen.type != TokenType.LPAREN:
             raise SExprError(
-                f"Expected '(', got {lparen.type}",
-                lparen.line, lparen.col
+                f"Expected '(', got {lparen.type}", lparen.line, lparen.col
             )
 
         items = []
         while self.peek().type != TokenType.RPAREN:
             if self.peek().type == TokenType.EOF:
                 raise SExprError(
-                    "Unclosed list - expected ')'",
-                    lparen.line, lparen.col
+                    "Unclosed list - expected ')'", lparen.line, lparen.col
                 )
             items.append(self.parse_expr())
 
@@ -469,7 +480,7 @@ def to_string(expr: SExpr) -> str:
         return f":{expr.name}"
     elif isinstance(expr, SList):
         # Pretty-print quote/quasiquote/unquote forms
-        if (len(expr.items) == 2 and isinstance(expr.items[0], Symbol)):
+        if len(expr.items) == 2 and isinstance(expr.items[0], Symbol):
             sym_name = expr.items[0].name
             if sym_name == "quote":
                 return f"'{to_string(expr.items[1])}"

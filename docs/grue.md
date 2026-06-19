@@ -745,11 +745,12 @@ Room definition. Rooms are named entities with:
 - `:properties` - Key-value properties
 - `:behaviors` - Room-level action handlers (see Room Hooks below)
 - `:render` - Variant selector (only needed when the room has more than one
-  variant): a `(fn () ...)` returning a variant token string, or a literal
-  asset-key string to reuse a shared image. Absent ⇒ a single variant. Room
-  variants should depend only on room-global state (see Rendering below).
+  variant): a `(fn () ...)` returning a variant **tag keyword** (e.g. `:lit`), a
+  literal keyword tag, or a literal **string** to reuse a verbatim shared key.
+  Absent ⇒ a single variant. Room variants should depend only on room-global
+  state (see Rendering below).
 - `:rdesc` - Render brief(s): a string (single variant) or a
-  `(:variant "brief" ...)` map (one brief per variant token). Falls back to
+  `(:variant "brief" ...)` map (one brief per variant tag). Falls back to
   `:description` when absent.
 
 **Room Hooks:**
@@ -791,10 +792,11 @@ Object definition. Objects are named entities with:
 - `:properties` - Key-value properties
 - `:behaviors` - Verb-to-handler mappings (see Behaviors section)
 - `:render` - Variant selector (only needed when the object has more than one
-  variant): a `(fn () ...)` returning a variant token string, or a literal
-  asset-key string to reuse a shared image. Absent ⇒ a single variant.
+  variant): a `(fn () ...)` returning a variant **tag keyword** (e.g. `:open`), a
+  literal keyword tag, or a literal **string** to reuse a verbatim shared key.
+  Absent ⇒ a single variant.
 - `:rdesc` - Render brief(s): a string (single variant) or a
-  `(:variant "brief" ...)` map (one brief per variant token). Falls back to
+  `(:variant "brief" ...)` map (one brief per variant tag). Falls back to
   `:description` when absent. Fixed objects may carry contextual briefs
   (in-situ); movable objects neutral (white background).
 
@@ -804,14 +806,18 @@ Illustrations are **pre-generated**. An entity's art is keyed by a small set of
 **variants**, and filenames are *derived* — authors never hand-maintain them:
 
 ```
-base name (entity sans @) + variant token  ->  <base>-<token>.png
-@microwave + "open"                         ->  microwave-open.png
+base name (entity sans @) + variant tag  ->  <base>-<tag>.jpg
+@microwave + :open                       ->  microwave-open.jpg
 ```
 
-- `:render` is the **variant selector**: a pure `(fn () ...)` returning a token
-  (e.g. `"open"`). Omit it for single-variant entities (key = `<base>.png`). A
-  literal string is an escape hatch meaning "use this exact key" (e.g. a door
-  reusing its room's image).
+A variant **tag is a keyword** (`:open`) — a self-denoting name, distinct from a
+string. A **string** means something different in `:render`: a verbatim asset key
+(the escape hatch). This keyword/string split is type-directed:
+
+- `:render` is the **variant selector**: a pure `(fn () ...)` returning a tag
+  keyword (e.g. `:open`). Omit it for single-variant entities (key =
+  `<base>`). Returning (or giving as a literal) a **string** instead means "use
+  this verbatim key" (e.g. a door reusing its room's image).
 - `:rdesc` declares the **brief per variant** (a `(:open "..." :closed "...")`
   map), or a single brief string. The map keys *are* the variant set, so the
   keyset is declarative and enumerable without running the selector.
@@ -819,14 +825,18 @@ base name (entity sans @) + variant token  ->  <base>-<token>.png
 
 ```scheme
 (object @microwave
-  :render (fn () (cond ((:open self) "open")
-                       ((queued? microwave-running) "running")
-                       (true "closed")))
+  :render (fn () (cond ((:open self) :open)
+                       ((queued? microwave-running) :running)
+                       (true :closed)))
   :rdesc (:open    "A 1980s microwave, door open, interior visible, above a counter."
           :running "A 1980s microwave running, interior light on, above a counter."
           :closed  "A 1980s microwave, door closed, above a counter."))
-; keys: microwave-open.png / microwave-running.png / microwave-closed.png
+; keys: microwave-open.jpg / microwave-running.jpg / microwave-closed.jpg
 ```
+
+> Keywords vs strings: a keyword `:open` is a self-denoting, interned-by-name
+> value and is **not** equal to the string `"open"`. Variant tags are keywords;
+> arbitrary literal values (verbatim keys, asset filenames) are strings.
 
 The **stage-vs-subject** rule keeps this bounded: a room selector keys only on
 room-global state (lights, flood, power), while an object selector keys only on

@@ -105,15 +105,25 @@ class TestResolveAssetKey:
         )
 
     def test_fn_selector_derives_key(self):
-        spec = parse('(fn () (if true "open" "closed"))')
+        spec = parse("(fn () (if true :open :closed))")
         assert resolve_asset_key("@microwave", spec, MockState()) == "microwave-open"
 
     def test_fn_selector_other_branch(self):
-        spec = parse('(fn () (if false "open" "closed"))')
+        spec = parse("(fn () (if false :open :closed))")
         assert resolve_asset_key("@microwave", spec, MockState()) == "microwave-closed"
 
+    def test_literal_keyword_tag(self):
+        # A bare keyword :render value is a single literal variant tag.
+        spec = parse(":open")
+        assert resolve_asset_key("@microwave", spec, MockState()) == "microwave-open"
+
+    def test_fn_returning_string_is_verbatim_key(self):
+        # A string from a selector is a verbatim key, NOT a derived tag.
+        spec = parse('(fn () "shared-image")')
+        assert resolve_asset_key("@door", spec, MockState()) == "shared-image"
+
     def test_empty_token_falls_back_to_base(self):
-        spec = parse('(fn () (when false "never"))')  # returns nil -> ""
+        spec = parse("(fn () (when false :never))")  # returns nil
         assert resolve_asset_key("@thing", spec, MockState()) == "thing"
 
     def test_bad_selector_raises(self):
@@ -304,19 +314,23 @@ class TestRenderCodomain:
     """Static extraction of the variant tokens a selector can return."""
 
     def test_if_codomain(self):
-        spec = parse('(fn () (if (:open self) "open" "closed"))')
+        spec = parse("(fn () (if (:open self) :open :closed))")
         assert render_codomain(spec) == {"open", "closed"}
 
     def test_cond_codomain(self):
         spec = parse(
-            '(fn () (cond ((:open self) "open") '
-            '((queued? e) "running") (true "closed")))'
+            "(fn () (cond ((:open self) :open) ((queued? e) :running) (true :closed)))"
         )
         assert render_codomain(spec) == {"open", "running", "closed"}
 
     def test_nested_codomain(self):
-        spec = parse('(fn () (if a "x" (if b "y" "z")))')
+        spec = parse("(fn () (if a :x (if b :y :z)))")
         assert render_codomain(spec) == {"x", "y", "z"}
+
+    def test_string_returns_are_not_tags(self):
+        # Verbatim string keys are not variant tags -> empty tag codomain.
+        spec = parse('(fn () (if a "verbatim" :tag))')
+        assert render_codomain(spec) == {"tag"}
 
     def test_unbounded_codomain_is_none(self):
         # Returns a computed value, not a literal -> not statically bounded.
@@ -388,7 +402,7 @@ class TestLintRender:
         (world :name "Test" :player @player)
         (object @player :description "you")
         (object @microwave
-          :render (fn () (if (:open self) "open" "shut"))
+          :render (fn () (if (:open self) :open :shut))
           :rdesc (:open "o" :closed "c"))
         """
         errors = lint_render(parse_grue(source))

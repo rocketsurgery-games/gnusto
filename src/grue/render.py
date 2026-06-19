@@ -2,24 +2,29 @@
 Render spec & brief evaluation for Grue entities (the "variant" model).
 
 An entity's illustration is keyed by a small, finite set of **variants**. Asset
-keys are *derived* from the entity name plus a variant token, so authors never
+keys are *derived* from the entity name plus a variant **tag**, so authors never
 hand-maintain filenames. Keys are **extension-less**; the runtime resolver finds
 the file on disk across supported formats (.jpg/.png/.webp):
 
-    @microwave + "open"  ->  microwave-open   ->  assets/microwave-open.jpg
+    @microwave + :open  ->  microwave-open   ->  assets/microwave-open.jpg
 
-Two fields describe an entity's art:
+A variant tag is a **keyword** (``:open``) — a self-denoting name, distinct from
+a string. A *string* in ``:render`` means something different: a verbatim asset
+key. This keyword/string split is the type-directed contract:
 
 - ``:render`` selects the current **variant** (only needed when an entity has
   more than one). It is one of:
-    * absent      -> a single variant; key = ``<base>``
-    * a string    -> a literal asset key (escape hatch for sharing one image
-                     across entities, e.g. a door that reuses its room's art)
-    * ``(fn () ...)`` returning a variant token string -> key ``<base>-<token>``
+    * absent              -> a single variant; key = ``<base>``
+    * a keyword ``:tag``  -> key ``<base>-<tag>`` (a literal variant tag)
+    * a string ``"key"``  -> that verbatim key (escape hatch for sharing one
+                             image across entities, e.g. a door reusing its
+                             room's art)
+    * ``(fn () ...)`` returning a keyword tag -> key ``<base>-<tag>``
+      (or a string for a verbatim key, or nil for ``<base>``)
 
 - ``:rdesc`` is the generation **brief** (prompt text), one of:
     * a string                          -> the brief for the single variant
-    * a map ``(:open "..." :closed "...")`` -> a brief per variant token
+    * a map ``(:open "..." :closed "...")`` -> a brief per variant tag
 
 The variant set is therefore *declared data* (the ``:rdesc`` map keys), which
 makes the keyset trivially enumerable for static pre-generation. The world-level
@@ -61,8 +66,12 @@ def _eval_selector(
     entity_name: str,
     state: Any,
     functions: dict[str, GrueFn] | None,
-) -> str | None:
-    """Evaluate a (fn () ...) :render selector to a variant token string."""
+) -> Any:
+    """Evaluate a (fn () ...) :render selector, returning its raw value.
+
+    The result is interpreted by ``_interpret_render_value``: a ``Keyword`` is a
+    variant tag, a ``str`` is a verbatim key, ``None`` falls back to the base.
+    """
     if isinstance(spec, SList) and len(spec) >= 1:
         first = spec[0]
         if isinstance(first, Symbol) and first.name == "fn":
@@ -71,10 +80,31 @@ def _eval_selector(
             body = spec[2]
             evaluator = ExprEvaluator(state, functions or {})
             env = Environment(bindings={"self": entity_name})
-            result = evaluator.eval(body, env)
-            return None if result is None else str(result)
+            return evaluator.eval(body, env)
     raise RenderError(
-        f":render selector must be a string or (fn () ...), got {type(spec).__name__}"
+        f":render selector must be a keyword, string, or (fn () ...), "
+        f"got {type(spec).__name__}"
+    )
+
+
+def _interpret_render_value(base: str, value: Any) -> str:
+    """Map a :render value (or selector result) to an asset key.
+
+    Type-directed, mirroring the keyword/string distinction:
+
+    - ``Keyword(name)`` -> ``"<base>-<name>"`` (a variant **tag**)
+    - ``str``           -> the string verbatim (a literal/alias **key**); empty
+                           string falls back to ``"<base>"``
+    - ``None``          -> ``"<base>"`` (single variant)
+    """
+    if value is None:
+        return base
+    if isinstance(value, Keyword):
+        return f"{base}-{value.name}"
+    if isinstance(value, str):
+        return value if value else base
+    raise RenderError(
+        f":render must yield a keyword tag or a string key, got {type(value).__name__}"
     )
 
 
@@ -86,22 +116,23 @@ def resolve_asset_key(
 ) -> str:
     """Resolve the extension-less asset key for an entity's current state.
 
-    - render is None   -> "<base>" (single variant)
-    - render is a str  -> the string verbatim (literal alias / shared key)
-    - render is (fn..) -> "<base>-<token>" (or "<base>" if the token is empty)
+    - render is None      -> "<base>" (single variant)
+    - render is a Keyword -> "<base>-<name>" (a literal variant tag)
+    - render is a str     -> the string verbatim (literal alias / shared key)
+    - render is (fn..)     -> interpret the returned keyword/str/None
 
-    The runtime resolver maps a key to a file on disk by trying supported
-    extensions. Callers should gate on is_renderable() first.
+    Keyword tags and string keys are distinct: ``:open`` -> ``<base>-open``,
+    while ``"open"`` -> the verbatim key ``open``. The runtime resolver maps a
+    key to a file on disk by trying supported extensions. Callers should gate on
+    is_renderable() first.
     """
     base = asset_base(entity_name)
     if render is None:
         return base
-    if isinstance(render, str):
-        return render
-    token = _eval_selector(render, entity_name, state, functions)
-    if not token:
-        return base
-    return f"{base}-{token}"
+    if isinstance(render, (str, Keyword)):
+        return _interpret_render_value(base, render)
+    value = _eval_selector(render, entity_name, state, functions)
+    return _interpret_render_value(base, value)
 
 
 def render_variants(entity: Any) -> list[str] | None:
@@ -120,11 +151,13 @@ def render_keyset(entity_name: str, entity: Any) -> set[str]:
     """
     render = getattr(entity, "render", None)
     if isinstance(render, str):
-        return {render}  # literal alias -> single shared key
+        return {render}  # literal string -> verbatim alias / shared key
     base = asset_base(entity_name)
     variants = render_variants(entity)
     if variants:
         return {f"{base}-{v}" for v in variants}
+    if isinstance(render, Keyword):
+        return {f"{base}-{render.name}"}  # literal keyword tag, single variant
     if is_renderable(entity):
         return {base}
     return set()
@@ -277,34 +310,36 @@ def render_reads(spec: SExpr | None) -> set[RenderRead]:
 
 
 def render_codomain(spec: SExpr | None) -> set[str] | None:
-    """The finite set of variant tokens a selector can return, or None.
+    """The finite set of variant **tag names** a selector can return, or None.
 
     Statically evaluates the *shape* of the selector body (``if`` / ``cond`` /
-    ``when`` / ``do`` / string literals). Branches that yield nil/empty map to
-    the base key and contribute no token. Returns ``None`` when any reachable
-    branch can produce a value we cannot prove is a literal token (i.e. the
-    codomain is not statically bounded).
+    ``when`` / ``do``), collecting the names of the ``Keyword`` variant tags it
+    can yield. Branches that yield nil or a verbatim string key contribute no
+    tag. Returns ``None`` when any reachable branch can produce a value we cannot
+    prove (i.e. the tag codomain is not statically bounded).
     """
     body = _selector_body(spec)
     if body is None:
-        # A literal-string selector is its own (single) key, handled elsewhere.
+        # A literal string/keyword selector is its own key, handled elsewhere.
         return None
     tokens, exact = _codomain_of(body)
     return tokens if exact else None
 
 
 def _codomain_of(expr: SExpr) -> tuple[set[str], bool]:
-    """(literal tokens, exact?) for an expression's return value.
+    """(variant tag names, exact?) for an expression's return value.
 
-    ``exact`` is False if some branch can return an unprovable (non-literal)
-    value. nil/empty results contribute no token but keep ``exact`` True.
+    Only ``Keyword`` leaves count as variant tags. ``exact`` is False if some
+    branch can return an unprovable value. nil, booleans, and verbatim string
+    keys contribute no tag but keep ``exact`` True.
     """
-    if expr is None or (isinstance(expr, str) and expr == ""):
+    if isinstance(expr, Keyword):
+        return {expr.name}, True
+    if expr is None or isinstance(expr, str):
+        # nil or a verbatim string key -> not a variant tag.
         return set(), True
-    if isinstance(expr, str):
-        return {expr}, True
     if isinstance(expr, bool):
-        # true/false branch markers (e.g. cond's `true`) carry no token.
+        # true/false branch markers (e.g. cond's `true`) carry no tag.
         return set(), True
     if not isinstance(expr, SList) or len(expr) == 0:
         return set(), False

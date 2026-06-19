@@ -1,15 +1,16 @@
 """Tests for expression evaluator."""
 
 import pytest
+
 from grue.expr import (
-    ExprEvaluator,
     EffectExecutor,
     Environment,
     EvalError,
+    ExprEvaluator,
     eval_predicate,
     execute_effect,
 )
-from grue.sexpr import parse, Keyword
+from grue.sexpr import Keyword, parse
 
 
 class MockWorldState:
@@ -41,8 +42,13 @@ class MockWorldState:
         # Object properties (unified with flags using lowercase names)
         # score/moves are player properties, not globals
         self.properties = {
-            "FLASHLIGHT": {"battery_level": 100, "DESC": "A sturdy flashlight",
-                          "takeable": True, "light": True, "on": True},
+            "FLASHLIGHT": {
+                "battery_level": 100,
+                "DESC": "A sturdy flashlight",
+                "takeable": True,
+                "light": True,
+                "on": True,
+            },
             "KEY": {"takeable": True},
             "DOOR": {"locked": True, "door": True},
             "HACKER": {"blocking": True, "personality": "antisocial", "person": True},
@@ -75,7 +81,11 @@ class MockWorldState:
         return "PLAYER"
 
     def get_inventory(self) -> list[str]:
-        return [obj for obj, loc in self.locations.items() if loc == "PLAYER" and obj != "PLAYER"]
+        return [
+            obj
+            for obj, loc in self.locations.items()
+            if loc == "PLAYER" and obj != "PLAYER"
+        ]
 
     def is_visible(self, obj: str) -> bool:
         # Object is visible if in player's location or in inventory
@@ -117,6 +127,14 @@ class TestBasicPredicates:
         state = MockWorldState()
         assert eval_predicate("(= 1 1)", state) is True
         assert eval_predicate("(= 1 2)", state) is False
+
+    def test_keyword_equality_is_lisp_like(self):
+        # Keywords are self-denoting and equal by name...
+        state = MockWorldState()
+        assert eval_predicate("(= :open :open)", state) is True
+        assert eval_predicate("(= :open :closed)", state) is False
+        # ...but a keyword is NOT equal to a same-named string.
+        assert eval_predicate('(= :open "open")', state) is False
 
     def test_comparisons(self):
         state = MockWorldState()
@@ -463,12 +481,14 @@ class TestUserDefinedFunctions:
         executor = EffectExecutor(state)
 
         # Define function with and/or/not
-        executor.execute(parse("""
+        executor.execute(
+            parse("""
             (defn can-take? (obj)
               (and (:takeable obj)
                    (visible? obj)
                    (not (held? obj))))
-        """))
+        """)
+        )
 
         # CHAIR can be taken (takeable, visible in room, not held)
         assert executor._predicates.eval(parse("(can-take? CHAIR)")) is True
@@ -483,7 +503,9 @@ class TestUserDefinedFunctions:
         # Define helper
         executor.execute(parse("(defn is-person? (obj) (:person obj))"))
         # Define function that uses helper
-        executor.execute(parse("(defn is-person-here? (obj) (and (is-person? obj) (here? obj)))"))
+        executor.execute(
+            parse("(defn is-person-here? (obj) (and (is-person? obj) (here? obj)))")
+        )
 
         assert executor._predicates.eval(parse("(is-person-here? HACKER)")) is True
         # CHAIR returns None for :person (falsy), so (and nil ...) is False
@@ -622,19 +644,25 @@ class TestHigherOrderFunctions:
     def test_keep_positive(self):
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        result = evaluator.eval(parse("(keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2))"))
+        result = evaluator.eval(
+            parse("(keep (fn (?x) (if (> ?x 0) ?x nil)) '(-1 0 1 2))")
+        )
         assert result == [1, 2]
 
     def test_reduce_sum(self):
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        result = evaluator.eval(parse("(reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3 4))"))
+        result = evaluator.eval(
+            parse("(reduce (fn (?acc ?x) (+ ?acc ?x)) 0 '(1 2 3 4))")
+        )
         assert result == 10
 
     def test_reduce_reverse(self):
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        result = evaluator.eval(parse("(reduce (fn (?acc ?x) (cons ?x ?acc)) '() '(1 2 3))"))
+        result = evaluator.eval(
+            parse("(reduce (fn (?acc ?x) (cons ?x ?acc)) '() '(1 2 3))")
+        )
         assert result == [3, 2, 1]
 
     def test_reduce_empty(self):
@@ -648,9 +676,9 @@ class TestHigherOrderFunctions:
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
         # Double values then filter for > 3
-        result = evaluator.eval(parse(
-            "(filter (fn (?x) (> ?x 3)) (map (fn (?x) (* ?x 2)) '(1 2 3)))"
-        ))
+        result = evaluator.eval(
+            parse("(filter (fn (?x) (> ?x 3)) (map (fn (?x) (* ?x 2)) '(1 2 3)))")
+        )
         assert result == [4, 6]
 
 
@@ -683,7 +711,11 @@ class TestForDoseq:
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
         # For each x, filter y to be less than x
-        result = evaluator.eval(parse("(for (?x '(2 3) ?y (filter (fn (?n) (< ?n ?x)) '(1 2))) (list ?x ?y))"))
+        result = evaluator.eval(
+            parse(
+                "(for (?x '(2 3) ?y (filter (fn (?n) (< ?n ?x)) '(1 2))) (list ?x ?y))"
+            )
+        )
         # x=2: y in [1] (only 1 < 2) -> (2,1)
         # x=3: y in [1,2] (1,2 < 3) -> (3,1), (3,2)
         assert result == [[2, 1], [3, 1], [3, 2]]
@@ -692,7 +724,7 @@ class TestForDoseq:
         """for works with string elements."""
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
-        result = evaluator.eval(parse("(for (?s '(\"a\" \"b\")) (str ?s ?s))"))
+        result = evaluator.eval(parse('(for (?s \'("a" "b")) (str ?s ?s))'))
         assert result == ["aa", "bb"]
 
     def test_doseq_returns_nil(self):
@@ -791,7 +823,7 @@ class TestRange:
         state = MockWorldState()
         evaluator = ExprEvaluator(state)
         with pytest.raises(EvalError) as excinfo:
-            evaluator.eval(parse("(range \"5\")"))
+            evaluator.eval(parse('(range "5")'))
         assert "must be int" in str(excinfo.value)
 
 
@@ -833,9 +865,7 @@ class TestEffectInterpreterBasic:
         """Success with message context."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["success", Keyword("message"), "You got it!"]
-        ])
+        result = interp.interpret([["success", Keyword("message"), "You got it!"]])
         assert result.outcome == "success"
         assert result.context["message"] == "You got it!"
 
@@ -843,9 +873,7 @@ class TestEffectInterpreterBasic:
         """Blocked with reason."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["blocked", Keyword("reason"), "locked"]
-        ])
+        result = interp.interpret([["blocked", Keyword("reason"), "locked"]])
         assert result.outcome == "blocked"
         assert result.reason == "locked"
 
@@ -853,9 +881,17 @@ class TestEffectInterpreterBasic:
         """Blocked with reason and message."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["blocked", Keyword("reason"), "no-key", Keyword("message"), "You need a key."]
-        ])
+        result = interp.interpret(
+            [
+                [
+                    "blocked",
+                    Keyword("reason"),
+                    "no-key",
+                    Keyword("message"),
+                    "You need a key.",
+                ]
+            ]
+        )
         assert result.outcome == "blocked"
         assert result.reason == "no-key"
         assert result.context["message"] == "You need a key."
@@ -871,9 +907,7 @@ class TestEffectInterpreterBasic:
         """Redirect with action."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["redirect", ["do", "@door", ":open"]]
-        ])
+        result = interp.interpret([["redirect", ["do", "@door", ":open"]]])
         assert result.outcome == "redirect"
         assert result.redirect_action == ["do", "@door", ":open"]
 
@@ -885,10 +919,7 @@ class TestEffectInterpreterMutations:
         """Move effect changes object location."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["move", "KEY", "HALLWAY"],
-            ["success"]
-        ])
+        result = interp.interpret([["move", "KEY", "HALLWAY"], ["success"]])
         assert result.outcome == "success"
         assert state.locations["KEY"] == "HALLWAY"
         assert "move KEY to HALLWAY" in result.effects_applied
@@ -897,10 +928,9 @@ class TestEffectInterpreterMutations:
         """Set effect changes object property."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["set", "@player", Keyword("score"), 100],
-            ["success"]
-        ])
+        result = interp.interpret(
+            [["set", "@player", Keyword("score"), 100], ["success"]]
+        )
         assert result.outcome == "success"
         assert state.properties["@player"]["score"] == 100
         assert "set @player score = 100" in result.effects_applied
@@ -910,10 +940,7 @@ class TestEffectInterpreterMutations:
         state = MockStateWithQueues()
         state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["inc", "@player", Keyword("score")],
-            ["success"]
-        ])
+        result = interp.interpret([["inc", "@player", Keyword("score")], ["success"]])
         assert result.outcome == "success"
         assert state.properties["@player"]["score"] == 11
 
@@ -922,10 +949,9 @@ class TestEffectInterpreterMutations:
         state = MockStateWithQueues()
         state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["inc", "@player", Keyword("score"), 5],
-            ["success"]
-        ])
+        result = interp.interpret(
+            [["inc", "@player", Keyword("score"), 5], ["success"]]
+        )
         assert result.outcome == "success"
         assert state.properties["@player"]["score"] == 15
 
@@ -934,10 +960,7 @@ class TestEffectInterpreterMutations:
         state = MockStateWithQueues()
         state.properties["@player"] = {"score": 10}
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["dec", "@player", Keyword("score")],
-            ["success"]
-        ])
+        result = interp.interpret([["dec", "@player", Keyword("score")], ["success"]])
         assert result.outcome == "success"
         assert state.properties["@player"]["score"] == 9
 
@@ -945,10 +968,7 @@ class TestEffectInterpreterMutations:
         """Queue effect adds event to queue."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["queue", "@alarm"],
-            ["success"]
-        ])
+        result = interp.interpret([["queue", "@alarm"], ["success"]])
         assert result.outcome == "success"
         assert "@alarm" in state.queues
         assert state.queues["@alarm"] is None  # Indefinite
@@ -957,10 +977,7 @@ class TestEffectInterpreterMutations:
         """Queue effect with countdown."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["queue", "@alarm", 5],
-            ["success"]
-        ])
+        result = interp.interpret([["queue", "@alarm", 5], ["success"]])
         assert result.outcome == "success"
         assert state.queues["@alarm"] == 5
 
@@ -969,10 +986,7 @@ class TestEffectInterpreterMutations:
         state = MockStateWithQueues()
         state.queues["@alarm"] = 3
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["dequeue", "@alarm"],
-            ["success"]
-        ])
+        result = interp.interpret([["dequeue", "@alarm"], ["success"]])
         assert result.outcome == "success"
         assert "@alarm" not in state.queues
 
@@ -980,10 +994,9 @@ class TestEffectInterpreterMutations:
         """Set-prop effect changes object property."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["set-prop", "FLASHLIGHT", "battery_level", 50],
-            ["success"]
-        ])
+        result = interp.interpret(
+            [["set-prop", "FLASHLIGHT", "battery_level", 50], ["success"]]
+        )
         assert result.outcome == "success"
         assert state.properties["FLASHLIGHT"]["battery_level"] == 50
 
@@ -992,12 +1005,14 @@ class TestEffectInterpreterMutations:
         state = MockStateWithQueues()
         state.properties["PLAYER"] = {"score": 0}
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["move", "KEY", "PLAYER"],
-            ["set", "KEY", Keyword("taken"), True],
-            ["inc", "PLAYER", Keyword("score"), 10],
-            ["success", Keyword("message"), "You take the key."]
-        ])
+        result = interp.interpret(
+            [
+                ["move", "KEY", "PLAYER"],
+                ["set", "KEY", Keyword("taken"), True],
+                ["inc", "PLAYER", Keyword("score"), 10],
+                ["success", Keyword("message"), "You take the key."],
+            ]
+        )
         assert result.outcome == "success"
         assert state.locations["KEY"] == "PLAYER"
         assert state.properties["KEY"]["taken"] is True
@@ -1021,10 +1036,7 @@ class TestEffectInterpreterValidation:
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
         with pytest.raises(EvalError) as excinfo:
-            interp.interpret([
-                ["success"],
-                ["blocked", Keyword("reason"), "test"]
-            ])
+            interp.interpret([["success"], ["blocked", Keyword("reason"), "test"]])
         assert "Multiple terminators" in str(excinfo.value)
 
     def test_empty_effect_error(self):
@@ -1048,10 +1060,7 @@ class TestEffectInterpreterValidation:
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
         with pytest.raises(EvalError) as excinfo:
-            interp.interpret([
-                ["unknown-effect", "arg"],
-                ["success"]
-            ])
+            interp.interpret([["unknown-effect", "arg"], ["success"]])
         assert "Unknown effect" in str(excinfo.value)
 
 
@@ -1062,10 +1071,9 @@ class TestEffectInterpreterSetup:
         """Setup processes mutations without terminator."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        effects_applied = interp.interpret_setup([
-            ["move", "KEY", "PLAYER"],
-            ["set", "DOOR", Keyword("open"), True]
-        ])
+        effects_applied = interp.interpret_setup(
+            [["move", "KEY", "PLAYER"], ["set", "DOOR", Keyword("open"), True]]
+        )
         assert state.locations["KEY"] == "PLAYER"
         assert state.properties["DOOR"]["open"] is True
         assert len(effects_applied) == 2
@@ -1075,10 +1083,7 @@ class TestEffectInterpreterSetup:
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
         with pytest.raises(EvalError) as excinfo:
-            interp.interpret_setup([
-                ["move", "KEY", "PLAYER"],
-                ["success"]
-            ])
+            interp.interpret_setup([["move", "KEY", "PLAYER"], ["success"]])
         assert "not allowed in :setup" in str(excinfo.value)
 
     def test_setup_empty_list(self):
@@ -1096,10 +1101,7 @@ class TestExposeEffect:
         """(expose @entity) sets :known true on the entity."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        result = interp.interpret([
-            ["expose", "@students"],
-            ["success"]
-        ])
+        result = interp.interpret([["expose", "@students"], ["success"]])
         assert result.outcome == "success"
         assert state.properties["@students"]["known"] is True
         assert "expose @students" in result.effects_applied
@@ -1108,9 +1110,11 @@ class TestExposeEffect:
         """(expose) works in test :setup context."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
-        effects_applied = interp.interpret_setup([
-            ["expose", "@students"],
-        ])
+        effects_applied = interp.interpret_setup(
+            [
+                ["expose", "@students"],
+            ]
+        )
         assert state.properties["@students"]["known"] is True
         assert len(effects_applied) == 1
 
@@ -1119,20 +1123,14 @@ class TestExposeEffect:
         state = MockStateWithQueues()
         interp = EffectInterpreter(state)
         with pytest.raises(EvalError) as excinfo:
-            interp.interpret([
-                ["expose", "@a", "@b"],
-                ["success"]
-            ])
+            interp.interpret([["expose", "@a", "@b"], ["success"]])
         assert "'expose' expects 1 argument" in str(excinfo.value)
 
     def test_expose_with_variable(self):
         """(expose ?topic) resolves variable binding."""
         state = MockStateWithQueues()
         interp = EffectInterpreter(state, bindings={"topic": "@lovecraft"})
-        result = interp.interpret([
-            ["expose", "?topic"],
-            ["success"]
-        ])
+        result = interp.interpret([["expose", "?topic"], ["success"]])
         assert state.properties["@lovecraft"]["known"] is True
 
 
@@ -1181,15 +1179,15 @@ class TestQuasiquote:
     def test_quasiquote_conditional_effects(self, evaluator):
         """Quasiquote with conditional effect inclusion."""
         evaluator.state.bindings["condition"] = True
-        result = evaluator.eval(parse(
-            "`((effect1) ,@(if condition '((effect2)) '()) (success))"
-        ))
+        result = evaluator.eval(
+            parse("`((effect1) ,@(if condition '((effect2)) '()) (success))")
+        )
         assert result == [["effect1"], ["effect2"], ["success"]]
 
         evaluator.state.bindings["condition"] = False
-        result = evaluator.eval(parse(
-            "`((effect1) ,@(if condition '((effect2)) '()) (success))"
-        ))
+        result = evaluator.eval(
+            parse("`((effect1) ,@(if condition '((effect2)) '()) (success))")
+        )
         assert result == [["effect1"], ["success"]]
 
     def test_quasiquote_multiple_unquotes(self, evaluator):
@@ -1215,23 +1213,21 @@ class TestParamTypeAnnotations:
     """Test type annotations on fn parameters."""
 
     def test_parse_param_list_no_types(self):
-        from grue.sexpr import parse_param_list, SList, Symbol
+        from grue.sexpr import SList, Symbol, parse_param_list
 
         params, types = parse_param_list(SList([Symbol("?x"), Symbol("?y")]))
         assert params == ["x", "y"]
         assert types == {}
 
     def test_parse_param_list_with_type(self):
-        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+        from grue.sexpr import Keyword, SList, Symbol, parse_param_list
 
-        params, types = parse_param_list(
-            SList([Symbol("?seconds"), Keyword("number")])
-        )
+        params, types = parse_param_list(SList([Symbol("?seconds"), Keyword("number")]))
         assert params == ["seconds"]
         assert types == {"seconds": "number"}
 
     def test_parse_param_list_mixed_types(self):
-        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+        from grue.sexpr import Keyword, SList, Symbol, parse_param_list
 
         params, types = parse_param_list(
             SList([Symbol("?target"), Symbol("?value"), Keyword("string")])
@@ -1240,29 +1236,38 @@ class TestParamTypeAnnotations:
         assert types == {"value": "string"}
 
     def test_parse_param_list_all_types(self):
-        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+        from grue.sexpr import Keyword, SList, Symbol, parse_param_list
 
-        params, types = parse_param_list(SList([
-            Symbol("?a"), Keyword("entity"),
-            Symbol("?b"), Keyword("string"),
-            Symbol("?c"), Keyword("number"),
-            Symbol("?d"), Keyword("symbol"),
-        ]))
+        params, types = parse_param_list(
+            SList(
+                [
+                    Symbol("?a"),
+                    Keyword("entity"),
+                    Symbol("?b"),
+                    Keyword("string"),
+                    Symbol("?c"),
+                    Keyword("number"),
+                    Symbol("?d"),
+                    Keyword("symbol"),
+                ]
+            )
+        )
         assert params == ["a", "b", "c", "d"]
         assert types == {"a": "entity", "b": "string", "c": "number", "d": "symbol"}
 
     def test_parse_param_list_unknown_type(self):
-        from grue.sexpr import parse_param_list, SList, Symbol, Keyword
+        from grue.sexpr import Keyword, SList, Symbol, parse_param_list
 
         with pytest.raises(ValueError, match="Unknown parameter type"):
             parse_param_list(SList([Symbol("?x"), Keyword("bogus")]))
 
     def test_parse_param_list_require_question_mark(self):
-        from grue.sexpr import parse_param_list, SList, Symbol
+        from grue.sexpr import SList, Symbol, parse_param_list
 
         with pytest.raises(ValueError, match="Expected \\?param"):
             parse_param_list(
-                SList([Symbol("x")]), require_question_mark=True,
+                SList([Symbol("x")]),
+                require_question_mark=True,
             )
 
     def test_fn_with_type_annotation(self):

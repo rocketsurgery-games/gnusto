@@ -97,12 +97,16 @@ both fill the identical keyset.
 ## The variant model (`:render` / `:rdesc` / `:visual-style`)
 
 An entity's art is keyed by a small set of **variants**, and filenames are
-*derived* (`<base>-<token>.png`) — authors never hand-maintain filenames.
+*derived* (`<base>-<tag>.jpg`) — authors never hand-maintain filenames.
+
+A variant **tag is a keyword** (`:open`), distinct from a string. A *string* in
+`:render` means a verbatim asset key (the escape hatch) — keyword/string is the
+type-directed contract.
 
 - **`:render`** is the **variant selector**: a pure `(fn () ...)` returning a
-  variant token (e.g. `"open"`). Omit it for single-variant entities
-  (key = `<base>.png`). A literal string is an escape hatch meaning "use this
-  exact key" (e.g. a door reusing its room's image).
+  variant tag keyword (e.g. `:open`). Omit it for single-variant entities
+  (key = `<base>`). Returning (or supplying as a literal) a **string** instead
+  means "use this verbatim key" (e.g. a door reusing its room's image).
 - **`:rdesc`** declares the **brief per variant** — a `(:open "..." :closed "...")`
   map, or a single brief string. The map keys *are* the variant set, so the
   keyset is declarative (no need to run the selector to enumerate it). Falls
@@ -112,13 +116,13 @@ An entity's art is keyed by a small set of **variants**, and filenames are
 
 ```scheme
 (object @microwave
-  :render (fn () (cond ((:open self)               "open")
-                       ((queued? microwave-running) "running")
-                       (true                        "closed")))
+  :render (fn () (cond ((:open self)                :open)
+                       ((queued? microwave-running) :running)
+                       (true                        :closed)))
   :rdesc (:open    "A 1980s microwave, door open, interior visible, above a counter."
           :running "A 1980s microwave running, interior light on, above a counter."
           :closed  "A 1980s microwave, door closed, above a counter."))
-; keys: microwave-open.png / microwave-running.png / microwave-closed.png
+; keys: microwave-open.jpg / microwave-running.jpg / microwave-closed.jpg
 ```
 
 The set of keys an entity can resolve to, intersected with reachable state, is

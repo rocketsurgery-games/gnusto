@@ -118,14 +118,16 @@ class GrueRoom:
         :ldesc (fn () (str "The door is " (if (:open @door) "open" "closed") "."))
 
     Render spec (:render):
-        A string or function that evaluates to an asset key (image filename):
-        :render "dusty-room.png"
-        :render (fn () (if (:lit ?self) "room-lit.png" "room-dark.png"))
+        A variant selector. A function returning a variant tag keyword, a literal
+        keyword tag, or a literal string for a verbatim shared key:
+        :render :lit
+        :render (fn () (if (:lit ?self) :lit :dark))
+        :render "shared-room-image"   ; verbatim key (escape hatch)
 
     Render brief (:rdesc):
-        A string or function describing the scene for image generation / artist
-        briefs, distinct from the player-facing :description. State-aware like
-        :render. Falls back to :description when absent.
+        A string or a (:variant "brief" ...) map describing the scene for image
+        generation / artist briefs, distinct from the player-facing
+        :description. Falls back to :description when absent.
         :rdesc "A dingy 1980s computer lab, fluorescent-lit, empty of people."
     """
 
@@ -173,15 +175,18 @@ class GrueObject:
         :ldesc (fn () (str "The lantern is " (if (:lit ?self) "glowing" "dark") "."))
 
     Render spec (:render):
-        A string or function that evaluates to an asset key (image filename):
-        :render "lantern.png"
-        :render (fn () (if (:lit ?self) "lantern-lit.png" "lantern-dark.png"))
+        A variant selector. A function returning a variant tag keyword, a literal
+        keyword tag, or a literal string for a verbatim shared key:
+        :render :lit
+        :render (fn () (if (:lit ?self) :lit :dark))
+        :render "shared-image"   ; verbatim key (escape hatch)
 
     Render brief (:rdesc):
-        A string or function describing the subject for image generation / artist
-        briefs, distinct from the player-facing :description. State-aware like
-        :render. Falls back to :description when absent. Fixed objects may carry
-        contextual briefs (in-situ); movable objects neutral (white background).
+        A string or a (:variant "brief" ...) map describing the subject for image
+        generation / artist briefs, distinct from the player-facing
+        :description. Falls back to :description when absent. Fixed objects may
+        carry contextual briefs (in-situ); movable objects neutral (white
+        background).
         :rdesc "A brass lantern with glass panels, on a solid white background."
     """
 
@@ -399,7 +404,12 @@ def expect_string(expr: SExpr, what: str) -> str:
 
 
 def sexpr_to_value(expr: SExpr) -> Any:
-    """Convert an S-expression to a Python value."""
+    """Convert an S-expression to a Python value.
+
+    Keywords are preserved as ``Keyword`` values (self-denoting, distinct from
+    strings) rather than lowered to a ``":name"`` string — a keyword value and a
+    same-named string are different values.
+    """
     if isinstance(expr, Symbol):
         return expr.name
     elif isinstance(expr, (str, int, bool)):
@@ -407,7 +417,7 @@ def sexpr_to_value(expr: SExpr) -> Any:
     elif isinstance(expr, SList):
         return [sexpr_to_value(item) for item in expr]
     elif isinstance(expr, Keyword):
-        return f":{expr.name}"
+        return expr
     else:
         return expr
 
