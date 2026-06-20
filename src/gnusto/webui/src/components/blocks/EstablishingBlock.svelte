@@ -66,9 +66,9 @@
     font-size: 0.78rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #c4ff8a;
+    color: var(--game-accent-glow);
     background: rgba(4, 7, 10, 0.72);
-    border-left: 3px solid #8fe06a;
+    border-left: 3px solid var(--game-accent);
     padding: 5px 10px;
     text-shadow: 0 0 8px rgba(143, 224, 106, 0.5);
   }
@@ -78,7 +78,7 @@
     aspect-ratio: 5 / 2;
     display: grid;
     place-items: center;
-    background: radial-gradient(120% 120% at 50% 30%, #16262d, #04070a 70%);
+    background: radial-gradient(120% 120% at 50% 30%, var(--game-panel-2), var(--game-ink) 70%);
     text-align: center;
     padding: 1.5rem;
   }
@@ -88,7 +88,7 @@
     font-size: clamp(1.3rem, 5vw, 2.2rem);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #dbe6e3;
+    color: var(--game-text);
     text-shadow: 0 0 26px rgba(143, 224, 106, 0.25);
   }
 

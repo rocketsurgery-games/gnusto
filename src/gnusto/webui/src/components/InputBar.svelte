@@ -83,6 +83,8 @@
     height: var(--input-height);
     padding: 0.75rem 2rem;
     background: var(--bg-primary);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -10px 24px -12px #000;
     z-index: 10;
   }
 
@@ -98,6 +100,7 @@
     color: var(--accent-green);
     font-family: var(--font-mono);
     font-size: 0.95rem;
+    text-shadow: 0 0 8px rgba(143, 224, 106, 0.4);
   }
 
   input {

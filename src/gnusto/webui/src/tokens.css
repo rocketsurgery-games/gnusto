@@ -1,51 +1,81 @@
-/* Design tokens — extracted from style.css */
+/* Design tokens — dark graphic-novel-horror theme (gnusto-4ac5.9).
+
+   The game's VISUAL IDENTITY (the drift-prone colors that the generated art is
+   also keyed to) lives in the --game-* layer below. These are DEFAULTS; the
+   per-game theme will override --game-* from the single source declared in Grue
+   (world :visual-style :palette) so the art and the chrome cannot drift apart.
+   Everything else (semantic tokens, fonts, chrome metrics) derives from them. */
 
 :root {
-  --bg-primary: #ffffff;
-  --text-primary: #2a2a2a;
-  --text-secondary: #555;
-  --text-muted: #999;
-  --text-bright: #111;
-  --accent-cyan: #1a7a8a;
-  --accent-green: #2e7d32;
-  --accent-yellow: #b8860b;
-  --accent-magenta: #8e3a8e;
-  --accent-soft: #7c6a99;
-  --border: #d0d0d0;
-  --think-bg: #f5f0fa;
-  --think-text: #6a4f8a;
-  --think-border: #c4a8d8;
-  --ambient-color: #6a8a9a;
-  --reveal-text: #3a6a4a;
+    /* ---- game visual identity (overridable per-game) -------------------- */
+    --game-bg: #080d10; /* page / gutter behind the strip            */
+    --game-panel: #101c22; /* dark teal panel fill                      */
+    --game-panel-2: #16262d;
+    --game-ink: #04070a; /* heavy ink                                 */
+    --game-line: #2c4650; /* hairline teal                            */
+    --game-accent: #8fe06a; /* sickly fluorescent green               */
+    --game-accent-glow: #c4ff8a;
+    --game-warm: #e6a45c; /* warm incandescent highlight              */
+    --game-paper: #e7e0cd; /* caption / specimen-plate parchment      */
+    --game-paper-ink: #1b1813;
+    --game-text: #dbe6e3;
+    --game-text-dim: #8aa0a0;
 
-  --font-body: Georgia, 'Times New Roman', serif;
-  --font-ui: 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Consolas', 'Monaco', monospace;
+    /* ---- semantic tokens (derived from the identity) -------------------- */
+    --bg-primary: var(--game-bg);
+    --text-primary: var(--game-text);
+    --text-secondary: #b7c6c3;
+    --text-muted: #7c9290;
+    --text-bright: #eef5f3;
 
-  --panel-radius: 8px;
-  --block-gap: 1rem;
-  --image-overhang: 100px;
+    --accent-cyan: #5fb8c9; /* locator / links                          */
+    --accent-green: var(--game-accent);
+    --accent-yellow: var(--game-warm);
+    --accent-magenta: #c79ad8; /* @reference highlight (readable on dark)  */
+    --accent-soft: #7c6a99;
+    --border: var(--game-line);
 
-  --sidebar-width: 220px;
-  --input-height: 3rem;
+    --think-bg: #161f2a;
+    --think-text: #bda9dd;
+    --think-border: #5a4a7a;
+    --ambient-color: #6f93a2;
+    --reveal-text: #8fcf93;
 
-  font-family: var(--font-body);
-  font-size: 18px;
-  line-height: 1.7;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
+    /* panel chrome shared by stream surfaces */
+    --panel-ink: var(--game-ink);
+    --panel-fill: var(--game-panel);
+    --paper: var(--game-paper);
+    --paper-ink: var(--game-paper-ink);
+
+    --font-body: Georgia, "Times New Roman", serif;
+    --font-ui: "Segoe UI", system-ui, sans-serif;
+    --font-mono: "Courier New", "Consolas", "Monaco", monospace;
+    --font-letter: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+
+    --panel-radius: 3px;
+    --block-gap: 1rem;
+    --image-overhang: 100px;
+
+    --sidebar-width: 220px;
+    --input-height: 3rem;
+
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
 }
 
 @media (max-width: 900px) {
-  :root {
-    --image-overhang: 50px;
-  }
+    :root {
+        --image-overhang: 50px;
+    }
 }
 
 @media (max-width: 768px) {
-  :root {
-    font-size: 16px;
-    --image-overhang: 0px;
-    --sidebar-width: 0px;
-  }
+    :root {
+        font-size: 16px;
+        --image-overhang: 0px;
+        --sidebar-width: 0px;
+    }
 }

@@ -46,7 +46,7 @@
     max-height: 220px;
     object-fit: cover;
     border-radius: 6px;
-    background: #eee;
+    background: var(--panel-fill);
   }
 
   .image-right .reveal-image {

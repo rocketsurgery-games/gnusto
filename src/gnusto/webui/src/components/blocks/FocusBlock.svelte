@@ -43,7 +43,7 @@
     height: 180px;
     object-fit: cover;
     border-radius: 50%;
-    background: #eee;
+    background: var(--panel-fill);
   }
 
   .image-right .focus-image {

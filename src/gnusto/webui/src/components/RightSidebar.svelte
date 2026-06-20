@@ -159,7 +159,7 @@
 
   .entity-btn:hover {
     border-color: var(--border);
-    background: rgba(0, 0, 0, 0.03);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .entity-thumb {
@@ -206,7 +206,7 @@
 
   .exit-btn:hover {
     border-color: var(--border);
-    background: rgba(0, 0, 0, 0.03);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .exit-arrow {
