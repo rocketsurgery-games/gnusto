@@ -112,7 +112,11 @@ type-directed contract.
   keyset is declarative (no need to run the selector to enumerate it). Falls
   back to `:description` when absent.
 - **world `:visual-style`** — a keyword-map (`:prompt`, `:palette`,
-  `:aspect-ratio`) prepended to every brief for a consistent look.
+  `:swatches`, `:aspect-ratio`) prepended to every brief for a consistent look.
+  `:swatches` declares the palette as structured `:token "#hex"` pairs — the
+  single source of the game's colour identity. The same hexes drive the web
+  chrome (`--game-*` CSS vars) and are anchored into every brief, so the
+  generated art and the UI can't drift apart.
 
 ```scheme
 (object @microwave

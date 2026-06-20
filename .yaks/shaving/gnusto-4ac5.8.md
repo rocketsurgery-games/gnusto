@@ -4,7 +4,7 @@ title: Player commands as caption panels
 type: feature
 priority: 3
 created: '2026-06-16T02:18:42Z'
-updated: '2026-06-16T02:18:42Z'
+updated: '2026-06-20T20:39:44Z'
 depends_on:
 - gnusto-4ac5.1
 ---

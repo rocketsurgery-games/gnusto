@@ -194,6 +194,12 @@ def assemble_style(visual_style: dict[str, Any] | None) -> str:
     palette = style.get("palette")
     if palette:
         parts.append(f"Palette: {palette}.")
+    # If structured swatches are declared, anchor the art to the same hex values
+    # that drive the UI chrome (single source -> art and chrome cannot drift).
+    swatches = style.get("swatches")
+    if isinstance(swatches, dict) and swatches:
+        hexes = ", ".join(str(v) for v in swatches.values())
+        parts.append(f"Anchor the palette to these colors: {hexes}.")
     return " ".join(parts)
 
 

@@ -147,7 +147,9 @@
   }
 
   function handleMessage(message: ServerMessage) {
-    if (message.type === 'scene_context') {
+    if (message.type === 'theme') {
+      applyTheme(message.swatches)
+    } else if (message.type === 'scene_context') {
       updateEntities(message.entities)
     } else if (message.type === 'blocks') {
       for (const block of message.blocks) {
@@ -191,6 +193,16 @@
         savesStatus = message.message
         savesStatusError = true
       }
+    }
+  }
+
+  // Apply the game's declared palette swatches as --game-* CSS vars. This is the
+  // single source (world :visual-style :swatches) that also keys the art, so the
+  // chrome and the generated art can't drift (gnusto-4ac5.9).
+  function applyTheme(swatches: Record<string, string>) {
+    const root = document.documentElement
+    for (const [token, hex] of Object.entries(swatches)) {
+      root.style.setProperty(`--game-${token}`, hex)
     }
   }
 

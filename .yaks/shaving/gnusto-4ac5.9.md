@@ -4,7 +4,7 @@ title: Per-game visual theme (palette, fonts, chrome)
 type: feature
 priority: 3
 created: '2026-06-16T02:17:22Z'
-updated: '2026-06-20T20:27:05Z'
+updated: '2026-06-20T20:45:13Z'
 ---
 
 Abstract presentation style per-game without contorting CSS into Grue. Part of the panel-stream UI work (Epic B).
@@ -25,3 +25,7 @@ Reskinned the LIVE UI to the dark graphic-novel-horror theme via the token layer
 STILL OPEN on .9 (keep shaving):
 1. PALETTE SINGLE SOURCE from Grue — the --game-* defaults currently hardcode the LH palette in CSS. To truly derive from the single Grue declaration needs structured swatches on (world :visual-style), which is a LANGUAGE SCHEMA change -> raised with the user for discussion (CLAUDE.md rule) before implementing. Plan: backend reads world.visual_style swatches, injects as --game-* CSS vars; CSS keeps fonts/chrome/layout.
 2. PER-GAME theme.css loading (game-dir asset) so non-LH games override --game-* + fonts. Currently LH theme ships as the global default ('first instance').
+
+---
+▸ 2026-06-20T20:45:13Z
+Palette SINGLE SOURCE now wired (via ntr.23 :swatches): Grue (world :visual-style :swatches) -> backend 'theme' message -> --game-* CSS vars; same hexes anchored into art briefs. tokens.css ships dark-theme defaults that swatches override. LH instance themed. REMAINING (minor, keep shaving): per-game FONTS/lettering + an optional game-dir theme.css for non-colour chrome (SFX lettering font for .5/.9). Colour identity + dark reskin = done.

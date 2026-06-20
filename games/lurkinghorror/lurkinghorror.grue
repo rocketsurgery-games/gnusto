@@ -13,6 +13,14 @@
       :prompt "Full-color graphic-novel horror illustration. Bold ink linework with painted cel
       shading, moody cinematic lighting, deep shadows, heavy atmosphere. Gritty 1980s setting."
       :palette "desaturated dark blues and teals, sickly fluorescent greens, warm incandescent highlights"
+      ; Structured swatches: the single source of the colour identity. Drives both
+      ; the web chrome (CSS --game-* vars) and the art briefs (filfre), so the
+      ; generated art and the UI can't drift apart.
+      :swatches (:bg "#080d10" :panel "#101c22" :panel-2 "#16262d"
+                 :ink "#04070a" :line "#2c4650"
+                 :accent "#8fe06a" :accent-glow "#c4ff8a" :warm "#e6a45c"
+                 :paper "#e7e0cd" :paper-ink "#1b1813"
+                 :text "#dbe6e3" :text-dim "#8aa0a0")
       :aspect-ratio "1:1")
 
   :player @player)

@@ -727,15 +727,28 @@ Game metadata and player declaration.
 - `:visual-style` - Render style keyword-map (optional). A static style prefix
   and hooks prepended to generation briefs. Keys:
   - `:prompt` - Style sentence prepended to every brief (e.g. `"Color graphic-novel horror, inked."`)
-  - `:palette` - Palette hint woven into briefs (e.g. `"dark blues, sickly greens"`)
+  - `:palette` - Prose palette hint woven into briefs (e.g. `"dark blues, sickly greens"`)
+  - `:swatches` - Structured palette as a nested keyword-map of `:token "#hex"`
+    pairs (optional). This is the **single source** of the game's colour
+    identity: the web UI injects each swatch as a `--game-<token>` CSS variable
+    (so the chrome is themed from Grue), and the same hex values are anchored
+    into every art brief (so the generated art can't drift from the chrome).
+    Token names map directly to CSS vars (`:accent-glow` -> `--game-accent-glow`).
   - `:aspect-ratio` - Default aspect ratio (e.g. `"16:9"`)
 
 ```scheme
 (world :name "The Lurking Horror" :player @player
   :visual-style (:prompt "Color graphic-novel horror, inked, painted shading."
                  :palette "dark blues, sickly fluorescent greens"
+                 :swatches (:bg "#080d10" :panel "#101c22" :ink "#04070a"
+                            :accent "#8fe06a" :accent-glow "#c4ff8a"
+                            :warm "#e6a45c" :paper "#e7e0cd" :text "#dbe6e3")
                  :aspect-ratio "16:9"))
 ```
+
+The web UI ships default `--game-*` values (a dark graphic-novel theme); a
+game's `:swatches` override them so colours and generated art share one
+declared identity.
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:

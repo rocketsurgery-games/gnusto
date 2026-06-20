@@ -162,6 +162,12 @@ export interface KgContextMessage {
   content: string;
 }
 
+export interface ThemeMessage {
+  type: "theme";
+  // token name (e.g. "bg", "accent-glow") -> hex; applied as --game-<token>
+  swatches: Record<string, string>;
+}
+
 export type ServerMessage =
   | BlocksMessage
   | TurnCompleteMessage
@@ -173,4 +179,5 @@ export type ServerMessage =
   | SavesListMessage
   | SaveResultMessage
   | LoadResultMessage
-  | KgContextMessage;
+  | KgContextMessage
+  | ThemeMessage;

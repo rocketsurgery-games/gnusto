@@ -212,6 +212,22 @@ class TestVisualStyle:
         world = parse_grue('(world :name "Test" :player @player)')
         assert world.visual_style == {}
 
+    def test_swatches_parsed_as_nested_dict(self):
+        # :swatches is a nested keyword-map (token -> hex) — the single source of
+        # colour identity for both chrome and art. Hyphenated tokens preserved.
+        source = """
+        (world :name "Test" :player @player
+          :visual-style (:prompt "Inked."
+                         :swatches (:bg "#080d10" :accent "#8fe06a"
+                                    :accent-glow "#c4ff8a")))
+        """
+        world = parse_grue(source)
+        assert world.visual_style["swatches"] == {
+            "bg": "#080d10",
+            "accent": "#8fe06a",
+            "accent-glow": "#c4ff8a",
+        }
+
 
 class TestAssembleStyle:
     """The shared style preamble (hoisted, not repeated per entry)."""
@@ -226,6 +242,20 @@ class TestAssembleStyle:
     def test_empty(self):
         assert assemble_style(None) == ""
         assert assemble_style({}) == ""
+
+    def test_swatches_anchor_hexes_into_preamble(self):
+        # Declared swatches anchor the art to the same hexes that drive the
+        # chrome, so art and UI can't drift.
+        style = {
+            "prompt": "Inked.",
+            "swatches": {"bg": "#080d10", "accent": "#8fe06a"},
+        }
+        assert assemble_style(style) == (
+            "Inked. Anchor the palette to these colors: #080d10, #8fe06a."
+        )
+
+    def test_no_swatches_no_anchor(self):
+        assert assemble_style({"prompt": "Inked."}) == "Inked."
 
 
 class TestAssembleBrief:

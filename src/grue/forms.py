@@ -678,7 +678,16 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
         world.intro = expect_string(kwargs["intro"], "world intro")
     if "visual-style" in kwargs:
         # Keyword-map of static render-style hooks (:prompt, :palette, ...).
-        world.visual_style = parse_properties(kwargs["visual-style"])
+        vs_expr = kwargs["visual-style"]
+        world.visual_style = parse_properties(vs_expr)
+        # :swatches is a nested keyword-map (token -> hex). The generic property
+        # parser flattens nested maps to lists, so parse it as a dict explicitly
+        # (token name -> hex string). This single declaration drives both the
+        # web chrome (CSS --game-* vars) and the art briefs (filfre).
+        if isinstance(vs_expr, SList):
+            raw = parse_kwargs(list(vs_expr.items))
+            if "swatches" in raw:
+                world.visual_style["swatches"] = parse_properties(raw["swatches"])
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
 

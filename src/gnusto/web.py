@@ -364,6 +364,13 @@ async def send_initial_state(
     game_dir: Path,
 ) -> None:
     """Send initial game state to the client."""
+    # Per-game theme: inject the declared palette swatches as CSS --game-* vars.
+    # This is the single source (world :visual-style :swatches) that also keys
+    # the generated art, so chrome and art can't drift (gnusto-4ac5.9).
+    swatches = (session.runtime.world.visual_style or {}).get("swatches")
+    if isinstance(swatches, dict) and swatches:
+        await websocket.send_text(json.dumps({"type": "theme", "swatches": swatches}))
+
     blocks: list[ContentBlock] = []
 
     if session.runtime.world.intro:
