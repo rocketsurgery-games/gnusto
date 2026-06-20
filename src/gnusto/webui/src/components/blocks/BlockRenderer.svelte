@@ -11,6 +11,7 @@
   import SystemBlock from './SystemBlock.svelte'
   import CommandBlock from './CommandBlock.svelte'
   import DebugBlock from './DebugBlock.svelte'
+  import EstablishingBlock from './EstablishingBlock.svelte'
 
   interface Props {
     block: RenderableBlock
@@ -20,7 +21,9 @@
 </script>
 
 <div class="block">
-  {#if block.type === 'narrate'}
+  {#if block.type === 'room_enter'}
+    <EstablishingBlock {block} />
+  {:else if block.type === 'narrate'}
     <NarrateBlock {block} />
   {:else if block.type === 'speak'}
     <SpeakBlock {block} />

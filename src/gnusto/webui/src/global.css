@@ -1,105 +1,97 @@
 /* Global resets and shared utilities */
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 html {
-  scroll-padding-bottom: var(--input-height);
+    scroll-padding-bottom: var(--input-height);
 }
 
 body {
-  min-height: 100vh;
+    min-height: 100vh;
 }
 
 #app {
-  min-height: 100vh;
-}
-
-/* Room transition: crossfade */
-.game-content {
-  opacity: 1;
-}
-
-.game-content.fade-out {
-  opacity: 0;
-  transition: opacity 0.25s ease-in;
-}
-
-.game-content.fade-in {
-  animation: room-fade-in 0.35s ease-out forwards;
-}
-
-@keyframes room-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+    min-height: 100vh;
 }
 
 /* Block enter animation */
 @keyframes block-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Utility: @reference highlighting */
 .ref {
-  color: var(--accent-magenta);
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
+    color: var(--accent-magenta);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
 }
 
 .ref:hover {
-  text-decoration-style: solid;
+    text-decoration-style: solid;
 }
 
 /* Targeting mode: pulsing glow on clickable entities */
 @keyframes target-pulse {
-  0%, 100% { box-shadow: 0 0 4px var(--accent-cyan); }
-  50%      { box-shadow: 0 0 12px var(--accent-cyan); }
+    0%,
+    100% {
+        box-shadow: 0 0 4px var(--accent-cyan);
+    }
+    50% {
+        box-shadow: 0 0 12px var(--accent-cyan);
+    }
 }
 
 body.targeting .ref {
-  color: var(--accent-cyan);
-  text-decoration-color: var(--accent-cyan);
-  animation: target-pulse 1.2s ease-in-out infinite;
-  border-radius: 2px;
-  cursor: crosshair;
+    color: var(--accent-cyan);
+    text-decoration-color: var(--accent-cyan);
+    animation: target-pulse 1.2s ease-in-out infinite;
+    border-radius: 2px;
+    cursor: crosshair;
 }
 
 body.targeting .entity-btn {
-  animation: target-pulse 1.2s ease-in-out infinite;
-  border-radius: 3px;
-  cursor: crosshair;
+    animation: target-pulse 1.2s ease-in-out infinite;
+    border-radius: 3px;
+    cursor: crosshair;
 }
 
 /* Targeting prompt in input bar */
 .targeting-prompt {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  max-width: 800px;
-  margin: 0 auto;
-  color: var(--accent-cyan);
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 800px;
+    margin: 0 auto;
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
 }
 
 .targeting-prompt .cancel-btn {
-  background: none;
-  border: 1px solid var(--accent-cyan);
-  color: var(--accent-cyan);
-  font-family: var(--font-ui);
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 3px;
-  cursor: pointer;
-  opacity: 0.8;
+    background: none;
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0.8;
 }
 
 .targeting-prompt .cancel-btn:hover {
-  opacity: 1;
+    opacity: 1;
 }

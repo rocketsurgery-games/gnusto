@@ -8,7 +8,6 @@ Uses content blocks for structured output.
 import asyncio
 import concurrent.futures
 import json
-import re
 import time
 from pathlib import Path
 from typing import Any
@@ -128,39 +127,6 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
         }
     else:
         return {"type": "unknown", "text": str(block)}
-
-
-_SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
-_PREAMBLE_MAX = 150
-
-
-def _build_preamble(blocks: list[ContentBlock]) -> str | None:
-    """Extract a short preamble from streamed blocks for room transitions.
-
-    Collects text from narrative blocks, takes the first sentence (capped at
-    ~150 chars) to summarize what happened en route.
-    """
-    texts: list[str] = []
-    for b in blocks:
-        if isinstance(b, (Narrate, ActionResult, Ambient)):
-            texts.append(b.text.strip())
-        elif isinstance(b, Speak):
-            if b.speaker:
-                texts.append(f'{b.speaker} says, "{b.text.strip()}"')
-            else:
-                texts.append(f'"{b.text.strip()}"')
-    if not texts:
-        return None
-    combined = " ".join(texts)
-    # First sentence
-    m = _SENTENCE_END.search(combined)
-    if m and m.end() <= _PREAMBLE_MAX:
-        return combined[: m.end()].strip()
-    # No sentence boundary found within limit — truncate at word boundary
-    if len(combined) <= _PREAMBLE_MAX:
-        return combined
-    truncated = combined[:_PREAMBLE_MAX].rsplit(" ", 1)[0]
-    return truncated + "..."
 
 
 def create_app(
@@ -487,11 +453,9 @@ async def handle_game_command(
     loop = asyncio.get_running_loop()
 
     send_futures: list[concurrent.futures.Future] = []
-    streamed_blocks: list[ContentBlock] = []
 
     def on_blocks(blocks: list) -> None:
         """Stream content blocks immediately via websocket."""
-        streamed_blocks.extend(blocks)
         block_dicts = [block_to_dict(b) for b in blocks]
         future = asyncio.run_coroutine_threadsafe(
             websocket.send_text(
@@ -553,13 +517,12 @@ async def handle_game_command(
         )
 
     if state.room != previous_room:
-        # Full room transition
+        # Room change: emit a frozen ESTABLISHING panel into the stream.
+        # It snapshots the room at entry and does not track live state after;
+        # the live affordance surface is refreshed separately below / on
+        # subsequent same-room turns via state_update.
         room_block = build_room_block(state, session.runtime, game_dir)
         room_dict = block_to_dict(room_block)
-        # Build preamble from streamed narration (first sentence, capped)
-        preamble = _build_preamble(streamed_blocks)
-        if preamble:
-            room_dict["preamble"] = preamble
         await websocket.send_text(
             json.dumps(
                 {
