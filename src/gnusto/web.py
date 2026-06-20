@@ -14,22 +14,32 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from grue.save import save_game, load_game, list_saves
+from grue.save import list_saves, load_game, save_game
 
 from .agent import GameSession, TurnRecord
 from .commands import handle_command as handle_slash_command
 from .knowledge import KnowledgeGraph
 from .llm import LLMConfig
 from .render import (
-    ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
-    Reveal, Focus, Image, SystemMessage, DebugInfo,
-    build_room_block, build_scene_context,
+    ActionResult,
+    Ambient,
+    ContentBlock,
+    DebugInfo,
+    Focus,
+    Image,
+    Narrate,
+    Reveal,
+    RoomEnter,
+    Speak,
+    SystemMessage,
+    Think,
+    build_room_block,
+    build_scene_context,
 )
 from .state import get_game_state
-
 
 # Path to the built web UI
 WEBUI_DIR = Path(__file__).parent / "webui" / "dist"
@@ -43,10 +53,18 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "room_id": block.room_id,
             "name": block.name,
             "description": block.description,
-            "exits": [{"direction": e.direction, "destination": e.destination}
-                      for e in block.exits],
-            "objects": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in block.objects],
-            "inventory": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in block.inventory],
+            "exits": [
+                {"direction": e.direction, "destination": e.destination}
+                for e in block.exits
+            ],
+            "objects": [
+                {"id": o.id, "name": o.name, "behaviors": o.behaviors}
+                for o in block.objects
+            ],
+            "inventory": [
+                {"id": o.id, "name": o.name, "behaviors": o.behaviors}
+                for o in block.inventory
+            ],
             "image": block.image,
         }
     elif isinstance(block, ActionResult):
@@ -112,7 +130,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
         return {"type": "unknown", "text": str(block)}
 
 
-_SENTENCE_END = re.compile(r'[.!?](?:\s|$)')
+_SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
 _PREAMBLE_MAX = 150
 
 
@@ -137,7 +155,7 @@ def _build_preamble(blocks: list[ContentBlock]) -> str | None:
     # First sentence
     m = _SENTENCE_END.search(combined)
     if m and m.end() <= _PREAMBLE_MAX:
-        return combined[:m.end()].strip()
+        return combined[: m.end()].strip()
     # No sentence boundary found within limit — truncate at word boundary
     if len(combined) <= _PREAMBLE_MAX:
         return combined
@@ -145,7 +163,9 @@ def _build_preamble(blocks: list[ContentBlock]) -> str | None:
     return truncated + "..."
 
 
-def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None = None) -> FastAPI:
+def create_app(
+    game_path: str, debug: bool = False, llm_config: LLMConfig | None = None
+) -> FastAPI:
     """Create the FastAPI application for a game."""
     app = FastAPI(title="Gnusto", debug=debug)
 
@@ -186,8 +206,12 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
                     if command:
                         if command.startswith("/"):
                             session, should_continue = await handle_slash_command_ws(
-                                websocket, session, command,
-                                app.state.game_path, app.state.game_dir, app.state.debug,
+                                websocket,
+                                session,
+                                command,
+                                app.state.game_path,
+                                app.state.game_dir,
+                                app.state.debug,
                                 app.state.llm_config,
                             )
                             if not should_continue:
@@ -197,16 +221,23 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
                             last_room = state_before.room
 
                             await handle_game_command(
-                                websocket, session, command,
-                                last_room, app.state.game_dir,
+                                websocket,
+                                session,
+                                command,
+                                last_room,
+                                app.state.game_dir,
                             )
 
                 elif msg_type == "get-state":
                     context = session.format_debug_context()
-                    await websocket.send_text(json.dumps({
-                        "type": "state-context",
-                        "content": context,
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "state-context",
+                                "content": context,
+                            }
+                        )
+                    )
 
                 elif msg_type == "get-kg":
                     arg = message.get("arg", "").strip()
@@ -224,43 +255,68 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
                         content = kg.recall(arg)
                     else:
                         content = kg.search(arg)
-                    await websocket.send_text(json.dumps({
-                        "type": "kg-context",
-                        "content": content,
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "kg-context",
+                                "content": content,
+                            }
+                        )
+                    )
 
                 elif msg_type == "list-saves":
                     game_name = session.runtime.world.name or "unknown"
                     saves = list_saves(game_name)
-                    await websocket.send_text(json.dumps({
-                        "type": "saves-list",
-                        "saves": [
-                            {"slot": slot, "timestamp": ts}
-                            for slot, ts, _ in saves
-                        ],
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "saves-list",
+                                "saves": [
+                                    {"slot": slot, "timestamp": ts}
+                                    for slot, ts, _ in saves
+                                ],
+                            }
+                        )
+                    )
 
                 elif msg_type == "save":
                     slot = message.get("slot", "default")
                     try:
-                        save_game(session.runtime, slot, session.turn_history, session.summaries)
-                        session.knowledge.save(session.runtime.world.name or "unknown", slot)
-                        await websocket.send_text(json.dumps({
-                            "type": "save-result",
-                            "success": True,
-                            "message": f"Saved to slot '{slot}'",
-                        }))
+                        save_game(
+                            session.runtime,
+                            slot,
+                            session.turn_history,
+                            session.summaries,
+                        )
+                        session.knowledge.save(
+                            session.runtime.world.name or "unknown", slot
+                        )
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "save-result",
+                                    "success": True,
+                                    "message": f"Saved to slot '{slot}'",
+                                }
+                            )
+                        )
                     except Exception as e:
-                        await websocket.send_text(json.dumps({
-                            "type": "save-result",
-                            "success": False,
-                            "message": str(e),
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "save-result",
+                                    "success": False,
+                                    "message": str(e),
+                                }
+                            )
+                        )
 
                 elif msg_type == "load":
                     slot = message.get("slot", "default")
                     try:
-                        history_data, summaries_data, warnings = load_game(session.runtime, slot)
+                        history_data, summaries_data, warnings = load_game(
+                            session.runtime, slot
+                        )
                         session.turn_history.clear()
                         for turn_data in history_data:
                             turn = TurnRecord(
@@ -273,28 +329,41 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
                             session.turn_history.append(turn)
                         session.summaries = summaries_data
                         session.knowledge = KnowledgeGraph.load(
-                            session.runtime.world.name or "unknown", slot,
+                            session.runtime.world.name or "unknown",
+                            slot,
                         )
-                        await websocket.send_text(json.dumps({
-                            "type": "load-result",
-                            "success": True,
-                            "message": f"Loaded slot '{slot}' ({len(session.turn_history)} turns)",
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "load-result",
+                                    "success": True,
+                                    "message": f"Loaded slot '{slot}' ({len(session.turn_history)} turns)",
+                                }
+                            )
+                        )
                         # Reset client and send fresh state
                         await websocket.send_text(json.dumps({"type": "clear"}))
                         await send_initial_state(websocket, session, app.state.game_dir)
                     except FileNotFoundError:
-                        await websocket.send_text(json.dumps({
-                            "type": "load-result",
-                            "success": False,
-                            "message": f"No save found for slot '{slot}'",
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "load-result",
+                                    "success": False,
+                                    "message": f"No save found for slot '{slot}'",
+                                }
+                            )
+                        )
                     except Exception as e:
-                        await websocket.send_text(json.dumps({
-                            "type": "load-result",
-                            "success": False,
-                            "message": str(e),
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "load-result",
+                                    "success": False,
+                                    "message": str(e),
+                                }
+                            )
+                        )
 
         except WebSocketDisconnect:
             pass
@@ -307,41 +376,7 @@ def create_app(game_path: str, debug: bool = False, llm_config: LLMConfig | None
             return FileResponse(index_path)
         return {"error": "Web UI not built. Run: cd src/gnusto/webui && npm run build"}
 
-    # Serve rendered images
-    @app.get("/renders/{path:path}")
-    async def serve_rendered_image(path: str):
-        """Serve images from the game's renders or refs directories."""
-        renders_dir = app.state.game_dir / "assets" / "renders"
-        refs_dir = app.state.game_dir / "assets" / "refs"
-        render_dirs = [renders_dir, renders_dir / "cache"]
-
-        # Try exact match in renders
-        for subdir in render_dirs:
-            img_path = subdir / path
-            if img_path.exists():
-                return FileResponse(img_path)
-
-        stem = Path(path).stem
-        suffix = Path(path).suffix
-
-        # Try stem-based match in renders (hash-suffixed files)
-        for subdir in render_dirs:
-            matches = sorted(subdir.glob(f"{stem}-*{suffix}"))
-            if matches:
-                return FileResponse(matches[-1])
-
-        # Fall back to refs directory (any extension)
-        if refs_dir.exists():
-            ref_path = refs_dir / path
-            if ref_path.exists():
-                return FileResponse(ref_path)
-            for match in refs_dir.glob(f"{stem}.*"):
-                if match.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
-                    return FileResponse(match)
-
-        return {"error": "Image not found"}
-
-    # Serve game assets (refs, renders, etc.) at /assets/
+    # Serve game assets (flat keyed art) at /assets/
     assets_dir = game_dir / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
@@ -372,20 +407,30 @@ async def send_initial_state(
     room_block = build_room_block(state, session.runtime, game_dir)
     blocks.append(room_block)
 
-    blocks.append(SystemMessage(text="Type commands in natural language.", level="info"))
+    blocks.append(
+        SystemMessage(text="Type commands in natural language.", level="info")
+    )
 
     # Send scene context (entity images) before blocks
     scene_ctx = build_scene_context(state, session.runtime, game_dir)
     if scene_ctx:
-        await websocket.send_text(json.dumps({
-            "type": "scene_context",
-            "entities": scene_ctx,
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "scene_context",
+                    "entities": scene_ctx,
+                }
+            )
+        )
 
-    await websocket.send_text(json.dumps({
-        "type": "blocks",
-        "blocks": [block_to_dict(b) for b in blocks],
-    }))
+    await websocket.send_text(
+        json.dumps(
+            {
+                "type": "blocks",
+                "blocks": [block_to_dict(b) for b in blocks],
+            }
+        )
+    )
 
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
@@ -410,16 +455,22 @@ async def handle_slash_command_ws(
         await websocket.send_text(json.dumps({"type": "clear"}))
 
     elif result.action == "reset":
-        session = GameSession.from_game_file(game_path, llm_config=llm_config, debug=debug)
+        session = GameSession.from_game_file(
+            game_path, llm_config=llm_config, debug=debug
+        )
         await websocket.send_text(json.dumps({"type": "clear"}))
         await send_initial_state(websocket, session, game_dir)
         return session, True
 
     if result.blocks:
-        await websocket.send_text(json.dumps({
-            "type": "blocks",
-            "blocks": [block_to_dict(b) for b in result.blocks],
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "blocks",
+                    "blocks": [block_to_dict(b) for b in result.blocks],
+                }
+            )
+        )
 
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
     return session, True
@@ -443,11 +494,15 @@ async def handle_game_command(
         streamed_blocks.extend(blocks)
         block_dicts = [block_to_dict(b) for b in blocks]
         future = asyncio.run_coroutine_threadsafe(
-            websocket.send_text(json.dumps({
-                "type": "blocks",
-                "blocks": block_dicts,
-            })),
-            loop
+            websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "blocks",
+                        "blocks": block_dicts,
+                    }
+                )
+            ),
+            loop,
         )
         send_futures.append(future)
         time.sleep(0.01)
@@ -456,11 +511,15 @@ async def handle_game_command(
         """Stream debug info as a DebugInfo block via websocket."""
         block = DebugInfo(label=action_sexpr, content=result_details)
         future = asyncio.run_coroutine_threadsafe(
-            websocket.send_text(json.dumps({
-                "type": "blocks",
-                "blocks": [block_to_dict(block)],
-            })),
-            loop
+            websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "blocks",
+                        "blocks": [block_to_dict(block)],
+                    }
+                )
+            ),
+            loop,
         )
         send_futures.append(future)
         time.sleep(0.01)
@@ -475,17 +534,23 @@ async def handle_game_command(
     await loop.run_in_executor(None, do_process)
 
     if send_futures:
-        await asyncio.gather(*[asyncio.wrap_future(f) for f in send_futures], return_exceptions=True)
+        await asyncio.gather(
+            *[asyncio.wrap_future(f) for f in send_futures], return_exceptions=True
+        )
 
     state = get_game_state(session.runtime)
 
     # Always refresh scene context (entity images may have changed)
     scene_ctx = build_scene_context(state, session.runtime, game_dir)
     if scene_ctx:
-        await websocket.send_text(json.dumps({
-            "type": "scene_context",
-            "entities": scene_ctx,
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "scene_context",
+                    "entities": scene_ctx,
+                }
+            )
+        )
 
     if state.room != previous_room:
         # Full room transition
@@ -495,25 +560,47 @@ async def handle_game_command(
         preamble = _build_preamble(streamed_blocks)
         if preamble:
             room_dict["preamble"] = preamble
-        await websocket.send_text(json.dumps({
-            "type": "blocks",
-            "blocks": [room_dict],
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "blocks",
+                    "blocks": [room_dict],
+                }
+            )
+        )
     else:
         # Same room — update sidebar (exits, objects, inventory)
         room_block = build_room_block(state, session.runtime, game_dir)
-        await websocket.send_text(json.dumps({
-            "type": "state_update",
-            "exits": [{"direction": e.direction, "destination": e.destination}
-                       for e in room_block.exits],
-            "objects": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in room_block.objects],
-            "inventory": [{"id": o.id, "name": o.name, "behaviors": o.behaviors} for o in room_block.inventory],
-        }))
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "state_update",
+                    "exits": [
+                        {"direction": e.direction, "destination": e.destination}
+                        for e in room_block.exits
+                    ],
+                    "objects": [
+                        {"id": o.id, "name": o.name, "behaviors": o.behaviors}
+                        for o in room_block.objects
+                    ],
+                    "inventory": [
+                        {"id": o.id, "name": o.name, "behaviors": o.behaviors}
+                        for o in room_block.inventory
+                    ],
+                }
+            )
+        )
 
     await websocket.send_text(json.dumps({"type": "turn_complete"}))
 
 
-def run_server(game_path: str, host: str = "127.0.0.1", port: int = 8000, debug: bool = False, llm_config: LLMConfig | None = None) -> None:
+def run_server(
+    game_path: str,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    debug: bool = False,
+    llm_config: LLMConfig | None = None,
+) -> None:
     """Run the web server."""
     import uvicorn
 

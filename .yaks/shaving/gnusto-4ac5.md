@@ -4,7 +4,7 @@ title: Graphic-novel panel stream UI
 type: task
 priority: 2
 created: '2026-06-16T02:16:06Z'
-updated: '2026-06-16T02:16:16Z'
+updated: '2026-06-20T14:54:01Z'
 ---
 
 Completely rethink the gnusto web UI around a graphic-novel PANEL STREAM, removing traditional pinned-panel chrome in favor of a comic presentation throughout.
