@@ -100,6 +100,7 @@ class ContentBlockData:
     entity: str | None = None  # For reveal/focus/splash blocks
     deploy: str | None = None  # Asset deployment: feature | inset | background
     beat: str | None = None  # Pacing intent: aside | normal | emphasis
+    group: str | None = None  # Tier tag: bind small panels into a row
 
 
 @dataclass
@@ -210,6 +211,10 @@ AGENT_RESPONSE_SCHEMA = {
                         "type": ["string", "null"],
                         "enum": ["aside", "normal", "emphasis", None],
                         "description": "Pacing intent (engine maps to size/emphasis): 'emphasis' for a dramatic beat, 'aside' for a throwaway aside, omit/normal otherwise",
+                    },
+                    "group": {
+                        "type": ["string", "null"],
+                        "description": "For small panels (reveal/focus/caption/sfx): a shared tag binding CONSECUTIVE blocks into one comic TIER (a row). Give 2-3 adjacent small panels the same tag. Omit for standalone panels.",
                     },
                 },
                 "required": ["type", "text"],
@@ -475,6 +480,9 @@ class LLMClient:
             # "normal"/"null", which mean "no special emphasis").
             if beat not in ("aside", "emphasis"):
                 beat = None
+            group = block_data.get("group")
+            if not group or group == "null":
+                group = None
             blocks.append(
                 ContentBlockData(
                     type=block_type,
@@ -484,6 +492,7 @@ class LLMClient:
                     entity=entity,
                     deploy=deploy,
                     beat=beat,
+                    group=group,
                 )
             )
 
@@ -515,18 +524,26 @@ def content_block_data_to_render(block: ContentBlockData) -> "render.ContentBloc
         return render.Ambient(text=block.text, beat=beat)
     elif block.type == "reveal":
         return render.Reveal(
-            text=block.text, entity=block.entity, deploy=block.deploy, beat=beat
+            text=block.text,
+            entity=block.entity,
+            deploy=block.deploy,
+            beat=beat,
+            group=block.group,
         )
     elif block.type == "focus":
         return render.Focus(
-            text=block.text, entity=block.entity, deploy=block.deploy, beat=beat
+            text=block.text,
+            entity=block.entity,
+            deploy=block.deploy,
+            beat=beat,
+            group=block.group,
         )
     elif block.type == "caption":
-        return render.Caption(text=block.text, beat=beat)
+        return render.Caption(text=block.text, beat=beat, group=block.group)
     elif block.type == "splash":
         return render.Splash(text=block.text, entity=block.entity, beat=beat)
     elif block.type == "sfx":
-        return render.Sfx(text=block.text, beat=beat)
+        return render.Sfx(text=block.text, beat=beat, group=block.group)
     else:
         return render.Narrate(text=block.text, beat=beat)
 

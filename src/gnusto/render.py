@@ -65,6 +65,12 @@ Beat = Literal["aside", "normal", "emphasis"]
 # LLM picks WHICH asset + this intent; the engine owns the actual pixels.
 Deploy = Literal["feature", "inset", "background"]
 
+# Tier grouping: a string tag binding consecutive SMALL panels into one comic
+# TIER (a row on desktop, stacked on mobile). The LLM tags members; the engine
+# decides the geometry. Only honored on small-panel blocks (reveal/focus/
+# caption/sfx) — flow text is not tiered.
+Group = str
+
 
 @dataclass
 class Narrate:
@@ -108,6 +114,7 @@ class Reveal:
     entity: str | None = None  # Entity ID for image lookup
     deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
     beat: Beat | None = None
+    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
@@ -118,6 +125,7 @@ class Focus:
     entity: str | None = None  # Entity ID for image lookup
     deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
     beat: Beat | None = None
+    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
@@ -131,6 +139,7 @@ class Caption:
 
     text: str
     beat: Beat | None = None
+    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
@@ -153,6 +162,7 @@ class Sfx:
 
     text: str
     beat: Beat | None = None
+    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass

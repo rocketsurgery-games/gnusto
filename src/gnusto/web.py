@@ -107,6 +107,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "entity": block.entity,
             "deploy": block.deploy,
             "beat": block.beat,
+            "group": block.group,
         }
     elif isinstance(block, Focus):
         return {
@@ -115,12 +116,14 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "entity": block.entity,
             "deploy": block.deploy,
             "beat": block.beat,
+            "group": block.group,
         }
     elif isinstance(block, Caption):
         return {
             "type": "caption",
             "text": block.text,
             "beat": block.beat,
+            "group": block.group,
         }
     elif isinstance(block, Splash):
         return {
@@ -134,6 +137,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "type": "sfx",
             "text": block.text,
             "beat": block.beat,
+            "group": block.group,
         }
     elif isinstance(block, Image):
         return {

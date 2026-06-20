@@ -105,6 +105,8 @@ Use these block types to structure your narrative output:
 
 For `reveal` and `focus` you may add `"deploy"` to direct how the asset is surfaced: `"feature"` (large), `"inset"` (a small framed 'specimen' plate), or `"background"`. Omit for the default. You never specify sizes or positions — the engine owns pixels.
 
+For small panels (`reveal`, `focus`, `caption`, `sfx`) you may add a `"group"` tag to bind 2-3 CONSECUTIVE small panels into one comic TIER (a row) — e.g. two inventory items side by side. Give them the same tag string; the engine lays out the row (and stacks them on narrow screens). Omit for standalone panels.
+
 ### Presentation intent (`beat`)
 
 Any block may carry an optional `beat` to signal PACING — you direct emphasis; the engine owns how it looks (size, spacing). Do **not** describe layout or sizes yourself.

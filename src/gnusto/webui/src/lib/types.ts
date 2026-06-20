@@ -131,6 +131,8 @@ export type Deploy = "feature" | "inset" | "background";
 export type RenderableBlock = ContentBlock & {
   _side?: "image-left" | "image-right";
   beat?: Beat | null;
+  // Tier tag: consecutive small panels sharing a group render as one row.
+  group?: string | null;
 };
 
 // Server messages

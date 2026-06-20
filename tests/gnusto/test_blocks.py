@@ -1,5 +1,7 @@
 """Tests for the expanded block vocabulary: sfx blocks + beat pacing (4ac5.5)."""
 
+from types import SimpleNamespace
+
 from gnusto import render
 from gnusto.llm import ContentBlockData, content_block_data_to_render
 from gnusto.web import block_to_dict
@@ -14,7 +16,7 @@ class TestSfxBlock:
 
     def test_sfx_serializes(self):
         d = block_to_dict(render.Sfx(text="thoom"))
-        assert d == {"type": "sfx", "text": "thoom", "beat": None}
+        assert d == {"type": "sfx", "text": "thoom", "beat": None, "group": None}
 
 
 class TestCaptionSplash:
@@ -27,7 +29,7 @@ class TestCaptionSplash:
 
     def test_caption_serializes(self):
         d = block_to_dict(render.Caption(text="hi"))
-        assert d == {"type": "caption", "text": "hi", "beat": None}
+        assert d == {"type": "caption", "text": "hi", "beat": None, "group": None}
 
     def test_splash_converts_with_entity(self):
         block = content_block_data_to_render(
@@ -59,6 +61,40 @@ class TestDeploy:
     def test_focus_deploy_serializes(self):
         d = block_to_dict(render.Focus(text="x", entity="@hacker", deploy="feature"))
         assert d["deploy"] == "feature"
+
+
+class TestTierGroup:
+    def test_group_passes_through_conversion(self):
+        block = content_block_data_to_render(
+            ContentBlockData(type="focus", text="x", entity="@a", group="loot")
+        )
+        assert isinstance(block, render.Focus)
+        assert block.group == "loot"
+
+    def test_group_serializes(self):
+        d = block_to_dict(render.Sfx(text="BAM", group="hit"))
+        assert d["group"] == "hit"
+
+    def test_empty_group_is_dropped(self):
+        # parser drops empty/whitespace-less group tags to None
+        from gnusto.llm import LLMClient
+
+        client = LLMClient.__new__(LLMClient)
+        resp = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=(
+                            '{"actions": [], "needs_player_input": true, '
+                            '"blocks": [{"type": "sfx", "text": "BAM", '
+                            '"group": ""}]}'
+                        )
+                    )
+                )
+            ]
+        )
+        parsed = client._parse_structured_response(resp)
+        assert parsed.blocks[0].group is None
 
 
 class TestBeat:
