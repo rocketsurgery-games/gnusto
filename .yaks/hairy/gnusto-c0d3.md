@@ -4,7 +4,7 @@ title: Research alternative smaller language models for language handling
 type: task
 priority: 2
 created: '2026-03-18T00:55:29Z'
-updated: '2026-03-18T01:50:50Z'
+updated: '2026-06-14T19:38:43Z'
 ---
 
 Find a local alternative we can use for handling language parsing, comprehension, and generation. The smaller the better, and we should be willing to fine-tune or otherwise specialize the model for the IF domain in general, and possibly to each individual game.

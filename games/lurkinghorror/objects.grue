@@ -15,7 +15,7 @@
     :nodesc true   ; nodesc hides from room listing; searchable makes it searchable
     :searchable true)
 
-  :rdesc "A keyring crowded with many keys hanging from it. Solid white background.")
+  :rdesc "A keyring crowded with many keys hanging from it. Solid black background.")
 
 (object @carton
   :description "white carton"
@@ -26,7 +26,7 @@
     :open true
     :heat 0)  ; Heatable object - can be warmed in microwave
 
-  :rdesc "A white Chinese-food takeout carton with a strange, occult-looking symbol on the front. Solid white background."
+  :rdesc "A white Chinese-food takeout carton with a strange, occult-looking symbol on the front. Solid black background."
 
   :behaviors (
     :examine (fn ()

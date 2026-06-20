@@ -3,7 +3,7 @@
   :location @terminal-room
 
   ; TODO: Deal with different states the hacker can be in.
-  :rdesc "A scruffy, innocent-looking young man in his twenties: blue jeans, an old work shirt, worn running shoes, and a large ring of keys hanging from his belt. He looks like he needs a bath. Solid white background."
+  :rdesc "A scruffy, innocent-looking young man in his twenties: blue jeans, an old work shirt, worn running shoes, and a large ring of keys hanging from his belt. He looks like he needs a bath. Solid black background."
 
   :properties (
     :searchable true

@@ -329,7 +329,7 @@
 (object @crowbar
   :location @temporary-basement
   :description "crowbar"
-  :rdesc "A rusty, battered iron crowbar. Solid white background."
+  :rdesc "A rusty, battered iron crowbar. Solid black background."
   :properties (:takeable true :weapon true :size 10)
 
   :behaviors (

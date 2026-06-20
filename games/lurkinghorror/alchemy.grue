@@ -592,7 +592,7 @@
   :location @lab-bench
   :description "vat"
   :rdesc "A large glass pyrex vat, a couple of liters, half-full of thick tarry dark liquid, a
-  handwritten label reading 'Elixir of Life' stuck to its side. Solid white background."
+  handwritten label reading 'Elixir of Life' stuck to its side. Solid black background."
 
   :properties (:takeable true :readable true :open true :container true :transparent true :searchable true
                :capacity 20 :size 20
