@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RevealBlock, RenderableBlock } from '../../lib/types'
   import { resolveEntityImage } from '../../lib/entities.svelte'
+  import EntityInset from './EntityInset.svelte'
 
   interface Props {
     block: RevealBlock & RenderableBlock
@@ -10,14 +11,24 @@
 
   let entityImage = $derived(block.entity ? resolveEntityImage(block.entity) : null)
   let side = $derived(block._side || 'image-left')
+  // deploy=inset routes through the framed 'specimen plate' (with its own
+  // no-art caption fallback, gnusto-4ac5.6); other modes overhang the image.
+  let asInset = $derived(block.deploy === 'inset')
 </script>
 
-<div class="block-reveal {side}" class:has-image={!!entityImage}>
-  {#if entityImage}
-    <img class="reveal-image" src={entityImage} alt={block.entity || ''} onerror={(e) => (e.target as HTMLImageElement).remove()} />
-  {/if}
-  <div class="reveal-text">{block.text}</div>
-</div>
+{#if asInset}
+  <div class="block-reveal inset-layout {side}">
+    <div class="reveal-inset"><EntityInset entity={block.entity} text={block.text} /></div>
+    <div class="reveal-text">{block.text}</div>
+  </div>
+{:else}
+  <div class="block-reveal {side}" class:has-image={!!entityImage}>
+    {#if entityImage}
+      <img class="reveal-image" src={entityImage} alt={block.entity || ''} onerror={(e) => (e.target as HTMLImageElement).remove()} />
+    {/if}
+    <div class="reveal-text">{block.text}</div>
+  </div>
+{/if}
 
 <style>
   .block-reveal {
@@ -28,8 +39,17 @@
     overflow: visible;
   }
 
-  .block-reveal.has-image {
+  .block-reveal.has-image,
+  .block-reveal.inset-layout {
     grid-template-columns: 180px 1fr;
+  }
+
+  .inset-layout .reveal-inset {
+    width: 180px;
+  }
+
+  .image-right .reveal-inset {
+    order: 2;
   }
 
   .block-reveal.has-image.image-left {
@@ -66,10 +86,15 @@
   }
 
   @media (max-width: 768px) {
-    .block-reveal.has-image {
+    .block-reveal.has-image,
+    .block-reveal.inset-layout {
       grid-template-columns: 1fr;
       margin-left: 0;
       margin-right: 0;
+    }
+
+    .inset-layout .reveal-inset {
+      width: min(60%, 240px);
     }
 
     .reveal-image {
