@@ -14,7 +14,6 @@ from starlette.testclient import TestClient
 
 import gnusto.web as web
 
-
 GAME_PATH = "games/testgame/"
 
 
@@ -23,9 +22,7 @@ def app(tmp_path):
     """Create a FastAPI app with a fake webui dist directory."""
     fake_webui = tmp_path / "dist"
     fake_webui.mkdir()
-    (fake_webui / "index.html").write_text(
-        "<html><body>Gnusto</body></html>"
-    )
+    (fake_webui / "index.html").write_text("<html><body>Gnusto</body></html>")
     old_webui = web.WEBUI_DIR
     web.WEBUI_DIR = fake_webui
     try:
@@ -75,6 +72,34 @@ class TestWebSocketEndpoint:
         assert resp.status_code == 200
         assert b"Gnusto" in resp.content
 
+    def test_game_theme_css_absent_is_empty_200(self, client):
+        """Per-game theme route must 200 with text/css even when no theme.css
+        exists, so the frontend <link> never 404s (gnusto-4ac5.9)."""
+        resp = client.get("/game/theme.css")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/css")
+        assert resp.text == ""
+
+    def test_game_theme_css_served_when_present(self, tmp_path):
+        """When a game ships theme.css, the route serves it as CSS."""
+        game = tmp_path / "game"
+        game.mkdir()
+        (game / "game.grue").write_text('(world :start @r)\n(room @r :name "R")\n')
+        (game / "theme.css").write_text(":root { --font-letter: 'Spooky'; }")
+        fake_webui = tmp_path / "dist"
+        fake_webui.mkdir()
+        (fake_webui / "index.html").write_text("<html><body>Gnusto</body></html>")
+        old_webui = web.WEBUI_DIR
+        web.WEBUI_DIR = fake_webui
+        try:
+            c = TestClient(web.create_app(str(game)))
+            resp = c.get("/game/theme.css")
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("text/css")
+            assert "--font-letter" in resp.text
+        finally:
+            web.WEBUI_DIR = old_webui
+
     def test_no_recursion_on_websocket_open(self, client):
         """Opening a WebSocket must not trigger middleware recursion.
 
@@ -84,6 +109,7 @@ class TestWebSocketEndpoint:
         WebSocket opens, causing BaseHTTPMiddleware dispatch_func recursion.
         """
         import sys
+
         original_limit = sys.getrecursionlimit()
         sys.setrecursionlimit(200)
         try:

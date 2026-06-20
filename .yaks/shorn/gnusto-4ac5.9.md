@@ -29,3 +29,9 @@ STILL OPEN on .9 (keep shaving):
 ---
 ▸ 2026-06-20T20:45:13Z
 Palette SINGLE SOURCE now wired (via ntr.23 :swatches): Grue (world :visual-style :swatches) -> backend 'theme' message -> --game-* CSS vars; same hexes anchored into art briefs. tokens.css ships dark-theme defaults that swatches override. LH instance themed. REMAINING (minor, keep shaving): per-game FONTS/lettering + an optional game-dir theme.css for non-colour chrome (SFX lettering font for .5/.9). Colour identity + dark reskin = done.
+
+---
+▸ 2026-06-20T23:10:00Z
+SHORN. Per-game THEME.CSS loader landed — the last .9 mechanism. Backend: GET /game/theme.css serves <game_dir>/theme.css (text/css) when present, else an empty 200 (so the frontend <link> never 404s); registered before the catch-all static mount. Frontend: App.svelte onMount appends <link rel=stylesheet href="/game/theme.css"> to <head> AFTER the bundled styles, so equal-specificity game overrides win — while COLOURS stay single-sourced from Grue via the inline --game-* vars (inline styles beat any stylesheet), so theme.css supplies only what swatches don't (fonts/SFX lettering, panel chrome, @font-face). Tests: test_web.py absent->empty-200 + present->served (2). Verified: pytest 762, svelte-check clean on touched files, build OK.
+
+.9 SHORN. Delivered: dark graphic-novel-horror reskin via a --game-* identity layer; palette SINGLE-SOURCE from Grue (world :visual-style :swatches -> theme msg -> inline --game-* vars, same hexes anchor the art briefs); and the per-game theme.css loader for non-colour chrome/fonts. DEFERRED (art/design choice, not infra): shipping an actual custom LETTERING FONT file for LH — the loader + --font-letter hook are ready; just drop a @font-face into games/lurkinghorror/theme.css when a face is chosen. Could be a tiny follow-up yak if desired.

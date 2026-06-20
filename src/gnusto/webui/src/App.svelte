@@ -290,6 +290,16 @@
   }
 
   onMount(() => {
+    // Per-game theme chrome (gnusto-4ac5.9): pull in the active game's optional
+    // theme.css (fonts/SFX lettering, panel chrome). Appended to <head> AFTER
+    // the bundled styles so equal-specificity game overrides win; colours stay
+    // single-sourced from Grue via the inline --game-* vars (which beat any
+    // stylesheet). The backend always 200s this route (empty when absent).
+    const themeLink = document.createElement('link')
+    themeLink.rel = 'stylesheet'
+    themeLink.href = '/game/theme.css'
+    document.head.appendChild(themeLink)
+
     // Restore persisted font size
     const savedSize = localStorage.getItem('gnusto-font-size')
     if (savedSize) {

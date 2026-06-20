@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from grue.save import list_saves, load_game, save_game
@@ -375,6 +375,19 @@ def create_app(
         if index_path.exists():
             return FileResponse(index_path)
         return {"error": "Web UI not built. Run: cd src/gnusto/webui && npm run build"}
+
+    # Per-game THEME chrome (gnusto-4ac5.9): a game may ship a theme.css in its
+    # dir to override non-colour presentation (fonts/SFX lettering, panel chrome)
+    # and @font-face. Colours stay single-sourced from Grue (world :visual-style
+    # :swatches) via the inline --game-* vars, which win regardless of this file;
+    # theme.css supplies what swatches don't. Always 200 (empty when absent) so
+    # the frontend's <link> never 404s.
+    @app.get("/game/theme.css")
+    async def serve_game_theme():
+        theme_path = game_dir / "theme.css"
+        if theme_path.is_file():
+            return FileResponse(theme_path, media_type="text/css")
+        return Response(content="", media_type="text/css")
 
     # Serve game assets (flat keyed art) at /assets/
     assets_dir = game_dir / "assets"
