@@ -19,6 +19,30 @@ body {
     min-height: 100vh;
 }
 
+/* TIER — print-style row of small panels on desktop, vertical stack on mobile.
+   The LLM groups blocks into a tier (gnusto-4ac5.5); the engine owns whether it
+   renders as a row or a stack. display:contents lets the children flow in the
+   spine (mobile stack); at desktop width the wrapper becomes a grid row. This is
+   a foundational primitive (gnusto-4ac5.7), activated once .5 emits groupings. */
+.tier {
+    display: contents;
+}
+
+@media (min-width: 900px) {
+    .tier {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        gap: 0.9rem;
+        align-items: end;
+        margin-bottom: 1.5rem;
+    }
+
+    .tier > .block {
+        margin-bottom: 0;
+    }
+}
+
 /* Block enter animation */
 @keyframes block-enter {
     from {

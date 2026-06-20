@@ -39,17 +39,25 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<main class="stream" bind:this={streamEl} onclick={handleClick} onkeydown={handleKeydown}>
-  {#each blocks as block, i (i)}
-    <BlockRenderer {block} />
-  {/each}
+<main class="stream" onclick={handleClick} onkeydown={handleKeydown}>
+  <!-- the webtoon SPINE: a bounded, centered reading column (gnusto-4ac5.7) -->
+  <div class="spine" bind:this={streamEl}>
+    {#each blocks as block, i (i)}
+      <BlockRenderer {block} />
+    {/each}
+  </div>
 </main>
 
 <style>
   .stream {
     margin-right: var(--sidebar-width);
-    padding: 2rem;
-    padding-bottom: 100vh; /* reserve ensures room header can always scroll to top */
+    padding: 1.5rem 1rem;
+    padding-bottom: 55vh; /* reserve so the live page can accrete + scroll */
+  }
+
+  .spine {
+    max-width: var(--spine-max);
+    margin: 0 auto;
   }
 
   @media (max-width: 768px) {
@@ -57,7 +65,7 @@
       margin-left: 0;
       margin-right: 0;
       padding: 1rem;
-      padding-bottom: 100vh;
+      padding-bottom: 55vh;
     }
   }
 </style>

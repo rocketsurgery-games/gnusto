@@ -55,6 +55,7 @@
     --panel-radius: 3px;
     --block-gap: 1rem;
     --image-overhang: 100px;
+    --spine-max: 760px; /* bounded webtoon reading column                 */
 
     --sidebar-width: 220px;
     --input-height: 3rem;
