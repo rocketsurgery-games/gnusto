@@ -729,11 +729,13 @@ Game metadata and player declaration.
   - `:prompt` - Style sentence prepended to every brief (e.g. `"Color graphic-novel horror, inked."`)
   - `:palette` - Prose palette hint woven into briefs (e.g. `"dark blues, sickly greens"`)
   - `:swatches` - Structured palette as a nested keyword-map of `:token "#hex"`
-    pairs (optional). This is the **single source** of the game's colour
-    identity: the web UI injects each swatch as a `--game-<token>` CSS variable
-    (so the chrome is themed from Grue), and the same hex values are anchored
-    into every art brief (so the generated art can't drift from the chrome).
-    Token names map directly to CSS vars (`:accent-glow` -> `--game-accent-glow`).
+    pairs (optional). The web UI injects each swatch as a `--game-<token>` CSS
+    variable, so the **UI chrome is themed from Grue** (token names map directly:
+    `:accent-glow` -> `--game-accent-glow`). Swatches drive the chrome only —
+    they are deliberately **not** put into art briefs (raw hex lists make image
+    models render a literal colour-swatch chart). The art's palette comes from
+    the prose `:palette`; both live in `:visual-style`, so chrome and art share
+    one authored identity.
   - `:aspect-ratio` - Default aspect ratio (e.g. `"16:9"`)
   - `:kinds` - Per-entity-kind style specialization (optional). A nested
     keyword-map keyed by entity kind (`:room`, `:object`, `:event`), each a

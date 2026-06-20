@@ -258,19 +258,18 @@ class TestAssembleStyle:
         assert assemble_style(None) == ""
         assert assemble_style({}) == ""
 
-    def test_swatches_anchor_hexes_into_preamble(self):
-        # Declared swatches anchor the art to the same hexes that drive the
-        # chrome, so art and UI can't drift.
+    def test_swatches_do_not_leak_into_preamble(self):
+        # Swatches drive the UI chrome only. Raw hex codes must NOT appear in the
+        # art brief, or image models render a literal colour-swatch chart.
         style = {
             "prompt": "Inked.",
+            "palette": "dark blues",
             "swatches": {"bg": "#080d10", "accent": "#8fe06a"},
         }
-        assert assemble_style(style) == (
-            "Inked. Anchor the palette to these colors: #080d10, #8fe06a."
-        )
-
-    def test_no_swatches_no_anchor(self):
-        assert assemble_style({"prompt": "Inked."}) == "Inked."
+        out = assemble_style(style)
+        assert out == "Inked. Palette: dark blues."
+        assert "#080d10" not in out
+        assert "#8fe06a" not in out
 
     def test_kind_prompt_is_additive(self):
         style = {

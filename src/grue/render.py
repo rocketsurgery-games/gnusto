@@ -213,12 +213,11 @@ def assemble_style(visual_style: dict[str, Any] | None, kind: str | None = None)
     palette = style.get("palette")
     if palette:
         parts.append(f"Palette: {palette}.")
-    # If structured swatches are declared, anchor the art to the same hex values
-    # that drive the UI chrome (single source -> art and chrome cannot drift).
-    swatches = style.get("swatches")
-    if isinstance(swatches, dict) and swatches:
-        hexes = ", ".join(str(v) for v in swatches.values())
-        parts.append(f"Anchor the palette to these colors: {hexes}.")
+    # NOTE: structured :swatches deliberately do NOT go into the art brief.
+    # Listing raw hex codes makes image models render a literal colour-swatch
+    # chart into the picture. Swatches drive the UI chrome only; the art's
+    # palette is guided by the prose :palette above (both declared together in
+    # :visual-style, so chrome and art still share one authored identity).
     return " ".join(parts)
 
 

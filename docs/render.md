@@ -113,10 +113,10 @@ type-directed contract.
   back to `:description` when absent.
 - **world `:visual-style`** — a keyword-map (`:prompt`, `:palette`,
   `:swatches`, `:aspect-ratio`) prepended to every brief for a consistent look.
-  `:swatches` declares the palette as structured `:token "#hex"` pairs — the
-  single source of the game's colour identity. The same hexes drive the web
-  chrome (`--game-*` CSS vars) and are anchored into every brief, so the
-  generated art and the UI can't drift apart. `:kinds` specializes the style
+  `:swatches` declares the palette as structured `:token "#hex"` pairs that drive
+  the web chrome (`--game-*` CSS vars). Swatches are *not* injected into briefs
+  (raw hex lists make image models draw a colour-swatch chart); the art's
+  palette comes from the prose `:palette`. `:kinds` specializes the style
   per entity kind: a kind's `:prompt` is appended (additive) and its
   `:aspect-ratio` overrides the default — so rooms render wide (e.g. `2:1`
   establishing stages) while objects stay square subjects on a flat field.
