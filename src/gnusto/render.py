@@ -57,11 +57,17 @@ class ActionResult:
     text: str
 
 
+# Beat / emphasis: the LLM's pacing intent for a block. The ENGINE maps these to
+# presentation (size, spacing, weight) — the LLM never specifies pixels.
+Beat = Literal["aside", "normal", "emphasis"]
+
+
 @dataclass
 class Narrate:
     """LLM-generated second-person prose."""
 
     text: str
+    beat: Beat | None = None
 
 
 @dataclass
@@ -71,6 +77,7 @@ class Speak:
     speaker: str  # Entity ID, e.g. "@hacker"
     text: str
     manner: str | None = None  # e.g. "whispering", "shouting"
+    beat: Beat | None = None
 
 
 @dataclass
@@ -78,6 +85,7 @@ class Think:
     """Player's inner monologue / dramatic moment."""
 
     text: str
+    beat: Beat | None = None
 
 
 @dataclass
@@ -85,6 +93,7 @@ class Ambient:
     """Atmospheric detail."""
 
     text: str
+    beat: Beat | None = None
 
 
 @dataclass
@@ -93,6 +102,7 @@ class Reveal:
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
+    beat: Beat | None = None
 
 
 @dataclass
@@ -101,6 +111,15 @@ class Focus:
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
+    beat: Beat | None = None
+
+
+@dataclass
+class Sfx:
+    """Onomatopoeia lettering (a comic sound-effect panel)."""
+
+    text: str
+    beat: Beat | None = None
 
 
 @dataclass
@@ -139,6 +158,7 @@ ContentBlock = (
     | Ambient
     | Reveal
     | Focus
+    | Sfx
     | Image
     | SystemMessage
     | DebugInfo

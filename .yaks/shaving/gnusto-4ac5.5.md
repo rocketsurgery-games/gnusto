@@ -4,7 +4,7 @@ title: Expanded semantic block vocabulary (presentation intent)
 type: feature
 priority: 2
 created: '2026-06-16T02:18:16Z'
-updated: '2026-06-20T14:53:17Z'
+updated: '2026-06-20T21:42:46Z'
 ---
 
 Expand the LLM's content-block vocabulary so it can direct PRESENTATION INTENT, while the engine keeps ownership of geometry. Boundary: LLM = semantics + pacing + asset selection from a catalog; engine = pixels/responsiveness/degradation.
@@ -22,3 +22,9 @@ Touches gnusto/agent.py (block schema + guidelines), gnusto/render.py (block typ
 ---
 ▸ 2026-06-20T14:53:17Z
 CROSS-REF (page-break / scene-break intent) — see gnusto-4ac5.4 design exploration. The expanded vocabulary MAY include a scene/page-break intent (e.g. a 'scene' role or beat=splash) that lets the LLM PROMOTE a soft page boundary to a hard scene break for emergent pacing the author did not annotate. Constraint (important): the LLM must only promote within the engine's candidate set or add emphasis — it must NOT be the sole owner of pagination, or pages stop being deterministically re-derivable from the persisted turn log (revisiting history could re-paginate) and we pay tokens every turn. This is the OPTIONAL/LATER tier of the layered authority chain; deterministic engine + Grue (success ...) hints come first.
+
+---
+▸ 2026-06-20T21:42:46Z
+FIRST SLICE done (beat + sfx). Added presentation-intent foundation: (1) a BEAT pacing field (aside|normal|emphasis) on any LLM block \u2014 the LLM directs pacing, the engine maps it to presentation (emphasis = comic decompression: more air + accent border; aside = tighter/indented/dimmer); (2) an SFX onomatopoeia block (new content kind). Wired end-to-end: render.py (Beat type, beat field on blocks, Sfx dataclass + union), web.py block_to_dict (beat + sfx), llm.py (ContentBlockData type+beat, AGENT_RESPONSE_SCHEMA enum+beat property, parser validates beat to aside/emphasis, content_block_data_to_render), agent.py guidelines (sfx + beat, 'engine owns pixels' boundary), types.ts (SfxBlock + Beat + RenderableBlock.beat), BlockRenderer (route sfx + beat-* class), SfxBlock.svelte (mock-ported), test_blocks.py. Verified: pytest 745, svelte-check clean (touched files), build OK, no console errors.
+
+REMAINING for .5 (keep shaving): panel ROLE taxonomy (establishing|splash|inset|caption|tier-member), TIER grouping (bind blocks into a row \u2014 lights up the .7 tier primitive), ASSET DEPLOYMENT (block references an entity asset + role feature|inset|background; feed the LLM the renderable catalog), splash role, possibly split narrator CAPTION from NARRATE. Each unblocks more of .6 degradation.

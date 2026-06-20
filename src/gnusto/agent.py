@@ -14,12 +14,19 @@ from typing import Any, Callable
 from grue.parser import load_grue
 from grue.repl import ActionBlocked, ActionDone, ActionError, ReplEvaluator
 from grue.runtime import ActionResult, GrueRuntime
-from grue.save import save_game, load_game, list_saves
+from grue.save import list_saves, load_game, save_game
 from grue.sexpr import Keyword, SList, Symbol, parse, to_string
 
 from .commands import handle_command, render_blocks_to_text
 from .knowledge import KnowledgeGraph
-from .llm import LLMClient, LLMConfig, AgentResponse, ActionRequest, ContentBlockData, content_block_data_to_render
+from .llm import (
+    ActionRequest,
+    AgentResponse,
+    ContentBlockData,
+    LLMClient,
+    LLMConfig,
+    content_block_data_to_render,
+)
 from .render import ContentBlock
 from .state import GameState, ObjectInfo, get_game_state
 
@@ -37,7 +44,9 @@ You MUST respond with valid JSON matching this schema:
     {"type": "think", "text": "..."},
     {"type": "ambient", "text": "..."},
     {"type": "reveal", "text": "...", "entity": "@entity-id"},
-    {"type": "focus", "text": "...", "entity": "@entity-id"}
+    {"type": "focus", "text": "...", "entity": "@entity-id"},
+    {"type": "sfx", "text": "KRA-KOOM"},
+    {"type": "narrate", "text": "...", "beat": "emphasis"}
   ],
   "needs_player_input": false
 }
@@ -88,6 +97,14 @@ Use these block types to structure your narrative output:
 - **ambient**: Atmospheric detail — sounds, smells, temperature. Sets mood without advancing action.
 - **reveal**: Discovery of something new or important. Set `entity` if a specific object is being discovered.
 - **focus**: Close-up examination of an entity. Set `entity` to the object/character ID being examined. The system will display the entity's image alongside the text.
+- **sfx**: Onomatopoeia / comic sound-effect lettering. `text` is the sound itself (e.g. "SKRRNK", "thoom"). Use sparingly for a punchy moment.
+
+### Presentation intent (`beat`)
+
+Any block may carry an optional `beat` to signal PACING — you direct emphasis; the engine owns how it looks (size, spacing). Do **not** describe layout or sizes yourself.
+- `"emphasis"`: a dramatic beat that should land harder (a shocking reveal, a key line).
+- `"aside"`: a throwaway, quieter aside.
+- omit (or `"normal"`): ordinary pacing. This is the default — most blocks need no `beat`.
 
 ### Block Guidelines
 
@@ -97,6 +114,8 @@ Use these block types to structure your narrative output:
 - Use `reveal` when something new is discovered or first noticed
 - Use `ambient` for atmosphere that enriches the scene
 - Use `think` sparingly — only for dramatic moments
+- Use `sfx` rarely — only when a sound genuinely punctuates the moment
+- Reach for `beat: emphasis` only at real turning points; overusing it flattens its impact
 - Do NOT describe room transitions — the system handles those automatically
 - Be concise: 1-3 blocks per response is typical, rarely more than 5
 - Preserve dialogue verbatim in speak blocks
@@ -275,12 +294,18 @@ class TurnRecord:
     def estimate_tokens(self) -> int:
         """Estimate token count for this turn when rendered to messages."""
         # User message: "[Previous turn in {room}]\nPlayer: {command}"
-        user_tokens = estimate_tokens(f"[Previous turn in {self.room}]\nPlayer: {self.player_command}")
+        user_tokens = estimate_tokens(
+            f"[Previous turn in {self.room}]\nPlayer: {self.player_command}"
+        )
         # Results add to context
-        results_tokens = sum(estimate_tokens(r) for r in self.results if r and r != "Done.")
+        results_tokens = sum(
+            estimate_tokens(r) for r in self.results if r and r != "Done."
+        )
         # Assistant message: narrative
         assistant_tokens = estimate_tokens(self.narrative)
-        return user_tokens + results_tokens + assistant_tokens + 8  # +8 for message overhead
+        return (
+            user_tokens + results_tokens + assistant_tokens + 8
+        )  # +8 for message overhead
 
 
 # Prompt for summarizing a batch of turns into narrative
@@ -389,7 +414,7 @@ class GameSession:
             _debug_log(
                 "Summarizing turns",
                 f"{len(turns_to_summarize)} turns ({actions_removed} actions) -> narrative block",
-                style="blue"
+                style="blue",
             )
 
         # Format turns for summarization
@@ -429,7 +454,9 @@ class GameSession:
             if self.debug:
                 _debug_log("Summary error", str(e), style="red")
 
-    def _build_messages(self, current_state: GameState, player_command: str) -> list[dict[str, Any]]:
+    def _build_messages(
+        self, current_state: GameState, player_command: str
+    ) -> list[dict[str, Any]]:
         """
         Build fresh message list for LLM from history + current state.
 
@@ -440,25 +467,27 @@ class GameSession:
         4. Current game state + player command
         """
         prompt = PARSING_ONLY_PROMPT if self.parsing_only else SYSTEM_PROMPT
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": prompt}
-        ]
+        messages: list[dict[str, Any]] = [{"role": "system", "content": prompt}]
 
         # Add summaries as "story so far" context
         if self.summaries:
             story_so_far = "\n\n".join(self.summaries)
-            messages.append({
-                "role": "user",
-                "content": f"[Story so far:]\n{story_so_far}"
-            })
-            messages.append({
-                "role": "assistant",
-                "content": "(Acknowledged - I'll continue narrating from here.)"
-            })
+            messages.append(
+                {"role": "user", "content": f"[Story so far:]\n{story_so_far}"}
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": "(Acknowledged - I'll continue narrating from here.)",
+                }
+            )
 
         # Add recent turns in full detail
         for turn in self.turn_history:
-            user_lines = [f"[Previous turn in {turn.room}]", f"Player: {turn.player_command}"]
+            user_lines = [
+                f"[Previous turn in {turn.room}]",
+                f"Player: {turn.player_command}",
+            ]
             # Include action results (skip "Done." noise)
             for j, action in enumerate(turn.actions):
                 result = turn.results[j] if j < len(turn.results) else ""
@@ -475,10 +504,12 @@ class GameSession:
         # Current turn: fresh state + player command
         state_context = current_state.to_context_string()
 
-        messages.append({
-            "role": "user",
-            "content": f"{state_context}\n\n---\n\nPlayer command: {player_command}"
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": f"{state_context}\n\n---\n\nPlayer command: {player_command}",
+            }
+        )
 
         return messages
 
@@ -579,7 +610,9 @@ class GameSession:
 
             # Convert and emit content blocks (full agent mode only)
             if not self.parsing_only and response.blocks:
-                render_blocks = [content_block_data_to_render(b) for b in response.blocks]
+                render_blocks = [
+                    content_block_data_to_render(b) for b in response.blocks
+                ]
                 all_render_blocks.extend(render_blocks)
                 if on_blocks:
                     on_blocks(render_blocks)
@@ -622,7 +655,7 @@ class GameSession:
                         if on_blocks:
                             on_blocks(engine_blocks)
                         for b in engine_blocks:
-                            if hasattr(b, 'text'):
+                            if hasattr(b, "text"):
                                 all_narratives.append(b.text)
 
             # In parsing-only mode, we're done after executing — no multi-turn narration
@@ -630,34 +663,61 @@ class GameSession:
                 break
 
             # Add assistant response to messages (as JSON)
-            working_messages.append({
-                "role": "assistant",
-                "content": json.dumps({
-                    "actions": [{"tool": a.tool, "target": a.target, "verb": a.verb, "args": a.args, "direction": a.direction} for a in response.actions],
-                    "blocks": [{"type": b.type, "text": b.text, "speaker": b.speaker, "manner": b.manner, "entity": b.entity} for b in response.blocks],
-                    "needs_player_input": response.needs_player_input,
-                })
-            })
+            working_messages.append(
+                {
+                    "role": "assistant",
+                    "content": json.dumps(
+                        {
+                            "actions": [
+                                {
+                                    "tool": a.tool,
+                                    "target": a.target,
+                                    "verb": a.verb,
+                                    "args": a.args,
+                                    "direction": a.direction,
+                                }
+                                for a in response.actions
+                            ],
+                            "blocks": [
+                                {
+                                    "type": b.type,
+                                    "text": b.text,
+                                    "speaker": b.speaker,
+                                    "manner": b.manner,
+                                    "entity": b.entity,
+                                }
+                                for b in response.blocks
+                            ],
+                            "needs_player_input": response.needs_player_input,
+                        }
+                    ),
+                }
+            )
 
             # Add action results
             results_text = "\n".join(f"- {r}" for r in action_results)
-            working_messages.append({
-                "role": "user",
-                "content": f"Action results:\n{results_text}"
-            })
+            working_messages.append(
+                {"role": "user", "content": f"Action results:\n{results_text}"}
+            )
 
             # Add updated game state
             state = self.get_state()
             state_context = state.to_context_string()
-            working_messages.append({
-                "role": "user",
-                "content": f"[Updated game state:]\n{state_context}\n\nNarrate what happened using content blocks, then continue or set needs_player_input to true if done."
-            })
+            working_messages.append(
+                {
+                    "role": "user",
+                    "content": f"[Updated game state:]\n{state_context}\n\nNarrate what happened using content blocks, then continue or set needs_player_input to true if done.",
+                }
+            )
 
         else:
             # Hit max iterations
             if self.debug:
-                _debug_log("Max Iterations", f"Stopped after {max_iterations} iterations", style="red")
+                _debug_log(
+                    "Max Iterations",
+                    f"Stopped after {max_iterations} iterations",
+                    style="red",
+                )
 
         # Combine all narratives for final output
         final_response_text = "\n\n".join(all_narratives)
@@ -707,7 +767,7 @@ class GameSession:
             if action.target:
                 # Detect whether target is a room or entity
                 node = self.knowledge.nodes.get(action.target)
-                if node and node.kind == 'room':
+                if node and node.kind == "room":
                     return ([], self.knowledge.history(room_id=action.target))
                 return ([], self.knowledge.history(entity_id=action.target))
             return ([], self.knowledge.history())
@@ -719,6 +779,7 @@ class GameSession:
     def _blocks_from_results(self, raw_results: list[Any]) -> list[ContentBlock]:
         """Convert raw engine results into content blocks for parsing-only mode."""
         from . import render
+
         blocks: list[ContentBlock] = []
         for result in raw_results:
             # Blocked actions — show the player-facing message
@@ -730,7 +791,7 @@ class GameSession:
             if isinstance(result, ActionError):
                 blocks.append(render.Narrate(text=result.message))
                 continue
-            if not hasattr(result, 'output'):
+            if not hasattr(result, "output"):
                 continue
             # Structured output from effects (narrate/say)
             for out_type, entity, text in result.output:
@@ -741,10 +802,10 @@ class GameSession:
                 elif out_type == "say":
                     blocks.append(render.Speak(speaker=entity or "unknown", text=text))
             # Reason text (used for examine/describe results)
-            if hasattr(result, 'reason') and result.reason:
+            if hasattr(result, "reason") and result.reason:
                 blocks.append(render.Narrate(text=result.reason))
             # Fall back to context fields
-            if not blocks and hasattr(result, 'context'):
+            if not blocks and hasattr(result, "context"):
                 for key, value in result.context:
                     if key in ("description", "message", "response") and str(value):
                         blocks.append(render.Narrate(text=str(value)))
@@ -785,7 +846,9 @@ class GameSession:
         else:
             return f"({action.tool} ...)"
 
-    def _do_action(self, target: str, verb: str, action_args: list[str]) -> tuple[list[Any], str]:
+    def _do_action(
+        self, target: str, verb: str, action_args: list[str]
+    ) -> tuple[list[Any], str]:
         """Execute a do action."""
         # Build S-expression: (do @target :verb arg1 arg2 ...)
         items = [Symbol("do"), Symbol(target), Keyword(verb)]
@@ -895,7 +958,9 @@ class GameSession:
                 parts.append(f"  effects={result.effects!r}")
             return "\n".join(parts) + ")"
         elif isinstance(result, ActionBlocked):
-            return f"ActionBlocked(reason={result.reason!r}, message={result.message!r})"
+            return (
+                f"ActionBlocked(reason={result.reason!r}, message={result.message!r})"
+            )
         elif isinstance(result, ActionError):
             return f"ActionError(message={result.message!r})"
         elif isinstance(result, ActionResult):
@@ -997,7 +1062,9 @@ class GameSession:
             return str(result)
 
 
-def _handle_slash_command(session: "GameSession", command: str, game_dir: Path | None = None) -> bool:
+def _handle_slash_command(
+    session: "GameSession", command: str, game_dir: Path | None = None
+) -> bool:
     """Handle slash commands. Returns True to continue, False to quit."""
     result = handle_command(command, session, game_dir)
 

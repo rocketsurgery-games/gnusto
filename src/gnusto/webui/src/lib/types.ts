@@ -61,6 +61,11 @@ export interface FocusBlock {
   entity: string | null;
 }
 
+export interface SfxBlock {
+  type: "sfx";
+  text: string;
+}
+
 export interface ImageBlock {
   type: "image";
   src: string;
@@ -95,14 +100,19 @@ export type ContentBlock =
   | AmbientBlock
   | RevealBlock
   | FocusBlock
+  | SfxBlock
   | ImageBlock
   | SystemMessageBlock
   | CommandBlock
   | DebugBlock;
 
-// Renderable block: a ContentBlock with optional layout metadata stamped at insert time
+// Presentation intent: the LLM's pacing for a block; the engine maps it to size.
+export type Beat = "aside" | "normal" | "emphasis";
+
+// Renderable block: a ContentBlock with optional metadata stamped at insert time
 export type RenderableBlock = ContentBlock & {
   _side?: "image-left" | "image-right";
+  beat?: Beat | null;
 };
 
 // Server messages

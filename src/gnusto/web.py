@@ -32,6 +32,7 @@ from .render import (
     Narrate,
     Reveal,
     RoomEnter,
+    Sfx,
     Speak,
     SystemMessage,
     Think,
@@ -75,6 +76,7 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
         return {
             "type": "narrate",
             "text": block.text,
+            "beat": block.beat,
         }
     elif isinstance(block, Speak):
         return {
@@ -82,28 +84,39 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "text": block.text,
             "speaker": block.speaker,
             "manner": block.manner,
+            "beat": block.beat,
         }
     elif isinstance(block, Think):
         return {
             "type": "think",
             "text": block.text,
+            "beat": block.beat,
         }
     elif isinstance(block, Ambient):
         return {
             "type": "ambient",
             "text": block.text,
+            "beat": block.beat,
         }
     elif isinstance(block, Reveal):
         return {
             "type": "reveal",
             "text": block.text,
             "entity": block.entity,
+            "beat": block.beat,
         }
     elif isinstance(block, Focus):
         return {
             "type": "focus",
             "text": block.text,
             "entity": block.entity,
+            "beat": block.beat,
+        }
+    elif isinstance(block, Sfx):
+        return {
+            "type": "sfx",
+            "text": block.text,
+            "beat": block.beat,
         }
     elif isinstance(block, Image):
         return {

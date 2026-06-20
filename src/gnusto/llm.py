@@ -25,6 +25,7 @@ import litellm
 #    inject Authorization: Bearer directly in get_anthropic_headers instead.
 try:
     from litellm.llms.anthropic.chat.transformation import AnthropicConfig as _AC
+
     _orig_get_anthropic_headers = _AC.get_anthropic_headers
 
     def _oauth_aware_get_anthropic_headers(self, api_key, **kwargs):
@@ -64,12 +65,16 @@ class LLMConfig:
 # Structured Response Schema
 # =============================================================================
 
+
 @dataclass
 class ActionRequest:
     """A game action or knowledge query to execute."""
+
     tool: Literal["do_action", "move", "wait", "recall", "map", "history", "search"]
-    target: str | None = None  # For do_action (entity ID), recall/history/search (scope/keyword)
-    verb: str | None = None    # For do_action
+    target: str | None = (
+        None  # For do_action (entity ID), recall/history/search (scope/keyword)
+    )
+    verb: str | None = None  # For do_action
     args: list[str] = field(default_factory=list)  # For do_action
     direction: str | None = None  # For move
 
@@ -77,11 +82,13 @@ class ActionRequest:
 @dataclass
 class ContentBlockData:
     """A content block from the LLM (flat schema, nullable fields)."""
-    type: Literal["narrate", "speak", "think", "ambient", "reveal", "focus"]
+
+    type: Literal["narrate", "speak", "think", "ambient", "reveal", "focus", "sfx"]
     text: str
-    speaker: str | None = None   # For speak blocks
-    manner: str | None = None    # For speak blocks
-    entity: str | None = None    # For reveal/focus blocks
+    speaker: str | None = None  # For speak blocks
+    manner: str | None = None  # For speak blocks
+    entity: str | None = None  # For reveal/focus blocks
+    beat: str | None = None  # Pacing intent: aside | normal | emphasis
 
 
 @dataclass
@@ -114,29 +121,37 @@ AGENT_RESPONSE_SCHEMA = {
                 "properties": {
                     "tool": {
                         "type": "string",
-                        "enum": ["do_action", "move", "wait", "recall", "map", "history", "search"],
-                        "description": "The type of action or knowledge query"
+                        "enum": [
+                            "do_action",
+                            "move",
+                            "wait",
+                            "recall",
+                            "map",
+                            "history",
+                            "search",
+                        ],
+                        "description": "The type of action or knowledge query",
                     },
                     "target": {
                         "type": "string",
-                        "description": "For do_action: the object ID (e.g., @hacker, @door)"
+                        "description": "For do_action: the object ID (e.g., @hacker, @door)",
                     },
                     "verb": {
                         "type": "string",
-                        "description": "For do_action: the action verb (e.g., examine, take, ask)"
+                        "description": "For do_action: the action verb (e.g., examine, take, ask)",
                     },
                     "args": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "For do_action: arguments for the behavior. For <@param> parameters, pass an entity ID (e.g., \"@master-key\"). For <param> parameters (no @), pass a literal value."
+                        "description": 'For do_action: arguments for the behavior. For <@param> parameters, pass an entity ID (e.g., "@master-key"). For <param> parameters (no @), pass a literal value.',
                     },
                     "direction": {
                         "type": "string",
-                        "description": "For move: the direction (north, south, etc.)"
-                    }
+                        "description": "For move: the direction (north, south, etc.)",
+                    },
                 },
-                "required": ["tool"]
-            }
+                "required": ["tool"],
+            },
         },
         "blocks": {
             "type": "array",
@@ -146,35 +161,48 @@ AGENT_RESPONSE_SCHEMA = {
                 "properties": {
                     "type": {
                         "type": "string",
-                        "enum": ["narrate", "speak", "think", "ambient", "reveal", "focus"],
-                        "description": "Block type"
+                        "enum": [
+                            "narrate",
+                            "speak",
+                            "think",
+                            "ambient",
+                            "reveal",
+                            "focus",
+                            "sfx",
+                        ],
+                        "description": "Block type",
                     },
                     "text": {
                         "type": "string",
-                        "description": "The text content of the block"
+                        "description": "The text content of the block",
                     },
                     "speaker": {
                         "type": ["string", "null"],
-                        "description": "For speak: the speaker entity ID (e.g., @hacker)"
+                        "description": "For speak: the speaker entity ID (e.g., @hacker)",
                     },
                     "manner": {
                         "type": ["string", "null"],
-                        "description": "For speak: how they say it (e.g., whispering, shouting)"
+                        "description": "For speak: how they say it (e.g., whispering, shouting)",
                     },
                     "entity": {
                         "type": ["string", "null"],
-                        "description": "For reveal/focus: the entity ID to show an image of"
-                    }
+                        "description": "For reveal/focus: the entity ID to show an image of",
+                    },
+                    "beat": {
+                        "type": ["string", "null"],
+                        "enum": ["aside", "normal", "emphasis", None],
+                        "description": "Pacing intent (engine maps to size/emphasis): 'emphasis' for a dramatic beat, 'aside' for a throwaway aside, omit/normal otherwise",
+                    },
                 },
-                "required": ["type", "text"]
-            }
+                "required": ["type", "text"],
+            },
         },
         "needs_player_input": {
             "type": "boolean",
-            "description": "Set to true to stop and ask the player what to do next (e.g., something unexpected happened)"
-        }
+            "description": "Set to true to stop and ask the player what to do next (e.g., something unexpected happened)",
+        },
     },
-    "required": ["actions", "needs_player_input"]
+    "required": ["actions", "needs_player_input"],
 }
 
 
@@ -182,6 +210,7 @@ AGENT_RESPONSE_SCHEMA = {
 @dataclass
 class ToolCall:
     """A tool call from the LLM (legacy)."""
+
     id: str
     name: str
     arguments: dict[str, Any]
@@ -190,6 +219,7 @@ class ToolCall:
 @dataclass
 class LLMResponse:
     """Response from an LLM call (legacy)."""
+
     content: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
     raw: Any = None
@@ -233,7 +263,10 @@ class LLMClient:
         if self.config.api_base:
             messages = list(messages)
             if messages and messages[0].get("role") == "system":
-                messages[0] = {**messages[0], "content": "/no_think\n" + messages[0]["content"]}
+                messages[0] = {
+                    **messages[0],
+                    "content": "/no_think\n" + messages[0]["content"],
+                }
 
         kwargs: dict[str, Any] = {
             "model": self.config.model,
@@ -260,8 +293,12 @@ class LLMClient:
                 last_error = e
                 # Only retry on network-related errors
                 error_str = str(e).lower()
-                if any(x in error_str for x in ["connection", "timeout", "network", "http2", "disconnect"]):
+                if any(
+                    x in error_str
+                    for x in ["connection", "timeout", "network", "http2", "disconnect"]
+                ):
                     import time
+
                     time.sleep(0.5 * (attempt + 1))  # Simple backoff
                     continue
                 raise  # Non-network errors, don't retry
@@ -289,7 +326,9 @@ class LLMClient:
             raw=response,
         )
 
-    def chat_structured(self, messages: list[dict[str, str]], max_retries: int = 3) -> AgentResponse:
+    def chat_structured(
+        self, messages: list[dict[str, str]], max_retries: int = 3
+    ) -> AgentResponse:
         """
         Send a chat request expecting structured JSON output.
 
@@ -308,7 +347,10 @@ class LLMClient:
             # Prepend /no_think to suppress Qwen3-style thinking tokens
             messages = list(messages)
             if messages and messages[0].get("role") == "system":
-                messages[0] = {**messages[0], "content": "/no_think\n" + messages[0]["content"]}
+                messages[0] = {
+                    **messages[0],
+                    "content": "/no_think\n" + messages[0]["content"],
+                }
         else:
             response_format = {
                 "type": "json_schema",
@@ -316,7 +358,7 @@ class LLMClient:
                     "name": "agent_response",
                     "strict": True,
                     "schema": AGENT_RESPONSE_SCHEMA,
-                }
+                },
             }
 
         kwargs: dict[str, Any] = {
@@ -340,8 +382,12 @@ class LLMClient:
                 last_error = e
                 # Only retry on network-related errors
                 error_str = str(e).lower()
-                if any(x in error_str for x in ["connection", "timeout", "network", "http2", "disconnect"]):
+                if any(
+                    x in error_str
+                    for x in ["connection", "timeout", "network", "http2", "disconnect"]
+                ):
                     import time
+
                     time.sleep(0.5 * (attempt + 1))  # Simple backoff
                     continue
                 raise  # Non-network errors, don't retry
@@ -364,7 +410,11 @@ class LLMClient:
         except json.JSONDecodeError as e:
             # Fall back to error block on parse error
             return AgentResponse(
-                blocks=[ContentBlockData(type="narrate", text=f"[Error parsing response: {e}]")],
+                blocks=[
+                    ContentBlockData(
+                        type="narrate", text=f"[Error parsing response: {e}]"
+                    )
+                ],
                 needs_player_input=True,
                 raw=response,
             )
@@ -372,13 +422,15 @@ class LLMClient:
         # Parse actions
         actions = []
         for action_data in data.get("actions", []):
-            actions.append(ActionRequest(
-                tool=action_data.get("tool", "wait"),
-                target=action_data.get("target"),
-                verb=action_data.get("verb"),
-                args=action_data.get("args", []),
-                direction=action_data.get("direction"),
-            ))
+            actions.append(
+                ActionRequest(
+                    tool=action_data.get("tool", "wait"),
+                    target=action_data.get("target"),
+                    verb=action_data.get("verb"),
+                    args=action_data.get("args", []),
+                    direction=action_data.get("direction"),
+                )
+            )
 
         # Parse content blocks
         blocks = []
@@ -396,13 +448,21 @@ class LLMClient:
             entity = block_data.get("entity")
             if entity == "null":
                 entity = None
-            blocks.append(ContentBlockData(
-                type=block_type,
-                text=text,
-                speaker=speaker,
-                manner=manner,
-                entity=entity,
-            ))
+            beat = block_data.get("beat")
+            # Only honor the known pacing levels; ignore anything else (incl.
+            # "normal"/"null", which mean "no special emphasis").
+            if beat not in ("aside", "emphasis"):
+                beat = None
+            blocks.append(
+                ContentBlockData(
+                    type=block_type,
+                    text=text,
+                    speaker=speaker,
+                    manner=manner,
+                    entity=entity,
+                    beat=beat,
+                )
+            )
 
         return AgentResponse(
             actions=actions,
@@ -415,20 +475,29 @@ class LLMClient:
 def content_block_data_to_render(block: ContentBlockData) -> "render.ContentBlock":
     """Convert a ContentBlockData (from LLM) to a typed render block."""
     from . import render
+
+    beat = block.beat  # type: ignore[assignment]
     if block.type == "narrate":
-        return render.Narrate(text=block.text)
+        return render.Narrate(text=block.text, beat=beat)
     elif block.type == "speak":
-        return render.Speak(speaker=block.speaker or "unknown", text=block.text, manner=block.manner)
+        return render.Speak(
+            speaker=block.speaker or "unknown",
+            text=block.text,
+            manner=block.manner,
+            beat=beat,
+        )
     elif block.type == "think":
-        return render.Think(text=block.text)
+        return render.Think(text=block.text, beat=beat)
     elif block.type == "ambient":
-        return render.Ambient(text=block.text)
+        return render.Ambient(text=block.text, beat=beat)
     elif block.type == "reveal":
-        return render.Reveal(text=block.text, entity=block.entity)
+        return render.Reveal(text=block.text, entity=block.entity, beat=beat)
     elif block.type == "focus":
-        return render.Focus(text=block.text, entity=block.entity)
+        return render.Focus(text=block.text, entity=block.entity, beat=beat)
+    elif block.type == "sfx":
+        return render.Sfx(text=block.text, beat=beat)
     else:
-        return render.Narrate(text=block.text)
+        return render.Narrate(text=block.text, beat=beat)
 
 
 # =============================================================================
