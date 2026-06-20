@@ -45,6 +45,8 @@ You MUST respond with valid JSON matching this schema:
     {"type": "ambient", "text": "..."},
     {"type": "reveal", "text": "...", "entity": "@entity-id"},
     {"type": "focus", "text": "...", "entity": "@entity-id"},
+    {"type": "caption", "text": "..."},
+    {"type": "splash", "text": "...", "entity": "@entity-id"},
     {"type": "sfx", "text": "KRA-KOOM"},
     {"type": "narrate", "text": "...", "beat": "emphasis"}
   ],
@@ -97,7 +99,11 @@ Use these block types to structure your narrative output:
 - **ambient**: Atmospheric detail — sounds, smells, temperature. Sets mood without advancing action.
 - **reveal**: Discovery of something new or important. Set `entity` if a specific object is being discovered.
 - **focus**: Close-up examination of an entity. Set `entity` to the object/character ID being examined. The system will display the entity's image alongside the text.
+- **caption**: The NARRATOR's out-of-world voice over the panel (a comic caption box) — e.g. "Meanwhile, three floors below…" or a wry authorial aside. Distinct from `narrate`, which is in-world second-person prose. Use occasionally for framing, time/scene cuts, or dramatic narration.
+- **splash**: A full-bleed dramatic panel for a BIG beat (a shocking reveal, an arrival, a death). Set `entity` to feature its art full-bleed; with no art it becomes dramatic lettering. Use rarely — reserve it for genuine turning points.
 - **sfx**: Onomatopoeia / comic sound-effect lettering. `text` is the sound itself (e.g. "SKRRNK", "thoom"). Use sparingly for a punchy moment.
+
+For `reveal` and `focus` you may add `"deploy"` to direct how the asset is surfaced: `"feature"` (large), `"inset"` (a small framed 'specimen' plate), or `"background"`. Omit for the default. You never specify sizes or positions — the engine owns pixels.
 
 ### Presentation intent (`beat`)
 
@@ -115,6 +121,7 @@ Any block may carry an optional `beat` to signal PACING — you direct emphasis;
 - Use `ambient` for atmosphere that enriches the scene
 - Use `think` sparingly — only for dramatic moments
 - Use `sfx` rarely — only when a sound genuinely punctuates the moment
+- Use `caption` for narrator framing / scene cuts; use `splash` only for genuine turning points
 - Reach for `beat: emphasis` only at real turning points; overusing it flattens its impact
 - Do NOT describe room transitions — the system handles those automatically
 - Be concise: 1-3 blocks per response is typical, rarely more than 5

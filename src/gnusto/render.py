@@ -61,6 +61,10 @@ class ActionResult:
 # presentation (size, spacing, weight) — the LLM never specifies pixels.
 Beat = Literal["aside", "normal", "emphasis"]
 
+# Asset deployment: how a referenced entity asset is surfaced in a panel. The
+# LLM picks WHICH asset + this intent; the engine owns the actual pixels.
+Deploy = Literal["feature", "inset", "background"]
+
 
 @dataclass
 class Narrate:
@@ -102,6 +106,7 @@ class Reveal:
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
+    deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
     beat: Beat | None = None
 
 
@@ -111,6 +116,34 @@ class Focus:
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
+    deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
+    beat: Beat | None = None
+
+
+@dataclass
+class Caption:
+    """Narrator caption — an out-of-world authorial aside (parchment box).
+
+    Distinct from Narrate: NARRATE is in-world second-person prose ('You step
+    forward'); CAPTION is the narrator's voice over the panel ('Meanwhile,
+    three floors below...'). The engine renders it as a comic caption plate.
+    """
+
+    text: str
+    beat: Beat | None = None
+
+
+@dataclass
+class Splash:
+    """Full-bleed dramatic panel — the comic 'splash page' for a big beat.
+
+    Optionally features an entity's art (deployed full-bleed). With no
+    resolvable asset it degrades to a TYPOGRAPHIC splash (gnusto-4ac5.6),
+    which is itself a legit comic device, not a failure.
+    """
+
+    text: str
+    entity: str | None = None  # Entity ID for full-bleed art lookup
     beat: Beat | None = None
 
 
@@ -158,6 +191,8 @@ ContentBlock = (
     | Ambient
     | Reveal
     | Focus
+    | Caption
+    | Splash
     | Sfx
     | Image
     | SystemMessage

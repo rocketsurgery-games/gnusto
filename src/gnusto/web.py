@@ -25,6 +25,7 @@ from .llm import LLMConfig
 from .render import (
     ActionResult,
     Ambient,
+    Caption,
     ContentBlock,
     DebugInfo,
     Focus,
@@ -34,6 +35,7 @@ from .render import (
     RoomEnter,
     Sfx,
     Speak,
+    Splash,
     SystemMessage,
     Think,
     build_room_block,
@@ -103,11 +105,26 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "type": "reveal",
             "text": block.text,
             "entity": block.entity,
+            "deploy": block.deploy,
             "beat": block.beat,
         }
     elif isinstance(block, Focus):
         return {
             "type": "focus",
+            "text": block.text,
+            "entity": block.entity,
+            "deploy": block.deploy,
+            "beat": block.beat,
+        }
+    elif isinstance(block, Caption):
+        return {
+            "type": "caption",
+            "text": block.text,
+            "beat": block.beat,
+        }
+    elif isinstance(block, Splash):
+        return {
+            "type": "splash",
             "text": block.text,
             "entity": block.entity,
             "beat": block.beat,

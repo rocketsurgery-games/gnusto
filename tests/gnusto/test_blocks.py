@@ -17,6 +17,50 @@ class TestSfxBlock:
         assert d == {"type": "sfx", "text": "thoom", "beat": None}
 
 
+class TestCaptionSplash:
+    def test_caption_converts(self):
+        block = content_block_data_to_render(
+            ContentBlockData(type="caption", text="Meanwhile, below...")
+        )
+        assert isinstance(block, render.Caption)
+        assert block.text == "Meanwhile, below..."
+
+    def test_caption_serializes(self):
+        d = block_to_dict(render.Caption(text="hi"))
+        assert d == {"type": "caption", "text": "hi", "beat": None}
+
+    def test_splash_converts_with_entity(self):
+        block = content_block_data_to_render(
+            ContentBlockData(type="splash", text="IT RISES", entity="@vat")
+        )
+        assert isinstance(block, render.Splash)
+        assert block.entity == "@vat"
+
+    def test_splash_serializes(self):
+        d = block_to_dict(render.Splash(text="IT RISES", entity="@vat"))
+        assert d == {
+            "type": "splash",
+            "text": "IT RISES",
+            "entity": "@vat",
+            "beat": None,
+        }
+
+
+class TestDeploy:
+    def test_reveal_deploy_passes_through(self):
+        block = content_block_data_to_render(
+            ContentBlockData(
+                type="reveal", text="a knife", entity="@knife", deploy="inset"
+            )
+        )
+        assert isinstance(block, render.Reveal)
+        assert block.deploy == "inset"
+
+    def test_focus_deploy_serializes(self):
+        d = block_to_dict(render.Focus(text="x", entity="@hacker", deploy="feature"))
+        assert d["deploy"] == "feature"
+
+
 class TestBeat:
     def test_beat_passes_through_conversion(self):
         data = ContentBlockData(type="narrate", text="It moves.", beat="emphasis")

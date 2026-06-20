@@ -13,6 +13,8 @@
   import DebugBlock from './DebugBlock.svelte'
   import EstablishingBlock from './EstablishingBlock.svelte'
   import SfxBlock from './SfxBlock.svelte'
+  import CaptionBlock from './CaptionBlock.svelte'
+  import SplashBlock from './SplashBlock.svelte'
 
   interface Props {
     block: RenderableBlock
@@ -31,6 +33,10 @@
     <EstablishingBlock {block} />
   {:else if block.type === 'sfx'}
     <SfxBlock {block} />
+  {:else if block.type === 'caption'}
+    <CaptionBlock {block} />
+  {:else if block.type === 'splash'}
+    <SplashBlock {block} />
   {:else if block.type === 'narrate'}
     <NarrateBlock {block} />
   {:else if block.type === 'speak'}

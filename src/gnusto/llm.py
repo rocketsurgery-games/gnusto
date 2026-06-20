@@ -83,11 +83,22 @@ class ActionRequest:
 class ContentBlockData:
     """A content block from the LLM (flat schema, nullable fields)."""
 
-    type: Literal["narrate", "speak", "think", "ambient", "reveal", "focus", "sfx"]
+    type: Literal[
+        "narrate",
+        "speak",
+        "think",
+        "ambient",
+        "reveal",
+        "focus",
+        "caption",
+        "splash",
+        "sfx",
+    ]
     text: str
     speaker: str | None = None  # For speak blocks
     manner: str | None = None  # For speak blocks
-    entity: str | None = None  # For reveal/focus blocks
+    entity: str | None = None  # For reveal/focus/splash blocks
+    deploy: str | None = None  # Asset deployment: feature | inset | background
     beat: str | None = None  # Pacing intent: aside | normal | emphasis
 
 
@@ -168,6 +179,8 @@ AGENT_RESPONSE_SCHEMA = {
                             "ambient",
                             "reveal",
                             "focus",
+                            "caption",
+                            "splash",
                             "sfx",
                         ],
                         "description": "Block type",
@@ -186,7 +199,12 @@ AGENT_RESPONSE_SCHEMA = {
                     },
                     "entity": {
                         "type": ["string", "null"],
-                        "description": "For reveal/focus: the entity ID to show an image of",
+                        "description": "For reveal/focus/splash: the entity ID to show an image of",
+                    },
+                    "deploy": {
+                        "type": ["string", "null"],
+                        "enum": ["feature", "inset", "background", None],
+                        "description": "For reveal/focus: how to surface the asset — 'feature' (large), 'inset' (small framed plate), 'background'. Omit for the default.",
                     },
                     "beat": {
                         "type": ["string", "null"],
@@ -448,6 +466,10 @@ class LLMClient:
             entity = block_data.get("entity")
             if entity == "null":
                 entity = None
+            deploy = block_data.get("deploy")
+            # Only honor the known deployment intents; ignore anything else.
+            if deploy not in ("feature", "inset", "background"):
+                deploy = None
             beat = block_data.get("beat")
             # Only honor the known pacing levels; ignore anything else (incl.
             # "normal"/"null", which mean "no special emphasis").
@@ -460,6 +482,7 @@ class LLMClient:
                     speaker=speaker,
                     manner=manner,
                     entity=entity,
+                    deploy=deploy,
                     beat=beat,
                 )
             )
@@ -491,9 +514,17 @@ def content_block_data_to_render(block: ContentBlockData) -> "render.ContentBloc
     elif block.type == "ambient":
         return render.Ambient(text=block.text, beat=beat)
     elif block.type == "reveal":
-        return render.Reveal(text=block.text, entity=block.entity, beat=beat)
+        return render.Reveal(
+            text=block.text, entity=block.entity, deploy=block.deploy, beat=beat
+        )
     elif block.type == "focus":
-        return render.Focus(text=block.text, entity=block.entity, beat=beat)
+        return render.Focus(
+            text=block.text, entity=block.entity, deploy=block.deploy, beat=beat
+        )
+    elif block.type == "caption":
+        return render.Caption(text=block.text, beat=beat)
+    elif block.type == "splash":
+        return render.Splash(text=block.text, entity=block.entity, beat=beat)
     elif block.type == "sfx":
         return render.Sfx(text=block.text, beat=beat)
     else:
