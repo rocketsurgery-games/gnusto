@@ -5,9 +5,12 @@
   interface Props {
     blocks: RenderableBlock[]
     onentityclick?: (entityId: string, anchorEl: HTMLElement) => void
+    // Follow new panels (live page). False when viewing a history page so the
+    // viewport isn't yanked to the page foot on navigation (gnusto-4ac5.4).
+    autoscroll?: boolean
   }
 
-  let { blocks, onentityclick }: Props = $props()
+  let { blocks, onentityclick, autoscroll = true }: Props = $props()
   let streamEl: HTMLElement | undefined
 
   // Tier grouping (gnusto-4ac5.5/.7): consecutive small panels that share a
@@ -50,7 +53,7 @@
   // Auto-scroll when new blocks arrive — scroll the last block into view
   // (not scrollHeight, which would scroll into the padding-bottom reserve)
   $effect(() => {
-    if (blocks.length > 0) {
+    if (autoscroll && blocks.length > 0) {
       requestAnimationFrame(() => {
         streamEl?.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       })

@@ -5,7 +5,7 @@
   import { updateEntities, updateBehaviors, resolveEntityName, resolveEntityImage, resolveEntityBehaviors } from './lib/entities.svelte'
   import { behaviorLabel, behaviorToTargetedCommand } from './lib/commands'
 
-  import NarrativeStream from './components/NarrativeStream.svelte'
+  import PagedStream from './components/PagedStream.svelte'
   import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
@@ -319,7 +319,7 @@
 }} />
 
 <div class="game-content">
-  <NarrativeStream {blocks} onentityclick={handleEntityClick} />
+  <PagedStream {blocks} onentityclick={handleEntityClick} />
 </div>
 <RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
   open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
