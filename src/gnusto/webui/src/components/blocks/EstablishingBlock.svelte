@@ -16,6 +16,10 @@
   room emits a fresh establishing panel. Live affordances live elsewhere.
 -->
 <section class="establishing">
+  <!-- scene-break: a new establishing panel reads as a beat change (4ac5.3).
+       Pure CSS, no state plumbing — continuity is automatic in the stream. -->
+  <div class="scene-divider" aria-hidden="true"><span class="mark">◆</span></div>
+
   {#if block.image}
     <div class="stage">
       <img src={block.image} alt={block.name} onerror={(e) => (e.target as HTMLImageElement).remove()} />
@@ -34,8 +38,30 @@
 </section>
 
 <style>
+  /* extra air above the panel so a new scene reads as a beat change */
   .establishing {
-    margin: 0;
+    margin-top: 2.25rem;
+  }
+
+  /* a faded chapter rule with a small center mark */
+  .scene-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.15rem;
+  }
+  .scene-divider::before,
+  .scene-divider::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+  .scene-divider .mark {
+    color: var(--game-accent);
+    font-size: 0.7rem;
+    opacity: 0.7;
+    text-shadow: 0 0 8px rgba(143, 224, 106, 0.5);
   }
 
   /* full-bleed scene art shown at its NATIVE aspect (rooms are generated wide,
@@ -51,6 +77,16 @@
       0 14px 34px -16px #000;
   }
 
+  /* page-turn feel: a soft fold-shadow across the top of the new scene */
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 16%);
+  }
+
   .stage img {
     display: block;
     width: 100%;
@@ -60,6 +96,7 @@
   /* location label — embedded identity, not chrome */
   .locandum {
     position: absolute;
+    z-index: 2; /* above the page-turn fold */
     top: 12px;
     left: 12px;
     font-family: var(--font-ui);
