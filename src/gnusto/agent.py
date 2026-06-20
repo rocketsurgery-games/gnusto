@@ -27,7 +27,7 @@ from .llm import (
     LLMConfig,
     content_block_data_to_render,
 )
-from .render import ContentBlock
+from .render import ContentBlock, build_scene_context
 from .state import GameState, ObjectInfo, get_game_state
 
 SYSTEM_PROMPT = """\
@@ -511,6 +511,18 @@ class GameSession:
         # Current turn: fresh state + player command
         state_context = current_state.to_context_string()
 
+        # Asset-deployment catalog: ground the LLM's reveal/focus/splash entity
+        # references in what is ACTUALLY renderable, so it surfaces real art
+        # rather than guessing. The engine owns pixels; this only says what
+        # exists. (gnusto-4ac5.5: asset deployment from a catalog.)
+        if not self.parsing_only:
+            catalog = self._renderable_catalog(current_state)
+            if catalog:
+                state_context += (
+                    "\n\n[Renderable assets — entities with art you may surface via "
+                    f"reveal/focus/splash using entity=<id>: {catalog}]"
+                )
+
         messages.append(
             {
                 "role": "user",
@@ -519,6 +531,23 @@ class GameSession:
         )
 
         return messages
+
+    def _renderable_catalog(self, state: GameState) -> str:
+        """List visible entities that have renderable art (excluding the room).
+
+        The room is auto-established as a panel, so it is omitted; what's useful
+        to the LLM is which OBJECTS/CHARACTERS it can feature in a panel.
+        """
+        try:
+            scene = build_scene_context(state, self.runtime, self.game_dir)
+        except Exception:
+            return ""
+        entries = [
+            f"{eid} ({info['name']})" if info.get("name") else eid
+            for eid, info in scene.items()
+            if info.get("image") and eid != state.room
+        ]
+        return ", ".join(entries)
 
     def get_state(self) -> GameState:
         """Get current game state."""
