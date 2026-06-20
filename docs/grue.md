@@ -856,8 +856,42 @@ Default behavior for a verb, applied when an object lacks its own handler.
 Turn-based event handler. Events fire each turn while queued.
 - `:location` - Optional room constraint (event only fires when player is here)
 - `:on-turn` - A `cond` form evaluated each turn
+- `:rdesc` - Optional **beat catalog**: a `(:tag "brief" ...)` map of one image
+  brief per *beat* of a scripted sequence (cutscene). See Beat Rendering below.
 
 See [Turn-Based Events](#turn-based-events) for detailed documentation.
+
+#### Beat rendering (event `:rdesc` + emission `:render`)
+
+A scripted multi-turn sequence (e.g. a ritual cutscene) is a series of transient
+*beats* — momentary panels, not a queryable steady state. So events render
+differently from entities: there is **no state-reading selector**. Instead the
+firing control-flow arm *is* the selector — each emission tags its beat:
+
+- The event declares a `:rdesc` **catalog**, a keyword-keyed brief map. The keys
+  are the beat set; asset keys are `<event>-<tag>` (e.g. `ritual-stage5`).
+- Each `(success ...)` / `(blocked ...)` selects its beat with `:render :tag`.
+  An emission with no `:render` is a text-only beat. The beat tag is carried in
+  the result context for the UI to deploy.
+
+```scheme
+(event ritual
+  :rdesc (:gather "Black mist coils up in the darkening lab ..."
+          :climax "A face-tentacle uncoils from the mist ...")
+  :on-turn (cond
+    ((= (:stage @prof) 0)
+      `((set @prof :stage 1) (queue ritual)
+        (success :render :gather :message "...")))
+    (true
+      '((dequeue ritual) (blocked :reason death :render :climax)))))
+; keys: ritual-gather.jpg / ritual-climax.jpg
+```
+
+Beats are enumerated and linted like entity variants (`frotz render`): the set of
+emitted `:render` tags must be a subset of the declared `:rdesc` catalog, and the
+beat sequence is inherently bounded (no cross-product). Unlike rooms/objects,
+events have no locality rule — a beat is a one-off narrative panel, so it may
+depict whatever the moment needs.
 
 #### `(globals :name value ...)` *(Removed)*
 > **Note:** The `(globals)` form has been removed. Use object properties instead.

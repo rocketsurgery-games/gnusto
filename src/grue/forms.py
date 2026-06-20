@@ -245,6 +245,7 @@ class GrueEvent:
     nested_forms: list[SExpr] = field(
         default_factory=list
     )  # (def ...), (defn ...) etc.
+    rdesc: "str | dict[str, Any] | None" = None  # beat brief catalog (tag -> brief)
 
 
 @dataclass
@@ -853,8 +854,15 @@ def _parse_event(expr: SList, world: GrueWorld) -> None:
     # Store the body expression directly (evaluated at runtime)
     body = kwargs["on-turn"]
 
+    # Optional beat-render catalog: a (:tag "brief" ...) map. Each emission in
+    # the body selects a beat via (success :render :tag ...); the catalog keys
+    # are the enumerable beat set (key = <event>-<tag>).
+    rdesc = None
+    if "rdesc" in kwargs:
+        rdesc = parse_rdesc(kwargs["rdesc"], f"event {name}")
+
     event = GrueEvent(
-        name=name, location=location, body=body, nested_forms=nested_forms
+        name=name, location=location, body=body, nested_forms=nested_forms, rdesc=rdesc
     )
     world.events[event.name] = event
 

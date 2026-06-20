@@ -132,6 +132,20 @@ world `:visual-style` preamble is *not* repeated per entry — it is carried onc
 for the whole manifest (`assemble_style`), and the full per-key generation prompt
 is `assemble_brief(visual-style, brief)` (style preamble + entity brief).
 
+### Beats (events): a third render source
+
+State imagery answers "what does X look like *now*?". A scripted multi-turn
+sequence (a cutscene like the alchemy ritual) instead needs **beat imagery**: a
+series of transient panels. Events render these without a state-reading selector
+— the firing control-flow arm *is* the selector. An event declares a `:rdesc`
+**catalog** (`(:tag "brief" ...)`), and each `(success/blocked :render :tag ...)`
+selects a beat; keys are `<event>-<tag>` (`kind: "event"`). Beats are a 1-D
+sequence, so they can't explode; the lint only checks that emitted tags ⊆ the
+declared catalog. They flow through the same manifest / `filfre fill` pipeline.
+Unlike establishing shots, a beat is a one-off narrative panel and may depict the
+full moment (figures, mist, etc.). The runtime carries the selected tag in the
+result context; *displaying* beat panels is the panel-stream UI's job (Epic B).
+
 Presentation **theme** (fonts, colors, panel chrome, UI imagery) lives in
 per-game CSS (`theme.css` / `game.json`), *not* in Grue — push content/briefs into
 Grue, keep CSS in CSS (`gnusto-eaec.6`).

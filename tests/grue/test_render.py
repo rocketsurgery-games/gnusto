@@ -11,6 +11,7 @@ from grue.render import (
     asset_base,
     brief_for_variant,
     build_render_manifest,
+    event_render_tags,
     get_render_spec,
     has_render_spec,
     is_renderable,
@@ -446,6 +447,70 @@ class TestLintRender:
           :rdesc (:open "o" :closed "c"))
         """
         assert lint_render(parse_grue(source)) == []
+
+
+class TestEventRenderTags:
+    """Static extraction of beat tags emitted by an event body."""
+
+    def test_collects_literal_tags(self):
+        body = parse(
+            '(cond ((= a 0) \'((success :render :stage1 :message "m")))'
+            "      (true '((blocked :reason death :render :stage2))))"
+        )
+        tags, exact = event_render_tags(body)
+        assert tags == {"stage1", "stage2"}
+        assert exact is True
+
+    def test_non_literal_tag_is_inexact(self):
+        body = parse("'((success :render some-var))")
+        tags, exact = event_render_tags(body)
+        assert exact is False
+
+    def test_no_emissions(self):
+        assert event_render_tags(parse("'((dequeue e) (success))")) == (set(), True)
+
+
+class TestEventBeatManifestAndLint:
+    """Events with a :rdesc beat catalog flow through manifest + lint."""
+
+    def _world(self, body, rdesc):
+        source = f"""
+        (world :name "T" :player @player)
+        (object @player :description "you")
+        (event ritual
+          :on-turn {body}
+          :rdesc {rdesc})
+        """
+        return parse_grue(source)
+
+    def test_manifest_includes_event_beats(self):
+        world = self._world(
+            '(cond ((= a 0) \'((success :render :a :message "m")))'
+            "      (true '((success :render :b))))",
+            '(:a "beat a" :b "beat b")',
+        )
+        by_key = {e.key: e for e in build_render_manifest(world)}
+        assert "ritual-a" in by_key and "ritual-b" in by_key
+        assert by_key["ritual-a"].kind == "event"
+        assert by_key["ritual-a"].variant == "a"
+        assert by_key["ritual-a"].brief == "beat a"
+        assert lint_render(world) == []
+
+    def test_emitted_tag_without_catalog_entry_is_error(self):
+        world = self._world(
+            "'((success :render :c))",
+            '(:a "beat a" :b "beat b")',
+        )
+        errors = [e for e in lint_render(world) if e.severity == "error"]
+        assert any("c" in e.message and e.entity == "ritual" for e in errors)
+
+    def test_unused_catalog_entry_is_warning(self):
+        world = self._world(
+            "'((success :render :a))",
+            '(:a "beat a" :b "beat b")',
+        )
+        warnings = [e for e in lint_render(world) if e.severity == "warning"]
+        assert any("b" in e.message for e in warnings)
 
 
 class MockState:

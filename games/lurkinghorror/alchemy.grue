@@ -1050,6 +1050,21 @@
   sound of equipment smashing. Around the trapdoor pours a blinding flash of light. Finally you hear
   an almost inaudible whimper, then nothing. The light fades.")
 
+  ; Beat-render catalog: one image brief per ritual beat. Each :on-turn arm
+  ; selects its beat via (success/blocked :render :stageN ...). Keys are
+  ; professor-ritual-<tag>; these are one-off narrative panels (not establishing
+  ; shots), so they may depict the professor, the player, and the gathering mist.
+  :rdesc
+    (:stage1 "A nervous professor pushes a young man into the center of a chalk pentagram on a lab floor, cutting and redrawing a chalk line with a small knife. Tense, dim chemistry lab."
+     :stage2 "A professor hunched over a lab bench preparing strange apparatus, glancing back with a fervent, obsessive expression. Cluttered chemistry lab, ominous mood."
+     :stage3 "A professor standing inside a second chalk pentagram, mid-ritual: chanting, brandishing strange instruments, one hand pointing toward the viewer. Eerie lab light."
+     :stage4 "A chemistry lab visibly darkening as a professor chants; shadows lengthening and deepening, an oppressive sense of wrongness gathering in the air."
+     :stage5 "A thick black mist forming in a darkened lab, parts of it congealing into a disturbing half-seen shape; a professor calling out, answered from nowhere."
+     :stage6 "A lab freezing and trembling, frost on shuttered windows, the dense black mist churning in cadence with a chant. Bone-rattling dread."
+     :stage7 "Black mist swirling wildly around a lab as a gibbering presence fills the air; the professor sweating, terrified, losing control of the ritual."
+     :stage8-death "A tentacle ending in a demonic face coils slowly around a young man as the room recedes into a vast distance; the vast horror beyond glimpsed at the edge of vision."
+     :stage8-survive "Seen from below through a trapdoor: a blinding flash of light and smashing equipment in the room above, then fading light and silence. A young man crouched in the tunnel below.")
+
   ; No :location filter - event handles location checks internally
   ; to allow running in alchemy-lab, under-alchemy-lab, or brick-tunnel
   :on-turn
@@ -1069,22 +1084,22 @@
           `((set @professor :ritual-stage ,?next-stage)
             (move @player @pentagram)
             (queue professor-ritual)
-            (success :stage 1 :message ,stage1)))
+            (success :render :stage1 :message ,stage1)))
 
         ((= (:ritual-stage @professor) 1)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 2 :message ,stage2)))
+            (success :render :stage2 :message ,stage2)))
 
         ((= (:ritual-stage @professor) 2)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 3 :message ,stage3)))
+            (success :render :stage3 :message ,stage3)))
 
         ((= (:ritual-stage @professor) 3)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 4
+            (success :render :stage4
                      :message ,(str stage4
                                     (if (:rmung @pentagram)
                                       ", the professor having difficulty with the almost unpronounceable words"
@@ -1093,12 +1108,12 @@
         ((= (:ritual-stage @professor) 4)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 5 :message ,stage5)))
+            (success :render :stage5 :message ,stage5)))
 
         ((= (:ritual-stage @professor) 5)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 6
+            (success :render :stage6
                      :message ,(str stage6 " The professor "
                         (cond
                             ((not (in? @player @pentagram))
@@ -1111,7 +1126,7 @@
         ((= (:ritual-stage @professor) 6)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :stage 7
+            (success :render :stage7
                      :message ,(
                         str stage7
                         (cond
@@ -1130,7 +1145,7 @@
             ; Player still in lab = death
             ((or (in? @player @pentagram) (= (loc @player) @alchemy-lab))
               '((dequeue professor-ritual)
-                (blocked :reason death
+                (blocked :reason death :render :stage8-death
                          :context ((death true) (description stage8-death)))))
 
             ; Player escaped = survive
@@ -1145,7 +1160,7 @@
                       '((set @alchemy-trap-door :open false))
                       '())
                 (dequeue professor-ritual)
-                (success :stage 8 :message ,stage8-survive)))))
+                (success :render :stage8-survive :message ,stage8-survive)))))
 
         (true
           '((dequeue professor-ritual)

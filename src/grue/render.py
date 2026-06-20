@@ -403,7 +403,7 @@ class RenderManifestEntry:
 
     key: str  # extension-less asset key, e.g. "microwave-open"
     entity: str  # owning entity name, e.g. "@microwave"
-    kind: Literal["room", "object"]
+    kind: Literal["room", "object", "event"]
     variant: str | None  # variant token, or None for single-variant entities
     brief: str | None  # per-entity brief (rdesc), without the shared style
 
@@ -421,13 +421,57 @@ class RenderLintError:
 
 
 def _iter_renderable(world: Any):
-    """Yield (entity_name, entity, kind) for every renderable room/object."""
+    """Yield (entity_name, entity, kind) for every renderable room/object/event.
+
+    Events are renderable when they declare a beat ``:rdesc`` catalog; their
+    asset keys are ``<event>-<tag>``, exactly like an entity's variant keys.
+    """
     for name, room in getattr(world, "rooms", {}).items():
         if is_renderable(room):
             yield name, room, "room"
     for name, obj in getattr(world, "objects", {}).items():
         if is_renderable(obj):
             yield name, obj, "object"
+    for name, event in getattr(world, "events", {}).items():
+        if is_renderable(event):
+            yield name, event, "event"
+
+
+def event_render_tags(body: SExpr | None) -> tuple[set[str], bool]:
+    """Collect the beat tags emitted by ``(success/blocked :render :tag ...)``.
+
+    Walks an event ``:on-turn`` body (through quotes/conditionals) and gathers
+    the ``Keyword`` tag names selected at emission sites. Returns
+    ``(tag_names, exact)``; ``exact`` is False if any ``:render`` value is not a
+    literal keyword (i.e. the emitted tag set is not statically bounded).
+    """
+    tags: set[str] = set()
+    exact = True
+
+    def walk(expr: Any) -> None:
+        nonlocal exact
+        if not isinstance(expr, SList) or len(expr) == 0:
+            return
+        head = expr[0]
+        if isinstance(head, Symbol) and head.name in ("success", "blocked", "victory"):
+            items = expr.items
+            i = 1
+            while i < len(items):
+                kw = items[i]
+                if isinstance(kw, Keyword) and kw.name == "render":
+                    val = items[i + 1] if i + 1 < len(items) else None
+                    if isinstance(val, Keyword):
+                        tags.add(val.name)
+                    else:
+                        exact = False
+                    i += 2
+                else:
+                    i += 1
+        for item in expr.items:
+            walk(item)
+
+    walk(body)
+    return tags, exact
 
 
 def build_render_manifest(world: Any) -> list[RenderManifestEntry]:
@@ -470,7 +514,7 @@ def build_render_manifest(world: Any) -> list[RenderManifestEntry]:
 def lint_render(world: Any) -> list[RenderLintError]:
     """Statically check render specs for the explosion-guard invariants.
 
-    Two rules:
+    Entity rules:
 
     1. **Codomain ⊆ declared variants.** Every variant token a ``(fn)`` selector
        can return must have a matching ``:rdesc`` brief, so every selected key
@@ -480,9 +524,20 @@ def lint_render(world: Any) -> list[RenderLintError]:
        what makes the scene-variant cross-product explode. An *object* render
        may read only its own state. Reads of ``self`` (own properties) and
        queues are always allowed.
+
+    Event rule:
+
+    3. **Emitted beats ⊆ declared catalog.** Every ``(success/blocked :render
+       :tag)`` an event emits must have a matching ``:rdesc`` catalog entry
+       (else there is no brief / key). Catalog entries never emitted are flagged
+       as unused (warning). Events have no state-reading selector, so the
+       locality rule does not apply.
     """
     errors: list[RenderLintError] = []
+    errors.extend(_lint_events(world))
     for name, entity, kind in _iter_renderable(world):
+        if kind == "event":
+            continue  # handled by _lint_events
         spec = getattr(entity, "render", None)
         if _selector_body(spec) is None:
             continue  # literal / absent selector: nothing to interpret
@@ -540,4 +595,47 @@ def lint_render(world: Any) -> list[RenderLintError]:
                         f"variant must depend only on its own state.",
                     )
                 )
+    return errors
+
+
+def _lint_events(world: Any) -> list[RenderLintError]:
+    """Lint event beat rendering (rule 3): emitted tags ⊆ declared catalog."""
+    errors: list[RenderLintError] = []
+    for name, event in getattr(world, "events", {}).items():
+        catalog = render_variants(event)  # the :rdesc map keys, or None
+        body = getattr(event, "body", None)
+        tags, exact = event_render_tags(body)
+        # Only events that declare a catalog or emit beats are of interest.
+        if catalog is None and not tags:
+            continue
+        declared = set(catalog) if catalog else set()
+
+        extra = tags - declared
+        if extra:
+            errors.append(
+                RenderLintError(
+                    name,
+                    f"event emits beats {sorted(extra)} with no :rdesc catalog "
+                    f"entry (declared: {sorted(declared)}).",
+                )
+            )
+        if not exact:
+            errors.append(
+                RenderLintError(
+                    name,
+                    "event emits a :render beat tag that is not a literal keyword; "
+                    "the beat set cannot be enumerated for pre-generation.",
+                    severity="warning",
+                )
+            )
+        unused = declared - tags
+        if unused:
+            errors.append(
+                RenderLintError(
+                    name,
+                    f"event declares :rdesc beats {sorted(unused)} that are never "
+                    f"emitted via (success/blocked :render ...).",
+                    severity="warning",
+                )
+            )
     return errors

@@ -869,6 +869,17 @@ class TestEffectInterpreterBasic:
         assert result.outcome == "success"
         assert result.context["message"] == "You got it!"
 
+    def test_success_carries_render_beat_tag(self):
+        """(success :render :tag) lands the beat tag in context for the UI."""
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        result = interp.interpret(
+            [["success", Keyword("render"), Keyword("stage5"), Keyword("message"), "m"]]
+        )
+        assert result.outcome == "success"
+        # Beat tag preserved as a Keyword (resolves to <event>-stage5 downstream).
+        assert result.context["render"] == Keyword("stage5")
+
     def test_blocked_with_reason(self):
         """Blocked with reason."""
         state = MockStateWithQueues()
