@@ -16,6 +16,7 @@ from grue.render import (
     has_render_spec,
     is_renderable,
     lint_render,
+    render_aspect,
     render_codomain,
     render_keyset,
     render_reads,
@@ -228,6 +229,20 @@ class TestVisualStyle:
             "accent-glow": "#c4ff8a",
         }
 
+    def test_kinds_parsed_as_nested_per_kind_maps(self):
+        source = """
+        (world :name "Test" :player @player
+          :visual-style (:prompt "Inked."
+                         :aspect-ratio "1:1"
+                         :kinds (:room   (:aspect-ratio "2:1" :prompt "Wide stage.")
+                                 :object (:prompt "On black."))))
+        """
+        world = parse_grue(source)
+        assert world.visual_style["kinds"] == {
+            "room": {"aspect-ratio": "2:1", "prompt": "Wide stage."},
+            "object": {"prompt": "On black."},
+        }
+
 
 class TestAssembleStyle:
     """The shared style preamble (hoisted, not repeated per entry)."""
@@ -256,6 +271,34 @@ class TestAssembleStyle:
 
     def test_no_swatches_no_anchor(self):
         assert assemble_style({"prompt": "Inked."}) == "Inked."
+
+    def test_kind_prompt_is_additive(self):
+        style = {
+            "prompt": "Inked.",
+            "kinds": {"object": {"prompt": "On black."}},
+        }
+        # base prompt + kind prompt, in order
+        assert assemble_style(style, "object") == "Inked. On black."
+        # a kind with no override falls back to just the base
+        assert assemble_style(style, "room") == "Inked."
+        assert assemble_style(style, None) == "Inked."
+
+
+class TestRenderAspect:
+    """Per-kind aspect-ratio resolution."""
+
+    def test_kind_overrides_default(self):
+        style = {
+            "aspect-ratio": "1:1",
+            "kinds": {"room": {"aspect-ratio": "2:1"}},
+        }
+        assert render_aspect(style, "room") == "2:1"
+        assert render_aspect(style, "object") == "1:1"  # inherits default
+        assert render_aspect(style, None) == "1:1"
+
+    def test_default_when_no_aspect(self):
+        assert render_aspect(None) == "1:1"
+        assert render_aspect({}) == "1:1"
 
 
 class TestAssembleBrief:

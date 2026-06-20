@@ -20,11 +20,11 @@ generate images for game assets.
 
 Turn a game's render manifest into one brief per asset key — the same keyset a
 frontier model would fill, but packaged so a **human artist** can fill it instead.
-Each brief is the shared world `:visual-style` preamble followed by the entity's
-`:rdesc`.
+Each brief is the world `:visual-style` preamble (specialized for the entity's
+kind via `:kinds`) followed by the entity's `:rdesc`.
 
 ```bash
-# Print every brief (the shared style is shown once at the top)
+# Print every brief (full composed prompt per key, style specialized by kind)
 filfre brief games/lurkinghorror
 
 # Write one <key>.txt per asset into a directory, ready to hand to an artist
@@ -62,7 +62,7 @@ filfre fill games/lurkinghorror --key microwave-open --force
 | `game` | Path to the game directory (or `.grue` file) |
 | `--key KEY` | Limit to specific asset key(s); repeatable |
 | `--force` | Regenerate keys even if an asset already exists |
-| `--aspect-ratio` | Override the world `:visual-style` aspect ratio |
+| `--aspect-ratio` | Force one aspect ratio for every key (otherwise resolved per entity kind from `:visual-style` / `:kinds` — e.g. rooms `2:1`, objects `1:1`) |
 | `--seed` | Random seed (default: 0) |
 | `--dry-run` | List what would be generated, with prompts, without calling the model |
 

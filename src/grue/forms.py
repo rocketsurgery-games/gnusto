@@ -688,6 +688,14 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
             raw = parse_kwargs(list(vs_expr.items))
             if "swatches" in raw:
                 world.visual_style["swatches"] = parse_properties(raw["swatches"])
+            # :kinds is a map of entity-kind -> per-kind style keyword-map
+            # (e.g. (:room (:aspect-ratio "2:1" :prompt "...") :object (...))).
+            # Two levels of nesting, so parse each kind's map explicitly.
+            if "kinds" in raw and isinstance(raw["kinds"], SList):
+                kind_kwargs = parse_kwargs(list(raw["kinds"].items))
+                world.visual_style["kinds"] = {
+                    kind: parse_properties(spec) for kind, spec in kind_kwargs.items()
+                }
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
 

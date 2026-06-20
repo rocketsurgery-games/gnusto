@@ -8,11 +8,15 @@
   over here from the dorm. Not to mention jumping at every shadow, what with all the recent
   disappearances. Time to find a free machine, get to work, and write that twenty page paper."
 
+  :player @player
+
   ; Visual style for all generated illustrations (graphic-novel horror).
   :visual-style (
-      :prompt "Full-color graphic-novel horror illustration. Bold ink linework with painted cel
-      shading, moody cinematic lighting, deep shadows, heavy atmosphere. Gritty 1980s setting."
+      :prompt "Style: broad alla prima brush strokes, suitable only as a rough mockup for a human
+      artist, but little detail."
+
       :palette "desaturated dark blues and teals, sickly fluorescent greens, warm incandescent highlights"
+
       ; Structured swatches: the single source of the colour identity. Drives both
       ; the web chrome (CSS --game-* vars) and the art briefs (filfre), so the
       ; generated art and the UI can't drift apart.
@@ -21,9 +25,15 @@
                  :accent "#8fe06a" :accent-glow "#c4ff8a" :warm "#e6a45c"
                  :paper "#e7e0cd" :paper-ink "#1b1813"
                  :text "#dbe6e3" :text-dim "#8aa0a0")
-      :aspect-ratio "1:1")
+      :aspect-ratio "1:1"
+      ; Per-kind specialization. :prompt is additive over the base style;
+      ; :aspect-ratio overrides the default. Rooms breathe as wide establishing
+      ; stages; objects/characters are isolated on a flat black field so every
+      ; variant (and every object) composites consistently into the dark UI.
+      :kinds (:room   (:aspect-ratio "2:1"
+                       :prompt "Wide establishing shot of the empty location; environment only, no people, cinematic framing with room to breathe.")
+              :object (:prompt "A single subject, centered, isolated on a flat pure-black background; no scene, no props, no floor, even studio lighting."))))
 
-  :player @player)
 
 ; Victory: Defeat the Frob
 ; The frob starts at nil (limbo), appears at @inner-lair when the mass is electrocuted,

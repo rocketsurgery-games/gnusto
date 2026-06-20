@@ -38,9 +38,10 @@
     margin: 0;
   }
 
-  /* full-bleed scene art, cropped to a slightly cinematic ratio. The room art
-     already carries a baked inked border, so we frame with shadow, not a 2nd
-     border (see the webtoon-mock spike findings). */
+  /* full-bleed scene art shown at its NATIVE aspect (rooms are generated wide,
+     e.g. 2:1, via :visual-style :kinds). The room art already carries a baked
+     inked border, so we frame with shadow, not a 2nd border (webtoon-mock
+     spike finding). Older square art still displays fine, just taller. */
   .stage {
     position: relative;
     border-radius: var(--panel-radius);
@@ -53,8 +54,7 @@
   .stage img {
     display: block;
     width: 100%;
-    aspect-ratio: 5 / 4;
-    object-fit: cover;
+    height: auto;
   }
 
   /* location label — embedded identity, not chrome */

@@ -179,18 +179,37 @@ def brief_for_variant(entity: Any, variant: str | None = None) -> str | None:
     return desc if isinstance(desc, str) else None
 
 
-def assemble_style(visual_style: dict[str, Any] | None) -> str:
+def _kind_style(
+    visual_style: dict[str, Any] | None, kind: str | None
+) -> dict[str, Any]:
+    """The per-kind style overrides for ``kind`` from ``:visual-style :kinds``."""
+    kinds = (visual_style or {}).get("kinds")
+    if kind and isinstance(kinds, dict):
+        ks = kinds.get(kind)
+        if isinstance(ks, dict):
+            return ks
+    return {}
+
+
+def assemble_style(visual_style: dict[str, Any] | None, kind: str | None = None) -> str:
     """The shared style preamble prepended to every brief.
 
-    Built from the world ``:visual-style`` (``:prompt`` + ``:palette``). It does
-    not vary per entity, so the manifest carries it once rather than repeating
-    it in every entry's brief.
+    Built from the world ``:visual-style`` (``:prompt`` + ``:palette``). When a
+    ``kind`` ("room" | "object" | "event") is given, the matching entry under
+    ``:kinds`` layers in: its ``:prompt`` is appended (additive) after the base
+    style. It does not vary per entity, so the manifest carries it once per kind
+    rather than repeating it in every entry's brief.
     """
     style = visual_style or {}
     parts: list[str] = []
     prompt_prefix = style.get("prompt")
     if prompt_prefix:
         parts.append(str(prompt_prefix))
+    # Per-kind prompt is additive: the base style still applies, plus framing
+    # specific to rooms (wide stages) or objects (isolated subjects).
+    kind_prompt = _kind_style(style, kind).get("prompt")
+    if kind_prompt:
+        parts.append(str(kind_prompt))
     palette = style.get("palette")
     if palette:
         parts.append(f"Palette: {palette}.")
@@ -203,15 +222,33 @@ def assemble_style(visual_style: dict[str, Any] | None) -> str:
     return " ".join(parts)
 
 
-def assemble_brief(visual_style: dict[str, Any] | None, brief_text: str | None) -> str:
+def assemble_brief(
+    visual_style: dict[str, Any] | None,
+    brief_text: str | None,
+    kind: str | None = None,
+) -> str:
     """Assemble a full generation prompt: shared style preamble + entity brief.
 
-    The style preamble (``assemble_style``) leads, followed by the entity's
-    per-variant brief. Spatial framing and reference images are layered on later
-    (filfre fill, gnusto-eaec.4). Pure; safe for static manifest building.
+    The style preamble (``assemble_style``, kind-aware) leads, followed by the
+    entity's per-variant brief. Spatial framing and reference images are layered
+    on later (filfre fill, gnusto-eaec.4). Pure; safe for static manifest building.
     """
-    parts = [p for p in (assemble_style(visual_style), brief_text) if p]
+    parts = [p for p in (assemble_style(visual_style, kind), brief_text) if p]
     return " ".join(parts)
+
+
+def render_aspect(visual_style: dict[str, Any] | None, kind: str | None = None) -> str:
+    """Resolve the output aspect ratio for an entity ``kind``.
+
+    A ``:kinds`` entry's ``:aspect-ratio`` overrides the world default; absent
+    that, the world ``:visual-style :aspect-ratio`` (or "1:1") is used. So rooms
+    can breathe (e.g. "2:1" establishing stages) while objects stay square.
+    """
+    style = visual_style or {}
+    kind_aspect = _kind_style(style, kind).get("aspect-ratio")
+    if kind_aspect:
+        return str(kind_aspect)
+    return str(style.get("aspect-ratio", "1:1"))
 
 
 def has_render_spec(entity: Any) -> bool:

@@ -735,6 +735,15 @@ Game metadata and player declaration.
     into every art brief (so the generated art can't drift from the chrome).
     Token names map directly to CSS vars (`:accent-glow` -> `--game-accent-glow`).
   - `:aspect-ratio` - Default aspect ratio (e.g. `"16:9"`)
+  - `:kinds` - Per-entity-kind style specialization (optional). A nested
+    keyword-map keyed by entity kind (`:room`, `:object`, `:event`), each a
+    keyword-map that layers onto the base style for entities of that kind:
+    - its `:prompt` is **additive** (the base `:prompt` still applies, then the
+      kind prompt) — e.g. rooms get wide-establishing framing, objects get
+      "single subject on a flat black background";
+    - its `:aspect-ratio` **overrides** the default — so rooms can breathe
+      (e.g. `"2:1"`) while objects stay square (`"1:1"`);
+    - `:palette`/`:swatches` are inherited (one colour identity).
 
 ```scheme
 (world :name "The Lurking Horror" :player @player
@@ -743,12 +752,16 @@ Game metadata and player declaration.
                  :swatches (:bg "#080d10" :panel "#101c22" :ink "#04070a"
                             :accent "#8fe06a" :accent-glow "#c4ff8a"
                             :warm "#e6a45c" :paper "#e7e0cd" :text "#dbe6e3")
-                 :aspect-ratio "16:9"))
+                 :aspect-ratio "1:1"
+                 :kinds (:room   (:aspect-ratio "2:1"
+                                  :prompt "Wide establishing shot, environment only, no people.")
+                         :object (:prompt "Single subject, centered, flat pure-black background, no scene."))))
 ```
 
 The web UI ships default `--game-*` values (a dark graphic-novel theme); a
 game's `:swatches` override them so colours and generated art share one
-declared identity.
+declared identity. `:kinds` lets rooms and objects diverge in framing and
+aspect while sharing that identity.
 
 #### `(room NAME :description "..." :flags (...) :exits (...) :behaviors (...))`
 Room definition. Rooms are named entities with:

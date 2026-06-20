@@ -50,6 +50,7 @@ from .render import (
     get_render_spec,
     has_render_spec,
     is_renderable,
+    render_aspect,
     render_keyset,
     render_variants,
     resolve_asset_key,
@@ -149,6 +150,7 @@ __all__ = [
     "render_keyset",
     "brief_for_variant",
     "assemble_brief",
+    "render_aspect",
     "has_render_spec",
     "get_render_spec",
 ]

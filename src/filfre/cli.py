@@ -69,8 +69,8 @@ def load_reference_images(
     return images
 
 
-# Gemini model ID for NanoBanana
-NANOBANANA_MODEL_ID = "gemini-2.5-flash-image"
+# Gemini model ID for NanoBanana Pro
+NANOBANANA_MODEL_ID = "gemini-3-pro-image-preview"  # "gemini-2.5-flash-image"
 
 
 def generate_image_nanobanana(
@@ -253,7 +253,7 @@ def cmd_brief(args):
     """
     from grue.render import assemble_brief
 
-    world, manifest, style = _load_manifest(args.game)
+    world, manifest, _style = _load_manifest(args.game)
     visual_style = getattr(world, "visual_style", None)
     if args.key:
         wanted = set(args.key)
@@ -266,17 +266,17 @@ def cmd_brief(args):
         out_dir = Path(args.out)
         out_dir.mkdir(parents=True, exist_ok=True)
         for e in manifest:
-            prompt = assemble_brief(visual_style, e.brief)
+            prompt = assemble_brief(visual_style, e.brief, e.kind)
             (out_dir / f"{e.key}.txt").write_text(prompt + "\n")
         print(f"Wrote {len(manifest)} brief(s) to {out_dir}/")
         return
 
-    if style:
-        print(f"Style (prepended to every brief):\n  {style}\n")
+    # The style preamble is now kind-specific (rooms vs objects differ), so show
+    # the full composed prompt per key rather than one hoisted header.
     for e in manifest:
         variant = f" [{e.variant}]" if e.variant else ""
         print(f"{e.key}  ({e.entity}{variant})")
-        print(f"  {e.brief or '(no brief)'}\n")
+        print(f"  {assemble_brief(visual_style, e.brief, e.kind)}\n")
 
 
 # =============================================================================
@@ -293,12 +293,16 @@ def cmd_fill(args):
     specific keys. Honors the single-subject discipline already encoded in the
     briefs (rooms = empty stages, objects = single subjects).
     """
-    from grue.render import assemble_brief
+    from grue.render import assemble_brief, render_aspect
 
     world, manifest, style = _load_manifest(args.game)
     assets = _assets_dir(Path(args.game))
     visual_style = getattr(world, "visual_style", None)
-    aspect_ratio = args.aspect_ratio or (visual_style or {}).get("aspect-ratio", "1:1")
+
+    def aspect_for(entry) -> str:
+        # An explicit --aspect-ratio forces every key; otherwise resolve per the
+        # entity's kind (rooms may breathe wide, objects stay square).
+        return args.aspect_ratio or render_aspect(visual_style, entry.kind)
 
     if args.key:
         wanted = set(args.key)
@@ -318,13 +322,13 @@ def cmd_fill(args):
 
     print(f"Game: {world.name or args.game}")
     print(f"Assets: {assets}")
-    print(f"Aspect ratio: {aspect_ratio}")
+    print(f"Aspect ratio: per kind ({args.aspect_ratio or 'from :visual-style'})")
     print(f"To generate: {len(todo)}  (skipping {skipped} already on disk)\n")
 
     if args.dry_run:
         for e, _ in todo:
-            print(f"{e.key}.jpg")
-            print(f"  {assemble_brief(visual_style, e.brief)}\n")
+            print(f"{e.key}.jpg  [{aspect_for(e)}]")
+            print(f"  {assemble_brief(visual_style, e.brief, e.kind)}\n")
         return
 
     if not todo:
@@ -336,11 +340,12 @@ def cmd_fill(args):
 
     assets.mkdir(parents=True, exist_ok=True)
     for i, (e, existing) in enumerate(todo, 1):
-        prompt = assemble_brief(visual_style, e.brief)
-        print(f"[{i}/{len(todo)}] {e.key} ...", flush=True)
+        prompt = assemble_brief(visual_style, e.brief, e.kind)
+        entry_aspect = aspect_for(e)
+        print(f"[{i}/{len(todo)}] {e.key} ({entry_aspect}) ...", flush=True)
         start = time.time()
         image = generate_image_nanobanana(
-            prompt=prompt, aspect_ratio=aspect_ratio, seed=args.seed
+            prompt=prompt, aspect_ratio=entry_aspect, seed=args.seed
         )
         # The backend returns a genai types.Image; decode its bytes to a PIL
         # image, normalize to RGB, and write JPG (the contract: JPG everywhere,

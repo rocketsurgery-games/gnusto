@@ -116,7 +116,12 @@ type-directed contract.
   `:swatches` declares the palette as structured `:token "#hex"` pairs — the
   single source of the game's colour identity. The same hexes drive the web
   chrome (`--game-*` CSS vars) and are anchored into every brief, so the
-  generated art and the UI can't drift apart.
+  generated art and the UI can't drift apart. `:kinds` specializes the style
+  per entity kind: a kind's `:prompt` is appended (additive) and its
+  `:aspect-ratio` overrides the default — so rooms render wide (e.g. `2:1`
+  establishing stages) while objects stay square subjects on a flat field.
+  `assemble_style`/`assemble_brief`/`render_aspect` take the entity `kind`; the
+  manifest entry's `kind` selects the right specialization.
 
 ```scheme
 (object @microwave

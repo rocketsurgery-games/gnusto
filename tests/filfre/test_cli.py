@@ -98,15 +98,16 @@ def _make_game(tmp_path):
 class TestBriefCommand:
     """filfre brief: per-key briefs (no network)."""
 
-    def test_brief_print_hoists_style(self, tmp_path, capsys):
+    def test_brief_print_shows_full_prompt_per_key(self, tmp_path, capsys):
         from argparse import Namespace
 
         from filfre.cli import cmd_brief
 
         cmd_brief(Namespace(game=str(_make_game(tmp_path)), out=None, key=None))
         out = capsys.readouterr().out
-        # Shared style printed once, briefs listed per key.
-        assert out.count("Inked horror.") == 1
+        # The style preamble is kind-specific now, so the full composed prompt is
+        # shown per key (style appears once per entry, not hoisted once overall).
+        assert out.count("Inked horror.") == 3
         assert "microwave-open" in out
         assert "microwave-closed" in out
         assert "lab" in out
