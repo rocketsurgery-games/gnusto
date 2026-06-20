@@ -4,7 +4,7 @@ title: Static illustration pipeline & visual style
 type: task
 priority: 2
 created: '2026-06-16T02:15:49Z'
-updated: '2026-06-16T03:31:19Z'
+updated: '2026-06-20T01:08:50Z'
 ---
 
 Replace the retired dynamic-composition approach with a reliable STATIC pre-generation pipeline driven by Grue's static analysis.
