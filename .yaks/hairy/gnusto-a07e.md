@@ -4,7 +4,7 @@ title: Consistency-reference render model
 type: feature
 priority: 2
 created: '2026-06-21T20:29:26Z'
-updated: '2026-06-21T20:29:26Z'
+updated: '2026-06-21T20:58:23Z'
 labels:
 - render
 - image
@@ -21,4 +21,4 @@ Mechanism per requirement shape:
 - locked-camera cutscene  -> M3 edit-chain (opt-in)
 - style only              -> existing :visual-style preamble
 
-Children break this into the manifest/lint plumbing, the filfre generation modes, and the three applications, plus wording fixes. gnusto-eadc (event :rdescs reference room/objects) is the beats application and depends on .1/.2.
+Children break this into the manifest/lint plumbing, the filfre generation modes, and the three applications, plus wording fixes. gnusto-a07e.7 (event :rdescs reference room/objects) is the beats application and depends on .1/.2.

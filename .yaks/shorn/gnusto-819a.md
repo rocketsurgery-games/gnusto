@@ -4,7 +4,7 @@ title: Consistency-reference probes (Nano Banana Pro)
 type: task
 priority: 2
 created: '2026-06-21T14:57:12Z'
-updated: '2026-06-21T20:28:07Z'
+updated: '2026-06-21T20:58:23Z'
 labels:
 - render
 - image
@@ -24,7 +24,7 @@ Candidate mechanisms to probe (style held fixed via world :visual-style):
 - M4 single-call model-sheet / grid, then PIL-slice (max identity, one call, lower res).
 - M5 master establishing plate -> per-room crop/outpaint (breaks the kitchen<->hallway visibility cycle: master is the pre-merge root, rooms are post-merge crops).
 
-Deliverable: experiments/consistency/ harness that runs each case x mechanism, lays out comparison contact-sheets, and prototypes the dependency DAG (frozen roots -> dependents, no cycles). Dry-run prints DAG + prompts with no API spend. Feed findings into gnusto-eadc and the render docs.
+Deliverable: experiments/consistency/ harness that runs each case x mechanism, lays out comparison contact-sheets, and prototypes the dependency DAG (frozen roots -> dependents, no cycles). Dry-run prints DAG + prompts with no API spend. Feed findings into gnusto-a07e.7 and the render docs.
 
 ---
 ▸ 2026-06-21T15:14:58Z
@@ -52,4 +52,4 @@ FOLLOW-UPS to spin out: closed-microwave brief wording ('opaque closed door'); e
 
 ---
 ▸ 2026-06-21T20:28:07Z
-SHORN: experiment complete across all 3 cases. Mechanism is picked by requirement shape; common thread is a frozen ROOT that dependents reference (never each other) -> acyclic. M1 prompt-only fails on identity; M4 grid dead; M5 crop demoted to opportunistic optimization (NOT a cycle-breaker) per discussion. Findings + recommended Grue model in experiments/consistency/README.md. Next: sketch the modeling design as a yak herd (base+deltas rdesc, :ref edges + cycle lint, locale plates/portal seams, wording fixes) feeding gnusto-eadc.
+SHORN: experiment complete across all 3 cases. Mechanism is picked by requirement shape; common thread is a frozen ROOT that dependents reference (never each other) -> acyclic. M1 prompt-only fails on identity; M4 grid dead; M5 crop demoted to opportunistic optimization (NOT a cycle-breaker) per discussion. Findings + recommended Grue model in experiments/consistency/README.md. Next: sketch the modeling design as a yak herd (base+deltas rdesc, :ref edges + cycle lint, locale plates/portal seams, wording fixes) feeding gnusto-a07e.7.
