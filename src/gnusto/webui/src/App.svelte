@@ -8,6 +8,7 @@
   import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
+  import SatchelOverlay from './components/SatchelOverlay.svelte'
   import HelpOverlay from './components/HelpOverlay.svelte'
   import StateOverlay from './components/StateOverlay.svelte'
   import SettingsOverlay from './components/SettingsOverlay.svelte'
@@ -242,6 +243,16 @@
   oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null} />
 <PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
 
+<!-- Journal summon (gnusto-4ac5.2): opens the satchel; the map joins as a tab
+     once the auto-map lands (gnusto-4ac5.2.1). -->
+<button class="journal-fab" onclick={() => activeOverlay = 'satchel'} title="Open your satchel">
+  <span class="journal-glyph" aria-hidden="true">◈</span>
+  <span class="journal-label">Satchel</span>
+  {#if (currentRoom?.inventory.length ?? 0) > 0}
+    <span class="journal-count">{currentRoom?.inventory.length}</span>
+  {/if}
+</button>
+
 {#if activeOverlay === 'help'}
   <HelpOverlay onclose={closeOverlay} />
 {:else if activeOverlay === 'state'}
@@ -266,4 +277,62 @@
   />
 {:else if activeOverlay === 'kg'}
   <KnowledgeOverlay content={kgContent} onclose={closeOverlay} />
+{:else if activeOverlay === 'satchel'}
+  <SatchelOverlay
+    items={currentRoom?.inventory ?? []}
+    onclose={closeOverlay}
+    onpick={handleEntityClick}
+  />
 {/if}
+
+<style>
+  /* persistent journal summon — a small inked stamp, not a desktop toolbar.
+     (slice 3 will gate frame/affordance visibility to the live page.) */
+  .journal-fab {
+    position: fixed;
+    left: 1rem;
+    bottom: calc(var(--input-height) + 0.85rem);
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.7rem;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--game-accent-glow);
+    background: var(--game-panel);
+    border: 1px solid var(--game-line);
+    border-radius: 3px;
+    box-shadow: 0 6px 18px -10px #000;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.15s, border-color 0.15s, transform 0.12s;
+  }
+  .journal-fab:hover {
+    opacity: 1;
+    border-color: var(--game-accent);
+    transform: translateY(-1px);
+  }
+  .journal-glyph {
+    color: var(--game-accent);
+    font-size: 0.85rem;
+  }
+  .journal-count {
+    min-width: 1.1rem;
+    padding: 0 0.25rem;
+    text-align: center;
+    color: var(--game-ink);
+    background: var(--game-accent);
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+
+  @media (max-width: 768px) {
+    .journal-label {
+      display: none;
+    }
+  }
+</style>
