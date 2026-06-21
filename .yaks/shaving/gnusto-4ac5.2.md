@@ -44,3 +44,12 @@ PAGINATION INTERACTION (worked through): IF objects were woven WHOLLY into the s
 OPEN QUESTIONS: (1) buy the full frame, or restyle a single edge strip for objects? (2) history pages show objects/exits as-they-were (per-page snapshot) or live-only (lean live-only)? (3) mobile: thin top/bottom strip vs single summon.
 
 LIKELY RESHAPE of .2 once confirmed: children for (a) satchel [ready, independent], (b) the frame: exits marginalia + visible-objects props shelf [live-only], (c) click->prefill + remove action-enumeration UI. Map page stays under .2 but blocked on 8c77.
+
+---
+▸ 2026-06-21T00:55:00Z
+SHAVING. User confirmed the column-vs-frame model + decisions (history pages hide ALL frame affordances — show only on the live/most-recent page; add a current-room-name locator we currently lack; keep mobile simple for now; delete the old action-menu code). Carved the BLOCKED map page to gnusto-4ac5.2.1 (depends 8c77) so .2 covers the READY parts. Build order in slices:
+  SLICE 1 (this) — click->prefill + delete the action-menu experiment.
+  SLICE 2 — summonable journal: satchel spread (map tab deferred to .2.1).
+  SLICE 3 — the frame: exits marginalia + visible-objects props shelf + room-name locator; visible only on the live page.
+
+SLICE 1 done (pending commit): clicking any entity now just PREFILLS its name into the input (handleEntityClick -> inputPrefill = resolveEntityName; reuses the existing InputBar prefill effect) — no action enumeration. Deleted EntityPopover.svelte, ObjectDetailOverlay.svelte, lib/commands.ts (behavior->command helpers), and the verb-TARGETING flow (enter/complete/cancelTargeting, targeting state + body class, InputBar targetingPrompt/cancel UI). Trimmed the dead behavior store from entities.svelte (updateBehaviors/resolveEntityBehaviors/entityBehaviors) and the dead targeting CSS from global.css. Net: svelte-check 0 errors / 0 warnings (the long-standing ObjectDetailOverlay 'entityId unused' error is gone with the file), build OK, bundle shrank. NOTE: couldn't visual-smoke (local servers were stopped); the prefill path is the pre-existing mechanism, just repointed.

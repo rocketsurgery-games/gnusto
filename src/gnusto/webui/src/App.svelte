@@ -2,18 +2,15 @@
   import { onMount } from 'svelte'
   import type { RoomEnterBlock, ContentBlock, RenderableBlock, ServerMessage } from './lib/types'
   import { connect, onMessage, send } from './lib/websocket.svelte'
-  import { updateEntities, updateBehaviors, resolveEntityName, resolveEntityImage, resolveEntityBehaviors } from './lib/entities.svelte'
-  import { behaviorLabel, behaviorToTargetedCommand } from './lib/commands'
+  import { updateEntities, resolveEntityName } from './lib/entities.svelte'
 
   import PagedStream from './components/PagedStream.svelte'
   import RightSidebar from './components/RightSidebar.svelte'
   import InputBar from './components/InputBar.svelte'
   import PeekTab from './components/PeekTab.svelte'
-  import EntityPopover from './components/EntityPopover.svelte'
   import HelpOverlay from './components/HelpOverlay.svelte'
   import StateOverlay from './components/StateOverlay.svelte'
   import SettingsOverlay from './components/SettingsOverlay.svelte'
-  import ObjectDetailOverlay from './components/ObjectDetailOverlay.svelte'
   import SaveLoadOverlay from './components/SaveLoadOverlay.svelte'
   import KnowledgeOverlay from './components/KnowledgeOverlay.svelte'
 
@@ -36,19 +33,12 @@
   // Mobile sidebar state
   let rightSidebarOpen = $state(false)
 
-  // Prefill text for input bar (from popover "fill" actions)
+  // Prefill text for the input bar (clicking an entity types its name; the
+  // player phrases the intent and the LLM interprets it — no action menus).
   let inputPrefill = $state<string | null>(null)
 
   // Debug mode (tracked from server responses)
   let debugMode = $state(false)
-
-  // Object detail overlay state
-  let detailEntity = $state<{
-    id: string
-    name: string
-    image: string | null
-    behaviors: string[]
-  } | null>(null)
 
   // State overlay content (from backend)
   let stateContent = $state<string | null>(null)
@@ -67,83 +57,14 @@
 
   function closeOverlay() {
     activeOverlay = null
-    detailEntity = null
   }
 
-  function openDetailOverlay(entityId: string) {
-    detailEntity = {
-      id: entityId,
-      name: resolveEntityName(entityId),
-      image: resolveEntityImage(entityId),
-      behaviors: resolveEntityBehaviors(entityId),
-    }
-    activeOverlay = 'object-detail'
-  }
-
-  // Entity popover state
-  let popover = $state<{
-    entityId: string
-    entityName: string
-    behaviors: string[]
-    anchorRect: DOMRect
-  } | null>(null)
-
-  // Targeting mode state
-  let targeting = $state<{
-    sourceEntityId: string
-    sourceEntityName: string
-    behavior: string
-    prompt: string
-  } | null>(null)
-
-  // Toggle body class for CSS cascade
-  $effect(() => {
-    document.body.classList.toggle('targeting', !!targeting)
-  })
-
-  function openPopover(entityId: string, anchorEl: HTMLElement) {
-    const name = resolveEntityName(entityId)
-    const behaviors = resolveEntityBehaviors(entityId)
-    popover = {
-      entityId,
-      entityName: name,
-      behaviors,
-      anchorRect: anchorEl.getBoundingClientRect(),
-    }
-  }
-
-  function handleEntityClick(entityId: string, anchorEl: HTMLElement) {
-    if (targeting) {
-      completeTargeting(entityId)
-    } else {
-      openPopover(entityId, anchorEl)
-    }
-  }
-
-  function enterTargetingMode(sourceEntityId: string, sourceEntityName: string, behavior: string) {
-    const label = behaviorLabel(behavior).toLowerCase()
-    targeting = {
-      sourceEntityId,
-      sourceEntityName,
-      behavior,
-      prompt: `${label} the ${sourceEntityName}... click a target`,
-    }
-  }
-
-  function completeTargeting(targetEntityId: string) {
-    if (!targeting) return
-    const targetName = resolveEntityName(targetEntityId)
-    const cmd = behaviorToTargetedCommand(
-      targeting.behavior,
-      targeting.sourceEntityName,
-      targetName,
-    )
-    targeting = null
-    handleCommand(cmd)
-  }
-
-  function cancelTargeting() {
-    targeting = null
+  // Clicking an entity (in the stream or the live frame) is a narrow QoL
+  // affordance only: it types the entity's name into the input for the player
+  // to phrase an intent. We deliberately do NOT enumerate actions — the LLM
+  // interprets free text, which keeps internal/easter-egg verbs out of the UI.
+  function handleEntityClick(entityId: string) {
+    inputPrefill = resolveEntityName(entityId)
   }
 
   function handleMessage(message: ServerMessage) {
@@ -162,7 +83,6 @@
       currentRoom = null
       imageBlockIndex = 0
     } else if (message.type === 'state_update') {
-      updateBehaviors([...message.objects, ...message.inventory])
       if (currentRoom) {
         currentRoom = { ...currentRoom,
           exits: message.exits,
@@ -211,8 +131,6 @@
     // the live room state that feeds the affordance sidebar (4ac5.1).
     if (block.type === 'room_enter') {
       currentRoom = block
-      updateBehaviors([...block.objects, ...block.inventory])
-      targeting = null
       blocks = [...blocks, { ...block }]
       return
     }
@@ -312,10 +230,7 @@
 </script>
 
 <svelte:window onkeydown={(e) => {
-  if (e.key === 'Escape') {
-    if (activeOverlay) { closeOverlay(); e.preventDefault() }
-    else if (targeting) { cancelTargeting(); e.preventDefault() }
-  }
+  if (e.key === 'Escape' && activeOverlay) { closeOverlay(); e.preventDefault() }
 }} />
 
 <div class="game-content">
@@ -324,25 +239,8 @@
 <RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
   open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
 <InputBar enabled={inputEnabled} {gameEnded} prefill={inputPrefill}
-  targetingPrompt={targeting?.prompt}
-  oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null}
-  oncanceltargeting={cancelTargeting} />
+  oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null} />
 <PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
-
-{#if popover}
-  <EntityPopover
-    entityName={popover.entityName}
-    behaviors={popover.behaviors}
-    anchorRect={popover.anchorRect}
-    oncommand={handleCommand}
-    onfill={(text: string) => inputPrefill = text}
-    ontarget={(behavior: string) => {
-      if (popover) enterTargetingMode(popover.entityId, popover.entityName, behavior)
-    }}
-    ondetail={() => { if (popover) openDetailOverlay(popover.entityId) }}
-    onclose={() => popover = null}
-  />
-{/if}
 
 {#if activeOverlay === 'help'}
   <HelpOverlay onclose={closeOverlay} />
@@ -368,17 +266,4 @@
   />
 {:else if activeOverlay === 'kg'}
   <KnowledgeOverlay content={kgContent} onclose={closeOverlay} />
-{:else if activeOverlay === 'object-detail' && detailEntity}
-  <ObjectDetailOverlay
-    entityId={detailEntity.id}
-    entityName={detailEntity.name}
-    entityImage={detailEntity.image}
-    behaviors={detailEntity.behaviors}
-    onclose={closeOverlay}
-    oncommand={handleCommand}
-    onfill={(text: string) => inputPrefill = text}
-    ontarget={(behavior: string) => {
-      if (detailEntity) enterTargetingMode(detailEntity.id, detailEntity.name, behavior)
-    }}
-  />
 {/if}

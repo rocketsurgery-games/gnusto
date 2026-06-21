@@ -3,13 +3,11 @@
     enabled: boolean
     gameEnded: boolean
     prefill?: string | null
-    targetingPrompt?: string | null
     oncommand: (command: string) => void
     onprefillconsumed?: () => void
-    oncanceltargeting?: () => void
   }
 
-  let { enabled, gameEnded, prefill = null, targetingPrompt = null, oncommand, onprefillconsumed, oncanceltargeting }: Props = $props()
+  let { enabled, gameEnded, prefill = null, oncommand, onprefillconsumed }: Props = $props()
 
   let inputEl: HTMLInputElement | undefined = $state()
 
@@ -30,7 +28,7 @@
   })
 
   function handleGlobalKeydown(e: KeyboardEvent) {
-    if (!enabled || gameEnded || targetingPrompt) return
+    if (!enabled || gameEnded) return
     if (!inputEl || inputEl === document.activeElement) return
     // Ignore modifier combos (Ctrl+C, Cmd+V, etc.) and non-printable keys
     if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -55,23 +53,16 @@
 <svelte:window onkeydown={handleGlobalKeydown} />
 
 <footer class="input-bar">
-  {#if targetingPrompt}
-    <div class="targeting-prompt">
-      <span>&#x2316; {targetingPrompt}</span>
-      <button class="cancel-btn" onclick={() => oncanceltargeting?.()}>Esc</button>
-    </div>
-  {:else}
-    <form onsubmit={handleSubmit}>
-      <span class="prompt">&gt;</span>
-      <input
-        bind:this={inputEl}
-        type="text"
-        placeholder={gameEnded ? 'Game ended. Refresh to restart.' : (enabled ? 'What do you want to do?' : 'Waiting...')}
-        disabled={!enabled || gameEnded}
-        autocomplete="off"
-      />
-    </form>
-  {/if}
+  <form onsubmit={handleSubmit}>
+    <span class="prompt">&gt;</span>
+    <input
+      bind:this={inputEl}
+      type="text"
+      placeholder={gameEnded ? 'Game ended. Refresh to restart.' : (enabled ? 'What do you want to do?' : 'Waiting...')}
+      disabled={!enabled || gameEnded}
+      autocomplete="off"
+    />
+  </form>
 </footer>
 
 <style>
