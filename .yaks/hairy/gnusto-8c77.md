@@ -39,3 +39,7 @@ an overlay for detail).
   Probably yes, shown differently from explored connections.
 - How to handle non-standard directions (up/down, in/out, nw/se)?
 - Should room names appear on the map, or only on hover?
+
+---
+▸ 2026-06-21T00:12:00Z
+UI FOLLOW-UP NEEDED (from Epic B). The auto-map's data/graph is the backbone for Epic B's summonable MAP PAGE + floating locator (gnusto-4ac5.2), which is DEFERRED until this lands. When building/landing auto-map, leave a note in the PR that it needs a panel-stream UI: restyle the explored map as a drawn/inked MAP PAGE (not a node graph) summoned on demand, plus an optional minimal floating "you are here" locator. The comic-idiom map UI is tracked under gnusto-4ac5.2; this yak owns the underlying graph/layout.
