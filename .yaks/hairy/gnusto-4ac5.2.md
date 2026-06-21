@@ -26,3 +26,21 @@ CARVE-OUT OPPORTUNITY (for when we revisit): the three parts split cleanly by de
   (b) MAP PAGE + floating locator — needs 8c77. Stays blocked.
   (c) light object/character presence cues — independent, small.
 DEFERRED (design judgement, wants a human): (a)/(c) introduce SUMMON-AFFORDANCE UX choices (where the satchel/map buttons live, the spread layout, how unobtrusive) that the design doc flags as open, and the inventory is empty at game start so a satchel can't be visually validated without play. Held back from the unsupervised plow-through for that reason. Suggest: when revisited, carve (a)+(c) into a ready child and build the satchel on EntityInset; leave (b) blocked on 8c77.
+
+---
+▸ 2026-06-21T00:30:00Z
+DESIGN DISCUSSION (exits / visible objects / inventory, holistically). Treat them by cadence/scope, NOT as one widget.
+
+SETTLED:
+- Inventory -> summonable SATCHEL spread (reuse EntityInset specimen-plate). The easy case.
+- ONE unified summon affordance = a "journal": satchel now, map later (map UI deferred to gnusto-8c77). Easy open/select/close.
+- CLICK-TO-ACT is cut. No action enumeration (leaks internal/easter-egg verbs, kills immersion; the LLM interprets free text). Only QoL click = PREFILL the object's name / `go <dir>` into the input. => delete the behavior-listing UI (EntityPopover / ObjectDetailOverlay action menus; also clears the stale ObjectDetailOverlay svelte-check warning).
+- Exits PERSISTENT; visible objects PERSISTENT (neither should scroll away — both are by-definition "always true now").
+
+PROPOSED MODEL (pending user nod): "THE COLUMN vs THE FRAME". Center column = the narrative comic stream (scrolls/paginates/frozen). Surrounding FRAME (margins/gutter) = persistent, live, engine-owned ground-truth: exits as DIRECTIONAL MARGINALIA around the edges; visible objects as a comic PROPS SHELF along a margin; the room locator. Graphic-novel grammar (gutters/marginalia), not desktop panels. Wins: exits+objects are spatial, never scroll off, never duplicated panel-vs-sidebar, and — key — they are NOT stream blocks, so pagination needs no new constraints.
+
+PAGINATION INTERACTION (worked through): IF objects were woven WHOLLY into the stream, the "current-room objects always on the current page / others excluded" guarantee would force: new-room=>flip (have it), no soft break that splits a room's objects (conflicts with continuation breaks), transitional blocks attach to the incoming room. The FRAME model sidesteps all of that: objects are a live ROOM-SCOPED FIXTURE, so the guarantee is automatic and continuation breaks stay free. Narrative focus/reveal panels (with images) remain ADDITIVE drama, not the guarantee mechanism. ONE refinement to keep regardless: transitional/arrival narration should sit on the INCOMING room's page — i.e. the hard scene break snaps back to the turn's COMMAND boundary (command + bridge + establishing on the new page). Folded into gnusto-4ac5.13 (scene-break authority), not the data model.
+
+OPEN QUESTIONS: (1) buy the full frame, or restyle a single edge strip for objects? (2) history pages show objects/exits as-they-were (per-page snapshot) or live-only (lean live-only)? (3) mobile: thin top/bottom strip vs single summon.
+
+LIKELY RESHAPE of .2 once confirmed: children for (a) satchel [ready, independent], (b) the frame: exits marginalia + visible-objects props shelf [live-only], (c) click->prefill + remove action-enumeration UI. Map page stays under .2 but blocked on 8c77.
