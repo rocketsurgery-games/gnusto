@@ -6,9 +6,12 @@
   interface Props {
     blocks: RenderableBlock[]
     onentityclick?: (entityId: string, anchorEl: HTMLElement) => void
+    // Notifies the parent when the reader moves between the LIVE page and a
+    // history page, so live-only frame affordances can hide (gnusto-4ac5.2).
+    onfollowingchange?: (following: boolean) => void
   }
 
-  let { blocks, onentityclick }: Props = $props()
+  let { blocks, onentityclick, onfollowingchange }: Props = $props()
 
   // Bounded comic PAGES — a non-destructive view over the stream (gnusto-4ac5.4).
   let pages = $derived(paginate(blocks))
@@ -26,6 +29,11 @@
   )
   let following = $derived(pageIndex === null)
   let page = $derived(pages[current])
+
+  // Surface live/history to the parent (frame affordances are live-only).
+  $effect(() => {
+    onfollowingchange?.(following)
+  })
 
   // FAIL-SAFE: if pagination is somehow degenerate (no pages but we do have
   // blocks), fall back to the full unbounded stream rather than a blank view.

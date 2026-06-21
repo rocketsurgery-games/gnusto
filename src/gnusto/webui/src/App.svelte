@@ -34,6 +34,10 @@
   // Mobile sidebar state
   let rightSidebarOpen = $state(false)
 
+  // Whether the reader is on the LIVE page (vs a history page). The live
+  // ground-truth frame + summons only show here (gnusto-4ac5.2).
+  let viewingLive = $state(true)
+
   // Prefill text for the input bar (clicking an entity types its name; the
   // player phrases the intent and the LLM interprets it — no action menus).
   let inputPrefill = $state<string | null>(null)
@@ -235,23 +239,27 @@
 }} />
 
 <div class="game-content">
-  <PagedStream {blocks} onentityclick={handleEntityClick} />
+  <PagedStream {blocks} onentityclick={handleEntityClick}
+    onfollowingchange={(f: boolean) => viewingLive = f} />
 </div>
-<RightSidebar room={currentRoom} oncommand={handleCommand} onentityclick={handleEntityClick}
+<RightSidebar room={currentRoom} visible={viewingLive}
+  onprefill={(t: string) => inputPrefill = t}
   open={rightSidebarOpen} onclose={() => rightSidebarOpen = false} />
 <InputBar enabled={inputEnabled} {gameEnded} prefill={inputPrefill}
   oncommand={handleCommand} onprefillconsumed={() => inputPrefill = null} />
-<PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
+{#if viewingLive}
+  <PeekTab side="right" ontoggle={() => rightSidebarOpen = !rightSidebarOpen} />
 
-<!-- Journal summon (gnusto-4ac5.2): opens the satchel; the map joins as a tab
-     once the auto-map lands (gnusto-4ac5.2.1). -->
-<button class="journal-fab" onclick={() => activeOverlay = 'satchel'} title="Open your satchel">
-  <span class="journal-glyph" aria-hidden="true">◈</span>
-  <span class="journal-label">Satchel</span>
-  {#if (currentRoom?.inventory.length ?? 0) > 0}
-    <span class="journal-count">{currentRoom?.inventory.length}</span>
-  {/if}
-</button>
+  <!-- Journal summon (gnusto-4ac5.2): opens the satchel; the map joins as a tab
+       once the auto-map lands (gnusto-4ac5.2.1). Live-page only. -->
+  <button class="journal-fab" onclick={() => activeOverlay = 'satchel'} title="Open your satchel">
+    <span class="journal-glyph" aria-hidden="true">◈</span>
+    <span class="journal-label">Satchel</span>
+    {#if (currentRoom?.inventory.length ?? 0) > 0}
+      <span class="journal-count">{currentRoom?.inventory.length}</span>
+    {/if}
+  </button>
+{/if}
 
 {#if activeOverlay === 'help'}
   <HelpOverlay onclose={closeOverlay} />
