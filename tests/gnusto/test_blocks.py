@@ -45,6 +45,7 @@ class TestCaptionSplash:
             "text": "IT RISES",
             "entity": "@vat",
             "beat": None,
+            "group": None,
         }
 
 
@@ -95,6 +96,35 @@ class TestTierGroup:
         )
         parsed = client._parse_structured_response(resp)
         assert parsed.blocks[0].group is None
+
+
+class TestNarrativeBlockBase:
+    """The shared presentation-intent base (gnusto-ntr.27)."""
+
+    def test_all_narrative_blocks_share_the_base(self):
+        for b in (
+            render.Narrate(text="x"),
+            render.Speak(speaker="@a", text="x"),
+            render.Think(text="x"),
+            render.Ambient(text="x"),
+            render.Reveal(text="x"),
+            render.Focus(text="x"),
+            render.Caption(text="x"),
+            render.Splash(text="x"),
+            render.Sfx(text="x"),
+        ):
+            assert isinstance(b, render.NarrativeBlock)
+
+    def test_system_blocks_are_not_narrative(self):
+        assert not isinstance(render.RoomEnter("@r", "R", "d"), render.NarrativeBlock)
+
+    def test_group_is_universal_now(self):
+        # group widened from the 4 small-panel blocks to all narrative blocks
+        block = content_block_data_to_render(
+            ContentBlockData(type="narrate", text="x", group="row")
+        )
+        assert block.group == "row"
+        assert block_to_dict(block)["group"] == "row"
 
 
 class TestBeat:

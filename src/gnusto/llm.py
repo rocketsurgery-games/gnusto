@@ -508,44 +508,36 @@ def content_block_data_to_render(block: ContentBlockData) -> "render.ContentBloc
     """Convert a ContentBlockData (from LLM) to a typed render block."""
     from . import render
 
-    beat = block.beat  # type: ignore[assignment]
-    if block.type == "narrate":
-        return render.Narrate(text=block.text, beat=beat)
-    elif block.type == "speak":
+    # Shared presentation-intent kwargs carried by every narrative block
+    # (gnusto-ntr.27) — spread so a new universal intent field is wired once.
+    intent = {"beat": block.beat, "group": block.group}  # type: ignore[dict-item]
+    if block.type == "speak":
         return render.Speak(
             speaker=block.speaker or "unknown",
             text=block.text,
             manner=block.manner,
-            beat=beat,
+            **intent,
         )
     elif block.type == "think":
-        return render.Think(text=block.text, beat=beat)
+        return render.Think(text=block.text, **intent)
     elif block.type == "ambient":
-        return render.Ambient(text=block.text, beat=beat)
+        return render.Ambient(text=block.text, **intent)
     elif block.type == "reveal":
         return render.Reveal(
-            text=block.text,
-            entity=block.entity,
-            deploy=block.deploy,
-            beat=beat,
-            group=block.group,
+            text=block.text, entity=block.entity, deploy=block.deploy, **intent
         )
     elif block.type == "focus":
         return render.Focus(
-            text=block.text,
-            entity=block.entity,
-            deploy=block.deploy,
-            beat=beat,
-            group=block.group,
+            text=block.text, entity=block.entity, deploy=block.deploy, **intent
         )
     elif block.type == "caption":
-        return render.Caption(text=block.text, beat=beat, group=block.group)
+        return render.Caption(text=block.text, **intent)
     elif block.type == "splash":
-        return render.Splash(text=block.text, entity=block.entity, beat=beat)
+        return render.Splash(text=block.text, entity=block.entity, **intent)
     elif block.type == "sfx":
-        return render.Sfx(text=block.text, beat=beat, group=block.group)
-    else:
-        return render.Narrate(text=block.text, beat=beat)
+        return render.Sfx(text=block.text, **intent)
+    else:  # narrate (and any unknown type) falls back to prose
+        return render.Narrate(text=block.text, **intent)
 
 
 # =============================================================================

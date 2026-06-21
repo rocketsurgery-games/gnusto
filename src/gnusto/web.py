@@ -31,6 +31,7 @@ from .render import (
     Focus,
     Image,
     Narrate,
+    NarrativeBlock,
     Reveal,
     RoomEnter,
     Sfx,
@@ -45,6 +46,15 @@ from .state import get_game_state
 
 # Path to the built web UI
 WEBUI_DIR = Path(__file__).parent / "webui" / "dist"
+
+
+def _intent(block: NarrativeBlock) -> dict[str, Any]:
+    """Serialize the presentation-intent fields shared by narrative blocks.
+
+    Spread into each narrative branch so a new universal intent field is added
+    once here rather than in every branch (gnusto-ntr.27).
+    """
+    return {"beat": block.beat, "group": block.group}
 
 
 def block_to_dict(block: ContentBlock) -> dict[str, Any]:
@@ -75,39 +85,26 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "text": block.text,
         }
     elif isinstance(block, Narrate):
-        return {
-            "type": "narrate",
-            "text": block.text,
-            "beat": block.beat,
-        }
+        return {"type": "narrate", "text": block.text, **_intent(block)}
     elif isinstance(block, Speak):
         return {
             "type": "speak",
             "text": block.text,
             "speaker": block.speaker,
             "manner": block.manner,
-            "beat": block.beat,
+            **_intent(block),
         }
     elif isinstance(block, Think):
-        return {
-            "type": "think",
-            "text": block.text,
-            "beat": block.beat,
-        }
+        return {"type": "think", "text": block.text, **_intent(block)}
     elif isinstance(block, Ambient):
-        return {
-            "type": "ambient",
-            "text": block.text,
-            "beat": block.beat,
-        }
+        return {"type": "ambient", "text": block.text, **_intent(block)}
     elif isinstance(block, Reveal):
         return {
             "type": "reveal",
             "text": block.text,
             "entity": block.entity,
             "deploy": block.deploy,
-            "beat": block.beat,
-            "group": block.group,
+            **_intent(block),
         }
     elif isinstance(block, Focus):
         return {
@@ -115,30 +112,19 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
             "text": block.text,
             "entity": block.entity,
             "deploy": block.deploy,
-            "beat": block.beat,
-            "group": block.group,
+            **_intent(block),
         }
     elif isinstance(block, Caption):
-        return {
-            "type": "caption",
-            "text": block.text,
-            "beat": block.beat,
-            "group": block.group,
-        }
+        return {"type": "caption", "text": block.text, **_intent(block)}
     elif isinstance(block, Splash):
         return {
             "type": "splash",
             "text": block.text,
             "entity": block.entity,
-            "beat": block.beat,
+            **_intent(block),
         }
     elif isinstance(block, Sfx):
-        return {
-            "type": "sfx",
-            "text": block.text,
-            "beat": block.beat,
-            "group": block.group,
-        }
+        return {"type": "sfx", "text": block.text, **_intent(block)}
     elif isinstance(block, Image):
         return {
             "type": "image",

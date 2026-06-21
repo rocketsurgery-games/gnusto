@@ -65,71 +65,83 @@ Beat = Literal["aside", "normal", "emphasis"]
 # LLM picks WHICH asset + this intent; the engine owns the actual pixels.
 Deploy = Literal["feature", "inset", "background"]
 
-# Tier grouping: a string tag binding consecutive SMALL panels into one comic
-# TIER (a row on desktop, stacked on mobile). The LLM tags members; the engine
-# decides the geometry. Only honored on small-panel blocks (reveal/focus/
-# caption/sfx) — flow text is not tiered.
+# Tier grouping: a string tag binding consecutive panels into one comic TIER (a
+# row on desktop, stacked on mobile). The LLM tags members; the engine decides
+# the geometry. Guided toward small panels (reveal/focus/caption/sfx), but the
+# field is universal across narrative blocks.
 Group = str
 
 
 @dataclass
-class Narrate:
-    """LLM-generated second-person prose."""
+class NarrativeBlock:
+    """Base for LLM-emitted narrative blocks.
 
-    text: str
-    beat: Beat | None = None
+    Carries the presentation-intent fields shared by every narrative block; the
+    ENGINE maps these to presentation (size, spacing, layout) — the LLM never
+    specifies pixels. They are keyword-only so concrete blocks can declare their
+    own positional content fields (text, speaker, …) without default-ordering
+    conflicts. Adding a new universal intent field is a single edit here.
+
+    System-generated blocks (RoomEnter, Image, SystemMessage, …) are NOT
+    narrative blocks and do not inherit this.
+    """
+
+    # Pacing intent (aside | normal | emphasis). The engine maps to size/air.
+    beat: "Beat | None" = field(default=None, kw_only=True)
+    # Tier tag: consecutive same-group blocks render as one row.
+    group: "Group | None" = field(default=None, kw_only=True)
 
 
 @dataclass
-class Speak:
+class Narrate(NarrativeBlock):
+    """LLM-generated second-person prose."""
+
+    text: str
+
+
+@dataclass
+class Speak(NarrativeBlock):
     """Character dialogue."""
 
     speaker: str  # Entity ID, e.g. "@hacker"
     text: str
     manner: str | None = None  # e.g. "whispering", "shouting"
-    beat: Beat | None = None
 
 
 @dataclass
-class Think:
+class Think(NarrativeBlock):
     """Player's inner monologue / dramatic moment."""
 
     text: str
-    beat: Beat | None = None
 
 
 @dataclass
-class Ambient:
+class Ambient(NarrativeBlock):
     """Atmospheric detail."""
 
     text: str
-    beat: Beat | None = None
 
 
 @dataclass
-class Reveal:
+class Reveal(NarrativeBlock):
     """Discovery of something new."""
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
     deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
-    beat: Beat | None = None
-    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
-class Focus:
+class Focus(NarrativeBlock):
     """Close-up on an entity."""
 
     text: str
     entity: str | None = None  # Entity ID for image lookup
     deploy: Deploy | None = None  # How to surface the asset (feature|inset|background)
-    beat: Beat | None = None
-    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
-class Caption:
+class Caption(NarrativeBlock):
     """Narrator caption — an out-of-world authorial aside (parchment box).
 
     Distinct from Narrate: NARRATE is in-world second-person prose ('You step
@@ -138,12 +150,10 @@ class Caption:
     """
 
     text: str
-    beat: Beat | None = None
-    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
-class Splash:
+class Splash(NarrativeBlock):
     """Full-bleed dramatic panel — the comic 'splash page' for a big beat.
 
     Optionally features an entity's art (deployed full-bleed). With no
@@ -153,16 +163,13 @@ class Splash:
 
     text: str
     entity: str | None = None  # Entity ID for full-bleed art lookup
-    beat: Beat | None = None
 
 
 @dataclass
-class Sfx:
+class Sfx(NarrativeBlock):
     """Onomatopoeia lettering (a comic sound-effect panel)."""
 
     text: str
-    beat: Beat | None = None
-    group: Group | None = None  # Tier tag (bind into a row of small panels)
 
 
 @dataclass
