@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Gnusto · webtoon panel mock — The Lurking Horror</title>
+        <style>
+            /* ----------------------------------------------------------------------
+     PALETTE — single source.
+     Derived from the game's world :visual-style :palette
+       "desaturated dark blues and teals, sickly fluorescent greens,
+        warm incandescent highlights"
+     In the real UI (gnusto-4ac5.9) these vars are injected from Grue so the
+     generated art and the chrome cannot drift. Here they are hand-mirrored.
+     --------------------------------------------------------------------- */
+            :root {
+                --page-bg: #080d10; /* the "page" behind the strip = the gutter   */
+                --gutter: #080d10;
+                --panel-ink: #04070a; /* heavy ink panel border                     */
+                --panel-fill: #101c22; /* dark teal fill for framed / text panels    */
+                --panel-fill-2: #16262d;
+                --teal-line: #2c4650; /* hairline teal                              */
+
+                --green: #8fe06a; /* sickly fluorescent green (accent, sparing) */
+                --green-glow: #c4ff8a;
+                --warm: #e6a45c; /* warm incandescent highlight                */
+
+                --paper: #e7e0cd; /* narrator caption "parchment"               */
+                --paper-ink: #1b1813;
+                --text: #dbe6e3;
+                --text-dim: #8aa0a0;
+
+                --font-caption: Georgia, "Times New Roman", serif;
+                --font-command: "Courier New", ui-monospace, monospace;
+                --font-letter: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+
+                /* webtoon spine */
+                --spine-max: 760px; /* the bounded reading column                  */
+                --gutter-gap: 30px; /* vertical space between panels (the gutter)  */
+                --panel-radius: 2px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                margin: 0;
+                background: radial-gradient(120% 80% at 50% -10%, #0e1a20 0%, var(--page-bg) 60%);
+                color: var(--text);
+                font-family: var(--font-caption);
+                -webkit-font-smoothing: antialiased;
+            }
+
+            /* =====================================================================
+     THE SPINE — webtoon vertical reflow. Mobile-first single column.
+     This is the responsive BASE geometry (gnusto-4ac5.7).
+     ===================================================================== */
+            .stream {
+                max-width: var(--spine-max);
+                margin: 0 auto;
+                padding: 18px 14px 40vh; /* big bottom reserve: live page accretes  */
+            }
+
+            .panel {
+                position: relative;
+                margin: 0 0 var(--gutter-gap);
+                animation: rise 0.5s ease-out both;
+            }
+            @keyframes rise {
+                from {
+                    opacity: 0;
+                    transform: translateY(14px);
+                }
+                to {
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+
+            /* ---- role: ESTABLISHING ------------------------------------------------
+     Full-bleed scene art. The art is authored as a scene and already carries
+     a baked inked border, so we frame it with shadow/outline, not a 2nd box.
+     Square source (1024²) cropped to a slightly cinematic ratio. */
+            .panel--establishing img,
+            .panel--splash img {
+                display: block;
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: cover;
+                border-radius: var(--panel-radius);
+                box-shadow:
+                    0 0 0 1px #000,
+                    0 14px 34px -14px #000,
+                    0 2px 0 0 rgba(255, 255, 255, 0.03) inset;
+            }
+            .panel--establishing.crop img {
+                aspect-ratio: 5 / 4;
+            }
+
+            /* ---- LOCATION LABEL — embedded navigation/identity, not chrome -------- */
+            .locandum {
+                position: absolute;
+                top: 12px;
+                left: 12px;
+                font-family: var(--font-letter);
+                font-size: 12px;
+                letter-spacing: 0.18em;
+                text-transform: uppercase;
+                color: var(--green-glow);
+                background: rgba(4, 7, 10, 0.72);
+                border-left: 3px solid var(--green);
+                padding: 5px 10px;
+                text-shadow: 0 0 8px rgba(143, 224, 106, 0.5);
+            }
+
+            /* ---- EXIT HOTSPOTS — navigation cues embedded at panel edges ---------- */
+            .exit {
+                position: absolute;
+                bottom: 14px;
+                font-family: var(--font-letter);
+                font-size: 11px;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--text);
+                background: rgba(4, 7, 10, 0.66);
+                border: 1px solid var(--teal-line);
+                padding: 4px 9px;
+                cursor: pointer;
+                backdrop-filter: blur(2px);
+            }
+            .exit:hover {
+                color: var(--green-glow);
+                border-color: var(--green);
+            }
+            .exit--right {
+                right: 14px;
+            }
+            .exit--left {
+                left: 14px;
+            }
+
+            /* ---- role: CAPTION (narrator) — classic parchment box ----------------- */
+            .caption {
+                font-family: var(--font-caption);
+                font-size: 1.02rem;
+                line-height: 1.5;
+                color: var(--paper-ink);
+                background: linear-gradient(180deg, var(--paper), #d8d0ba);
+                border: 1px solid #000;
+                box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.5);
+                padding: 12px 15px;
+                max-width: 42ch;
+            }
+            /* caption can overlap the foot of an establishing panel (comic idiom) */
+            .panel--establishing .caption,
+            .panel--splash .caption {
+                position: absolute;
+                left: 16px;
+                bottom: 16px;
+                margin: 0;
+            }
+
+            /* ---- role: COMMAND CAPTION — the player's own input in the strip ------
+     (gnusto-4ac5.8) Reads as the protagonist's narrator/caption box. */
+            .command {
+                font-family: var(--font-command);
+                font-size: 0.95rem;
+                color: var(--green-glow);
+                background: var(--panel-ink);
+                border: 1px solid var(--teal-line);
+                border-left: 3px solid var(--green);
+                padding: 9px 13px;
+                max-width: 52ch;
+                margin-left: auto; /* sit to the right: "you" speaking        */
+                box-shadow: 0 6px 18px -10px #000;
+            }
+            .command::before {
+                content: "› ";
+                color: var(--green);
+            }
+
+            /* ---- role: INSET (framed object card) --------------------------------
+     KEY FINDING: object/character art is single-subject on an OPAQUE,
+     inconsistent background (crowbar/hacker are on WHITE). It cannot bleed
+     into the dark gutter, so an inset is a FRAMED PLATE: object-fit:contain
+     on its own plate, reading as a deliberate "specimen card". */
+            .inset {
+                /* a light "specimen plate" (field-notes idiom). Object art is single-
+       subject on an opaque, often WHITE background; a light plate lets the
+       white field vanish under multiply while the inked subject stays crisp,
+       and reads as a deliberate pinned card against the dark world. */
+                background: linear-gradient(180deg, #efe9d8, #ded6c0);
+                border: 1px solid #000;
+                box-shadow:
+                    0 12px 28px -14px #000,
+                    0 0 0 1px #000,
+                    6px 6px 0 -1px rgba(0, 0, 0, 0.45);
+                padding: 8px 8px 4px;
+                width: min(56%, 320px);
+            }
+            .inset.center {
+                margin-inline: auto;
+            }
+            .inset img {
+                display: block;
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: contain;
+                /* over a LIGHT plate, multiply drops the white art-background into the
+       plate tone while keeping the inked subject — robust to white/grey bg */
+                mix-blend-mode: multiply;
+                filter: saturate(0.95) contrast(1.04);
+            }
+            .inset .plate-label {
+                font-family: var(--font-letter);
+                font-size: 10px;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: #5a4a2e;
+                padding: 6px 2px 2px;
+                text-align: center;
+            }
+
+            /* ---- role: SPEAK — comic speech bubble -------------------------------- */
+            .speak {
+                position: relative;
+                font-family: var(--font-caption);
+                font-size: 1.02rem;
+                color: #12100c;
+                background: #f3eee0;
+                border: 1px solid #000;
+                border-radius: 16px;
+                padding: 11px 15px;
+                width: max-content;
+                max-width: 38ch;
+                margin: 4px 0 4px 20px;
+            }
+            .speak::after {
+                /* tail */
+                content: "";
+                position: absolute;
+                left: 26px;
+                bottom: -11px;
+                border: 7px solid transparent;
+                border-top-color: #f3eee0;
+                filter: drop-shadow(0 1px 0 #000);
+            }
+            .speak .who {
+                display: block;
+                font-family: var(--font-letter);
+                font-size: 10px;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: #6a3f1a;
+                margin-bottom: 2px;
+            }
+
+            /* ---- role: SFX — onomatopoeia lettering ------------------------------- */
+            .sfx {
+                font-family: var(--font-letter);
+                font-style: italic;
+                font-size: clamp(2.4rem, 12vw, 5rem);
+                line-height: 0.9;
+                color: var(--warm);
+                text-transform: uppercase;
+                letter-spacing: -0.02em;
+                transform: rotate(-4deg);
+                text-shadow:
+                    3px 3px 0 #000,
+                    0 0 26px rgba(230, 164, 92, 0.45);
+                margin: 6px 0 6px 8px;
+            }
+
+            /* ---- FALLBACK: typographic splash (no art) ---------------------------
+     A splash with no asset is NOT a failure — it's a full-bleed typographic
+     splash, a legit comic device (gnusto-4ac5.6). */
+            .panel--typo {
+                aspect-ratio: 3 / 2;
+                display: grid;
+                place-items: center;
+                text-align: center;
+                background: radial-gradient(
+                    120% 120% at 50% 30%,
+                    var(--panel-fill-2),
+                    var(--panel-ink) 70%
+                );
+                border: 1px solid #000;
+                box-shadow: 0 14px 34px -16px #000;
+                padding: 24px;
+                overflow: hidden;
+            }
+            .panel--typo .big {
+                font-family: var(--font-letter);
+                font-size: clamp(1.8rem, 8vw, 3.4rem);
+                line-height: 1.02;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+                color: var(--text);
+                text-shadow: 0 0 30px rgba(143, 224, 106, 0.18);
+            }
+            .panel--typo .big em {
+                color: var(--green-glow);
+                font-style: normal;
+            }
+
+            /* ---- FALLBACK: caption inset (inset wanted art, none exists) ---------- */
+            .inset--noart {
+                display: grid;
+                place-items: center;
+                aspect-ratio: 1 / 1;
+                color: var(--text-dim);
+                font-family: var(--font-caption);
+                font-style: italic;
+                text-align: center;
+                padding: 14px;
+            }
+            .inset--noart::before {
+                mix-blend-mode: normal;
+            }
+
+            /* =====================================================================
+     SCENE BREAK — a new establishing panel reads as a beat change.
+     Pure CSS treatment (gnusto-4ac5.3): extra air + divider + page-turn.
+     ===================================================================== */
+            .scene-break {
+                margin-top: 72px;
+            }
+            .scene-break .divider {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                margin-bottom: 18px;
+                color: var(--text-dim);
+                font-family: var(--font-letter);
+                font-size: 11px;
+                letter-spacing: 0.34em;
+                text-transform: uppercase;
+            }
+            .scene-break .divider::before,
+            .scene-break .divider::after {
+                content: "";
+                height: 1px;
+                flex: 1;
+                background: linear-gradient(90deg, transparent, var(--teal-line), transparent);
+            }
+            /* page-turn feel: a soft fold shadow over the new establishing art */
+            .scene-break .panel--splash::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 22%);
+                pointer-events: none;
+                border-radius: var(--panel-radius);
+            }
+
+            /* =====================================================================
+     TIER — print-style multi-panel row. DESKTOP-ONLY progressive
+     enhancement layered on the vertical spine (gnusto-4ac5.7).
+     Mobile: children just stack in the spine. Desktop: a row.
+     ===================================================================== */
+            .tier {
+                display: contents;
+            }
+            @media (min-width: 900px) {
+                .tier {
+                    display: grid;
+                    grid-auto-flow: column;
+                    grid-auto-columns: 1fr;
+                    gap: 14px;
+                    align-items: end;
+                    margin-bottom: var(--gutter-gap);
+                }
+                .tier > .panel {
+                    margin-bottom: 0;
+                }
+                .tier .inset {
+                    width: 100%;
+                }
+                .tier .caption {
+                    max-width: none;
+                }
+            }
+
+            /* =====================================================================
+     PERSISTENT CHROME — the one in-world persistent element is the command
+     input. Everything else (satchel, map) is a small summon affordance.
+     ===================================================================== */
+            .dock {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                padding: 12px 16px;
+                background: linear-gradient(0deg, var(--page-bg) 70%, transparent);
+            }
+            .dock .prompt {
+                flex: 1;
+                max-width: var(--spine-max);
+                margin: 0 auto;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            .dock input {
+                flex: 1;
+                font-family: var(--font-command);
+                font-size: 0.98rem;
+                color: var(--green-glow);
+                background: rgba(4, 7, 10, 0.85);
+                border: 1px solid var(--teal-line);
+                border-left: 3px solid var(--green);
+                padding: 11px 13px;
+            }
+            .dock input::placeholder {
+                color: #4c6168;
+            }
+            .summon {
+                width: 42px;
+                height: 42px;
+                display: grid;
+                place-items: center;
+                background: rgba(4, 7, 10, 0.85);
+                border: 1px solid var(--teal-line);
+                color: var(--text-dim);
+                cursor: pointer;
+                font-size: 18px;
+            }
+            .summon:hover {
+                color: var(--green-glow);
+                border-color: var(--green);
+            }
+
+            /* tiny annotation chips so a reader of the mock can see panel roles */
+            .role {
+                position: absolute;
+                top: -9px;
+                right: 8px;
+                z-index: 3;
+                font-family: var(--font-command);
+                font-size: 9px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--warm);
+                background: var(--panel-ink);
+                border: 1px solid var(--warm);
+                padding: 1px 6px;
+                opacity: 0.85;
+            }
+            body.hide-roles .role {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="stream">
+            <!-- ========================= SCENE 1 ========================= -->
+            <section class="panel panel--establishing crop">
+                <span class="role">establishing</span>
+                <img src="assets/terminal-room.jpg" alt="The Terminal Room" />
+                <span class="locandum">Terminal Room</span>
+                <p class="caption">
+                    Rows of humming terminals cast a sickly glow over abandoned pizza and flat cola.
+                    Someone was here moments ago. The screens still scroll.
+                </p>
+                <span class="exit exit--right" title="go east">East · Hallway →</span>
+                <span class="exit exit--left" title="go down">↧ Elevator</span>
+            </section>
+
+            <div class="panel command"><span class="role">command</span>examine the hacker</div>
+
+            <section class="panel inset center">
+                <span class="role">inset · framed plate</span>
+                <img src="assets/hacker.jpg" alt="The hacker" />
+                <div class="plate-label">The Hacker</div>
+            </section>
+
+            <div class="panel speak">
+                <span class="who">The Hacker</span>
+                Don't touch the vat. Whatever you do. It's been… moving.
+            </div>
+
+            <!-- TIER: a row of small panels on desktop, stacked on mobile -->
+            <div class="tier">
+                <section class="panel inset">
+                    <span class="role">tier-member</span>
+                    <img src="assets/crowbar.jpg" alt="A rusted crowbar" />
+                    <div class="plate-label">Crowbar</div>
+                </section>
+                <section class="panel inset">
+                    <span class="role">tier-member</span>
+                    <img src="assets/keyring.jpg" alt="A ring of keys" />
+                    <div class="plate-label">Keyring</div>
+                </section>
+                <div class="panel caption" style="align-self: end">
+                    You pocket what you can. The crowbar's heft is reassuring; the keys, less so —
+                    too many for one door.
+                </div>
+            </div>
+
+            <div class="panel command"><span class="role">command</span>take the elevator down</div>
+
+            <!-- ========================= SCENE BREAK → SCENE 2 ===================== -->
+            <section class="scene-break">
+                <div class="divider">scene</div>
+                <div class="panel panel--splash">
+                    <span class="role">splash · establishing</span>
+                    <img
+                        src="assets/cave-altar.jpg"
+                        alt="A timber chamber around a bloodstained altar"
+                    />
+                    <span class="locandum">Sub-Basement · The Chamber</span>
+                    <p class="caption">
+                        The elevator doors part on cold air and older silence. A timber chamber. A
+                        stone altar, runed and stained dark.
+                    </p>
+                </div>
+            </section>
+
+            <div class="panel sfx">skrrnk-thoom</div>
+
+            <!-- FALLBACK 1: typographic splash (no asset) -->
+            <section class="panel panel--typo">
+                <span class="role">splash · NO ART → typographic</span>
+                <div class="big">The floor <em>shifts</em>.<br />Something beneath is awake.</div>
+            </section>
+
+            <!-- FALLBACK 2: inset wanted art, none exists → caption inset -->
+            <div class="tier">
+                <section class="panel inset inset--noart">
+                    <span class="role">inset · NO ART → caption</span>
+                    an oily sigil, half-seen
+                </section>
+                <div class="panel caption">
+                    You cannot quite look at it directly. The lines refuse to stay where your eye
+                    puts them.
+                </div>
+            </div>
+
+            <div class="panel command">
+                <span class="role">command</span>read the runes on the altar
+            </div>
+        </main>
+
+        <!-- persistent in-world chrome: just the command input + summon affordances -->
+        <div class="dock">
+            <button class="summon" title="Satchel (inventory spread)">▣</button>
+            <div class="prompt">
+                <input placeholder="what do you do?" />
+            </div>
+            <button class="summon" title="Map">◴</button>
+        </div>
+
+        <script>
+            // toggle the little role annotations with the "r" key (mock aid only)
+            addEventListener("keydown", (e) => {
+                if (e.key === "r") document.body.classList.toggle("hide-roles");
+            });
+        </script>
+    </body>
+</html>
