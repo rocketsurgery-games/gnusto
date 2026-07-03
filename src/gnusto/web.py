@@ -150,7 +150,10 @@ def block_to_dict(block: ContentBlock) -> dict[str, Any]:
 
 
 def create_app(
-    game_path: str, debug: bool = False, llm_config: LLMConfig | None = None
+    game_path: str,
+    debug: bool = False,
+    llm_config: LLMConfig | None = None,
+    parsing_only: bool | None = None,
 ) -> FastAPI:
     """Create the FastAPI application for a game."""
     app = FastAPI(title="Gnusto", debug=debug)
@@ -163,6 +166,7 @@ def create_app(
     app.state.game_dir = game_dir
     app.state.debug = debug
     app.state.llm_config = llm_config
+    app.state.parsing_only = parsing_only
 
     @app.websocket("/ws")
     async def game_websocket(websocket: WebSocket):
@@ -174,6 +178,7 @@ def create_app(
             app.state.game_path,
             llm_config=app.state.llm_config,
             debug=app.state.debug,
+            parsing_only=app.state.parsing_only,
         )
 
         try:
@@ -199,6 +204,7 @@ def create_app(
                                 app.state.game_dir,
                                 app.state.debug,
                                 app.state.llm_config,
+                                app.state.parsing_only,
                             )
                             if not should_continue:
                                 break
@@ -449,6 +455,7 @@ async def handle_slash_command_ws(
     game_dir: Path,
     debug: bool,
     llm_config: LLMConfig | None = None,
+    parsing_only: bool | None = None,
 ) -> tuple[GameSession, bool]:
     """Handle a slash command via websocket."""
     result = handle_slash_command(command, session, game_dir)
@@ -462,7 +469,10 @@ async def handle_slash_command_ws(
 
     elif result.action == "reset":
         session = GameSession.from_game_file(
-            game_path, llm_config=llm_config, debug=debug
+            game_path,
+            llm_config=llm_config,
+            debug=debug,
+            parsing_only=parsing_only,
         )
         await websocket.send_text(json.dumps({"type": "clear"}))
         await send_initial_state(websocket, session, game_dir)
@@ -603,11 +613,14 @@ def run_server(
     port: int = 8000,
     debug: bool = False,
     llm_config: LLMConfig | None = None,
+    parsing_only: bool | None = None,
 ) -> None:
     """Run the web server."""
     import uvicorn
 
-    app = create_app(game_path, debug=debug, llm_config=llm_config)
+    app = create_app(
+        game_path, debug=debug, llm_config=llm_config, parsing_only=parsing_only
+    )
 
     print(f"Starting Gnusto web server...")
     print(f"Game: {game_path}")

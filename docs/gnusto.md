@@ -119,8 +119,9 @@ gnusto games/lurkinghorror/ --model local    # Qwen3-4B
 gnusto games/lurkinghorror/ --model local8b  # Qwen3-8B
 ```
 
-The `--model` flag accepts aliases (`local`, `local8b`) or any litellm model ID. Local
-models auto-configure `api_base` to `localhost:8800`. You can also use env vars directly:
+The `--model` flag accepts aliases (`sonnet`, `haiku`, `local`, `local8b`) or any litellm
+model ID. Local models auto-configure `api_base` to `localhost:8800`. You can also use env
+vars directly:
 
 ```bash
 GRUE_LLM_MODEL=openai/mlx-community/Qwen3-4B-4bit \
@@ -129,6 +130,28 @@ gnusto games/lurkinghorror/
 ```
 
 Any OpenAI-compatible local server works (llama.cpp, vLLM, etc.) — just set the model ID with an `openai/` prefix and point `GRUE_LLM_API_BASE` at the server.
+
+### Full-agent vs. parse-only mode
+
+The agent runs in one of two modes:
+
+- **Full-agent mode** (default for strong external models): the model chooses actions AND
+  authors the narrative prose (via content blocks). The system prompt instructs it to relay
+  the engine's reported outcomes faithfully — never to invent results, and to stop on a
+  `blocked`/`error` result rather than paper over it.
+- **Parse-only mode**: the model ONLY translates the player's input into actions; the game
+  engine emits all text. Presentation intent is derived deterministically from the engine
+  result (an examine-style verb on an entity that has art becomes a `focus` panel; dialogue
+  becomes `speak`; everything else is plain `narrate`). Because the model never authors
+  prose, it cannot fabricate outcomes — useful for correctness-sensitive runs and for weaker
+  models.
+
+Parse-only mode is enabled automatically for local models, and can be forced on any model
+with the `--parse-only` flag:
+
+```bash
+gnusto games/lurkinghorror/ --parse-only
+```
 
 ## Narrative Generation
 

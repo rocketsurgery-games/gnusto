@@ -18,6 +18,8 @@ from .tui import run_tui
 MODEL_ALIASES = {
     "local": "openai/mlx-community/Qwen3-4B-4bit",
     "local8b": "openai/mlx-community/Qwen3-8B-4bit",
+    "sonnet": "anthropic/claude-sonnet-4-20250514",
+    "haiku": "anthropic/claude-haiku-4-5-20251001",
 }
 
 # Models that need a local server
@@ -34,6 +36,7 @@ def resolve_llm_config(model_arg: str | None) -> LLMConfig | None:
     # If model starts with openai/ and no GRUE_LLM_API_BASE is set,
     # assume a local server
     import os
+
     api_base = os.getenv("GRUE_LLM_API_BASE")
     if model.startswith("openai/") and not api_base:
         api_base = LOCAL_API_BASE
@@ -66,8 +69,15 @@ Examples:
     parser.add_argument(
         "--model",
         "-m",
-        help="LLM model to use. Aliases: 'local' (Qwen3-4B), 'local8b' (Qwen3-8B). "
-             "Or a litellm model ID (e.g., 'anthropic/claude-sonnet-4-20250514')",
+        help="LLM model to use. Aliases: 'sonnet', 'haiku', 'local' (Qwen3-4B), "
+        "'local8b' (Qwen3-8B). Or a litellm model ID "
+        "(e.g., 'anthropic/claude-sonnet-4-20250514')",
+    )
+    parser.add_argument(
+        "--parse-only",
+        action="store_true",
+        help="Parse-only mode: the LLM only chooses actions; the game engine "
+        "emits all text (no model-authored prose). On by default for local models.",
     )
     parser.add_argument(
         "--debug",
@@ -101,16 +111,28 @@ Examples:
 
     args = parser.parse_args()
     llm_config = resolve_llm_config(args.model)
+    # Only force parse-only when the flag is given; otherwise leave it to the
+    # per-model default (None -> auto-enabled for local models).
+    parse_only = True if args.parse_only else None
 
     if args.web:
         from .web import run_server
-        run_server(args.game_path, host=args.host, port=args.port, debug=args.debug, llm_config=llm_config)
+
+        run_server(
+            args.game_path,
+            host=args.host,
+            port=args.port,
+            debug=args.debug,
+            llm_config=llm_config,
+            parsing_only=parse_only,
+        )
     else:
         run_tui(
             args.game_path,
             debug=args.debug,
             plain=args.plain,
             llm_config=llm_config,
+            parsing_only=parse_only,
         )
 
 

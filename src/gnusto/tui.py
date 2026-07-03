@@ -7,24 +7,35 @@ just straightforward terminal output.
 
 import re
 from pathlib import Path
+
 from rich.console import Console
-from rich.text import Text
 from rich.rule import Rule
+from rich.text import Text
 
 from .agent import GameSession
 from .commands import handle_command
 from .llm import LLMConfig
 from .render import (
-    ContentBlock, RoomEnter, ActionResult, Narrate, Speak, Think, Ambient,
-    Reveal, Focus, Image, SystemMessage, DebugInfo,
+    ActionResult,
+    Ambient,
+    ContentBlock,
+    DebugInfo,
+    Focus,
+    Image,
+    Narrate,
+    Reveal,
+    RoomEnter,
+    Speak,
+    SystemMessage,
+    Think,
     build_room_block,
 )
 from .state import get_game_state
-from .terminal_images import display_image, is_supported as terminal_images_supported
-
+from .terminal_images import display_image
+from .terminal_images import is_supported as terminal_images_supported
 
 # Regex patterns for styling
-REF_PATTERN = re.compile(r'@[\w-]+')
+REF_PATTERN = re.compile(r"@[\w-]+")
 QUOTE_PATTERN = re.compile(r'"[^"]*"')
 SPEAKER_PATTERN = re.compile(r'(?<=\S)(\s*)(@[\w-]+:\s*")')
 
@@ -35,7 +46,7 @@ def style_narrative(text: str) -> Text:
     This approach is immune to any content in the text - no escaping needed.
     """
     # Add newlines before @speaker: patterns (but not at start of text)
-    text = SPEAKER_PATTERN.sub(r'\n\n\2', text)
+    text = SPEAKER_PATTERN.sub(r"\n\n\2", text)
 
     # Create a Text object with base italic style
     styled = Text(text, style="italic")
@@ -60,6 +71,7 @@ class SimpleTUI:
         debug: bool = False,
         plain: bool = False,
         llm_config: LLMConfig | None = None,
+        parsing_only: bool | None = None,
     ):
         self.game_path = game_path
         self.game_dir = Path(game_path).resolve()
@@ -68,8 +80,11 @@ class SimpleTUI:
         self.debug = debug
         self.plain = plain
         self.llm_config = llm_config
+        self.parsing_only = parsing_only
         self.session: GameSession | None = None
-        self.console = Console(highlight=False, force_terminal=not plain, no_color=plain)
+        self.console = Console(
+            highlight=False, force_terminal=not plain, no_color=plain
+        )
         self._last_room: str | None = None
         self._can_display_images = terminal_images_supported() and not plain
 
@@ -115,7 +130,9 @@ class SimpleTUI:
                     img_width = min(int(term_width * 0.6), 80)
                     display_image(image_path, width=img_width)
                 else:
-                    self.console.print(Text(f"[Image: {Path(block.image).name}]", style="dim"))
+                    self.console.print(
+                        Text(f"[Image: {Path(block.image).name}]", style="dim")
+                    )
 
             self.console.print()
             self._last_room = block.room_id
@@ -161,7 +178,9 @@ class SimpleTUI:
                 img_width = min(int(term_width * 0.6), 80)
                 display_image(image_path, width=img_width)
             else:
-                self.console.print(Text(f"[Image: {Path(block.src).name}]", style="dim"))
+                self.console.print(
+                    Text(f"[Image: {Path(block.src).name}]", style="dim")
+                )
 
         elif isinstance(block, SystemMessage):
             style = {
@@ -192,7 +211,12 @@ class SimpleTUI:
         elif result.action == "clear":
             self.console.clear()
         elif result.action == "reset":
-            self.session = GameSession.from_game_file(self.game_path, llm_config=self.llm_config, debug=self.debug)
+            self.session = GameSession.from_game_file(
+                self.game_path,
+                llm_config=self.llm_config,
+                debug=self.debug,
+                parsing_only=self.parsing_only,
+            )
             state = get_game_state(self.session.runtime)
             room_block = build_room_block(state, self.session.runtime, self.game_dir)
             self.render_block(room_block)
@@ -205,7 +229,12 @@ class SimpleTUI:
         if self.debug:
             self.render_block(SystemMessage("Debug mode enabled"))
 
-        self.session = GameSession.from_game_file(self.game_path, llm_config=self.llm_config, debug=self.debug)
+        self.session = GameSession.from_game_file(
+            self.game_path,
+            llm_config=self.llm_config,
+            debug=self.debug,
+            parsing_only=self.parsing_only,
+        )
 
         self.console.print()
         self.console.print(Rule("Game Start"))
@@ -219,7 +248,9 @@ class SimpleTUI:
         room_block = build_room_block(state, self.session.runtime, self.game_dir)
         self.render_block(room_block)
 
-        self.render_block(SystemMessage("Type commands in natural language. /help for commands."))
+        self.render_block(
+            SystemMessage("Type commands in natural language. /help for commands.")
+        )
         self.console.print()
 
         # Main loop
@@ -271,11 +302,19 @@ class SimpleTUI:
             # Check if room changed and show new room
             state = get_game_state(self.session.runtime)
             if state.room != previous_room:
-                room_block = build_room_block(state, self.session.runtime, self.game_dir)
+                room_block = build_room_block(
+                    state, self.session.runtime, self.game_dir
+                )
                 self.render_block(room_block)
 
 
-def run_tui(game_path: str, debug: bool = False, plain: bool = False, llm_config: LLMConfig | None = None) -> None:
+def run_tui(
+    game_path: str,
+    debug: bool = False,
+    plain: bool = False,
+    llm_config: LLMConfig | None = None,
+    parsing_only: bool | None = None,
+) -> None:
     """Run the simple TUI.
 
     Args:
@@ -283,6 +322,14 @@ def run_tui(game_path: str, debug: bool = False, plain: bool = False, llm_config
         debug: Enable debug mode (show LLM tool calls)
         plain: Text-only mode (no images, no colors)
         llm_config: Optional LLM configuration override
+        parsing_only: Force parse-only mode (engine emits all text); None uses
+            the per-model default.
     """
-    tui = SimpleTUI(game_path, debug=debug, plain=plain, llm_config=llm_config)
+    tui = SimpleTUI(
+        game_path,
+        debug=debug,
+        plain=plain,
+        llm_config=llm_config,
+        parsing_only=parsing_only,
+    )
     tui.run()

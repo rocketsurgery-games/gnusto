@@ -30,6 +30,28 @@ from .llm import (
 from .render import ContentBlock, build_scene_context
 from .state import GameState, ObjectInfo, get_game_state
 
+# Examine-style verbs: in parse-only mode, one of these on an entity that has
+# art surfaces that entity's image as a `focus` panel. The engine still owns
+# ALL the text — this only picks the panel treatment, never the words.
+EXAMINE_VERBS = frozenset(
+    {
+        "examine",
+        "x",
+        "look",
+        "look-at",
+        "lookat",
+        "inspect",
+        "read",
+        "search",
+        "study",
+        "view",
+        "describe",
+        "watch",
+        "check",
+        "observe",
+    }
+)
+
 SYSTEM_PROMPT = """\
 You are the narrator for an interactive fiction game. You interpret the player's commands,
 execute game actions, and narrate the results using structured content blocks.
@@ -53,6 +75,23 @@ You MUST respond with valid JSON matching this schema:
   "needs_player_input": false
 }
 ```
+
+## Faithfulness — narrate only what the engine reports
+
+This is the most important rule. The GAME ENGINE decides what happens; your job is to
+RELAY and lightly frame its output, never to invent outcomes.
+
+- Do NOT describe the result of an action before you have seen it. If you emit `actions`,
+  keep `blocks` for that step minimal (usually empty) and wait for the "Action results" —
+  then narrate what ACTUALLY happened on the next step. Never assume an action succeeded.
+- If a result comes back `blocked` or `error` (e.g. "It would help if you turned on the
+  computer first"), relay that outcome faithfully and STOP: set `needs_player_input: true`.
+  Do not gloss over it, retry blindly, or pretend a later step worked.
+- Prefer the engine's own wording for what happened. You may connect it into readable prose,
+  but do not fabricate objects, dialogue, state changes, exits, or events that are not present
+  in the action results or the game state.
+- When you ran several steps, summarize what the engine reported for EACH step, in order.
+  Faithful and plain beats vivid and invented.
 
 ## Actions
 
@@ -687,7 +726,7 @@ class GameSession:
 
                 # In parsing-only mode, generate content blocks from engine results
                 if self.parsing_only:
-                    engine_blocks = self._blocks_from_results(raw_results)
+                    engine_blocks = self._blocks_from_results(raw_results, action)
                     if engine_blocks:
                         all_render_blocks.extend(engine_blocks)
                         if on_blocks:
@@ -814,16 +853,45 @@ class GameSession:
         else:
             return ([], f"Unknown action: {action.tool}")
 
-    def _blocks_from_results(self, raw_results: list[Any]) -> list[ContentBlock]:
-        """Convert raw engine results into content blocks for parsing-only mode."""
+    def _blocks_from_results(
+        self, raw_results: list[Any], action: "ActionRequest | None" = None
+    ) -> list[ContentBlock]:
+        """Convert raw engine results into content blocks for parsing-only mode.
+
+        The ENGINE owns all text here — the LLM never authors prose in this mode.
+        We derive light presentation intent from the action + result structure:
+        an examine-style verb on an entity that has art becomes a `focus` panel
+        (surfacing its image); dialogue output becomes `speak`; everything else
+        is plain `narrate`. This keeps the panel stream expressive without
+        letting the model invent words.
+        """
         from . import render
 
+        # An examine-style action on a renderable entity surfaces its art as a
+        # single Focus panel (applied to the first descriptive prose block).
+        focus_entity = self._focus_entity_for(action)
+        focus_used = False
+
         blocks: list[ContentBlock] = []
+
+        def prose(text: str) -> ContentBlock:
+            nonlocal focus_used
+            if focus_entity and not focus_used:
+                focus_used = True
+                return render.Focus(text=text, entity=focus_entity, deploy="feature")
+            return render.Narrate(text=text)
+
         for result in raw_results:
             # Blocked actions — show the player-facing message
             if isinstance(result, ActionBlocked):
                 if result.message:
                     blocks.append(render.Narrate(text=result.message))
+                # A blocked action may still carry spoken output.
+                for out_type, entity, text in getattr(result, "output", []):
+                    if text and out_type == "say":
+                        blocks.append(
+                            render.Speak(speaker=entity or "unknown", text=text)
+                        )
                 continue
             # Error actions
             if isinstance(result, ActionError):
@@ -836,18 +904,48 @@ class GameSession:
                 if not text:
                     continue
                 if out_type == "narrate":
-                    blocks.append(render.Narrate(text=text))
+                    blocks.append(prose(text))
                 elif out_type == "say":
                     blocks.append(render.Speak(speaker=entity or "unknown", text=text))
             # Reason text (used for examine/describe results)
             if hasattr(result, "reason") and result.reason:
-                blocks.append(render.Narrate(text=result.reason))
+                blocks.append(prose(result.reason))
             # Fall back to context fields
             if not blocks and hasattr(result, "context"):
                 for key, value in result.context:
                     if key in ("description", "message", "response") and str(value):
-                        blocks.append(render.Narrate(text=str(value)))
+                        blocks.append(prose(str(value)))
         return blocks
+
+    def _focus_entity_for(self, action: "ActionRequest | None") -> str | None:
+        """Entity whose art an examine-style action should surface, if any.
+
+        Returns the target entity ID when the action is an examine-family verb
+        on a non-room entity that actually has resolvable art; otherwise None.
+        """
+        if action is None or action.tool != "do_action":
+            return None
+        if (action.verb or "").lower() not in EXAMINE_VERBS:
+            return None
+        target = action.target
+        if not target or not target.startswith("@"):
+            return None
+        state = self.get_state()
+        # The room is already the establishing panel; don't re-surface it.
+        if target == state.room:
+            return None
+        if not self._entity_has_art(target, state):
+            return None
+        return target
+
+    def _entity_has_art(self, entity_id: str, state: GameState) -> bool:
+        """Whether an entity has resolvable art in the current scene."""
+        try:
+            scene = build_scene_context(state, self.runtime, self.game_dir)
+        except Exception:
+            return False
+        info = scene.get(entity_id)
+        return bool(info and info.get("image"))
 
     def _summarize_action(self, action: ActionRequest) -> str:
         """Generate a compact summary of an action for history."""

@@ -45,7 +45,7 @@ except Exception:
 class LLMConfig:
     """Configuration for LLM calls."""
 
-    model: str = "anthropic/claude-haiku-4-5-20251001"
+    model: str = "anthropic/claude-sonnet-4-20250514"
     temperature: float = 0.7
     max_tokens: int = 2048
     api_base: str | None = None
