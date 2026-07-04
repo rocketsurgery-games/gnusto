@@ -18,7 +18,8 @@ from .tui import run_tui
 MODEL_ALIASES = {
     "local": "openai/mlx-community/Qwen3-4B-4bit",
     "local8b": "openai/mlx-community/Qwen3-8B-4bit",
-    "sonnet": "anthropic/claude-sonnet-4-20250514",
+    "sonnet": "anthropic/claude-sonnet-4-5-20250929",
+    "opus": "anthropic/claude-opus-4-5",
     "haiku": "anthropic/claude-haiku-4-5-20251001",
 }
 
@@ -69,9 +70,9 @@ Examples:
     parser.add_argument(
         "--model",
         "-m",
-        help="LLM model to use. Aliases: 'sonnet', 'haiku', 'local' (Qwen3-4B), "
-        "'local8b' (Qwen3-8B). Or a litellm model ID "
-        "(e.g., 'anthropic/claude-sonnet-4-20250514')",
+        help="LLM model to use. Aliases: 'sonnet', 'opus', 'haiku', 'local' "
+        "(Qwen3-4B), 'local8b' (Qwen3-8B). Or a litellm model ID "
+        "(e.g., 'anthropic/claude-sonnet-4-5-20250929')",
     )
     parser.add_argument(
         "--parse-only",

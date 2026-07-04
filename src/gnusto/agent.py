@@ -685,7 +685,15 @@ class GameSession:
                 error_msg = str(e)
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
-                return f"[LLM error: {error_msg}. Please try again.]", []
+                # Surface the failure instead of swallowing it: without this the
+                # TUI/CLI show nothing but LiteLLM's stderr hint (see gnusto-ntr.30).
+                from . import render
+
+                text = f"LLM error: {error_msg}. Please try again."
+                error_block = render.SystemMessage(text=text, level="error")
+                if on_blocks:
+                    on_blocks([error_block])
+                return f"[{text}]", []
 
             # Convert and emit content blocks (full agent mode only)
             if not self.parsing_only and response.blocks:

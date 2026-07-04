@@ -45,7 +45,7 @@ except Exception:
 class LLMConfig:
     """Configuration for LLM calls."""
 
-    model: str = "anthropic/claude-sonnet-4-20250514"
+    model: str = "anthropic/claude-sonnet-4-5-20250929"
     temperature: float = 0.7
     max_tokens: int = 2048
     api_base: str | None = None
@@ -163,6 +163,7 @@ AGENT_RESPONSE_SCHEMA = {
                     },
                 },
                 "required": ["tool"],
+                "additionalProperties": False,
             },
         },
         "blocks": {
@@ -203,13 +204,13 @@ AGENT_RESPONSE_SCHEMA = {
                         "description": "For reveal/focus/splash: the entity ID to show an image of",
                     },
                     "deploy": {
-                        "type": ["string", "null"],
-                        "enum": ["feature", "inset", "background", None],
+                        "type": "string",
+                        "enum": ["feature", "inset", "background"],
                         "description": "For reveal/focus: how to surface the asset — 'feature' (large), 'inset' (small framed plate), 'background'. Omit for the default.",
                     },
                     "beat": {
-                        "type": ["string", "null"],
-                        "enum": ["aside", "normal", "emphasis", None],
+                        "type": "string",
+                        "enum": ["aside", "normal", "emphasis"],
                         "description": "Pacing intent (engine maps to size/emphasis): 'emphasis' for a dramatic beat, 'aside' for a throwaway aside, omit/normal otherwise",
                     },
                     "group": {
@@ -218,6 +219,7 @@ AGENT_RESPONSE_SCHEMA = {
                     },
                 },
                 "required": ["type", "text"],
+                "additionalProperties": False,
             },
         },
         "needs_player_input": {
@@ -226,6 +228,7 @@ AGENT_RESPONSE_SCHEMA = {
         },
     },
     "required": ["actions", "needs_player_input"],
+    "additionalProperties": False,
 }
 
 

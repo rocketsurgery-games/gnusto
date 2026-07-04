@@ -94,11 +94,11 @@ In the original Infocom games, wrestling with the text parser and identifying po
 
 ## Model Configuration
 
-By default, Gnusto uses Claude Sonnet 4 via the Anthropic API. You can switch models using environment variables:
+By default, Gnusto uses Claude Sonnet 4.5 via the Anthropic API. You can switch models using environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GRUE_LLM_MODEL` | `anthropic/claude-sonnet-4-20250514` | Model ID (litellm format) |
+| `GRUE_LLM_MODEL` | `anthropic/claude-sonnet-4-5-20250929` | Model ID (litellm format) |
 | `GRUE_LLM_API_BASE` | *(none)* | API base URL for local servers |
 | `GRUE_LLM_TEMPERATURE` | `0.7` | Sampling temperature |
 | `GRUE_LLM_MAX_TOKENS` | `2048` | Max response tokens |
@@ -119,9 +119,9 @@ gnusto games/lurkinghorror/ --model local    # Qwen3-4B
 gnusto games/lurkinghorror/ --model local8b  # Qwen3-8B
 ```
 
-The `--model` flag accepts aliases (`sonnet`, `haiku`, `local`, `local8b`) or any litellm
-model ID. Local models auto-configure `api_base` to `localhost:8800`. You can also use env
-vars directly:
+The `--model` flag accepts aliases (`sonnet`, `opus`, `haiku`, `local`, `local8b`) or any
+litellm model ID. Local models auto-configure `api_base` to `localhost:8800`. You can also
+use env vars directly:
 
 ```bash
 GRUE_LLM_MODEL=openai/mlx-community/Qwen3-4B-4bit \
