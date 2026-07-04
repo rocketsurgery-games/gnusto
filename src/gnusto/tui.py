@@ -107,17 +107,17 @@ class SimpleTUI:
 
             # Exits (just direction names)
             if block.exits:
-                exits_str = ", ".join(block.exits)
+                exits_str = ", ".join(e.direction for e in block.exits)
                 self.console.print(Text(f"Exits: {exits_str}", style="dim yellow"))
 
             # Inventory
             if block.inventory:
-                inv_str = ", ".join(block.inventory)
+                inv_str = ", ".join(o.name for o in block.inventory)
                 self.console.print(Text(f"Carrying: {inv_str}", style="dim green"))
 
             # Objects
             if block.objects:
-                obj_str = ", ".join(block.objects)
+                obj_str = ", ".join(o.name for o in block.objects)
                 self.console.print(Text(f"You see: {obj_str}", style="dim"))
 
             # Image - display if terminal supports it

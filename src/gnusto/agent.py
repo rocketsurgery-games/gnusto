@@ -270,7 +270,9 @@ def render_game_state(state: GameState, debug: bool = False) -> None:
     # Exits - use nearby_rooms for player-friendly display, exits for debug
     if debug:
         if state.exits:
-            exits_str = ", ".join(f"{d} -> {dest}" for d, dest in state.exits.items())
+            exits_str = ", ".join(
+                f"{e.direction} -> {e.destination_name}" for e in state.exits
+            )
             print(f"\nExits: {exits_str}")
     else:
         if state.nearby_rooms:
