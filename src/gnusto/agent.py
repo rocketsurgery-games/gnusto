@@ -213,34 +213,51 @@ After seeing action results, narrate what happened:
 ```
 """
 
-# Simplified prompt for parsing-only mode: LLM just picks actions, no narrative generation.
+# Prompt for parsing-only mode: the LLM only SELECTS actions; the engine emits all text.
+# Unlike full-agent mode it authors no prose, but it DOES run a text-free sense-act loop:
+# it sees engine results + updated state after each step and keeps acting toward the
+# player's request until done, blocked, or a player decision is needed (gnusto-ntr.31).
 PARSING_ONLY_PROMPT = """\
-You are a command parser for an interactive fiction game. Your ONLY job is to translate
-the player's natural language into structured game actions. Do NOT generate any narrative,
-descriptions, or dialogue — the game engine handles all text output.
+You are the action selector for an interactive fiction game. Your ONLY job is to turn the
+player's request into concrete game actions and carry it out, step by step. You do NOT write
+any narrative, description, or dialogue — the game engine produces all text output.
 
-Respond with JSON:
+Respond with JSON only:
 ```json
 {
   "actions": [{"tool": "do_action|move|wait", "target": "@entity-id", "verb": "action-verb", "args": ["@arg"], "direction": "dir"}],
-  "needs_player_input": true
+  "needs_player_input": false
 }
 ```
 
+## How the loop works
+After you act, the engine runs your actions and sends back the RESULTS and the UPDATED game
+state. Read them and choose the next action. Keep going until the player's request is carried
+out — then set `needs_player_input: true`.
+
 ## Action types
-- **do_action**: Interact with objects. Requires `target` (entity ID) and `verb` (from the object's available behaviors). Optional `args` for parameters.
-- **move**: Navigate. Requires `direction` (must match an available exit).
+- **do_action**: Interact with an object. `target` = entity ID, `verb` = one of the object's behaviors, optional `args`.
+- **move**: Navigate. `direction` must match an available exit.
 - **wait**: Pass time.
 
 ## Rules
-1. Match player intent to available objects and their behaviors
-2. Entity IDs start with @ (e.g., @hacker, @pc). Resolve "the hacker" → @hacker
-3. Only use verbs listed in an object's behaviors
-4. Only use directions listed in exits
-5. For behavior params marked <@param>, pass an entity ID. For <param>, pass a literal.
-6. If the player's intent doesn't match any available action, return empty actions with needs_player_input: true
-7. Set needs_player_input: true after every action sequence (you never need to narrate)
-8. NEVER include a "blocks" field — the game engine generates all text
+1. Match the player's intent to available objects/behaviors and exits. Entity IDs start with @ (resolve "the hacker" → @hacker).
+2. Only use verbs listed in an object's behaviors, and directions listed in exits.
+3. For behavior params marked `<@param>`, pass an entity ID. For `<param>` (no @), pass a literal.
+4. Handle the obvious prerequisites yourself. If an action is blocked by a precondition the
+   player clearly intends (e.g. the computer must be turned on before you can log in), take
+   that step and continue toward the request.
+5. Do NOT batch actions whose validity depends on an earlier action's effect. If step B only
+   works once step A has succeeded (log in only after power-on), emit step A alone and wait
+   for its result. Batch only clearly INDEPENDENT actions.
+6. Set `needs_player_input: true` when ANY of these holds:
+   - the player's request has been carried out;
+   - you are blocked and there is no obvious next step to resolve it;
+   - continuing would need a real player decision, or open-ended exploration or puzzle-solving
+     beyond what was concretely asked. Carry out the specific request — do NOT try to "solve"
+     or win the game on your own.
+7. If nothing matches the player's intent, return empty actions with `needs_player_input: true`.
+8. NEVER include a "blocks" field — the engine generates all text.
 """
 
 
@@ -673,6 +690,9 @@ class GameSession:
         all_action_results: list[str] = []  # Results paired with actions for TurnRecord
         all_narratives: list[str] = []  # Flattened block text for history
         all_render_blocks: list[ContentBlock] = []  # For knowledge graph
+        # Parse-only loop guard: action keys that have already come back blocked, so we
+        # stop rather than banging on the same blocked action (see gnusto-ntr.31).
+        seen_blocked_keys: set[tuple[Any, ...]] = set()
         iteration = 0
 
         while iteration < max_iterations:
@@ -715,8 +735,11 @@ class GameSession:
             if response.needs_player_input and not self.parsing_only:
                 break
 
-            # Execute actions
+            # Execute actions. In parse-only we short-circuit the batch at the first
+            # blocked/error result, so the model re-plans from the real post-block state
+            # instead of plowing through speculative later actions (gnusto-ntr.31).
             action_results: list[str] = []
+            blocked_key: tuple[Any, ...] | None = None
             for action in response.actions:
                 action_summary = self._summarize_action(action)
                 raw_results, formatted_result = self._execute_action(action)
@@ -744,10 +767,62 @@ class GameSession:
                         for b in engine_blocks:
                             if hasattr(b, "text"):
                                 all_narratives.append(b.text)
+                    # Short-circuit: stop the speculative batch at the first block/error.
+                    if raw_results and isinstance(
+                        raw_results[0], (ActionBlocked, ActionError)
+                    ):
+                        blocked_key = self._action_key(action)
+                        break
 
-            # In parsing-only mode, we're done after executing — no multi-turn narration
+            # Parse-only: a text-free sense-act loop. Feed engine results + updated state
+            # back and let the model choose the next action toward the player's request,
+            # bounded by needs_player_input, the repeated-block guard, and max_iterations.
             if self.parsing_only:
-                break
+                # The model signalled the request is done / needs the player.
+                if response.needs_player_input:
+                    break
+                # Guard: if the same action blocks a second time, stop banging on it.
+                if blocked_key is not None:
+                    if blocked_key in seen_blocked_keys:
+                        break
+                    seen_blocked_keys.add(blocked_key)
+                # Feed results + updated state back for the next step (no narration).
+                results_text = "\n".join(f"- {r}" for r in action_results)
+                state_context = self.get_state().to_context_string()
+                working_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": json.dumps(
+                            {
+                                "actions": [
+                                    {
+                                        "tool": a.tool,
+                                        "target": a.target,
+                                        "verb": a.verb,
+                                        "args": a.args,
+                                        "direction": a.direction,
+                                    }
+                                    for a in response.actions
+                                ],
+                                "needs_player_input": response.needs_player_input,
+                            }
+                        ),
+                    }
+                )
+                working_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Engine results:\n{results_text}\n\n"
+                            f"[Updated game state:]\n{state_context}\n\n"
+                            "Issue the next action(s) toward the player's request, or set "
+                            "needs_player_input=true if the request is fulfilled, you are "
+                            "blocked and cannot proceed, or a genuine player decision is "
+                            "required. Do not narrate."
+                        ),
+                    }
+                )
+                continue
 
             # Add assistant response to messages (as JSON)
             working_messages.append(
@@ -956,6 +1031,16 @@ class GameSession:
             return False
         info = scene.get(entity_id)
         return bool(info and info.get("image"))
+
+    def _action_key(self, action: ActionRequest) -> tuple[Any, ...]:
+        """Identity of an action for the parse-only repeated-block guard."""
+        return (
+            action.tool,
+            action.target,
+            action.verb,
+            tuple(action.args or []),
+            action.direction,
+        )
 
     def _summarize_action(self, action: ActionRequest) -> str:
         """Generate a compact summary of an action for history."""
