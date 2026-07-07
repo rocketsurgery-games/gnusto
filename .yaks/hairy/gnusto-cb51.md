@@ -2,9 +2,9 @@
 id: gnusto-cb51
 title: Implement Grue LSP
 type: feature
-priority: 2
+priority: 4
 created: '2026-02-20T00:23:23Z'
-updated: '2026-02-20T00:23:23Z'
+updated: '2026-06-21T20:56:21Z'
 ---
 
 It would be really helpful to have just enough of a functional Grue LSP, that we could get goto-ref/def and other basic QoL stuff.

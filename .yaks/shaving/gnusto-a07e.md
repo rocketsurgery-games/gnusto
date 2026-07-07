@@ -4,7 +4,7 @@ title: Consistency-reference render model
 type: feature
 priority: 2
 created: '2026-06-21T20:29:26Z'
-updated: '2026-06-21T20:58:23Z'
+updated: '2026-06-23T19:12:40Z'
 labels:
 - render
 - image

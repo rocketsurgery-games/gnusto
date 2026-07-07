@@ -2,9 +2,9 @@
 id: gnusto-3g0
 title: Improve decomposer static analysis for action arguments
 type: task
-priority: 2
+priority: 4
 created: '2026-01-24T17:21:43.975164-05:00'
-updated: '2026-02-08T19:07:10.996251Z'
+updated: '2026-06-21T21:02:51Z'
 ---
 
 The decomposer misses preconditions when behaviors check action arguments like (= ?tool @axe). Need to:

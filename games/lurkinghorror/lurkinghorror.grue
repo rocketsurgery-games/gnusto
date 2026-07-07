@@ -25,12 +25,15 @@
                  :accent "#8fe06a" :accent-glow "#c4ff8a" :warm "#e6a45c"
                  :paper "#e7e0cd" :paper-ink "#1b1813"
                  :text "#dbe6e3" :text-dim "#8aa0a0")
+
+      ; Default aspect ratio
       :aspect-ratio "1:1"
+
       ; Per-kind specialization. :prompt is additive over the base style;
       ; :aspect-ratio overrides the default. Rooms breathe as wide establishing
       ; stages; objects/characters are isolated on a flat black field so every
       ; variant (and every object) composites consistently into the dark UI.
-      :kinds (:room   (:aspect-ratio "2:1"
+      :kinds (:room   (:aspect-ratio "16:9"
                        :prompt "Wide establishing shot of the empty location; environment only, no people, cinematic framing with room to breathe.")
               :object (:prompt "A single subject, centered, isolated on a flat pure-black background; no scene, no props, no floor, even studio lighting."))))
 

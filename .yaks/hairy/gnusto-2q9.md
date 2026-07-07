@@ -2,9 +2,9 @@
 id: gnusto-2q9
 title: Implement real macro system
 type: task
-priority: 3
+priority: 4
 created: '2026-01-17T23:42:42.527111-05:00'
-updated: '2026-02-08T19:07:11.07856Z'
+updated: '2026-06-21T20:56:12Z'
 depends_on:
 - gnusto-ntr
 labels:

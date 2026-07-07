@@ -2,9 +2,9 @@
 id: gnusto-otr
 title: IF Design Tools
 type: task
-priority: 2
+priority: 4
 created: '2026-01-25T10:51:31.341008-05:00'
-updated: '2026-02-08T19:07:10.954646Z'
+updated: '2026-06-21T21:03:02Z'
 ---
 
 CLI tools for interactive fiction designers to validate game designs, detect soft-locks,

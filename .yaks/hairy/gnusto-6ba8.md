@@ -2,9 +2,9 @@
 id: gnusto-6ba8
 title: Player knowledge graph
 type: feature
-priority: 2
+priority: 3
 created: '2026-03-01T18:00:59Z'
-updated: '2026-06-19T22:24:13Z'
+updated: '2026-06-21T20:56:17Z'
 commit: 1ae7fff
 ---
 
