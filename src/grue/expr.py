@@ -43,9 +43,9 @@ Built-in Effects (for test :setup and REPL debugging):
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol, Optional
+from typing import Any, Callable, Optional, Protocol
 
-from .sexpr import SExpr, Symbol, Keyword, SList, parse, parse_param_list
+from .sexpr import Keyword, SExpr, SList, Symbol, parse, parse_param_list
 
 
 def quote_to_data(expr: SExpr) -> Any:
@@ -87,9 +87,12 @@ class GrueFn:
     Note: Parameter names conventionally start with ? but this is not required.
     The ? is stripped when stored (e.g., ?item -> "item").
     """
+
     params: list[str]
     body: SExpr
-    param_types: dict[str, str] = field(default_factory=dict)  # Explicit type annotations
+    param_types: dict[str, str] = field(
+        default_factory=dict
+    )  # Explicit type annotations
     # Captured lexical environment (for proper closures)
     # Note: This is Optional because Environment is defined later in the file.
     # At runtime, closures created via (fn ...) will always have an environment.
@@ -103,6 +106,7 @@ class GrueFn:
 # === Behavior Result Types ===
 # These are returned by behavior expressions like (success), (blocked), etc.
 
+
 @dataclass
 class BehaviorSuccess:
     """Result indicating the behavior succeeded.
@@ -115,6 +119,7 @@ class BehaviorSuccess:
     For behaviors with effects, use quoted effect lists instead:
         '((move @key @player) (success :message "Got it!"))
     """
+
     context: dict[str, Any] = field(default_factory=dict)
 
 
@@ -126,6 +131,7 @@ class BehaviorBlocked:
         (blocked :reason locked)
         (blocked :reason no-key :message "The door is locked.")
     """
+
     reason: str = "unknown"
     context: dict[str, Any] = field(default_factory=dict)
 
@@ -137,6 +143,7 @@ class BehaviorRedirect:
     Usage in behaviors:
         (redirect (do @other-door :open))
     """
+
     action: SExpr
     context: dict[str, Any] = field(default_factory=dict)
 
@@ -149,6 +156,7 @@ class BehaviorDefault:
         (default)                           ; Use default
         (default (do @container :open))     ; With explicit action
     """
+
     action: SExpr | None = None
     context: dict[str, Any] = field(default_factory=dict)
 
@@ -268,12 +276,15 @@ class EffectOutcome:
     - effects_applied: List of effect descriptions for debugging
     - output: List of structured output effects [(type, entity, text), ...]
     """
+
     outcome: str  # "success", "blocked", "redirect", "default"
     reason: str | None = None
     context: dict[str, Any] = field(default_factory=dict)
     redirect_action: list | None = None  # The (do ...) for redirects
     effects_applied: list[str] = field(default_factory=list)
-    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
+    output: list[tuple[str, str | None, str]] = field(
+        default_factory=list
+    )  # [(type, entity, text), ...]
 
 
 class EffectInterpreter:
@@ -307,19 +318,38 @@ class EffectInterpreter:
     """
 
     # Effect names that mutate state
-    MUTATIONS = frozenset({
-        "move", "set-prop", "set", "set-in", "inc", "dec", "queue", "dequeue", "take",
-        "expose",
-    })
+    MUTATIONS = frozenset(
+        {
+            "move",
+            "set-prop",
+            "set",
+            "set-in",
+            "inc",
+            "dec",
+            "queue",
+            "dequeue",
+            "take",
+            "expose",
+        }
+    )
 
     # Effect names that terminate the effect list
     TERMINATORS = frozenset({"success", "blocked", "redirect", "default", "victory"})
 
-    # Effect names that produce structured output (player-facing content)
-    OUTPUT_EFFECTS = frozenset({"narrate", "say"})
+    # Effect names that produce structured player-facing output. Each maps to a
+    # render block (gnusto-7256.2); the GAME picks the semantic category, the
+    # renderer picks the presentation. Text-only: narrate/emphasize/sfx. Entity+
+    # text: focus/reveal. speaker+text: say. splash takes text or entity+text.
+    OUTPUT_EFFECTS = frozenset(
+        {"narrate", "say", "focus", "reveal", "emphasize", "splash", "sfx"}
+    )
 
-    def __init__(self, state: MutableWorldState, bindings: dict[str, Any] | None = None,
-                 functions: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        state: MutableWorldState,
+        bindings: dict[str, Any] | None = None,
+        functions: dict[str, Any] | None = None,
+    ):
         self.state = state
         self.bindings = bindings or {}
         self.functions = functions or {}
@@ -348,10 +378,13 @@ class EffectInterpreter:
             if len(arg) > 0 and isinstance(arg[0], str):
                 # This looks like an expression - evaluate it
                 # Nested expression like (loc @chair) or (door-at-elevator)
-                from .sexpr import SList, Symbol, Keyword
+                from .sexpr import Keyword, SList, Symbol
+
                 slist = self._list_to_slist(arg)
                 # Create evaluator with bindings and functions available
-                evaluator = ExprEvaluator(self.state, self.functions, allow_mutations=False)
+                evaluator = ExprEvaluator(
+                    self.state, self.functions, allow_mutations=False
+                )
                 evaluator._env = Environment(bindings=dict(self.bindings))
                 return evaluator.eval(slist)
             # Otherwise it's a data list, return as-is
@@ -359,7 +392,8 @@ class EffectInterpreter:
 
     def _list_to_slist(self, lst: list) -> SList:
         """Convert a Python list (from quoted expression) back to SList for evaluation."""
-        from .sexpr import SList, Symbol, Keyword
+        from .sexpr import Keyword, SList, Symbol
+
         items = []
         for item in lst:
             if isinstance(item, str):
@@ -457,7 +491,10 @@ class EffectInterpreter:
                         f"{terminator[0]} and {effect_name}"
                     )
                 terminator = effect
-            elif effect_name not in self.MUTATIONS and effect_name not in self.OUTPUT_EFFECTS:
+            elif (
+                effect_name not in self.MUTATIONS
+                and effect_name not in self.OUTPUT_EFFECTS
+            ):
                 raise EvalError(f"Unknown effect: {effect_name}")
 
         if terminator is None:
@@ -486,7 +523,7 @@ class EffectInterpreter:
                 raise EvalError(f"'set-prop' expects 3 arguments, got {len(args)}")
             obj, prop, val = args[0], args[1], args[2]
             # Handle Keyword for property name
-            if hasattr(prop, 'name'):
+            if hasattr(prop, "name"):
                 prop = prop.name
             self.state.set_object_property(obj, prop, val)
             self._effects_applied.append(f"set-prop {obj} {prop} = {val}")
@@ -496,10 +533,12 @@ class EffectInterpreter:
             # (set @obj :prop value) - set object property (3 args)
             # (set global-name value) - set global (2 args, legacy)
             if len(args) != 3:
-                raise EvalError(f"'set' expects 3 arguments (obj prop value), got {len(args)}")
+                raise EvalError(
+                    f"'set' expects 3 arguments (obj prop value), got {len(args)}"
+                )
             obj, prop, val = args[0], args[1], args[2]
             # Handle Keyword for property name
-            if hasattr(prop, 'name'):
+            if hasattr(prop, "name"):
                 prop = prop.name
             self.state.set_object_property(obj, prop, val)
             self._effects_applied.append(f"set {obj} {prop} = {val}")
@@ -507,9 +546,11 @@ class EffectInterpreter:
         elif name == "inc":
             # (inc @obj :prop [amount]) - increment object property
             if len(args) < 2 or len(args) > 3:
-                raise EvalError(f"'inc' expects 2-3 arguments (obj prop [amount]), got {len(args)}")
+                raise EvalError(
+                    f"'inc' expects 2-3 arguments (obj prop [amount]), got {len(args)}"
+                )
             obj, prop = args[0], args[1]
-            if hasattr(prop, 'name'):
+            if hasattr(prop, "name"):
                 prop = prop.name
             amount = args[2] if len(args) > 2 else 1
             current = self.state.get_object_property(obj, prop) or 0
@@ -519,9 +560,11 @@ class EffectInterpreter:
         elif name == "dec":
             # (dec @obj :prop [amount]) - decrement object property
             if len(args) < 2 or len(args) > 3:
-                raise EvalError(f"'dec' expects 2-3 arguments (obj prop [amount]), got {len(args)}")
+                raise EvalError(
+                    f"'dec' expects 2-3 arguments (obj prop [amount]), got {len(args)}"
+                )
             obj, prop = args[0], args[1]
-            if hasattr(prop, 'name'):
+            if hasattr(prop, "name"):
                 prop = prop.name
             amount = args[2] if len(args) > 2 else 1
             current = self.state.get_object_property(obj, prop) or 0
@@ -536,7 +579,7 @@ class EffectInterpreter:
             if not isinstance(path, (list, tuple)) or len(path) == 0:
                 raise EvalError("'set-in' path must be a non-empty list")
             self._set_in(obj, path, value)
-            path_str = ".".join(str(k.name if hasattr(k, 'name') else k) for k in path)
+            path_str = ".".join(str(k.name if hasattr(k, "name") else k) for k in path)
             self._effects_applied.append(f"set-in {obj} {path_str} = {value}")
 
         elif name == "queue":
@@ -583,7 +626,7 @@ class EffectInterpreter:
         if len(path) == 1:
             # Simple case: just set the property
             prop = path[0]
-            if hasattr(prop, 'name'):
+            if hasattr(prop, "name"):
                 prop = prop.name
             self.state.set_object_property(obj, prop, value)
             return
@@ -591,7 +634,7 @@ class EffectInterpreter:
         # For nested paths, we need to get the existing structure,
         # create a modified copy, and set it back
         first_key = path[0]
-        if hasattr(first_key, 'name'):
+        if hasattr(first_key, "name"):
             first_key = first_key.name
 
         # Get the current value at the first key
@@ -609,7 +652,7 @@ class EffectInterpreter:
             return value
 
         key = path[0]
-        if hasattr(key, 'name'):
+        if hasattr(key, "name"):
             key = key.name
 
         rest_path = path[1:]
@@ -624,48 +667,87 @@ class EffectInterpreter:
                 new_list = list(coll)
                 while len(new_list) <= key:
                     new_list.append(None)
-                new_list[key] = self._assoc_in(new_list[key] if key < len(coll) else None,
-                                               rest_path, value)
+                new_list[key] = self._assoc_in(
+                    new_list[key] if key < len(coll) else None, rest_path, value
+                )
                 return new_list
             else:
                 # Treat as keyword-value list
                 from .sexpr import Keyword
+
                 new_list = list(coll)
                 for i in range(0, len(new_list) - 1, 2):
                     item_key = new_list[i]
-                    key_name = item_key.name if isinstance(item_key, Keyword) else item_key
+                    key_name = (
+                        item_key.name if isinstance(item_key, Keyword) else item_key
+                    )
                     if key_name == key:
-                        new_list[i + 1] = self._assoc_in(new_list[i + 1], rest_path, value)
+                        new_list[i + 1] = self._assoc_in(
+                            new_list[i + 1], rest_path, value
+                        )
                         return new_list
                 # Key not found, append it
-                new_list.extend([Keyword(key) if isinstance(key, str) else key,
-                                self._assoc_in(None, rest_path, value)])
+                new_list.extend(
+                    [
+                        Keyword(key) if isinstance(key, str) else key,
+                        self._assoc_in(None, rest_path, value),
+                    ]
+                )
                 return new_list
         else:
             # Create a new dict if current is None or not a collection
             return {key: self._assoc_in(None, rest_path, value)}
 
     def _collect_output(self, effect: list) -> None:
-        """Collect an output effect (narrate, say).
+        """Collect a player-facing output effect.
 
-        Output effects produce structured player-facing content:
-        - (narrate "text") - general narrative
-        - (say @speaker "text") - dialogue with speaker
+        Each effect names a semantic block category; the renderer decides how it
+        looks (gnusto-7256.2). All emit into the ordered output stream as
+        (type, entity_or_None, text):
+
+        - (narrate "text")          general narrative prose
+        - (emphasize "text")        a beat that should land harder
+        - (sfx "text")              onomatopoeia / sound-effect lettering
+        - (say @speaker "text")     dialogue attributed to a speaker
+        - (focus @entity "text")    close-up on an entity (surfaces its art)
+        - (reveal @entity "text")   discovery of something new
+        - (splash "text")           full-bleed dramatic beat (optional @entity art)
+        - (splash @entity "text")
         """
         name = effect[0]
         args = [self._resolve_arg(arg) for arg in effect[1:]]
 
-        if name == "narrate":
+        # Text-only effects.
+        if name in ("narrate", "emphasize", "sfx"):
             if len(args) != 1:
-                raise EvalError(f"'narrate' expects 1 argument (text), got {len(args)}")
-            text = args[0]
-            self._output.append(("narrate", None, str(text)))
+                raise EvalError(f"'{name}' expects 1 argument (text), got {len(args)}")
+            self._output.append((name, None, str(args[0])))
 
         elif name == "say":
             if len(args) != 2:
-                raise EvalError(f"'say' expects 2 arguments (speaker, text), got {len(args)}")
-            speaker, text = args[0], args[1]
-            self._output.append(("say", str(speaker), str(text)))
+                raise EvalError(
+                    f"'say' expects 2 arguments (speaker, text), got {len(args)}"
+                )
+            self._output.append(("say", str(args[0]), str(args[1])))
+
+        # Entity + text effects.
+        elif name in ("focus", "reveal"):
+            if len(args) != 2:
+                raise EvalError(
+                    f"'{name}' expects 2 arguments (entity, text), got {len(args)}"
+                )
+            self._output.append((name, str(args[0]), str(args[1])))
+
+        # splash: optional entity art.
+        elif name == "splash":
+            if len(args) == 1:
+                self._output.append(("splash", None, str(args[0])))
+            elif len(args) == 2:
+                self._output.append(("splash", str(args[0]), str(args[1])))
+            else:
+                raise EvalError(
+                    f"'splash' expects (text) or (entity text), got {len(args)} args"
+                )
 
     def _terminator_to_outcome(self, terminator: list) -> EffectOutcome:
         """Convert a terminator effect to an EffectOutcome."""
@@ -685,7 +767,7 @@ class EffectInterpreter:
                 reason=reason,
                 context=context,
                 effects_applied=self._effects_applied,
-                output=self._output
+                output=self._output,
             )
 
         elif name == "victory":
@@ -702,7 +784,7 @@ class EffectInterpreter:
                 reason=reason,
                 context=context,
                 effects_applied=self._effects_applied,
-                output=self._output
+                output=self._output,
             )
 
         elif name == "blocked":
@@ -741,7 +823,7 @@ class EffectInterpreter:
                     # Old style: (blocked :reason X :message "...")
                     context = self._parse_terminator_kwargs(args)
                     reason = context.pop("reason", "unknown")
-                    if hasattr(reason, 'name'):
+                    if hasattr(reason, "name"):
                         reason = reason.name
                     elif not isinstance(reason, str):
                         reason = str(reason)
@@ -750,7 +832,7 @@ class EffectInterpreter:
                 reason=reason,
                 context=context,
                 effects_applied=self._effects_applied,
-                output=self._output
+                output=self._output,
             )
 
         elif name == "redirect":
@@ -762,7 +844,7 @@ class EffectInterpreter:
             i = 0
             while i < len(args):
                 arg = args[i]
-                if hasattr(arg, 'name') and isinstance(arg, Keyword):
+                if hasattr(arg, "name") and isinstance(arg, Keyword):
                     # Keyword argument
                     if i + 1 < len(args):
                         context[arg.name] = args[i + 1]
@@ -780,7 +862,7 @@ class EffectInterpreter:
                 redirect_action=action,
                 context=context,
                 effects_applied=self._effects_applied,
-                output=self._output
+                output=self._output,
             )
 
         elif name == "default":
@@ -789,7 +871,7 @@ class EffectInterpreter:
                 outcome="default",
                 context=context,
                 effects_applied=self._effects_applied,
-                output=self._output
+                output=self._output,
             )
 
         else:
@@ -808,7 +890,7 @@ class EffectInterpreter:
         while i < len(args):
             arg = args[i]
             # Check if it's a Keyword
-            if hasattr(arg, 'name') and type(arg).__name__ == 'Keyword':
+            if hasattr(arg, "name") and type(arg).__name__ == "Keyword":
                 key = arg.name
                 if i + 1 < len(args):
                     val = args[i + 1]
@@ -831,11 +913,13 @@ class EffectInterpreter:
 
 class EvalError(Exception):
     """Error during expression evaluation."""
+
     pass
 
 
 class UnboundVariableError(EvalError):
     """Raised when referencing an unbound variable."""
+
     def __init__(self, name: str):
         super().__init__(f"Unbound variable: {name}")
         self.name = name
@@ -850,6 +934,7 @@ class Environment:
 
     Variable lookup walks up the parent chain until found or raises UnboundVariableError.
     """
+
     bindings: dict[str, Any] = field(default_factory=dict)
     parent: Optional["Environment"] = None
 
@@ -894,7 +979,7 @@ class ExprEvaluator:
         state: WorldState,
         functions: dict[str, GrueFn] | None = None,
         allow_mutations: bool = False,
-        include_builtins: bool = True
+        include_builtins: bool = True,
     ):
         self.state = state
         self._allow_mutations = allow_mutations
@@ -923,34 +1008,29 @@ class ExprEvaluator:
             "*": self._eval_mul,
             "/": self._eval_div,
             "mod": self._eval_mod,
-
             # Boolean operators
             "and": self._eval_and,
             "or": self._eval_or,
             "not": self._eval_not,
             "nil?": self._eval_nil,
-
             # Comparisons
             "=": self._eval_eq,
             ">": self._eval_gt,
             "<": self._eval_lt,
             ">=": self._eval_gte,
             "<=": self._eval_lte,
-
             # Object queries
             "player": self._eval_player,
             "loc": self._eval_loc,
             "prop": self._eval_prop,
             "desc": self._eval_desc,
             "ldesc": self._eval_ldesc,
-
             # Convenience predicates
             # NOTE: held?, here?, in?, held-by?, at?, loc? are now defined in builtins.grue
             "visible?": self._eval_visible,
             "inside?": self._eval_inside,  # recursive containment check
             "room?": self._eval_room,
             "in-room?": self._eval_in_room,
-
             # Collections/quantifiers
             "some": self._eval_some,
             "every?": self._eval_every,
@@ -958,15 +1038,12 @@ class ExprEvaluator:
             "visible": self._eval_visible_objects,
             "exits": self._eval_exits,
             "room-description": self._eval_room_description,
-
             # Exit queries (for movement)
             "exit?": self._eval_exit_exists,
             "exit-to": self._eval_exit_to,
             "exit-via": self._eval_exit_via,
-
             # Event queue
             "queued?": self._eval_queued,
-
             # First-class functions
             "fn": self._eval_fn,
             "defn": self._eval_defn,
@@ -980,29 +1057,23 @@ class ExprEvaluator:
             "->>": self._eval_thread_last,
             "cond->": self._eval_cond_thread,
             "cond->>": self._eval_cond_thread_last,
-
             # Behavior results
             "success": self._eval_success,
             "blocked": self._eval_blocked,
             "redirect": self._eval_redirect,
             "default": self._eval_default,
-
             # Debug/REPL
             "print": self._eval_print,
-
             # Data constructors
             "quote": self._eval_quote,
             "quasiquote": self._eval_quasiquote,
             "list": self._eval_list,
             "range": self._eval_range,
-
             # Sequencing (like Clojure's do)
             "do": self._eval_do_seq,
-
             # String operations
             "str": self._eval_str,
             "join": self._eval_join,
-
             # Sequence operations (Clojure stdlib)
             # NOTE: first, empty? moved to builtins.grue
             "nth": self._eval_nth,
@@ -1012,7 +1083,6 @@ class ExprEvaluator:
             "count": self._eval_count,
             "cons": self._eval_cons,
             "get-in": self._eval_get_in,
-
             # Higher-order collection functions
             "map": self._eval_map,
             "filter": self._eval_filter,
@@ -1021,7 +1091,6 @@ class ExprEvaluator:
             "reduce": self._eval_reduce,
             "for": self._eval_for,
             "doseq": self._eval_doseq,
-
             # Side effects - controlled by allow_mutations flag
             # In behavior bodies (pure), these raise errors directing users to effect system
             # In EffectExecutor context (allow_mutations=True), these work normally
@@ -1105,7 +1174,9 @@ class ExprEvaluator:
             env: Current lexical environment
         """
         if len(form) == 0:
-            raise EvalError("Cannot evaluate empty list () - use nil or '() for empty values")
+            raise EvalError(
+                "Cannot evaluate empty list () - use nil or '() for empty values"
+            )
 
         head = form[0]
 
@@ -1124,7 +1195,11 @@ class ExprEvaluator:
             if env is not None:
                 lookup_name = name[1:] if name.startswith("?") else name
                 if env.has(lookup_name) or env.has(name):
-                    fn_value = env.lookup(lookup_name) if env.has(lookup_name) else env.lookup(name)
+                    fn_value = (
+                        env.lookup(lookup_name)
+                        if env.has(lookup_name)
+                        else env.lookup(name)
+                    )
                     if isinstance(fn_value, GrueFn):
                         args = [self.eval(arg, env) for arg in form.items[1:]]
                         return self.call_fn(fn_value, args)
@@ -1165,7 +1240,9 @@ class ExprEvaluator:
         """
         self._functions[name] = GrueFn(params=params, body=body)
 
-    def _call_function(self, name: str, form: SList, env: Optional[Environment] = None) -> Any:
+    def _call_function(
+        self, name: str, form: SList, env: Optional[Environment] = None
+    ) -> Any:
         """Call a user-defined function with argument binding."""
         fn = self._functions[name]
         args = form.items[1:]
@@ -1365,10 +1442,7 @@ class ExprEvaluator:
                 # Parse the fn and call it with ?self bound
                 fn = self._parse_fn(desc)
                 # Create environment with self bound
-                new_env = Environment(
-                    bindings={"self": entity},
-                    parent=env
-                )
+                new_env = Environment(bindings={"self": entity}, parent=env)
                 return self.eval(fn.body, new_env)
 
         # Otherwise, try to evaluate it as an expression with ?self bound
@@ -1402,10 +1476,7 @@ class ExprEvaluator:
                 # Parse the fn and call it with ?self bound
                 fn = self._parse_fn(ldesc)
                 # Create environment with self bound
-                new_env = Environment(
-                    bindings={"self": entity},
-                    parent=env
-                )
+                new_env = Environment(bindings={"self": entity}, parent=env)
                 return self.eval(fn.body, new_env)
 
         # Otherwise, try to evaluate it as an expression with ?self bound
@@ -1486,7 +1557,9 @@ class ExprEvaluator:
         if the player is in one of several specific rooms.
         """
         if len(form) < 3:
-            raise EvalError(f"'in-room?' expects at least 2 arguments, got {len(form) - 1}")
+            raise EvalError(
+                f"'in-room?' expects at least 2 arguments, got {len(form) - 1}"
+            )
 
         obj = self.eval(form[1], env)
         obj_loc = self.state.get_object_location(obj)
@@ -1503,26 +1576,34 @@ class ExprEvaluator:
 
     # === Collections/quantifiers ===
 
-    def _eval_contents(self, form: SList, env: Optional[Environment] = None) -> list[str]:
+    def _eval_contents(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> list[str]:
         """(contents CONTAINER) - get contents of container"""
         if len(form) != 2:
             raise EvalError(f"'contents' expects 1 argument, got {len(form) - 1}")
         container = self.eval(form[1], env)
         return self.state.get_contents(container)
 
-    def _eval_visible_objects(self, form: SList, env: Optional[Environment] = None) -> list[str]:
+    def _eval_visible_objects(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> list[str]:
         """(visible) - get objects visible from current location"""
         if len(form) != 1:
             raise EvalError(f"'visible' expects 0 arguments, got {len(form) - 1}")
         return self.state.get_visible_objects()
 
-    def _eval_exits(self, form: SList, env: Optional[Environment] = None) -> dict[str, str]:
+    def _eval_exits(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> dict[str, str]:
         """(exits) - get available exits from current room as direction->destination map"""
         if len(form) != 1:
             raise EvalError(f"'exits' expects 0 arguments, got {len(form) - 1}")
         return self.state.get_exits()
 
-    def _eval_room_description(self, form: SList, env: Optional[Environment] = None) -> str:
+    def _eval_room_description(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> str:
         """(room-description) or (room-description ROOM) - get room description"""
         if len(form) == 1:
             return self.state.get_room_description()
@@ -1530,7 +1611,9 @@ class ExprEvaluator:
             room = self.eval(form[1], env)
             return self.state.get_room_description(room)
         else:
-            raise EvalError(f"'room-description' expects 0-1 arguments, got {len(form) - 1}")
+            raise EvalError(
+                f"'room-description' expects 0-1 arguments, got {len(form) - 1}"
+            )
 
     # === Exit queries (for movement) ===
 
@@ -1543,7 +1626,9 @@ class ExprEvaluator:
         result = self.state.get_exit(actor, direction)
         return result is not None
 
-    def _eval_exit_to(self, form: SList, env: Optional[Environment] = None) -> str | None:
+    def _eval_exit_to(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> str | None:
         """(exit-to ACTOR DIRECTION) - get destination room for exit."""
         if len(form) != 3:
             raise EvalError(f"'exit-to' expects 2 arguments, got {len(form) - 1}")
@@ -1552,7 +1637,9 @@ class ExprEvaluator:
         result = self.state.get_exit(actor, direction)
         return result[0] if result else None
 
-    def _eval_exit_via(self, form: SList, env: Optional[Environment] = None) -> str | None:
+    def _eval_exit_via(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> str | None:
         """(exit-via ACTOR DIRECTION) - get door object for exit (if any)."""
         if len(form) != 3:
             raise EvalError(f"'exit-via' expects 2 arguments, got {len(form) - 1}")
@@ -1593,7 +1680,9 @@ class ExprEvaluator:
             (fn (?a ?b) (if (> ?a ?b) ?a ?b))
         """
         if len(form) < 3:
-            raise EvalError(f"'fn' expects (fn (params) body), got {len(form)} elements")
+            raise EvalError(
+                f"'fn' expects (fn (params) body), got {len(form)} elements"
+            )
 
         params_expr = form[1]
         body = form[2]
@@ -1610,7 +1699,9 @@ class ExprEvaluator:
             raise EvalError(f"'fn' params must be a list, got {params_expr}")
 
         # Capture the current environment for proper closure semantics
-        return GrueFn(params=params, body=body, param_types=param_types, captured_env=env)
+        return GrueFn(
+            params=params, body=body, param_types=param_types, captured_env=env
+        )
 
     def _eval_defn(self, form: SList, env: Optional[Environment] = None) -> None:
         """(defn name (params) body) - define a named function.
@@ -1624,7 +1715,9 @@ class ExprEvaluator:
         Note: defn always creates top-level functions that don't capture env.
         """
         if len(form) != 4:
-            raise EvalError(f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}")
+            raise EvalError(
+                f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}"
+            )
 
         # Extract function name
         name_expr = form[1]
@@ -2006,7 +2099,9 @@ class ExprEvaluator:
 
         return value
 
-    def _eval_cond_thread_last(self, form: SList, env: Optional[Environment] = None) -> Any:
+    def _eval_cond_thread_last(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> Any:
         """(cond->> initial test1 expr1 test2 expr2 ...)
 
         Conditional threading - threads value through exprs when tests pass.
@@ -2168,7 +2263,9 @@ class ExprEvaluator:
                         result[key_str] = str(val)
         return result
 
-    def _eval_success(self, form: SList, env: Optional[Environment] = None) -> BehaviorSuccess:
+    def _eval_success(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> BehaviorSuccess:
         """(success "message" [:key value ...]) or (success [:key value ...])
 
         Examples:
@@ -2218,7 +2315,9 @@ class ExprEvaluator:
 
         return BehaviorSuccess(context=context)
 
-    def _eval_blocked(self, form: SList, env: Optional[Environment] = None) -> BehaviorBlocked:
+    def _eval_blocked(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> BehaviorBlocked:
         """(blocked "message" [:context ((key val) ...)])
 
         The preferred form is simply (blocked "message"). Reason codes are deprecated
@@ -2257,7 +2356,9 @@ class ExprEvaluator:
         # Always use "unknown" as reason - reason codes are deprecated
         return BehaviorBlocked(reason="unknown", context=context)
 
-    def _eval_redirect(self, form: SList, env: Optional[Environment] = None) -> BehaviorRedirect:
+    def _eval_redirect(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> BehaviorRedirect:
         """(redirect ACTION [:key value ...]) or (redirect :action ACTION) or (redirect :to ROOM)
 
         Examples:
@@ -2289,7 +2390,13 @@ class ExprEvaluator:
                 # Store the destination in context, runtime will handle the move
                 context["redirect_to"] = room
                 # Create a placeholder action (runtime will use redirect_to instead)
-                action = SList([Symbol("go"), Keyword("to"), Symbol(room) if isinstance(room, str) else v])
+                action = SList(
+                    [
+                        Symbol("go"),
+                        Keyword("to"),
+                        Symbol(room) if isinstance(room, str) else v,
+                    ]
+                )
             elif k == "context":
                 context.update(self._parse_context_list(v))
             else:
@@ -2303,7 +2410,9 @@ class ExprEvaluator:
 
         return BehaviorRedirect(action=action, context=context)
 
-    def _eval_default(self, form: SList, env: Optional[Environment] = None) -> BehaviorDefault:
+    def _eval_default(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> BehaviorDefault:
         """(default [ACTION] [:key value ...])
 
         Examples:
@@ -2397,7 +2506,9 @@ class ExprEvaluator:
 
     # === Keyword as function (Clojure-style) ===
 
-    def _eval_keyword_lookup(self, key: Keyword, form: SList, env: Optional[Environment] = None) -> Any:
+    def _eval_keyword_lookup(
+        self, key: Keyword, form: SList, env: Optional[Environment] = None
+    ) -> Any:
         """(:key obj [default]) - look up key on obj.
 
         Works on:
@@ -2414,7 +2525,9 @@ class ExprEvaluator:
             (:foo '(:foo "bar" :baz "qux")) => "bar"
         """
         if len(form) < 2 or len(form) > 3:
-            raise EvalError(f"Keyword lookup requires 1-2 arguments: (:{key.name} obj [default])")
+            raise EvalError(
+                f"Keyword lookup requires 1-2 arguments: (:{key.name} obj [default])"
+            )
 
         target = self.eval(form[1], env)
         has_default = len(form) == 3
@@ -2488,25 +2601,31 @@ class ExprEvaluator:
         if isinstance(expr, SList):
             items = expr.items
             # Check for (unquote expr) form
-            if (len(items) == 2 and
-                isinstance(items[0], Symbol) and
-                items[0].name == "unquote"):
+            if (
+                len(items) == 2
+                and isinstance(items[0], Symbol)
+                and items[0].name == "unquote"
+            ):
                 # Evaluate the unquoted expression
                 return self.eval(items[1], env)
 
             # Check for (unquote-splicing expr) - error, must be inside a list
-            if (len(items) >= 1 and
-                isinstance(items[0], Symbol) and
-                items[0].name == "unquote-splicing"):
+            if (
+                len(items) >= 1
+                and isinstance(items[0], Symbol)
+                and items[0].name == "unquote-splicing"
+            ):
                 raise EvalError("unquote-splicing (,@) not valid outside of a list")
 
             # Process list elements, handling unquote-splicing
             result = []
             for item in items:
-                if (isinstance(item, SList) and
-                    len(item.items) == 2 and
-                    isinstance(item.items[0], Symbol) and
-                    item.items[0].name == "unquote-splicing"):
+                if (
+                    isinstance(item, SList)
+                    and len(item.items) == 2
+                    and isinstance(item.items[0], Symbol)
+                    and item.items[0].name == "unquote-splicing"
+                ):
                     # Evaluate and splice the list
                     spliced = self.eval(item.items[1], env)
                     if not isinstance(spliced, (list, tuple)):
@@ -2549,7 +2668,9 @@ class ExprEvaluator:
         args = [self.eval(arg, env) for arg in form.items[1:]]
         for i, arg in enumerate(args):
             if not isinstance(arg, int):
-                raise EvalError(f"'range' argument {i+1} must be int, got {type(arg).__name__}")
+                raise EvalError(
+                    f"'range' argument {i + 1} must be int, got {type(arg).__name__}"
+                )
 
         if argc == 1:
             # (range end) -> 0..end-1
@@ -2628,14 +2749,18 @@ class ExprEvaluator:
             elif len(form) > 3:
                 return not_found
             else:
-                raise EvalError(f"Index {idx} out of bounds for collection of size {len(coll)}")
+                raise EvalError(
+                    f"Index {idx} out of bounds for collection of size {len(coll)}"
+                )
         elif isinstance(coll, str):
             if 0 <= idx < len(coll):
                 return coll[idx]
             elif len(form) > 3:
                 return not_found
             else:
-                raise EvalError(f"Index {idx} out of bounds for string of length {len(coll)}")
+                raise EvalError(
+                    f"Index {idx} out of bounds for string of length {len(coll)}"
+                )
         else:
             raise EvalError(f"'nth' expects sequence, got {type(coll).__name__}")
 
@@ -2662,7 +2787,9 @@ class ExprEvaluator:
                 result[idx] = value
                 return result
             else:
-                raise EvalError(f"Index {idx} out of bounds for list of size {len(items)}")
+                raise EvalError(
+                    f"Index {idx} out of bounds for list of size {len(items)}"
+                )
         else:
             raise EvalError(f"'list-set' expects list, got {type(coll).__name__}")
 
@@ -2733,7 +2860,9 @@ class ExprEvaluator:
         elif isinstance(coll, (list, tuple)):
             return [elem] + list(coll)
         else:
-            raise EvalError(f"'cons' expects sequence as second argument, got {type(coll).__name__}")
+            raise EvalError(
+                f"'cons' expects sequence as second argument, got {type(coll).__name__}"
+            )
 
     # NOTE: empty? moved to builtins.grue
 
@@ -2821,9 +2950,13 @@ class ExprEvaluator:
         coll = self.eval(form.items[2], env)
 
         if not isinstance(fn, GrueFn):
-            raise EvalError(f"'map' first argument must be a function, got {type(fn).__name__}")
+            raise EvalError(
+                f"'map' first argument must be a function, got {type(fn).__name__}"
+            )
         if not isinstance(coll, (list, tuple)):
-            raise EvalError(f"'map' second argument must be a sequence, got {type(coll).__name__}")
+            raise EvalError(
+                f"'map' second argument must be a sequence, got {type(coll).__name__}"
+            )
 
         return [self.call_fn(fn, [item]) for item in coll]
 
@@ -2841,9 +2974,13 @@ class ExprEvaluator:
         coll = self.eval(form.items[2], env)
 
         if not isinstance(pred, GrueFn):
-            raise EvalError(f"'filter' first argument must be a function, got {type(pred).__name__}")
+            raise EvalError(
+                f"'filter' first argument must be a function, got {type(pred).__name__}"
+            )
         if not isinstance(coll, (list, tuple)):
-            raise EvalError(f"'filter' second argument must be a sequence, got {type(coll).__name__}")
+            raise EvalError(
+                f"'filter' second argument must be a sequence, got {type(coll).__name__}"
+            )
 
         return [item for item in coll if self.call_fn(pred, [item])]
 
@@ -2861,9 +2998,13 @@ class ExprEvaluator:
         coll = self.eval(form.items[2], env)
 
         if not isinstance(pred, GrueFn):
-            raise EvalError(f"'remove' first argument must be a function, got {type(pred).__name__}")
+            raise EvalError(
+                f"'remove' first argument must be a function, got {type(pred).__name__}"
+            )
         if not isinstance(coll, (list, tuple)):
-            raise EvalError(f"'remove' second argument must be a sequence, got {type(coll).__name__}")
+            raise EvalError(
+                f"'remove' second argument must be a sequence, got {type(coll).__name__}"
+            )
 
         return [item for item in coll if not self.call_fn(pred, [item])]
 
@@ -2880,9 +3021,13 @@ class ExprEvaluator:
         coll = self.eval(form.items[2], env)
 
         if not isinstance(fn, GrueFn):
-            raise EvalError(f"'keep' first argument must be a function, got {type(fn).__name__}")
+            raise EvalError(
+                f"'keep' first argument must be a function, got {type(fn).__name__}"
+            )
         if not isinstance(coll, (list, tuple)):
-            raise EvalError(f"'keep' second argument must be a sequence, got {type(coll).__name__}")
+            raise EvalError(
+                f"'keep' second argument must be a sequence, got {type(coll).__name__}"
+            )
 
         result = []
         for item in coll:
@@ -2908,9 +3053,13 @@ class ExprEvaluator:
         coll = self.eval(form.items[3], env)
 
         if not isinstance(fn, GrueFn):
-            raise EvalError(f"'reduce' first argument must be a function, got {type(fn).__name__}")
+            raise EvalError(
+                f"'reduce' first argument must be a function, got {type(fn).__name__}"
+            )
         if not isinstance(coll, (list, tuple)):
-            raise EvalError(f"'reduce' third argument must be a sequence, got {type(coll).__name__}")
+            raise EvalError(
+                f"'reduce' third argument must be a sequence, got {type(coll).__name__}"
+            )
 
         acc = init
         for item in coll:
@@ -2929,7 +3078,9 @@ class ExprEvaluator:
               => ((1 a) (1 b) (2 a) (2 b))
         """
         if len(form) != 3:
-            raise EvalError(f"'for' expects 2 arguments (bindings body), got {len(form) - 1}")
+            raise EvalError(
+                f"'for' expects 2 arguments (bindings body), got {len(form) - 1}"
+            )
 
         bindings_expr = form[1]
         body = form[2]
@@ -2940,7 +3091,9 @@ class ExprEvaluator:
         # Parse binding pairs: (?var seq ?var2 seq2 ...)
         bindings_list = list(bindings_expr.items)
         if len(bindings_list) % 2 != 0:
-            raise EvalError("'for' bindings must have even number of elements (var seq pairs)")
+            raise EvalError(
+                "'for' bindings must have even number of elements (var seq pairs)"
+            )
         if len(bindings_list) == 0:
             raise EvalError("'for' requires at least one binding pair")
 
@@ -2961,7 +3114,9 @@ class ExprEvaluator:
             var_name, seq_expr = pairs[pairs_idx]
             seq = self.eval(seq_expr, current_env)
             if not isinstance(seq, (list, tuple)):
-                raise EvalError(f"'for' sequence must be a list, got {type(seq).__name__}")
+                raise EvalError(
+                    f"'for' sequence must be a list, got {type(seq).__name__}"
+                )
 
             result = []
             base_name = var_name[1:] if var_name.startswith("?") else var_name
@@ -2986,7 +3141,9 @@ class ExprEvaluator:
             (doseq (?obj (contents @player)) (print (desc ?obj)))
         """
         if len(form) != 3:
-            raise EvalError(f"'doseq' expects 2 arguments (bindings body), got {len(form) - 1}")
+            raise EvalError(
+                f"'doseq' expects 2 arguments (bindings body), got {len(form) - 1}"
+            )
 
         bindings_expr = form[1]
         body = form[2]
@@ -2997,7 +3154,9 @@ class ExprEvaluator:
         # Parse binding pairs: (?var seq ?var2 seq2 ...)
         bindings_list = list(bindings_expr.items)
         if len(bindings_list) % 2 != 0:
-            raise EvalError("'doseq' bindings must have even number of elements (var seq pairs)")
+            raise EvalError(
+                "'doseq' bindings must have even number of elements (var seq pairs)"
+            )
         if len(bindings_list) == 0:
             raise EvalError("'doseq' requires at least one binding pair")
 
@@ -3019,7 +3178,9 @@ class ExprEvaluator:
             var_name, seq_expr = pairs[pairs_idx]
             seq = self.eval(seq_expr, current_env)
             if not isinstance(seq, (list, tuple)):
-                raise EvalError(f"'doseq' sequence must be a list, got {type(seq).__name__}")
+                raise EvalError(
+                    f"'doseq' sequence must be a list, got {type(seq).__name__}"
+                )
 
             base_name = var_name[1:] if var_name.startswith("?") else var_name
             for item in seq:
@@ -3049,7 +3210,9 @@ class ExprEvaluator:
     #
     # The runtime interprets the effect list and applies mutations.
 
-    def _eval_mutation_dispatch(self, form: SList, env: Optional[Environment] = None) -> None:
+    def _eval_mutation_dispatch(
+        self, form: SList, env: Optional[Environment] = None
+    ) -> None:
         """Dispatch mutation primitives - allowed if allow_mutations=True, error otherwise."""
         if not self._allow_mutations:
             effect_name = form[0].name if isinstance(form[0], Symbol) else str(form[0])
@@ -3057,7 +3220,7 @@ class ExprEvaluator:
                 f"'{effect_name}' is not allowed in behavior bodies (behaviors must be pure). "
                 f"Use the effect system instead: return a quoted list with ({effect_name} ...) "
                 f"followed by a terminator like (success ...). "
-                f"Example: '(({effect_name} ...) (success :message \"...\"))"
+                f'Example: \'(({effect_name} ...) (success :message "..."))'
             )
 
         # Dispatch to the actual mutation handler
@@ -3094,7 +3257,9 @@ class ExprEvaluator:
     def _eval_set_impl(self, form: SList, env: Optional[Environment] = None) -> None:
         """(set @obj :prop value) - Set an object property."""
         if len(form) != 4:
-            raise EvalError(f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}")
+            raise EvalError(
+                f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}"
+            )
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
@@ -3114,7 +3279,9 @@ class ExprEvaluator:
     def _eval_inc_impl(self, form: SList, env: Optional[Environment] = None) -> None:
         """(inc @obj :prop) or (inc @obj :prop amount) - Increment an entity property."""
         if len(form) < 3 or len(form) > 4:
-            raise EvalError(f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}")
+            raise EvalError(
+                f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}"
+            )
         obj = self.eval(form[1], env)
         if isinstance(obj, Symbol):
             obj = obj.name
@@ -3148,9 +3315,13 @@ class ExprEvaluator:
         collection = self.eval(form.items[2], env)
 
         if not isinstance(pred, GrueFn):
-            raise EvalError(f"'some' first argument must be a function, got {type(pred).__name__}")
+            raise EvalError(
+                f"'some' first argument must be a function, got {type(pred).__name__}"
+            )
         if not isinstance(collection, (list, tuple)):
-            raise EvalError(f"'some' second argument must be a sequence, got {type(collection).__name__}")
+            raise EvalError(
+                f"'some' second argument must be a sequence, got {type(collection).__name__}"
+            )
 
         for item in collection:
             result = self.call_fn(pred, [item])
@@ -3172,9 +3343,13 @@ class ExprEvaluator:
         collection = self.eval(form.items[2], env)
 
         if not isinstance(pred, GrueFn):
-            raise EvalError(f"'every?' first argument must be a function, got {type(pred).__name__}")
+            raise EvalError(
+                f"'every?' first argument must be a function, got {type(pred).__name__}"
+            )
         if not isinstance(collection, (list, tuple)):
-            raise EvalError(f"'every?' second argument must be a sequence, got {type(collection).__name__}")
+            raise EvalError(
+                f"'every?' second argument must be a sequence, got {type(collection).__name__}"
+            )
 
         for item in collection:
             result = self.call_fn(pred, [item])
@@ -3182,7 +3357,9 @@ class ExprEvaluator:
                 return False
         return True
 
-    def _eval_with_binding(self, name: str, value: Any, expr: SExpr, env: Optional[Environment] = None) -> Any:
+    def _eval_with_binding(
+        self, name: str, value: Any, expr: SExpr, env: Optional[Environment] = None
+    ) -> Any:
         """Evaluate expression with a temporary variable binding."""
         # Create a new environment with the binding
         bindings = {name: value}
@@ -3208,7 +3385,7 @@ class EffectExecutor:
         self,
         state: MutableWorldState,
         functions: dict[str, GrueFn] | None = None,
-        include_builtins: bool = True
+        include_builtins: bool = True,
     ):
         self.state = state
         # Shared function registry between evaluator and executor
@@ -3313,7 +3490,9 @@ class EffectExecutor:
             (set @food :heat 5)
         """
         if len(form) != 4:
-            raise EvalError(f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}")
+            raise EvalError(
+                f"'set' expects 3 arguments: (set @obj :prop value), got {len(form) - 1}"
+            )
         obj = self._eval(form[1])
         prop_arg = form[2]
         if not isinstance(prop_arg, Keyword):
@@ -3328,7 +3507,9 @@ class EffectExecutor:
         Increment an entity property. Property must be a keyword.
         """
         if len(form) < 3 or len(form) > 4:
-            raise EvalError(f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}")
+            raise EvalError(
+                f"'inc' expects 2-3 arguments: (inc @obj :prop [amount]), got {len(form) - 1}"
+            )
 
         obj = self._eval(form[1])
         prop_arg = form[2]
@@ -3370,7 +3551,9 @@ class EffectExecutor:
             (defn door-open? (door) (not (has-flag door LOCKED)))
         """
         if len(form) != 4:
-            raise EvalError(f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}")
+            raise EvalError(
+                f"'defn' expects 3 arguments (name, params, body), got {len(form) - 1}"
+            )
 
         # Extract function name
         name_expr = form[1]
@@ -3452,6 +3635,7 @@ def get_builtin_functions() -> dict[str, GrueFn]:
     and provide convenience predicates built on primitives.
     """
     from pathlib import Path
+
     from .sexpr import parse_all
 
     builtins_path = Path(__file__).parent / "builtins.grue"
@@ -3498,7 +3682,9 @@ def _get_cached_builtin_functions() -> dict[str, GrueFn]:
     return _BUILTIN_FUNCTIONS
 
 
-def eval_predicate(expr: str | SExpr, state: WorldState, include_builtins: bool = True) -> bool:
+def eval_predicate(
+    expr: str | SExpr, state: WorldState, include_builtins: bool = True
+) -> bool:
     """
     Convenience function to evaluate a predicate expression.
 

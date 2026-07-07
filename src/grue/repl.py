@@ -50,15 +50,15 @@ Usage:
     grue-repl examples/outside-door.grue
 """
 
-import sys
 import readline  # noqa: F401 - For command history
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import load_grue, GrueRuntime
-from .sexpr import parse, SExpr, SList, Symbol, Keyword, to_string, SExprError
-from .expr import ExprEvaluator, EffectExecutor, EvalError
+from . import GrueRuntime, load_grue
+from .expr import EffectExecutor, EvalError, ExprEvaluator
+from .sexpr import Keyword, SExpr, SExprError, SList, Symbol, parse, to_string
 
 
 def _extract_blocked_message(
@@ -95,27 +95,32 @@ def _extract_blocked_message(
 # === REPL Result Types ===
 # These types know how to display themselves in the REPL
 
+
 @dataclass
 class QuitResult:
     """Signal to quit the REPL."""
+
     pass
 
 
 @dataclass
 class HelpResult:
     """Signal to show help."""
+
     pass
 
 
 @dataclass
 class ResetResult:
     """Signal that reset completed."""
+
     pass
 
 
 @dataclass
 class LocationResult:
     """Display location info."""
+
     room: str
     description: str
     visible: list[str]
@@ -126,70 +131,86 @@ class LocationResult:
 @dataclass
 class InventoryResult:
     """Display inventory."""
+
     items: list[str]
 
 
 @dataclass
 class ExitsResult:
     """Display exits."""
+
     exits: dict[str, str]
 
 
 @dataclass
 class StateResult:
     """Display full game state."""
+
     runtime: GrueRuntime
 
 
 @dataclass
 class ActionDone:
     """Result of a successful action (go/do)."""
+
     message: str
     context: list[tuple[str, Any]]
     effects: list[str]
     redirects: list[SExpr]
     location: LocationResult | None = None  # For movement
-    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
-    reason: str | None = None  # Success reason text (e.g., description for describe/examine)
+    output: list[tuple[str, str | None, str]] = field(
+        default_factory=list
+    )  # [(type, entity, text), ...]
+    reason: str | None = (
+        None  # Success reason text (e.g., description for describe/examine)
+    )
 
 
 @dataclass
 class ActionBlocked:
     """Result of a blocked action."""
+
     reason: str
     message: str
     context: list[tuple[str, Any]]
     redirects: list[SExpr]
-    output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
+    output: list[tuple[str, str | None, str]] = field(
+        default_factory=list
+    )  # [(type, entity, text), ...]
 
 
 @dataclass
 class ActionError:
     """Result of an error during action."""
+
     message: str
 
 
 @dataclass
 class EffectDone:
     """Result of executing an effect."""
+
     expr: str
 
 
 @dataclass
 class QueryValue:
     """Result of a query."""
+
     value: Any
 
 
 @dataclass
 class WaitResult:
     """Result of waiting (passing time)."""
+
     pass
 
 
 @dataclass
 class EventResult:
     """Result of a fired event."""
+
     event_name: str
     outcome: str
     context: list[tuple[str, Any]]
@@ -197,6 +218,7 @@ class EventResult:
 
 
 # === REPL Evaluator ===
+
 
 class ReplEvaluator:
     """Evaluate REPL expressions.
@@ -302,7 +324,9 @@ class ReplEvaluator:
         visible = self.runtime.get_room_level_objects()
         exits = self._base_eval.eval(parse("(exits)"))
         vehicle = self.runtime.get_player_vehicle()
-        return LocationResult(room=room, description=desc, visible=visible, exits=exits, vehicle=vehicle)
+        return LocationResult(
+            room=room, description=desc, visible=visible, exits=exits, vehicle=vehicle
+        )
 
     # === REPL Commands ===
 
@@ -363,7 +387,9 @@ class ReplEvaluator:
                     output=list(result.output) if result.output else [],
                 )
             else:
-                return ActionError(message=result.error or result.reason or result.outcome)
+                return ActionError(
+                    message=result.error or result.reason or result.outcome
+                )
         except EvalError as e:
             return ActionError(message=str(e))
 
@@ -389,7 +415,9 @@ class ReplEvaluator:
 
             # Verb must be a keyword
             if not isinstance(verb_kw, Keyword):
-                return ActionError(message=f"(do) verb must be a keyword, got {verb_kw}")
+                return ActionError(
+                    message=f"(do) verb must be a keyword, got {verb_kw}"
+                )
 
             target_str = self._to_string(target)
             verb_str = verb_kw.name
@@ -433,6 +461,21 @@ class ReplEvaluator:
 
 
 # === Result Printer ===
+
+
+def _print_output(output: list[tuple[str, str | None, str]]) -> None:
+    """Print the ordered player-facing output stream.
+
+    Every output type (narrate/emphasize/focus/reveal/splash/sfx) prints its
+    text; `say` prefixes the speaker. The REPL is a plain-text view, so the
+    graphic-novel semantics collapse to lines here.
+    """
+    for out_type, entity, text in output:
+        if out_type == "say":
+            print(f'{entity}: "{text}"')
+        else:
+            print(text)
+
 
 def _format_value(value: Any) -> str:
     """Format a value for REPL output."""
@@ -530,12 +573,10 @@ def print_result(result: Any) -> bool:
             redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
             print(f"[via {redirect_chain}]")
         # Print structured output first (player-facing content)
-        for out_type, entity, text in result.output:
-            if out_type == "narrate":
-                print(text)
-            elif out_type == "say":
-                print(f'{entity}: "{text}"')
-        ctx_info = ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
+        _print_output(result.output)
+        ctx_info = (
+            ", ".join(f"{k}={v}" for k, v in result.context) if result.context else ""
+        )
         if result.message:
             msg = f"{result.message}" + (f", {ctx_info}" if ctx_info else "")
             print(f"[OK: {msg}]")
@@ -554,11 +595,7 @@ def print_result(result: Any) -> bool:
             redirect_chain = " -> ".join(to_string(r) for r in result.redirects)
             print(f"[via {redirect_chain}]")
         # Print structured output first (player-facing content)
-        for out_type, entity, text in result.output:
-            if out_type == "narrate":
-                print(text)
-            elif out_type == "say":
-                print(f'{entity}: "{text}"')
+        _print_output(result.output)
         print(f"[BLOCKED: {result.reason}]")
         for k, v in result.context:
             print(f"  {k}: {v}")
@@ -592,6 +629,7 @@ def print_result(result: Any) -> bool:
 
 # === Main ===
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: grue-repl <file.grue>")
@@ -608,11 +646,11 @@ def main():
     runtime = GrueRuntime(world)
     evaluator = ReplEvaluator(runtime)
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  {world.name or path.stem}")
     if world.description:
         print(f"  {world.description}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print("\nGrue REPL")
     print("Type (help) for commands.\n")
 
@@ -649,12 +687,16 @@ def main():
             for event_result in event_results:
                 # Find the event name from queues (best effort)
                 event_name = "event"
-                print_result(EventResult(
-                    event_name=event_name,
-                    outcome=event_result.outcome,
-                    context=list(event_result.context) if event_result.context else [],
-                    effects=[str(e) for e in event_result.effects_applied]
-                ))
+                print_result(
+                    EventResult(
+                        event_name=event_name,
+                        outcome=event_result.outcome,
+                        context=list(event_result.context)
+                        if event_result.context
+                        else [],
+                        effects=[str(e) for e in event_result.effects_applied],
+                    )
+                )
 
         # Check win/lose
         if runtime.check_victory():

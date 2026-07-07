@@ -977,12 +977,26 @@ class GameSession:
             return render.Narrate(text=text)
 
         def emit_output(result: Any) -> None:
+            # Each engine output type maps to its render block (gnusto-7256.2).
+            # The game chose the semantic category; we just construct the block.
             for out_type, entity, text in getattr(result, "output", None) or []:
                 if not text:
                     continue
                 if out_type == "say":
                     blocks.append(render.Speak(speaker=entity or "unknown", text=text))
-                else:  # narrate
+                elif out_type == "focus":
+                    blocks.append(
+                        render.Focus(text=text, entity=entity, deploy="feature")
+                    )
+                elif out_type == "reveal":
+                    blocks.append(render.Reveal(text=text, entity=entity))
+                elif out_type == "splash":
+                    blocks.append(render.Splash(text=text, entity=entity))
+                elif out_type == "sfx":
+                    blocks.append(render.Sfx(text=text))
+                elif out_type == "emphasize":
+                    blocks.append(render.Narrate(text=text, beat="emphasis"))
+                else:  # narrate (default) — may be Focus-enriched for examines
                     blocks.append(prose(text))
 
         for result in raw_results:

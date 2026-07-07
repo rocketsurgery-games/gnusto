@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import gnusto.agent as agent
 from gnusto.agent import GameSession
 from gnusto.llm import ActionRequest
-from gnusto.render import Focus, Narrate, Speak
+from gnusto.render import Focus, Narrate, Reveal, Sfx, Speak, Splash
 from grue.repl import ActionBlocked, ActionDone, ActionError
 
 
@@ -178,6 +178,40 @@ def test_hint_context_renders(monkeypatch):
     result = _ctx_done([("hint", "I could stand a little snack, though.")])
     blocks = sess._blocks_from_results([result], None)
     assert [b.text for b in blocks] == ["I could stand a little snack, though."]
+
+
+def test_output_effects_map_to_their_blocks(monkeypatch):
+    """Engine output types (gnusto-7256.2) construct their render blocks."""
+    sess = _session(monkeypatch, {})
+    result = SimpleNamespace(
+        output=[
+            ("say", "@hacker", "Hey."),
+            ("focus", "@idol", "A jade idol."),
+            ("reveal", "@key", "A key glints."),
+            ("splash", "@photo", "A mouth."),
+            ("sfx", None, "KRA-KOOM"),
+            ("emphasize", None, "The walls close in."),
+            ("narrate", None, "Plain prose."),
+        ],
+        reason=None,
+        context=[],
+    )
+    blocks = sess._blocks_from_results([result], None)
+
+    assert [type(b) for b in blocks] == [
+        Speak,
+        Focus,
+        Reveal,
+        Splash,
+        Sfx,
+        Narrate,
+        Narrate,
+    ]
+    assert blocks[1].entity == "@idol"
+    assert blocks[2].entity == "@key"
+    assert blocks[3].entity == "@photo"
+    assert blocks[5].beat == "emphasis"  # emphasize
+    assert blocks[6].beat is None  # plain narrate
 
 
 def test_blocks_to_text_flattens_stream(monkeypatch):

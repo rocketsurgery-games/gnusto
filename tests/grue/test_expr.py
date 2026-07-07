@@ -1075,6 +1075,62 @@ class TestEffectInterpreterValidation:
         assert "Unknown effect" in str(excinfo.value)
 
 
+class TestEffectInterpreterOutput:
+    """Output-effect vocabulary -> ordered (type, entity, text) stream (gnusto-7256.2)."""
+
+    def _out(self, *effects):
+        state = MockStateWithQueues()
+        interp = EffectInterpreter(state)
+        return interp.interpret([*effects, ["success"]]).output
+
+    def test_narrate(self):
+        assert self._out(["narrate", "The door creaks."]) == [
+            ("narrate", None, "The door creaks.")
+        ]
+
+    def test_say_carries_speaker(self):
+        assert self._out(["say", "@hacker", "Losing, huh?"]) == [
+            ("say", "@hacker", "Losing, huh?")
+        ]
+
+    def test_focus_and_reveal_carry_entity(self):
+        assert self._out(["focus", "@idol", "A jade idol."]) == [
+            ("focus", "@idol", "A jade idol.")
+        ]
+        assert self._out(["reveal", "@key", "A brass key glints."]) == [
+            ("reveal", "@key", "A brass key glints.")
+        ]
+
+    def test_emphasize_and_sfx_are_text_only(self):
+        assert self._out(["emphasize", "The walls close in."]) == [
+            ("emphasize", None, "The walls close in.")
+        ]
+        assert self._out(["sfx", "KRA-KOOM"]) == [("sfx", None, "KRA-KOOM")]
+
+    def test_splash_entity_optional(self):
+        assert self._out(["splash", "You faint..."]) == [
+            ("splash", None, "You faint...")
+        ]
+        assert self._out(["splash", "@photo", "A mouth, and what is in it?"]) == [
+            ("splash", "@photo", "A mouth, and what is in it?")
+        ]
+
+    def test_output_stream_preserves_order(self):
+        assert self._out(
+            ["say", "@hacker", "Greetingage."],
+            ["narrate", "He turns back to his hacking."],
+        ) == [
+            ("say", "@hacker", "Greetingage."),
+            ("narrate", None, "He turns back to his hacking."),
+        ]
+
+    def test_arity_errors(self):
+        with pytest.raises(EvalError):
+            self._out(["focus", "@idol"])  # missing text
+        with pytest.raises(EvalError):
+            self._out(["narrate", "a", "b"])  # too many
+
+
 class TestEffectInterpreterSetup:
     """Test EffectInterpreter.interpret_setup for test :setup."""
 

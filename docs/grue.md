@@ -179,6 +179,40 @@ followed by a terminator (`success`, `blocked`, `redirect`, or `default`):
 (when COND (EFFECT ...))      ; conditional effect
 ```
 
+### Output Effects (Player-Facing Text)
+
+Output effects emit the text the player sees. They are the game's authoritative
+voice: each names a **semantic block category**, and the renderer decides how it
+looks (a prose caption, a speech balloon, a full-bleed panel, …). The game picks
+*what kind of beat this is*; it never specifies pixels, sizes, or layout. Emit
+them in a quoted effect list, in the order they should appear, before the
+terminator:
+
+```scheme
+'((say @hacker "Losing, huh?")            ; dialogue, attributed to a speaker
+  (narrate "He turns back to his hacking.")
+  (success))
+```
+
+| Effect | Renders as | Use for |
+|--------|-----------|---------|
+| `(narrate "text")` | prose caption | ordinary narration — the default |
+| `(say @who "text")` | speech balloon | character dialogue |
+| `(focus @entity "text")` | close-up panel (entity art) | examining / zeroing in on a thing |
+| `(reveal @entity "text")` | discovery panel | first sighting of something notable |
+| `(emphasize "text")` | a beat that lands harder | a sharp, dramatic line |
+| `(splash "text")` / `(splash @entity "text")` | full-bleed panel | a big turning point (optional art) |
+| `(sfx "text")` | onomatopoeia lettering | a punctuating sound |
+
+All output effects render in emission order, interleaved across the action and
+any events it triggers. Text-only effects (`narrate`/`emphasize`/`sfx`) take one
+argument; `say`/`focus`/`reveal` take an entity plus text; `splash` takes text
+with an optional leading entity.
+
+Room and object *descriptions* are a separate, structural channel: a `:describe`
+behavior returns the current description (see Behaviors), which feeds the
+establishing panel rather than the one-time output stream.
+
 ### Objects
 
 Everything in the game world is an object, including the player and rooms.
