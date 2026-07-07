@@ -513,7 +513,8 @@
         ; Still has nitrogen and player can see
         '((dec @nitrogen :countdown)
           (queue nitrogen-evaporates 3)
-          (success :message "Cold white mist continues to boil out of the flask.")))
+          (narrate "Cold white mist continues to boil out of the flask.")
+          (success)))
       (true
         ; Still has nitrogen but player can't see
         '((dec @nitrogen :countdown)
@@ -531,7 +532,8 @@
         ; Player can see the mist dissipate
         '((move @mist nil)
           (dequeue mist-dissipates)
-          (success :message "The mist dissipates.")))
+          (narrate "The mist dissipates.")
+          (success)))
       (true
         ; Player can't see
         '((move @mist nil)

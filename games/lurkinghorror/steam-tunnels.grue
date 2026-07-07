@@ -197,9 +197,9 @@
       '((dequeue panel-noises)
         (success)))
     ((here? @cave-altar)
-      (success :context ((ambient "A low, guttural, groaning and snarling issues from the opening."))))
+      '((narrate "A low, guttural, groaning and snarling issues from the opening.") (success)))
     (true
-      (success :context ((ambient "You can still hear faint groans and snarls from the larger cave."))))))
+      '((narrate "You can still hear faint groans and snarls from the larger cave.") (success)))))
 
 ; === Steam Tunnel Network ===
 
@@ -628,7 +628,7 @@
       ((not (in? @rats (loc @player)))
         (success))
       (true
-        (success :context ((ambient "The rats mill about, squeaking and fighting among themselves."))))))
+        '((narrate "The rats mill about, squeaking and fighting among themselves.") (success)))))
 
 ; === Brick Wall ===
 

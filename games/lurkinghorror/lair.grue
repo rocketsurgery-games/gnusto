@@ -417,9 +417,9 @@
                                (description "The slime engulfs your nose! You cough, choke, and begin to suffocate! You fall to the floor, splashing in the water. You either suffocate or drown. After you're dead, it makes no difference.")))))
         (true
           `((set @slime-curtain :slime-count ,?new-cnt)
-            (success :context
-              ((description ,(str "The slime is creeping slowly up your arm! It's reached your "
-                                  (nth slime-parts ?new-cnt) ".")))))))))
+            (narrate ,(str "The slime is creeping slowly up your arm! It's reached your "
+                           (nth slime-parts ?new-cnt) "."))
+            (success))))))
 
 ; === Curtain Door ===
 
@@ -896,7 +896,8 @@
           (true
             '((set @high-voltage :powered false)
               (queue line-in-water -1)
-              (success :context ((description "The exposed ends of the high voltage line drop into the water! Sparks and bubbles burst from the electrified water.")))))))
+              (narrate "The exposed ends of the high voltage line drop into the water! Sparks and bubbles burst from the electrified water.")
+              (success)))))
       (true
         (cond
           ((not (:wearable @boots))
@@ -905,7 +906,8 @@
                                (description "Four thousand volts of electricity, only slightly attenuated by the resistance of the water, course through your body! The result is shocking."))))
           (true
             '((queue line-in-water -1)
-              (success :context ((description "Sparks and bubbles burst from the electrified water.")))))))))
+              (narrate "Sparks and bubbles burst from the electrified water.")
+              (success)))))))
 
 ; === Hand Points Event (navigation help) ===
 
@@ -921,7 +923,8 @@
           (cond
             (?point
               `((set @mummified-hand :last-pointed-room ,?player-loc)
-                (success :context ((description ,(str "The hand points its mutilated ring finger " ?point " and grips your shoulder tightly."))))))
+                (narrate ,(str "The hand points its mutilated ring finger " ?point " and grips your shoulder tightly."))
+                (success)))
             (true
               `((set @mummified-hand :last-pointed-room ,?player-loc)
                 (success))))))
@@ -936,9 +939,10 @@
         (cond
           ((held? @mummified-hand)
             '((move @mummified-hand @inner-lair)
-              (success :context ((description "Suddenly, the hand leaps from your shoulder into the slime-encrusted puddle. It dives beneath the water.")))))
+              (narrate "Suddenly, the hand leaps from your shoulder into the slime-encrusted puddle. It dives beneath the water.")
+              (success)))
           ((in? @mummified-hand @inner-lair)
-            (success :context ((description "The hand repeatedly dives and bobs to the surface in one part of the pool near your feet."))))
+            '((narrate "The hand repeatedly dives and bobs to the surface in one part of the pool near your feet.") (success)))
           (true (success))))
       (true (success))))
 
@@ -952,35 +956,35 @@
           (cond
             ((= ?stage 1)
               `((set @hacker :lair-cnt ,?stage)
-                (success :context
-                  ((description "The hacker stares at the thing in the cave. \"I got very suspicious about your problems with the net. I began to trace some coax, found some repeaters and bridges that weren't on the layout charts, and started following them. Anyway, here I am. That thing there, whatever it is, and those wires, are interfaced to the whole campus net. And that means it's tied into all the nets, commercial, government, even military, potentially.\"")))))
+                (narrate "The hacker stares at the thing in the cave. \"I got very suspicious about your problems with the net. I began to trace some coax, found some repeaters and bridges that weren't on the layout charts, and started following them. Anyway, here I am. That thing there, whatever it is, and those wires, are interfaced to the whole campus net. And that means it's tied into all the nets, commercial, government, even military, potentially.\"")
+                (success)))
             ((= ?stage 2)
               `((set @hacker :lair-cnt ,?stage)
-                (success :context
-                  ((description "\"I guess I better do something. It could be a serious compromise of system integrity if this thing isn't dealt with.\" He peers at the mass, as if evaluating it. He then reaches into a pocket and pulls out a small pair of wire strippers.")))))
+                (narrate "\"I guess I better do something. It could be a serious compromise of system integrity if this thing isn't dealt with.\" He peers at the mass, as if evaluating it. He then reaches into a pocket and pulls out a small pair of wire strippers.")
+                (success)))
             ((= ?stage 3)
               `((set @hacker :lair-cnt ,?stage)
                 (set @hacker :invisible true)
                 (set @hacker :rmung true)
-                (success :context
-                  ((description "The hacker advances on the mass, apparently planning to cut some of the wires leading into it. As he approaches it, the sound stops completely, and the wires begin a frantic, looping, twining dance. The mass begins to flow towards the hacker almost as quickly as he walks toward it. They reach each other and begin to merge together. He screams; a long, ululating cry that echoes through the cavern. Then he is engulfed.")))))
+                (narrate "The hacker advances on the mass, apparently planning to cut some of the wires leading into it. As he approaches it, the sound stops completely, and the wires begin a frantic, looping, twining dance. The mass begins to flow towards the hacker almost as quickly as he walks toward it. They reach each other and begin to merge together. He screams; a long, ululating cry that echoes through the cavern. Then he is engulfed.")
+                (success)))
             ((or (= ?stage 4) (= ?stage 5))
               `((set @hacker :lair-cnt ,?stage)
-                (success :context
-                  ((description "The mass is bulging, vibrating, and rippling.")))))
+                (narrate "The mass is bulging, vibrating, and rippling.")
+                (success)))
             ((= ?stage 6)
               `((set @hacker :lair-cnt ,?stage)
-                (success :context
-                  ((description "The mass is bulging, vibrating, and rippling. A huge tear is forming near where the hacker was absorbed.")))))
+                (narrate "The mass is bulging, vibrating, and rippling. A huge tear is forming near where the hacker was absorbed.")
+                (success)))
             ((= ?stage 7)
               `((set @hacker :lair-cnt ,?stage)
                 (set @hacker :invisible false)
-                (success :context
-                  ((description "The hacker pulls himself out of the side of the mass. As he does, you think you can see many pairs of eyes appear briefly in the semitransparent mass, watching curiously. Wires and tentacles trail from his body, and tiny, almost rat-like creatures cling to his body everywhere, crawling about like ants. He walks slowly, jerkily towards you. \"Be one!\" he says, haltingly but fervently.")))))
+                (narrate "The hacker pulls himself out of the side of the mass. As he does, you think you can see many pairs of eyes appear briefly in the semitransparent mass, watching curiously. Wires and tentacles trail from his body, and tiny, almost rat-like creatures cling to his body everywhere, crawling about like ants. He walks slowly, jerkily towards you. \"Be one!\" he says, haltingly but fervently.")
+                (success)))
             ((= ?stage 8)
               `((set @hacker :lair-cnt ,?stage)
-                (success :context
-                  ((description "The hacker grabs for you. \"Join us! Serve the master!\" he croaks. Some of the creatures leap onto you, biting at exposed skin.")))))
+                (narrate "The hacker grabs for you. \"Join us! Serve the master!\" he croaks. Some of the creatures leap onto you, biting at exposed skin.")
+                (success)))
             ((>= ?stage 9)
               `((set @hacker :lair-cnt ,?stage)
                 (blocked :reason death
@@ -989,11 +993,13 @@
             (true (success)))))
       ((in? @hacker @outer-lair)
         '((move @hacker @inner-lair)
-          (success :context ((description "You hear a stumbling noise behind you, turn and see the hacker staggering into the cavern.\n\nThe hacker stares at you, shocked. \"It's you! When I gave you my key, I never suspected you'd get this far!\"")))))
+          (narrate "You hear a stumbling noise behind you, turn and see the hacker staggering into the cavern.\n\nThe hacker stares at you, shocked. \"It's you! When I gave you my key, I never suspected you'd get this far!\"")
+          (success)))
       ((in? @hacker @lair-5)
         '((queue hacker-returns -1)
           (move @hacker @outer-lair)
-          (success :context ((description "You hear noises outside the door.")))))
+          (narrate "You hear noises outside the door.")
+          (success)))
       (true (success))))
 
 ; === The Frob (Final Creature) ===
@@ -1021,8 +1027,8 @@
                 (move @smooth-stone ,(loc @player))
                 (set @smooth-stone :touched false)
                 (set @player :score 100)
-                (success :context ((victory true)
-                          (description "The stone smashes into the creature, sticking to its ichorous hide. The thing thrashes about, trying to bite at the stone, which is glowing brighter and brighter. Small hands issue from beneath its scales to tug in vain at the irritant. The creature begins to show gaping holes of dark, light-devouring nothingness around the stone. Its wings spread painfully, as though it were trying to fly away, and then fold. It widens its jaw in an almost human scream of agony. The black hole of its maw overwhelms it, and indeed the creature appears to be swallowing itself. At last, a grey cloud of greasy smoke surrounds the glowing stone, still suspended in midair. Then even that vanishes, and the stone drops to the ground, no longer glowing. The thing is gone.")))))
+                (emphasize "The stone smashes into the creature, sticking to its ichorous hide. The thing thrashes about, trying to bite at the stone, which is glowing brighter and brighter. Small hands issue from beneath its scales to tug in vain at the irritant. The creature begins to show gaping holes of dark, light-devouring nothingness around the stone. Its wings spread painfully, as though it were trying to fly away, and then fold. It widens its jaw in an almost human scream of agony. The black hole of its maw overwhelms it, and indeed the creature appears to be swallowing itself. At last, a grey cloud of greasy smoke surrounds the glowing stone, still suspended in midair. Then even that vanishes, and the stone drops to the ground, no longer glowing. The thing is gone.")
+                (success :context ((victory true)))))
             (true
               (blocked :reason invulnerable :message "You can't force yourself to get that close to it."))))
         ((= ?weapon @high-voltage)
@@ -1055,18 +1061,18 @@
             (move @mass nil)
             (set @output-cable :rmung true)
             (move @frob ,(loc @player))
-            (success :context
-              ((description ,(str "The gelatinous mass solidifies and compacts, leaving behind a litter of smoking debris. In the debris squats a being. Huge, misshapen, it stares at you with baleful yellow eyes. Its scaly wings beat slowly, driving a fetid stench through the stale air of the cavern. A barbed tongue slides across its broken, daggerlike fangs."
-                                 (if (held? @smooth-stone)
-                                   "\n\nThe smooth stone vibrates. It starts to feel warm."
-                                   "")))))))
+            (narrate ,(str "The gelatinous mass solidifies and compacts, leaving behind a litter of smoking debris. In the debris squats a being. Huge, misshapen, it stares at you with baleful yellow eyes. Its scaly wings beat slowly, driving a fetid stench through the stale air of the cavern. A barbed tongue slides across its broken, daggerlike fangs."
+                           (if (held? @smooth-stone)
+                             "\n\nThe smooth stone vibrates. It starts to feel warm."
+                             "")))
+            (success)))
         ((= ?stage 2)
           `((set @frob :count ,?stage)
-            (success :context
-              ((description ,(str "The thing tenses, preparing to leap. Its mouth opens, revealing not the glistening interior, but a dead-black outline like a hole into nothingness."
-                                 (if (held? @smooth-stone)
-                                   "\n\nThe smooth stone is now glowing with a bright-red heat that nevertheless fails to burn you."
-                                   "")))))))
+            (narrate ,(str "The thing tenses, preparing to leap. Its mouth opens, revealing not the glistening interior, but a dead-black outline like a hole into nothingness."
+                           (if (held? @smooth-stone)
+                             "\n\nThe smooth stone is now glowing with a bright-red heat that nevertheless fails to burn you."
+                             "")))
+            (success)))
         ((= ?stage 3)
           (cond
             ((in? @frob (loc @player))

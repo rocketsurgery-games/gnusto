@@ -4,7 +4,7 @@ title: 'P3: migrate Lurking Horror to the block vocabulary (canonical conversion
 type: task
 priority: 1
 created: '2026-07-07T21:51:39Z'
-updated: '2026-07-07T23:11:27Z'
+updated: '2026-07-07T23:21:37Z'
 labels:
 - lurkinghorror
 - lang
@@ -25,3 +25,7 @@ Slice 2 (parallel sub-agents): migrated lair.grue (61 sites: 19 focus/42 narrate
 ---
 ▸ 2026-07-07T23:11:27Z
 Slice 3 (parallel sub-agents, wave 2): migrated brown-building, great-dome, elevator, cs-building, maintenance-man, urchins, globals, objects, chair, kitchen, yuggoth, aero-building, hacker (+ cs-2nd/infinite-corridor had nothing to migrate). Applied refined rules: object :examine->focus; event/one-time :context((description))/((ambient))->narrate; room+object :describe stay structural; NPC dialogue->say; :render kept. Also migrated the STDLIB defaults in src/grue/builtins.grue (take/drop/open/close/put/examine success text -> narrate) so default responses flow through the output stream consistently; this fixed the 3 globals default-examine test failures. Updated globals.test.grue (24 context?message->output?), aero-building.test.grue (1), steam-tunnels earlier, and tests/test_walkthrough.py (2 examine/search assertions -> output). 477 grue + 765 python pass. STILL DEFERRED: alchemy.grue (user WIP). Remaining consistency polish tracked for end-of-P3.
+
+---
+▸ 2026-07-07T23:21:37Z
+Consistency pass: fixed 2 missed event messages in cs-basement (nitrogen/mist events), converted 3 steam-tunnels ((ambient)) -> narrate, and reconciled lair.grue event/climax descriptions -> narrate (+victory climax -> emphasize) via sub-agent, keeping room/object :describe + death blocks structural. Verified: 0 remaining (success :message) and 0 ((ambient)) across all files except alchemy. 477 grue + 765 python pass. P3 COMPLETE except alchemy.grue, which is blocked on the user's uncommitted WIP (pentagram line-wrapping) — needs the user to commit that first, then a clean alchemy migration.
