@@ -9,7 +9,7 @@
   (test "knife can be examined"
     (do @knife :examine)
     (assert (outcome? success))
-    (assert (context? message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")))
+    (assert (output? "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")))
 
   (test "knife can be taken"
     (do @knife :take)

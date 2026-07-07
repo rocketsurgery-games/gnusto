@@ -53,11 +53,11 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The slab is roughly circular, made of indifferently dressed New England granite, and about three feet high."
+      `((focus @slab ,(str "The slab is roughly circular, made of indifferently dressed New England granite, and about three feet high."
              (if (here? @cave-altar)
                " It is carved all over with odd glyphs, symbols, and strange animal (or part-animal?) figures. The top is covered with a brown stain shading to red at the edges."
-               ""))))
+               "")))
+        (success)))
 
     :touch (fn ()
       (blocked :reason revulsion
@@ -75,7 +75,8 @@
         ((here? @cave-room)
           (redirect :action (go down)))
         (true
-          (success :message "You approach the slab warily. It is disquieting to look at."))))))
+          '((narrate "You approach the slab warily. It is disquieting to look at.")
+            (success)))))))
 
 (object @carving-symbol
   :location @slab
@@ -83,7 +84,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "The symbol appears to be the oldest thing carved on the altar. It is beautifully incised in the rocks. Its age is apparent from its wear and the overlay of newer carvings and scratchings over it. It depicts a strange, tentacled creature with a single great eye."))
+      '((focus @carving-symbol "The symbol appears to be the oldest thing carved on the altar. It is beautifully incised in the rocks. Its age is apparent from its wear and the overlay of newer carvings and scratchings over it. It depicts a strange, tentacled creature with a single great eye.")
+        (success)))
 
     :read (fn ()
       (redirect :action (do ?self :examine)))))
@@ -96,7 +98,8 @@
     :examine (fn ()
       (cond
         ((= (loc @player) @cave-altar)
-          (success :message "The carvings are in a variety of styles. Some are almost like graffiti, and have carved dates as early as 1655 and as recent as last year. Some are creatures, or people, or combinations of the two. Some are obscene, or revolting, or just indescribable. One is a strange incised symbol. Most are at least partly spotted with brown stains."))
+          '((focus @carvings "The carvings are in a variety of styles. Some are almost like graffiti, and have carved dates as early as 1655 and as recent as last year. Some are creatures, or people, or combinations of the two. Some are obscene, or revolting, or just indescribable. One is a strange incised symbol. Most are at least partly spotted with brown stains.")
+            (success)))
         (true
           (blocked :reason too-far :message "You aren't close enough."))))
 
@@ -114,10 +117,12 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used."))
+      '((focus @knife "This small knife is clean, sharp, and has a long, thin blade and a wooden handle. Only the tip of the blade appears at all dull or used.")
+        (success)))
 
     :sharpen (fn ()
-      (success :message "The blade doesn't look any different after this operation."))))
+      '((narrate "The blade doesn't look any different after this operation.")
+        (success)))))
 
 (object @iron-plate
   :location @cave-altar
@@ -126,10 +131,10 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The plate is iron, about two feet square, and "
+      `((focus @iron-plate ,(str "The plate is iron, about two feet square, and "
              (if (not (:open ?self)) "looks like it could be slid " "")
-             "open. A curious feature of the plate is that it has upward projecting dents in it which appear to have been punched from below.")))
+             "open. A curious feature of the plate is that it has upward projecting dents in it which appear to have been punched from below."))
+        (success)))
 
     :open (fn ()
       (cond
@@ -141,7 +146,8 @@
         (true
           '((set ?self :open true)
             (queue panel-noises -1)
-            (success :message "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below.")))))
+            (narrate "You slide open the panel, revealing a dark pit below. Immediately, there is a response from below.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -150,7 +156,8 @@
         (true
           '((set ?self :open false)
             (dequeue panel-noises)
-            (success :message "You close the panel. You no longer hear the noises, much to your relief.")))))
+            (narrate "You close the panel. You no longer hear the noises, much to your relief.")
+            (success)))))
 
     :move (fn ()
       (redirect :action (do ?self :open)))
@@ -163,9 +170,11 @@
         ((:pit-seen @iron-plate)
           (blocked :reason traumatized :message "You find yourself unable to do that again."))
         ((:open ?self)
-          (success :message "Disturbing noises issue from the open panel."))
+          '((narrate "Disturbing noises issue from the open panel.")
+            (success)))
         (true
-          (success :message "You hear very faint noises through the closed panel."))))
+          '((narrate "You hear very faint noises through the closed panel.")
+            (success)))))
 
     :look-inside (fn ()
       (cond
@@ -175,7 +184,8 @@
           '((set ?self :open false)
             (dequeue panel-noises)
             (set @iron-plate :pit-seen true)
-            (success :message "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students.")))
+            (narrate "You peer through the hole, shining your light into the stygian darkness below. The commotion below is growing louder, and suddenly you catch a glimpse of things moving in the pit. Without consciously realizing you have done it, you slam the panel shut, reeling away from the source of such images. Now you know what has been done with the missing students.")
+            (success)))
         (true
           (blocked :reason closed :message "The panel isn't open."))))))
 
@@ -211,15 +221,18 @@
     :on-enter (fn (?from)
       (cond
         ((= ?from @storage-room)
-          (success :message "You push your way through cobwebs, damp fungus, and other obstructions."))
+          '((narrate "You push your way through cobwebs, damp fungus, and other obstructions.")
+            (success)))
         ((or (= ?from @under-alchemy-lab) (= ?from @cave-room))
-          (success :message "You make your way along the long tunnel."))
+          '((narrate "You make your way along the long tunnel.")
+            (success)))
         (true (success))))
 
     :on-leave (fn (?to)
       (cond
         ((or (= ?to @under-alchemy-lab) (= ?to @cave-room))
-          (success :message "You make your way along the long tunnel."))
+          '((narrate "You make your way along the long tunnel.")
+            (success)))
         (true (success))))))
 
 ; === Main Steam Tunnels ===
@@ -337,23 +350,27 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "A thick bundle of coaxial cables runs along the ceiling. It looks sturdy enough to support your weight."))
+      '((focus @cable "A thick bundle of coaxial cables runs along the ceiling. It looks sturdy enough to support your weight.")
+        (success)))
 
     :climb (fn ()
       (cond
         ((:mounted @cable)
           '((set @cable :mounted false)
-            (success :message "You drop from the cable to the floor.")))
+            (narrate "You drop from the cable to the floor.")
+            (success)))
         (true
           '((set @cable :mounted true)
-            (success :message "You grab the cable bundle and pull yourself up, dangling above the floor.")))))
+            (narrate "You grab the cable bundle and pull yourself up, dangling above the floor.")
+            (success)))))
 
     :swing (fn ()
       (cond
         ((not (:mounted @cable))
           (blocked :reason not-on :message "You're not on the cable."))
         (true
-          (success :message "You swing along the cable. Not particularly useful at the moment."))))))
+          '((narrate "You swing along the cable. Not particularly useful at the moment.")
+            (success)))))))
 
 (object @steam-pipes
   :location nil  ; Global object
@@ -361,11 +378,11 @@
   :properties (:nodesc true :hot false)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "Thick, insulated steam pipes run through the tunnel. "
+      `((focus @steam-pipes ,(str "Thick, insulated steam pipes run through the tunnel. "
              (if (:hot ?self)
                "They're hissing and radiating intense heat."
-               "They're warm to the touch."))))))
+               "They're warm to the touch.")))
+        (success)))))
 
 (object @tunnel-ladder
   :location @tunnel
@@ -373,7 +390,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "A rusty metal ladder is bolted to the wall, leading up to an access hatch."))
+      '((focus @tunnel-ladder "A rusty metal ladder is bolted to the wall, leading up to an access hatch.")
+        (success)))
 
     :climb (fn ()
       (redirect :action (go up)))))
@@ -395,11 +413,11 @@
   :properties (:nodesc true :openable true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "A rusty metal hatch "
+      `((focus @access-hatch ,(str "A rusty metal hatch "
              (if (= (loc @player) @tomb) "in the floor" "in the ceiling")
              ". It is "
-             (if (:open ?self) "open" "closed") ".")))
+             (if (:open ?self) "open" "closed") "."))
+        (success)))
 
     :open (fn ()
       (cond
@@ -407,7 +425,8 @@
           (blocked :reason already-open :message "It's already open."))
         (true
           '((set ?self :open true)
-            (success :message "With some effort, you push open the heavy hatch.")))))
+            (narrate "With some effort, you push open the heavy hatch.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -415,7 +434,8 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((set ?self :open false)
-            (success :message "You pull the hatch closed.")))))))
+            (narrate "You pull the hatch closed.")
+            (success)))))))
 
 ; === Pressure Valve ===
 
@@ -426,11 +446,11 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "A large pressure release valve on the steam pipe. It has a wheel handle. "
+      `((focus @pressure-valve ,(str "A large pressure release valve on the steam pipe. It has a wheel handle. "
              (if (:open ?self)
                "The valve is wide open, releasing clouds of scalding steam."
-               "The valve is closed."))))
+               "The valve is closed.")))
+        (success)))
 
     :turn (fn ()
       (cond
@@ -439,14 +459,16 @@
           '((set ?self :open false)
             (set @steam-pipes :hot false)
             (set @pressure-valve :turns 0)
-            (success :message "You turn the valve closed. The steam dissipates, and the passage east clears.")))
+            (narrate "You turn the valve closed. The steam dissipates, and the passage east clears.")
+            (success)))
         (true
           ; Opening the valve
           '((set ?self :open true)
             (set @steam-pipes :hot true)
             (set @pressure-valve :turns (+ (:turns @pressure-valve) 1))
             (queue rats-go-away 3)
-            (success :message "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east.")))))
+            (narrate "You turn the valve. Scalding steam hisses from the pipe, filling the passage to the east.")
+            (success)))))
 
     :open (fn ()
       (cond
@@ -490,7 +512,8 @@
         (true (success))))
 
     :examine (fn ()
-      (success :message "Hundreds of large, dark rats mill about, their eyes glittering in the light. They look hungry and aggressive."))
+      '((focus @rats "Hundreds of large, dark rats mill about, their eyes glittering in the light. They look hungry and aggressive.")
+        (success)))
 
     :attack (fn ()
       (blocked :reason too-many
@@ -500,7 +523,8 @@
       (cond
         ((:food ?item)
           `((move ?item nil)
-            (success :message ,(str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))))
+            (narrate ,(str "A small contingent of rats falls greedily upon the " (desc ?item) ", biting and scratching, fighting desperately for it. The rest of the rats are not distracted, however."))
+            (success)))
         (true
           (blocked :reason not-interested :message "The rats aren't interested in that."))))))
 
@@ -534,7 +558,8 @@
         ((description "A dead rat lies here."))))
 
     :examine (fn ()
-      (success :message "This rat appears to have been stepped on. A small trickle of blood has clotted around its mouth. Branded into its neck is a strange symbol."))
+      '((focus @dead-rat "This rat appears to have been stepped on. A small trickle of blood has clotted around its mouth. Branded into its neck is a strange symbol.")
+        (success)))
 
     :take (fn ()
       (cond
@@ -542,21 +567,25 @@
           ; First time taking - lice and fleas
           '((set ?self :touched true)
             (take ?self)
-            (success :message "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out.")))
+            (narrate "As you take the dead rat, it moves, but then you realize that it's only lice and fleas bailing out.")
+            (success)))
         (true (default))))
 
     :step-on (fn ()
-      (success :message "You crush the rat. You hear its bones snap. What a sadist!"))
+      '((narrate "You crush the rat. You hear its bones snap. What a sadist!")
+        (success)))
 
     :board (fn ()
       (redirect :action (do ?self :step-on)))
 
     :eat (fn ()
-      (success :message "You dangle the rat over your mouth by its tail. You think about it. You lower the rat towards your face. You think some more. Fortunately for your health, you change your mind."))
+      '((narrate "You dangle the rat over your mouth by its tail. You think about it. You lower the rat towards your face. You think some more. Fortunately for your health, you change your mind.")
+        (success)))
 
     ; PUT something ON dead rat squishes it
     :put-on (fn (?item)
-      (success :message (str "The " (desc ?item) " hits the rat with a satisfying squish.")))))
+      `((narrate ,(str "The " (desc ?item) " hits the rat with a satisfying squish."))
+        (success)))))
 
 (object @rat-symbol
   :location @dead-rat
@@ -565,7 +594,8 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The symbol appears scarred into the hide of the rat. There is no hair growing on it, and although it looks like scar tissue, the color is wrong -- a sort of purplish green. The symbol reminds you of something, but you can't quite place it."))
+      '((focus @rat-symbol "The symbol appears scarred into the hide of the rat. There is no hair growing on it, and although it looks like scar tissue, the color is wrong -- a sort of purplish green. The symbol reminds you of something, but you can't quite place it.")
+        (success)))
 
     :read (fn ()
       (redirect :action (do ?self :examine)))))
@@ -583,11 +613,13 @@
         '((move @rats nil)
           (move @dead-rat (loc @player))
           (dequeue rats-go-away)
-          (success :context ((description "The rats are caught in the full force of the steam blast. Horrible squeals can be heard from the midst of the steam cloud, and scalded rats charge past you, all interest in anything but flight forgotten. One of their number remains, dead.")))))
+          (narrate "The rats are caught in the full force of the steam blast. Horrible squeals can be heard from the midst of the steam cloud, and scalded rats charge past you, all interest in anything but flight forgotten. One of their number remains, dead.")
+          (success)))
       (true
         '((move @rats nil)
           (dequeue rats-go-away)
-          (success :context ((description "You hear squealing in the distance. The rats seem to have fled.")))))))
+          (narrate "You hear squealing in the distance. The rats seem to have fled.")
+          (success)))))
 
 ; Recurring rats event
 (event rats-event
@@ -609,10 +641,12 @@
     :examine (fn ()
       (cond
         ((:broken @brick-wall)
-          (success :message "The south wall has been broken through, revealing a passage beyond."))
+          '((focus @brick-wall "The south wall has been broken through, revealing a passage beyond.")
+            (success)))
         (true
           '((set ?self :touched true)
-            (success :message "The south wall is made of crumbling old bricks. Some look loose.")))))
+            (focus @brick-wall "The south wall is made of crumbling old bricks. Some look loose.")
+            (success)))))
 
     :attack (fn ()
       (cond
@@ -621,7 +655,8 @@
         (true
           '((set @brick-wall :broken true)
             (move @broken-brick ?self)
-            (success :message "You smash through the decrepit brickwork, revealing a dark opening beyond.")))))
+            (narrate "You smash through the decrepit brickwork, revealing a dark opening beyond.")
+            (success)))))
 
     :push (fn ()
       (cond
@@ -630,7 +665,8 @@
         (true
           '((set @brick-wall :broken true)
             (move @broken-brick ?self)
-            (success :message "The wall crumbles easily under your push, revealing a dark passage beyond.")))))
+            (narrate "The wall crumbles easily under your push, revealing a dark passage beyond.")
+            (success)))))
 
     :kick (fn ()
       (redirect :action (do ?self :attack)))))
@@ -652,7 +688,8 @@
   :properties (:nodesc true :takeable true :weapon true)
   :behaviors (
     :examine (fn ()
-      (success :message "A chunk of broken brick from the wall."))))
+      '((focus @broken-brick "A chunk of broken brick from the wall.")
+        (success)))))
 
 (object @new-brick
   :location nil  ; May appear in different contexts
@@ -660,4 +697,5 @@
   :properties (:nodesc true :takeable true :weapon true)
   :behaviors (
     :examine (fn ()
-      (success :message "This brick looks newer and more recent than the others. It must have been used to patch the wall."))))
+      '((focus @new-brick "This brick looks newer and more recent than the others. It must have been used to patch the wall.")
+        (success)))))

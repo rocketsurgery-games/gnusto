@@ -44,7 +44,8 @@
         ((:outside ?from)
           '((dequeue freezing)
             (set freeze-count 0)
-            (success :message "You push your way into the comparative warmth of a laboratory.")))
+            (narrate "You push your way into the comparative warmth of a laboratory.")
+            (success)))
         (true (success))))))
 
 ; @brick-tunnel is now defined in steam-tunnels.grue
@@ -127,10 +128,10 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "Looking more closely only emphasizes how completely entropy has taken over this room."))
+      '((focus @junk "Looking more closely only emphasizes how completely entropy has taken over this room.") (success)))
 
     :search (fn ()
-      (success :message "You find many worthless items of hardware, old discarded memos and papers, but nothing of any use or value."))
+      '((narrate "You find many worthless items of hardware, old discarded memos and papers, but nothing of any use or value.") (success)))
 
     :move (fn ()
       (blocked :reason too-heavy
@@ -150,18 +151,20 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This is a rusty "
+      `((focus @forklift ,(str "This is a rusty "
              (if (:powered ?self) "and wheezing " "")
-             "old forklift. It looks like you could control it fairly easily, though.")))
+             "old forklift. It looks like you could control it fairly easily, though."))
+        (success)))
 
     :enter (fn ()
       '((move @player ?self)
-        (success :message "You climb onto the forklift.")))
+        (narrate "You climb onto the forklift.")
+        (success)))
 
     :exit (fn ()
       '((move @player (loc ?self))
-        (success :message "You climb off the forklift.")))
+        (narrate "You climb off the forklift.")
+        (success)))
 
     :turn-on (fn ()
       (cond
@@ -171,7 +174,8 @@
           (blocked :reason already-on :message "It's wheezing away already."))
         (true
           '((set ?self :powered true)
-            (success :message "The forklift sputters to life.")))))
+            (narrate "The forklift sputters to life.")
+            (success)))))
 
     :turn-off (fn ()
       (cond
@@ -181,7 +185,8 @@
           (blocked :reason already-off :message "It's already off."))
         (true
           '((set ?self :powered false)
-            (success :message "The forklift coughs once, and dies.")))))
+            (narrate "The forklift coughs once, and dies.")
+            (success)))))
 
     ; Move junk with the forklift
     :use (fn (?target)
@@ -196,15 +201,18 @@
           (blocked :reason wrong-place :message "There's nothing on pallets here, hence the forklift is useless."))
         ((= (:moved @junk) 0)
           '((set @junk :moved 1)
-            (success :message "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage.")))
+            (narrate "You have a little trouble using the forklift, but it's not really all that hard. You start clearing junk, moving it around and trying to create a passage.")
+            (success)))
         ((> (:moved @junk) junk-moves-needed)
-          (success :message "I suppose you're planning to clear the entire room? You've made a nice path to the next room already."))
+          '((narrate "I suppose you're planning to clear the entire room? You've made a nice path to the next room already.") (success)))
         ((= (+ (:moved @junk) 1) (+ junk-moves-needed 1))
           '((inc @junk :moved)
-            (success :message "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one.")))
+            (narrate "You've built a fairly narrow (about one forklift wide) path through the junk. You can see an opening into a further storage room beyond this one.")
+            (success)))
         (true
           '((inc @junk :moved)
-            (success :message "You continue moving junk, becoming more proficient with the forklift.")))))))
+            (narrate "You continue moving junk, becoming more proficient with the forklift.")
+            (success)))))))
 
 ; === Manhole System ===
 ; The manhole in storage-room leads down to brick-tunnel.
@@ -239,16 +247,16 @@
     :examine (fn ()
       (cond
         ((not (in? @manhole-cover ?self))
-          (success :message "It's a manhole. It's very dark inside, but you can see that crude brick handholds provide a slippery path down. Cool air rises out of the hole."))
+          '((focus @manhole "It's a manhole. It's very dark inside, but you can see that crude brick handholds provide a slippery path down. Cool air rises out of the hole.") (success)))
         (true
-          (success :message "It's a steel ring set in the floor. It's probably a manhole."))))
+          '((focus @manhole "It's a steel ring set in the floor. It's probably a manhole.") (success)))))
 
     :look-inside (fn ()
       (cond
         ((in? @manhole-cover ?self)
-          (success :message "You see only the cover."))
+          '((narrate "You see only the cover.") (success)))
         (true
-          (success :message "You can see a dark, grimy tunnel below."))))
+          '((narrate "You can see a dark, grimy tunnel below.") (success)))))
 
     :enter (fn ()
       (redirect :action (do (loc @player) :go down)))
@@ -266,7 +274,8 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((move @manhole-cover ?self)
-            (success :message "You manage to shove the manhole cover back over the hole.")))))))
+            (narrate "You manage to shove the manhole cover back over the hole.")
+            (success)))))))
 
 (object @manhole-cover
   :location @manhole
@@ -276,12 +285,12 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "It's an old, rusty, steel manhole cover"
+      `((focus @manhole-cover ,(str "It's an old, rusty, steel manhole cover"
              (if (in? ?self @manhole)
                " set in a steel ring embedded in the floor"
                "")
-             ".")))
+             "."))
+        (success)))
 
     :take (fn ()
       (cond
@@ -295,7 +304,7 @@
     :move (fn ()
       (cond
         ((not (in? ?self @manhole))
-          (success :message "You move it a little way, but it's very heavy."))
+          '((narrate "You move it a little way, but it's very heavy.") (success)))
         (true
           (blocked :reason stuck :message "It doesn't budge."))))
 
@@ -315,7 +324,8 @@
           (blocked :reason wrong-tool :message "You'll need something to pry it with."))
         (true
           '((move ?self @storage-room)
-            (success :message "You lever the manhole cover aside, and crusted dirt falls into a dark hole below.")))))
+            (narrate "You lever the manhole cover aside, and crusted dirt falls into a dark hole below.")
+            (success)))))
 
     :open (fn ()
       (cond
@@ -334,7 +344,7 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "It's a rusty, somewhat battered crowbar."))))
+      '((focus @crowbar "It's a rusty, somewhat battered crowbar.") (success)))))
 
 ; === Gloves (protection for tentacle climbing) ===
 ; Needed to climb the tentacle in the Great Dome without getting burned.
@@ -346,20 +356,22 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "This is a pair of electrician's rubber gloves. They look well used but serviceable."))
+      '((focus @gloves "This is a pair of electrician's rubber gloves. They look well used but serviceable.") (success)))
 
     :look-inside (fn ()
-      (success :message "They're kind of dirty inside, but there's nothing nasty hidden there."))
+      '((narrate "They're kind of dirty inside, but there's nothing nasty hidden there.") (success)))
 
     :wear (fn ()
       (cond
         ((:wearable ?self)
           ; Already wearing check would be handled by runtime
           '((set ?self :wearable true)
-            (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))
+            (narrate "You put on the gloves. They're a little big, but not really such a bad fit.")
+            (success)))
         (true
           '((set ?self :wearable true)
-            (success :message "You put on the gloves. They're a little big, but not really such a bad fit.")))))))
+            (narrate "You put on the gloves. They're a little big, but not really such a bad fit.")
+            (success)))))))
 
 ; === Pool (global object for puddles/water) ===
 
@@ -369,7 +381,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "Stagnant, slime-encrusted puddles cover parts of the floor."))
+      '((focus @basement-pool "Stagnant, slime-encrusted puddles cover parts of the floor.") (success)))
 
     :enter (fn ()
       (blocked :reason shallow :message "You're already in it. It covers most of the floor!"))
@@ -388,19 +400,19 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This is a large metal flask, about the size of a water cooler bottle. "
+      `((focus @flask ,(str "This is a large metal flask, about the size of a water cooler bottle. "
              (if (:open ?self)
                (str "The flask is open"
                     (if (in? @nitrogen ?self) ", and a thin, cold mist flows out of it" "")
                     ".")
-               "The flask is closed."))))
+               "The flask is closed.")))
+        (success)))
 
     :rub (fn ()
-      (success :message
-        (str "The metal of the flask is "
+      `((narrate ,(str "The metal of the flask is "
              (if (in? @nitrogen ?self) "very " "")
-             "cold.")))
+             "cold."))
+        (success)))
 
     :open (fn ()
       (cond
@@ -411,11 +423,13 @@
           '((set ?self :open true)
             (move @mist (loc @player))
             (queue nitrogen-evaporates 3)
-            (success :message "You open the flask, and a cold, white mist boils out.")))
+            (narrate "You open the flask, and a cold, white mist boils out.")
+            (success)))
         (true
           ; Empty flask
           '((set ?self :open true)
-            (success :message "You open the flask.")))))
+            (narrate "You open the flask.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -425,7 +439,8 @@
           '((set ?self :open false)
             (dequeue nitrogen-evaporates)
             (queue mist-dissipates 2)
-            (success :message "You screw the flask closed.")))))
+            (narrate "You screw the flask closed.")
+            (success)))))
 
     :pour (fn ()
       (cond
@@ -441,7 +456,7 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The flask contains a clear, cold liquid with a thin white mist boiling off of it."))
+      '((focus @nitrogen "The flask contains a clear, cold liquid with a thin white mist boiling off of it.") (success)))
 
     :take (fn ()
       (blocked :reason dangerous :message "The liquid is extremely cold. In fact, you burn your finger on it."))
@@ -450,16 +465,16 @@
       (blocked :reason dangerous :message "The liquid is extremely cold. In fact, you burn your finger on it."))
 
     :smell (fn ()
-      (success :message "The liquid has no smell."))
+      '((narrate "The liquid has no smell.") (success)))
 
     :pour (fn (?target)
       `((move @nitrogen nil)
         (dequeue nitrogen-evaporates)
         (queue mist-dissipates 2)
-        (success :message
-          ,(str "The freezing liquid pours out"
+        (narrate ,(str "The freezing liquid pours out"
                 (if ?target (str " onto the " (desc ?target)) "")
-                ", boiling into cold mist almost immediately."))))))
+                ", boiling into cold mist almost immediately."))
+        (success)))))
 
 (object @mist
   :location nil  ; Created when flask is opened
@@ -467,18 +482,18 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The mist is boiling up "
+      `((focus @mist ,(str "The mist is boiling up "
              (if (in? @nitrogen @flask)
                "out of the flask"
                "off of the ground")
-             ". It is thin, white, and cold.")))
+             ". It is thin, white, and cold."))
+        (success)))
 
     :rub (fn ()
-      (success :message "The mist is very cold."))
+      '((narrate "The mist is very cold.") (success)))
 
     :smell (fn ()
-      (success :message "The mist is odorless."))))
+      '((narrate "The mist is odorless.") (success)))))
 
 ; Nitrogen evaporates over time when flask is open
 (event nitrogen-evaporates

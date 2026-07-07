@@ -246,7 +246,8 @@
         (move @hacker @lair-5)
         (queue hacker-returns 2)
         (queue hand-dives -1)
-        (success :message "As you enter, the door closes and locks behind you.")))
+        (narrate "As you enter, the door closes and locks behind you.")
+        (success)))
 
     :before-action (fn (?verb ?target)
       (cond
@@ -264,9 +265,9 @@
     :examine (fn ()
       (cond
         ((= (loc @player) @inner-lair)
-          (success :message "The floor is covered by a pool of stagnant water. Near your feet there is a slightly deeper part that seems to have something in it."))
+          '((focus @lair-pool "The floor is covered by a pool of stagnant water. Near your feet there is a slightly deeper part that seems to have something in it.") (success)))
         (true
-          (success :message "It's a pool of rather yucky water."))))
+          '((focus @lair-pool "It's a pool of rather yucky water.") (success)))))
 
     :enter (fn ()
       (blocked :reason already-in :message "You're already standing in it! It covers most of the floor!"))
@@ -277,24 +278,25 @@
     :look-inside (fn ()
       (cond
         ((= (loc @player) @inner-lair)
-          (success :message "You can't see a thing, as the water is foul and murky."))
+          '((narrate "You can't see a thing, as the water is foul and murky.") (success)))
         (true
-          (success :message "It's about as clear as mud."))))
+          '((narrate "It's about as clear as mud.") (success)))))
 
     :reach-in (fn ()
       (cond
         ((= (loc @player) @inner-lair)
           (cond
             ((in? @high-voltage @inner-lair)
-              (success :message "You find nothing you would wish to touch again."))
+              '((narrate "You find nothing you would wish to touch again.") (success)))
             ((queued? hand-dives)
               '((dequeue hand-dives)
                 (move @high-voltage @inner-lair)
-                (success :message "You root around blindly in the gooey, slimy water. You feel something thick and slippery! A tentacle? No, it's cold and dead. It seems to be a line of some kind, just below the surface.")))
+                (narrate "You root around blindly in the gooey, slimy water. You feel something thick and slippery! A tentacle? No, it's cold and dead. It seems to be a line of some kind, just below the surface.")
+                (success)))
             (true
-              (success :message "You find nothing."))))
+              '((narrate "You find nothing.") (success)))))
         (true
-          (success :message "It feels greasy, cold, and generally unpleasant."))))
+          '((narrate "It feels greasy, cold, and generally unpleasant.") (success)))))
 
     :search (fn ()
       (redirect :action (do @lair-pool :reach-in)))
@@ -315,21 +317,23 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The entire south wall is covered with a curtain of moldy phosphorescent slime. There is something about the slime that makes it appear unhealthy, as though the influences here are bad for anything living."))
+      '((focus @slime-curtain "The entire south wall is covered with a curtain of moldy phosphorescent slime. There is something about the slime that makes it appear unhealthy, as though the influences here are bad for anything living.") (success)))
 
     :through (fn ()
       ; Touching the curtain without gloves gets slime on you
       (cond
         ((and (held? @gloves) (:wearable @gloves))
-          (success :message "The curtain is very slick and wet. Some of it sticks to your gloves."))
+          '((narrate "The curtain is very slick and wet. Some of it sticks to your gloves.") (success)))
         ((in? @crawling-slime @player)
           (let ((?new-cnt (+ (:slime-count @slime-curtain) 1)))
             `((set @slime-curtain :slime-count ,?new-cnt)
-              (success :message "More slime flows onto you."))))
+              (narrate "More slime flows onto you.")
+              (success))))
         (true
           '((move @crawling-slime @player)
             (queue slime-attack -1)
-            (success :message "The feel is greasy, wet, and at first cold. Then you get a burning sensation, like that from a sea-nettle sting. You jerk away, but some of the slime sticks to you!")))))
+            (narrate "The feel is greasy, wet, and at first cold. Then you get a burning sensation, like that from a sea-nettle sting. You jerk away, but some of the slime sticks to you!")
+            (success)))))
 
     :take (fn ()
       (redirect :action (do @slime-curtain :through)))
@@ -350,7 +354,8 @@
               ((< ?new-cnt 3)
                 ; Partial freeze - nitrogen is NOT consumed, can pour again
                 `((set @slime-curtain :nitrogen-count ,?new-cnt)
-                  (success :message "The liquid splashes onto the curtain, and a cold mist fills the room. The slime begins to freeze. Patches of it shatter and fall, but the rest of the slime oozes into the ruined spots, and the curtain appears unharmed.")))
+                  (narrate "The liquid splashes onto the curtain, and a cold mist fills the room. The slime begins to freeze. Patches of it shatter and fall, but the rest of the slime oozes into the ruined spots, and the curtain appears unharmed.")
+                  (success)))
               (true
                 ; Final pour - nitrogen IS consumed, curtain destroyed
                 `((set @slime-curtain :nitrogen-count ,?new-cnt)
@@ -358,7 +363,8 @@
                   (dequeue nitrogen-evaporates)
                   (move @slime-curtain nil)
                   (set @curtain-door :invisible false)
-                  (success :message "The liquid splashes onto the curtain, and a cold mist fills the room. Nearly the entire curtain solidifies, shatters, and drops to the ground, revealing an ancient wooden door."))))))
+                  (narrate "The liquid splashes onto the curtain, and a cold mist fills the room. Nearly the entire curtain solidifies, shatters, and drops to the ground, revealing an ancient wooden door.")
+                  (success))))))
         (true
           (blocked :reason wrong-liquid :message "That doesn't seem to have any effect."))))))
 
@@ -379,7 +385,7 @@
         (true (success))))
 
     :examine (fn ()
-      (success :message "It's flowing, dark-green, and undulates slowly as it crawls up your arm."))
+      '((focus @crawling-slime "It's flowing, dark-green, and undulates slowly as it crawls up your arm.") (success)))
 
     :drop (fn ()
       (blocked :reason stuck :message "You try to scrape it off, but to no avail. It just flows back into place around your arm."))
@@ -423,9 +429,10 @@
   :properties (:invisible true :nodesc true :door true :locked true :openable true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This door, blackened by age, is built of ancient, rotting timbers, but still looks very strong. It is set in a rough-hewn arch. Oddly, in addition to an old, rusted-away lock, there is another which looks new and shiny. "
-             (if (:open ?self) "It is open." "It is closed."))))
+      `((focus @curtain-door
+          ,(str "This door, blackened by age, is built of ancient, rotting timbers, but still looks very strong. It is set in a rough-hewn arch. Oddly, in addition to an old, rusted-away lock, there is another which looks new and shiny. "
+                (if (:open ?self) "It is open." "It is closed.")))
+        (success)))
 
     :open (fn ()
       (cond
@@ -435,7 +442,8 @@
           (blocked :reason locked :message "The door is securely locked."))
         (true
           '((set ?self :open true)
-            (success :message "The door creaks open.")))))
+            (narrate "The door creaks open.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -443,7 +451,8 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((set ?self :open false)
-            (success :message "You close the door.")))))
+            (narrate "You close the door.")
+            (success)))))
 
     :unlock (fn (?key)
       (cond
@@ -455,7 +464,8 @@
           (blocked :reason already-unlocked :message "It's already unlocked."))
         (true
           '((set ?self :locked false)
-            (success :message "The door is now unlocked.")))))
+            (narrate "The door is now unlocked.")
+            (success)))))
 
     :lock (fn (?key)
       (cond
@@ -465,7 +475,8 @@
           (blocked :reason already-locked :message "It's already locked."))
         (true
           '((set ?self :locked true)
-            (success :message "The door is now locked.")))))
+            (narrate "The door is now locked.")
+            (success)))))
 
     :attack (fn (?weapon)
       (cond
@@ -492,19 +503,19 @@
   :properties (:nodesc true :person true)
   :behaviors (
     :examine (fn ()
-      (success :message "The mass is strangely, even wrongly, shaped. It is hard to get a fix on what's wrong with it, but it doesn't look like it could or should exist in any sane universe. It quivers and bubbles as though air were pumping through it. Many wires, tentacles, and combinations of the two enter the mass from all sides, making it almost fuzzy in appearance."))
+      '((focus @mass "The mass is strangely, even wrongly, shaped. It is hard to get a fix on what's wrong with it, but it doesn't look like it could or should exist in any sane universe. It quivers and bubbles as though air were pumping through it. Many wires, tentacles, and combinations of the two enter the mass from all sides, making it almost fuzzy in appearance.") (success)))
 
     :listen (fn ()
-      (success :message "You listen closely to the sounds, which are loud and at first seem random. The more you listen, the more you sense a strange regularity to them. You get impressions, one after another, of electronic music, a simple sine wave pattern, and telephone crosstalk. They are all overlaid with speech, or something like speech, nearer random babbling, or many people talking at once. You can't understand any of it, but it's so near intelligibility that you feel that if you moved closer, you just might get it."))
+      '((narrate "You listen closely to the sounds, which are loud and at first seem random. The more you listen, the more you sense a strange regularity to them. You get impressions, one after another, of electronic music, a simple sine wave pattern, and telephone crosstalk. They are all overlaid with speech, or something like speech, nearer random babbling, or many people talking at once. You can't understand any of it, but it's so near intelligibility that you feel that if you moved closer, you just might get it.") (success)))
 
     :talk-to (fn ()
-      (success :message "When you speak, the noise stops, if only briefly. When it resumes, it's more insistent."))
+      '((narrate "When you speak, the noise stops, if only briefly. When it resumes, it's more insistent.") (success)))
 
     :give (fn (?item)
-      (success :message "There is no reaction that you can detect."))
+      '((narrate "There is no reaction that you can detect.") (success)))
 
     :show (fn (?item)
-      (success :message "There is no reaction that you can detect."))
+      '((narrate "There is no reaction that you can detect.") (success)))
 
     :attack (fn (?weapon)
       (cond
@@ -525,7 +536,8 @@
                                  (description "The tentacles grab you and pull you into the rippling slime. Immediately, your mind is overwhelmed with visions and vistas it cannot assimilate. As the mass pulls you into itself, it all becomes clearer, but it's much too late by then."))))))
         ((:weapon ?weapon)
           `((move ?weapon nil)
-            (success :message ,(str "The " (desc ?weapon) " is engulfed by the mass and disappears. The mass itself is unchanged."))))
+            (narrate ,(str "The " (desc ?weapon) " is engulfed by the mass and disappears. The mass itself is unchanged."))
+            (success)))
         (true
           (blocked :reason ineffective :message "That has no effect on the mass."))))
 
@@ -554,17 +566,18 @@
                  "There is a metal cover on the box."))))))
 
     :examine (fn ()
-      (success :message
-        (str "On one side a coaxial cable enters the box. On the other, a cablelike appendage leads from the box "
-             (if (in? @mass @inner-lair) "to the mass" "and ends in a blackened stump")
-             ". "
-             (if (:open ?self)
-               (str "The cover is off the box, revealing electronic innards. Most prominent are a socket "
-                    (if (in? @input-cable @input-socket)
-                      "into which the coaxial cable is plugged"
-                      "(now empty) next to which a coaxial cable hangs")
-                    ", and a connector into which the glistening output appendage disappears.")
-               "There is a metal cover on the box."))))
+      `((focus @repeater
+          ,(str "On one side a coaxial cable enters the box. On the other, a cablelike appendage leads from the box "
+                (if (in? @mass @inner-lair) "to the mass" "and ends in a blackened stump")
+                ". "
+                (if (:open ?self)
+                  (str "The cover is off the box, revealing electronic innards. Most prominent are a socket "
+                       (if (in? @input-cable @input-socket)
+                         "into which the coaxial cable is plugged"
+                         "(now empty) next to which a coaxial cable hangs")
+                       ", and a connector into which the glistening output appendage disappears.")
+                  "There is a metal cover on the box.")))
+        (success)))
 
     :open (fn ()
       (redirect :action (do @repeater-cover :take)))
@@ -578,7 +591,7 @@
   :properties (:takeable true :openable true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a metal cover with simple finger screws to hold it on."))
+      '((focus @repeater-cover "It's a metal cover with simple finger screws to hold it on.") (success)))
 
     :take (fn ()
       (cond
@@ -587,11 +600,12 @@
         (true
           `((set @repeater :open true)
             (take ?self)
-            (success :message ,(str "You remove the cover, revealing a plethora of electronic innards. Most prominent are a socket "
-                                    (if (in? @input-cable @input-socket)
-                                      "into which the coaxial cable is plugged"
-                                      "(now empty) next to which a coaxial cable hangs")
-                                    ", and a connector into which the glistening output appendage disappears."))))))
+            (narrate ,(str "You remove the cover, revealing a plethora of electronic innards. Most prominent are a socket "
+                           (if (in? @input-cable @input-socket)
+                             "into which the coaxial cable is plugged"
+                             "(now empty) next to which a coaxial cable hangs")
+                           ", and a connector into which the glistening output appendage disappears."))
+            (success)))))
 
     :put (fn (?container)
       (cond
@@ -602,7 +616,8 @@
             (true
               '((set @repeater :open false)
                 (move ?self @repeater)
-                (success :message "You screw it back on.")))))
+                (narrate "You screw it back on.")
+                (success)))))
         (true (default))))
 
     :close (fn ()
@@ -614,26 +629,28 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This looks like pretty standard coax to you. It appears almost spontaneously from high in the wall, and enters the box, where "
-             (if (:open @repeater)
-               (str "it's "
-                    (cond
-                      ((and (:rmung ?self) (not (in? ?self @input-socket)))
-                       "ends next to an empty socket.")
-                      ((:rmung ?self)
-                       "cut.")
-                      ((not (in? ?self @input-socket))
-                       "hanging loose next to a socket.")
-                      (true
-                       "plugged into the socket.")))
-               "it disappears from sight."))))
+      `((focus @input-cable
+          ,(str "This looks like pretty standard coax to you. It appears almost spontaneously from high in the wall, and enters the box, where "
+                (if (:open @repeater)
+                  (str "it's "
+                       (cond
+                         ((and (:rmung ?self) (not (in? ?self @input-socket)))
+                          "ends next to an empty socket.")
+                         ((:rmung ?self)
+                          "cut.")
+                         ((not (in? ?self @input-socket))
+                          "hanging loose next to a socket.")
+                         (true
+                          "plugged into the socket.")))
+                  "it disappears from sight.")))
+        (success)))
 
     :unplug (fn ()
       (cond
         ((in? ?self @input-socket)
           '((move ?self @repeater)
-            (success :message "You unscrew the cable. It now hangs unconnected inside the box.")))
+            (narrate "You unscrew the cable. It now hangs unconnected inside the box.")
+            (success)))
         (true
           (blocked :reason already-unplugged :message "It's already unplugged."))))
 
@@ -654,7 +671,8 @@
               (blocked :reason occupied :message "There's already something in the socket."))
             (true
               '((move ?self @input-socket)
-                (success :message "You screw it back on.")))))
+                (narrate "You screw it back on.")
+                (success)))))
         (true
           (blocked :reason wrong-socket :message "That doesn't fit there."))))
 
@@ -664,7 +682,8 @@
           (blocked :reason already-cut :message "It's already cut."))
         ((or (= ?tool @bolt-cutters) (= ?tool @axe))
           '((set ?self :rmung true)
-            (success :message "You neatly snip the cable in two.")))
+            (narrate "You neatly snip the cable in two.")
+            (success)))
         (true
           (blocked :reason wrong-tool :message "That won't cut through this cable."))))))
 
@@ -676,11 +695,11 @@
     :examine (fn ()
       (cond
         ((in? @input-cable @input-socket)
-          (success :message "It has a coaxial cable plugged into it."))
+          '((focus @input-socket "It has a coaxial cable plugged into it.") (success)))
         ((in? @high-voltage @input-socket)
-          (success :message "It has a power line jammed into it."))
+          '((focus @input-socket "It has a power line jammed into it.") (success)))
         (true
-          (success :message "It's empty."))))))
+          '((focus @input-socket "It's empty.") (success)))))))
 
 (object @output-cable
   :location @repeater
@@ -690,18 +709,19 @@
     :examine (fn ()
       (cond
         ((in? @mass @inner-lair)
-          (success :message
-            (str "This is a cablelike appendage of the mass in the end of the cave. It enters the box and "
-                 (cond
-                   ((:rmung ?self)
-                    "is cut.")
-                   ((:open @repeater)
-                    "connects to a connector inside it.")
-                   (true
-                    "disappears from sight."))
-                 " The cable twitches periodically.")))
+          `((focus @output-cable
+              ,(str "This is a cablelike appendage of the mass in the end of the cave. It enters the box and "
+                    (cond
+                      ((:rmung ?self)
+                       "is cut.")
+                      ((:open @repeater)
+                       "connects to a connector inside it.")
+                      (true
+                       "disappears from sight."))
+                    " The cable twitches periodically."))
+            (success)))
         (true
-          (success :message "The cablelike appendage ends in a blackened stump."))))
+          '((focus @output-cable "The cablelike appendage ends in a blackened stump.") (success)))))
 
     :unplug (fn ()
       (blocked :reason fused :message "There is no way to do that. The appendage and its socket blend together indistinguishably."))
@@ -717,7 +737,8 @@
           (blocked :reason protected :message "The tentacle whips out of your way."))
         ((or (= ?tool @bolt-cutters) (= ?tool @axe))
           '((set ?self :rmung true)
-            (success :message "You cut the tentacle in two inside the box, where it can't get away, precipitating a deafening shriek from the direction of the mass.")))
+            (narrate "You cut the tentacle in two inside the box, where it can't get away, precipitating a deafening shriek from the direction of the mass.")
+            (success)))
         (true
           (blocked :reason wrong-tool :message "That won't cut through this appendage."))))
 
@@ -735,11 +756,11 @@
     :examine (fn ()
       (cond
         ((:rmung ?self)
-          (success :message "This is one end of a high voltage power line. The conductors are visible within the slashed outer insulation."))
+          '((focus @high-voltage "This is one end of a high voltage power line. The conductors are visible within the slashed outer insulation.") (success)))
         ((:powered ?self)
-          (success :message "This is a thick, hard cable. It reminds you of a high voltage power line."))
+          '((focus @high-voltage "This is a thick, hard cable. It reminds you of a high voltage power line.") (success)))
         (true
-          (success :message "It's still under the water."))))
+          '((focus @high-voltage "It's still under the water.") (success)))))
 
     :take (fn ()
       (cond
@@ -750,12 +771,14 @@
               '((dequeue line-in-water)
                 (dequeue hand-dives)
                 (take ?self)
-                (success :message "You carefully grab the line just as it's about to drop into the water.")))
+                (narrate "You carefully grab the line just as it's about to drop into the water.")
+                (success)))
             ((and (held? @gloves) (:wearable @gloves))
               '((dequeue line-in-water)
                 (dequeue hand-dives)
                 (take ?self)
-                (success :message "Taken.")))
+                (narrate "Taken.")
+                (success)))
             (true
               '((dequeue line-in-water)
                 (dequeue hand-dives)
@@ -766,17 +789,20 @@
           ; Pull line out of water
           '((set ?self :powered true)
             (take ?self)
-            (success :message "You pull a length of the line out of the water. It's like holding a large, heavy snake.")))))
+            (narrate "You pull a length of the line out of the water. It's like holding a large, heavy snake.")
+            (success)))))
 
     :drop (fn ()
       (cond
         ((:rmung ?self)
           `((move ?self ,(loc @player))
             (queue line-in-water 2)
-            (success :message "You release the line.")))
+            (narrate "You release the line.")
+            (success)))
         (true
           `((move ?self ,(loc @player))
-            (success :message "You release the line.")))))
+            (narrate "You release the line.")
+            (success)))))
 
     :cut (fn (?tool)
       (cond
@@ -792,13 +818,16 @@
                   (set ?self :rmung true)
                   (move ?self ,(loc @player))
                   (queue line-in-water 2)
-                  (success :message "The line parts! The two ends begin to sink towards the water as they straighten out.")))
+                  (narrate "The line parts! The two ends begin to sink towards the water as they straighten out.")
+                  (success)))
               ((= ?new-cnt 2)
                 `((set @high-voltage :cut-count ,?new-cnt)
-                  (success :message "Your blow cuts through more insulation and into the conductors.")))
+                  (narrate "Your blow cuts through more insulation and into the conductors.")
+                  (success)))
               (true
                 `((set @high-voltage :cut-count ,?new-cnt)
-                  (success :message "You strike the line with the axe, making a deep gash in the insulation."))))))
+                  (narrate "You strike the line with the axe, making a deep gash in the insulation.")
+                  (success))))))
         ((= ?tool @bolt-cutters)
           (blocked :reason too-thick :message "The jaws of the bolt cutter won't open far enough to fit around the line."))
         (true
@@ -825,7 +854,8 @@
       ; No gloves - sparks burn hands
       `((move @high-voltage ,(loc @player))
         (queue line-in-water 2)
-        (success :message "You shove the exposed conductors into the socket, producing a shower of sparks! The sparks burn your hands! You jerk back, dropping the line!")))
+        (narrate "You shove the exposed conductors into the socket, producing a shower of sparks! The sparks burn your hands! You jerk back, dropping the line!")
+        (success)))
     ((not (:wearable @boots))
       ; No boots - electrocuted through water
       (blocked :reason death
@@ -834,20 +864,23 @@
     ((:rmung @output-cable)
       ; Output cable already cut - just fries the stump
       '((move @high-voltage @input-socket)
-        (success :message "You shove the exposed conductors into the socket, producing a shower of sparks! The stump of the tentacle still connected to the connector shrivels and fries.")))
+        (narrate "You shove the exposed conductors into the socket, producing a shower of sparks! The stump of the tentacle still connected to the connector shrivels and fries.")
+        (success)))
     ((not (queued? frob-appears))
       ; This triggers the endgame!
       `((move @high-voltage @input-socket)
         (dequeue hacker-returns)
         (queue frob-appears -1)
-        (success :message ,(str "You shove the exposed conductors into the socket, producing a shower of sparks! The tentacle connected to the other socket begins to jerk and twitch spasmodically. The mass it's connected to quivers, and a horrible noise, almost like a huge machine running without oil, issues from the thing."
-                               (if (and (in? @hacker @inner-lair) (not (:invisible @hacker)))
-                                 " The hacker screams soundlessly and drops into the water."
-                                 "")
-                               "\n\nThe mass begins to change shape, compacting, darkening. You can briefly see human outlines within the grey, gelatinous mass. They surround something larger, of a shape not human, not animal, like nothing you've seen before."))))
+        (narrate ,(str "You shove the exposed conductors into the socket, producing a shower of sparks! The tentacle connected to the other socket begins to jerk and twitch spasmodically. The mass it's connected to quivers, and a horrible noise, almost like a huge machine running without oil, issues from the thing."
+                       (if (and (in? @hacker @inner-lair) (not (:invisible @hacker)))
+                         " The hacker screams soundlessly and drops into the water."
+                         "")
+                       "\n\nThe mass begins to change shape, compacting, darkening. You can briefly see human outlines within the grey, gelatinous mass. They surround something larger, of a shape not human, not animal, like nothing you've seen before."))
+        (success)))
     (true
       '((move @high-voltage @input-socket)
-        (success :message "You shove the exposed conductors into the socket, producing a shower of sparks!")))))
+        (narrate "You shove the exposed conductors into the socket, producing a shower of sparks!")
+        (success)))))
 
 ; Event: power line drops into water
 (event line-in-water
@@ -972,7 +1005,7 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "It is not from any wholesome place. It is the stuff of nightmares. It is the thing that waits in the dark, the thing that scratches at your windows late at night. It is not death, for next to this, death is a friend to be cherished."))
+      '((focus @frob "It is not from any wholesome place. It is the stuff of nightmares. It is the thing that waits in the dark, the thing that scratches at your windows late at night. It is not death, for next to this, death is a friend to be cherished.") (success)))
 
     :attack (fn (?weapon)
       (cond
@@ -981,7 +1014,8 @@
           (cond
             ((= (:count @frob) 1)
               '((move @smooth-stone nil)
-                (success :message "The stone hurtles through the air and is swallowed by the black nothing at its center. The creature howls in pain!")))
+                (narrate "The stone hurtles through the air and is swallowed by the black nothing at its center. The creature howls in pain!")
+                (success)))
             ((= (:count @frob) 2)
               `((move @frob nil)
                 (move @smooth-stone ,(loc @player))
@@ -1057,7 +1091,7 @@
   :properties (:takeable true :wearable false)
   :behaviors (
     :examine (fn ()
-      (success :message "They are well-used rubber boots."))
+      '((focus @boots "They are well-used rubber boots.") (success)))
 
     :wear (fn ()
       (cond
@@ -1067,7 +1101,8 @@
           (blocked :reason not-held :message "You're not holding them."))
         (true
           '((set ?self :wearable true)
-            (success :message "Snug, but okay.")))))
+            (narrate "Snug, but okay.")
+            (success)))))
 
     :remove (fn ()
       (cond
@@ -1075,4 +1110,5 @@
           (blocked :reason not-wearing :message "You're not wearing them."))
         (true
           '((set ?self :wearable false)
-            (success :message "You take off the boots.")))))))
+            (narrate "You take off the boots.")
+            (success)))))))
