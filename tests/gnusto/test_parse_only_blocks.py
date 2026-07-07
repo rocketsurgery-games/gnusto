@@ -133,3 +133,59 @@ def test_no_action_context_all_narrate(monkeypatch):
     sess = _session(monkeypatch, {"@hacker": {"name": "hacker", "image": "/h.jpg"}})
     blocks = sess._blocks_from_results([_done(reason="Something stirs.")], None)
     assert [type(b) for b in blocks] == [Narrate]
+
+
+def _ctx_done(pairs):
+    """A success carrying terminator-context text (pre-migration convention)."""
+    return ActionDone(
+        message="", context=list(pairs), effects=[], redirects=[], output=[]
+    )
+
+
+def test_multi_result_renders_every_text_in_order(monkeypatch):
+    """The compulsion bug: an action message AND a following event's description
+    must BOTH render, in order (the old `if not blocks` fallback dropped the 2nd).
+    """
+    sess = _session(monkeypatch, {})
+    action = ActionRequest(tool="do_action", target="@more-box", verb="click")
+    click = _ctx_done([("message", "You touch the MORE box, and a new page appears.")])
+    # Event result (e.g. runtime ActionResult from process_events).
+    page = SimpleNamespace(
+        output=[],
+        reason=None,
+        context=[("page", 1), ("description", "Olde English gibberish.")],
+    )
+    blocks = sess._blocks_from_results([click, page], action)
+
+    assert [type(b) for b in blocks] == [Narrate, Narrate]
+    assert blocks[0].text == "You touch the MORE box, and a new page appears."
+    assert blocks[1].text == "Olde English gibberish."  # no longer dropped
+
+
+def test_context_text_keys_render_in_canonical_order(monkeypatch):
+    # transition listed before message in the raw context, but message renders first.
+    sess = _session(monkeypatch, {})
+    result = _ctx_done(
+        [("transition", "You faint..."), ("message", "The photo moves.")]
+    )
+    blocks = sess._blocks_from_results([result], None)
+    assert [b.text for b in blocks] == ["The photo moves.", "You faint..."]
+
+
+def test_hint_context_renders(monkeypatch):
+    # Previously dropped entirely (not in the fallback key list).
+    sess = _session(monkeypatch, {})
+    result = _ctx_done([("hint", "I could stand a little snack, though.")])
+    blocks = sess._blocks_from_results([result], None)
+    assert [b.text for b in blocks] == ["I could stand a little snack, though."]
+
+
+def test_blocks_to_text_flattens_stream(monkeypatch):
+    sess = _session(monkeypatch, {})
+    blocks = [
+        Narrate(text="The door creaks open."),
+        Speak(speaker="@hacker", text="Losing, huh?"),
+    ]
+    assert (
+        sess._blocks_to_text(blocks) == 'The door creaks open. @hacker: "Losing, huh?"'
+    )

@@ -52,6 +52,12 @@ EXAMINE_VERBS = frozenset(
     }
 )
 
+# Context keys that carry player-facing text, in display order. Pre-migration
+# grue still emits text through terminator kwargs (e.g. (success :message ...),
+# (success :context ((description ...)))); P3 moves these to explicit effects.
+# Until then this is the ordered set the single construction path renders.
+TEXT_CONTEXT_KEYS = ("message", "description", "response", "hint", "transition")
+
 SYSTEM_PROMPT = """\
 You are the narrator for an interactive fiction game. You interpret the player's commands,
 execute game actions, and narrate the results using structured content blocks.
@@ -941,66 +947,87 @@ class GameSession:
     def _blocks_from_results(
         self, raw_results: list[Any], action: "ActionRequest | None" = None
     ) -> list[ContentBlock]:
-        """Convert raw engine results into content blocks for parsing-only mode.
+        """The single path from raw engine results to a player-facing block stream.
 
-        The ENGINE owns all text here — the LLM never authors prose in this mode.
-        We derive light presentation intent from the action + result structure:
-        an examine-style verb on an entity that has art becomes a `focus` panel
-        (surfacing its image); dialogue output becomes `speak`; everything else
-        is plain `narrate`. This keeps the panel stream expressive without
-        letting the model invent words.
+        This is the one place results become blocks — both the parse-only render
+        stream and (flattened via ``_blocks_to_text``) the LLM-facing text derive
+        from it, so the two can never drift (gnusto-7256.1).
+
+        Every text-bearing channel is emitted IN ORDER, across all results:
+        structured output (narrate/say) → the success ``reason`` → the ordered
+        TEXT_CONTEXT_KEYS from terminator context. The ENGINE owns all text; we
+        only pick light presentation intent — an examine-style verb on an entity
+        with art surfaces a single Focus panel; dialogue becomes Speak; the rest
+        is Narrate. (No fragile "only if nothing else rendered" fallback: that
+        dropped the compulsion pages, :transition, and hints.)
         """
         from . import render
 
         # An examine-style action on a renderable entity surfaces its art as a
         # single Focus panel (applied to the first descriptive prose block).
         focus_entity = self._focus_entity_for(action)
-        focus_used = False
+        focus_used = [False]
 
         blocks: list[ContentBlock] = []
 
         def prose(text: str) -> ContentBlock:
-            nonlocal focus_used
-            if focus_entity and not focus_used:
-                focus_used = True
+            if focus_entity and not focus_used[0]:
+                focus_used[0] = True
                 return render.Focus(text=text, entity=focus_entity, deploy="feature")
             return render.Narrate(text=text)
 
-        for result in raw_results:
-            # Blocked actions — show the player-facing message
-            if isinstance(result, ActionBlocked):
-                if result.message:
-                    blocks.append(render.Narrate(text=result.message))
-                # A blocked action may still carry spoken output.
-                for out_type, entity, text in getattr(result, "output", []):
-                    if text and out_type == "say":
-                        blocks.append(
-                            render.Speak(speaker=entity or "unknown", text=text)
-                        )
-                continue
-            # Error actions
-            if isinstance(result, ActionError):
-                blocks.append(render.Narrate(text=result.message))
-                continue
-            if not hasattr(result, "output"):
-                continue
-            # Structured output from effects (narrate/say)
-            for out_type, entity, text in result.output:
+        def emit_output(result: Any) -> None:
+            for out_type, entity, text in getattr(result, "output", None) or []:
                 if not text:
                     continue
-                if out_type == "narrate":
-                    blocks.append(prose(text))
-                elif out_type == "say":
+                if out_type == "say":
                     blocks.append(render.Speak(speaker=entity or "unknown", text=text))
-            # Reason text (used for examine/describe results)
-            if hasattr(result, "reason") and result.reason:
-                blocks.append(prose(result.reason))
-            # Fall back to context fields
-            if not blocks and hasattr(result, "context"):
-                for key, value in result.context:
-                    if key in ("description", "message", "response") and str(value):
-                        blocks.append(prose(str(value)))
+                else:  # narrate
+                    blocks.append(prose(text))
+
+        for result in raw_results:
+            # Blocked: the player-facing text is the blocked message (+ any speech).
+            if isinstance(result, ActionBlocked):
+                emit_output(result)
+                if result.message:
+                    blocks.append(render.Narrate(text=result.message))
+                continue
+            # Error.
+            if isinstance(result, ActionError):
+                if result.message:
+                    blocks.append(render.Narrate(text=result.message))
+                continue
+            # Success-like (ActionDone or runtime ActionResult): emit every text
+            # channel in order.
+            emit_output(result)
+            reason = getattr(result, "reason", None)
+            if reason:
+                blocks.append(prose(str(reason)))
+            context = getattr(result, "context", None) or []
+            ctx = dict(context)
+            for key in TEXT_CONTEXT_KEYS:
+                value = ctx.get(key)
+                if value is not None and str(value):
+                    blocks.append(prose(str(value)))
         return blocks
+
+    def _blocks_to_text(self, blocks: list[ContentBlock]) -> str:
+        """Flatten a block stream to plain text for the LLM's parsing context.
+
+        The LLM never sees the player's rendered panels; it sees this projection
+        of the same block stream, so player output and LLM context stay in sync.
+        """
+        from . import render
+
+        parts: list[str] = []
+        for b in blocks:
+            if isinstance(b, render.Speak):
+                parts.append(f'{b.speaker}: "{b.text}"')
+            else:
+                text = getattr(b, "text", "")
+                if text:
+                    parts.append(text)
+        return " ".join(parts)
 
     def _focus_entity_for(self, action: "ActionRequest | None") -> str | None:
         """Entity whose art an examine-style action should surface, if any.
@@ -1122,14 +1149,16 @@ class GameSession:
         # Collect all raw results
         raw_results = [result] + list(event_results)
 
-        # Combine action result with any event descriptions for LLM
-        parts = [self._format_action_result(result)]
-        for event_result in event_results:
-            event_text = self._format_action_result(event_result)
-            if event_text and event_text != "Done.":
-                parts.append(event_text)
+        # LLM-facing text is a flattened projection of the SAME block stream the
+        # player sees (gnusto-7256.1), plus a status marker the player never sees
+        # so the model can still tell success from a block/error.
+        text = self._blocks_to_text(self._blocks_from_results(raw_results))
+        if isinstance(result, ActionBlocked):
+            text = f"{text} (blocked)".strip() if text else "(action blocked)"
+        elif isinstance(result, ActionError):
+            text = f"{text} (error)".strip() if text else "(action error)"
 
-        return (raw_results, " ".join(parts))
+        return (raw_results, text or "Done.")
 
     def _format_compact_debug(self, results: list[Any]) -> str:
         """Format results in compact debug format for display."""
@@ -1240,57 +1269,6 @@ class GameSession:
         lines.append(state.to_context_string())
 
         return "\n".join(lines)
-
-    def _format_action_result(self, result: Any) -> str:
-        """Format an action result for display."""
-        if isinstance(result, ActionDone):
-            parts = []
-            # Include structured output (narrate/say effects)
-            for out_type, entity, text in result.output:
-                if out_type == "narrate":
-                    parts.append(text)
-                elif out_type == "say":
-                    parts.append(f'{entity}: "{text}"')
-            # Include reason (used for describe/examine descriptions)
-            if result.reason:
-                parts.append(result.reason)
-            # Fall back to legacy context values
-            for key, value in result.context:
-                if key in ("description", "message", "response"):
-                    parts.append(str(value))
-            return " ".join(parts) if parts else "Done."
-        elif isinstance(result, ActionBlocked):
-            parts = []
-            # Include structured output (narrate/say effects)
-            for out_type, entity, text in result.output:
-                if out_type == "narrate":
-                    parts.append(text)
-                elif out_type == "say":
-                    parts.append(f'{entity}: "{text}"')
-            if parts:
-                return " ".join(parts) + f" (Blocked: {result.reason})"
-            return f"Blocked: {result.message}"
-        elif isinstance(result, ActionError):
-            return f"Error: {result.message}"
-        elif isinstance(result, ActionResult):
-            # Runtime ActionResult (from events)
-            parts = []
-            # Include structured output
-            for out_type, entity, text in result.output:
-                if out_type == "narrate":
-                    parts.append(text)
-                elif out_type == "say":
-                    parts.append(f'{entity}: "{text}"')
-            # Include reason for describe/examine
-            if result.reason:
-                parts.append(result.reason)
-            # Fall back to legacy context
-            for key, value in result.context:
-                if key in ("description", "message", "response"):
-                    parts.append(str(value))
-            return " ".join(parts) if parts else ""
-        else:
-            return str(result)
 
 
 def _handle_slash_command(
