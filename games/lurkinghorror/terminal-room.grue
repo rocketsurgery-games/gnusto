@@ -24,8 +24,8 @@
         ((= ?from-room @platform-room)
           '((queue hacker-helps)
             (set @hacker :help-stage 0)
-            (success :context ((nightmare-wake true))
-                     :message "You are awakened by the thump of your head hitting the keyboard.")))
+            (narrate "You are awakened by the thump of your head hitting the keyboard.")
+            (success)))
         (true (success))))
 
     ; Room-level action interception
@@ -89,10 +89,10 @@
 
   :location @terminal-room
   :on-turn (condp = (:help-stage @hacker)
-    0 `((set @hacker :help-stage 1) (success :stage 1 :description ,stage1-desc))
-    1 `((set @hacker :help-stage 2) (success :stage 2 :description ,stage2-desc))
-    2 `((set @hacker :help-stage 3) (success :stage 3 :description ,stage3-desc))
-    `((dequeue hacker-helps) (move @hacker @terminal-room) (success :stage 4 :description ,stage4-desc))))
+    0 `((set @hacker :help-stage 1) (narrate ,stage1-desc) (success))
+    1 `((set @hacker :help-stage 2) (narrate ,stage2-desc) (success))
+    2 `((set @hacker :help-stage 3) (narrate ,stage3-desc) (success))
+    `((dequeue hacker-helps) (move @hacker @terminal-room) (narrate ,stage4-desc) (success))))
 
 ; food-hint: Hints about feeding the hacker (re-queues itself)
 ; Queued when player asks for something and hasn't fed hacker yet
@@ -104,10 +104,10 @@
 
   :location @terminal-room
   :on-turn (condp = (:food-hint @hacker)
-    1 '((set @hacker :food-hint 2) (queue food-hint 2) (success :context ((hint hint1))))
-    2 '((set @hacker :food-hint 3) (queue food-hint 2) (success :context ((hint hint2))))
-    3 '((set @hacker :food-hint 4) (queue food-hint 2) (success :context ((hint hint3))))
-    4 '((set @hacker :food-hint 0) (dequeue food-hint) (success :context ((hint hint4))))
+    1 `((set @hacker :food-hint 2) (queue food-hint 2) (say @hacker ,hint1) (success))
+    2 `((set @hacker :food-hint 3) (queue food-hint 2) (say @hacker ,hint2) (success))
+    3 `((set @hacker :food-hint 4) (queue food-hint 2) (say @hacker ,hint3) (success))
+    4 `((set @hacker :food-hint 0) (dequeue food-hint) (say @hacker ,hint4) (success))
     '((dequeue food-hint) (success))))
 
 ; compulsion: Possession event - player is compelled to read the odd paper
@@ -134,11 +134,13 @@
 
   :location @terminal-room
   :on-turn (condp = (:comp-cnt @hacker)
-    0 `((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (success :page 1 :description ,page1-desc))
-    1 `((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (success :page 2 :description ,page2-desc))
-    2 `((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (success :page 3 :description ,page3-desc))
+    0 `((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (narrate ,page1-desc) (success))
+    1 `((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (narrate ,page2-desc) (success))
+    2 `((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (narrate ,page3-desc) (success))
     3 `((set @hacker :comp-cnt 4) (dequeue compulsion)
         (move @more-box nil) (move @menu-box @pc)
         (move @player @yuggoth)
-        (success :page 4 :description ,page4-desc :transition "You faint, and when you awaken..."))
+        (emphasize ,page4-desc)
+        (splash "You faint, and when you awaken...")
+        (success))
     '((dequeue compulsion) (success))))

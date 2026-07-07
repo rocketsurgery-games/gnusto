@@ -37,22 +37,19 @@
         (cond
           ; PC is off
           ((not (:powered ?self))
-            (success :context ((power off))
-                     :message (str pc-desc " It is currently turned off.")))
+            `((focus @pc ,(str pc-desc " It is currently turned off.")) (success)))
           ; PC is on with screen content
           (?screen
-            (success :context ((power on) (screen-contents ?screen))
-                     :message (str pc-desc " On the screen you see " ?screen ".")))
+            `((focus @pc ,(str pc-desc " On the screen you see " ?screen ".")) (success)))
           ; PC is on but no screen content (pre-login state)
           (true
-            (success :context ((power on))
-                     :message pc-desc)))))
+            `((focus @pc ,pc-desc) (success))))))
 
     ; LISTEN - Hums when powered on
     :listen (fn ()
       (cond
         ((:powered ?self)
-          (success :message "It hums contentedly."))
+          '((narrate "It hums contentedly.") (success)))
         (true
           (blocked :reason not-powered :message "It's silent."))))
 
@@ -69,14 +66,14 @@
           '((set ?self :powered false)
             (set-prop ?self unplugged true)
             (move ?self ?actor)
-            (success :context ((auto-unplug true) (was-powered true))
-                     :message "You take it, turning it off and unplugging it first.")))
+            (narrate "You take it, turning it off and unplugging it first.")
+            (success)))
         (true
           ; Taking while off but plugged in: just unplug
           '((set-prop ?self unplugged true)
             (move ?self ?actor)
-            (success :context ((auto-unplug true))
-                     :message "You take it, unplugging it first.")))))
+            (narrate "You take it, unplugging it first.")
+            (success)))))
 
     ; PUT-ON / PUT - Not a good surface
     :put-on (fn (?item)
@@ -104,8 +101,8 @@
           (blocked :reason already-on :message "It's on. Maybe you didn't notice."))
         (true
           `((set ?self :powered true)
-            (success :context ((booting true))
-                     :message ,(str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum."))))))
+            (narrate ,(str "The computer powers up, goes through a remarkably fast self-check, and greets you, requesting " login-please " The only sound you hear is a very low hum."))
+            (success)))))
 
     ; TURN-OFF (LAMP-OFF) - Power down computer and reset login state
     :turn-off (fn ()
@@ -123,7 +120,8 @@
             (move @menu-box nil)
             (move @more-box nil)
             (move @yak-window nil)
-            (success :message "The computer powers off. It no longer makes a sound.")))))
+            (narrate "The computer powers off. It no longer makes a sound.")
+            (success)))))
 
     ; PLUG-IN - Plug in computer
     :plug-in (fn ()
@@ -132,7 +130,8 @@
           (blocked :reason already-plugged :message "It's already plugged in."))
         (true
           '((set-prop ?self unplugged false)
-            (success :message "You plug in the computer.")))))
+            (narrate "You plug in the computer.")
+            (success)))))
 
     ; UNPLUG - Unplug computer and reset login state
     :unplug (fn ()
@@ -152,11 +151,12 @@
             (move @menu-box nil)
             (move @more-box nil)
             (move @yak-window nil)
-            (success :context ((was-powered true))
-                     :message "Okay, it's unplugged now.")))
+            (narrate "Okay, it's unplugged now.")
+            (success)))
         (true
           '((set-prop ?self unplugged true)
-            (success :message "Okay, it's unplugged now.")))))
+            (narrate "Okay, it's unplugged now.")
+            (success)))))
 
     ; SIT-AT - Redirect to sitting in chair if present
     :sit-at (fn ()
@@ -182,7 +182,8 @@
           (redirect :action (do ?self :password ?value)))
         (true
           ; Already logged in - syntax error (with smiley face!)
-          (success :message "Nothing interesting happens, except that a yellow smiling face appears in a small box next to the legend \"Sorry, Syntax Error. Hope you have a nice day anyway.\""))))
+          '((narrate "Nothing interesting happens, except that a yellow smiling face appears in a small box next to the legend \"Sorry, Syntax Error. Hope you have a nice day anyway.\"")
+            (success)))))
 
     ; LOGIN - First step of login flow
     ; The parser converts "872325412" to "xyzzy" and that's the valid login ID.
@@ -196,11 +197,13 @@
         ((or (= ?value "xyzzy") (= ?value "872325412"))
           ; Valid login ID (xyzzy or the actual ID 872325412)
           `((set @pc :username "xyzzy")
-            (success :message ,(str "The computer responds \"" password-please))))
+            (narrate ,(str "The computer responds \"" password-please))
+            (success)))
         (true
           ; Wrong login - accept but will fail at password stage
           `((set @pc :username true)
-            (success :message ,(str "The computer responds \"" password-please))))))
+            (narrate ,(str "The computer responds \"" password-please))
+            (success)))))
 
     ; PASSWORD - Second step of login flow
     ; Only "uhlersoth" or "plugh" work, and only if username was "xyzzy" (valid login)
@@ -215,12 +218,14 @@
           ; Valid password with valid login - success!
           '((set @pc :logged-in true)
             (move @menu-box ?self)
-            (success :message "The computer responds \"Good evening. You're here awfully late.\" It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads \"Classics Paper,\" some particularly ominous words next to it say \"DUE TOMORROW!\" and more reassuringly, a menu box next to that reads \"Edit Classics Paper.\"")))
+            (narrate "The computer responds \"Good evening. You're here awfully late.\" It displays a list of pending tasks, one of which is in blinking red letters, with large arrows pointing to it. The task reads \"Classics Paper,\" some particularly ominous words next to it say \"DUE TOMORROW!\" and more reassuringly, a menu box next to that reads \"Edit Classics Paper.\"")
+            (success)))
         (true
           ; Invalid password or wrong login - reset and fail
           `((set @pc :username false)
             (set @pc :logged-in false)
-            (success :message ,(str "The computer responds \"INVALID LOGIN\" and then " login-please))))))))
+            (narrate ,(str "The computer responds \"INVALID LOGIN\" and then " login-please))
+            (success)))))))
 
 ; === PC Physical Components ===
 ; These are physical parts of the PC that can be interacted with.
@@ -230,9 +235,9 @@
   :location @pc
   :properties (:nodesc true)
   :behaviors (
-    :examine (fn () (success :message "It's a plastic pointing device."))
+    :examine (fn () '((focus @mouse "It's a plastic pointing device.") (success)))
     :take (fn () (blocked :reason attached :message "It's attached to the computer."))
-    :move (fn () (success :message "It rolls smoothly."))
+    :move (fn () '((narrate "It rolls smoothly.") (success)))
     ; CLICK - redirect to the click target
     :click (fn (?target)
       (cond
@@ -244,31 +249,31 @@
   :location @pc
   :properties (:nodesc true :readable true :text "It says \"HELP\" in reassuring blue letters.")
   :behaviors (
-    :examine (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
-    :read (fn () (success :message "It says \"HELP\" in reassuring blue letters."))
+    :examine (fn () '((focus @help-key "It says \"HELP\" in reassuring blue letters.") (success)))
+    :read (fn () '((narrate "It says \"HELP\" in reassuring blue letters.") (success)))
     ; CLICK/PUSH - show contextual help based on PC state
     :click (fn ()
       (cond
         ((not (:powered @pc))
-          (success :message "Well, nothing happens. Perhaps you should turn on the computer?"))
+          '((narrate "Well, nothing happens. Perhaps you should turn on the computer?") (success)))
         ((not (:logged-in @pc))
           (cond
             ((not (:username @pc))
-              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should \"LOGIN your-user-id\" and then \"PASSWORD your-password\".\""))
+              '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should \"LOGIN your-user-id\" and then \"PASSWORD your-password\".\"") (success)))
             (true
-              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"PASSWORD your-password\".\""))))
+              '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"PASSWORD your-password\".\"") (success)))))
         ((in? @more-box @pc)
           (cond
             ((not (prop @odd-paper read-page))
-              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please read the page on the screen and then click the MORE box.\""))
+              '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please read the page on the screen and then click the MORE box.\"") (success)))
             (true
-              (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the MORE box.\"\""))))
+              '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the MORE box.\"\"") (success)))))
         ((in? @yak-window @pc)
-          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the box representing the file you wish to edit or view. I notice that one file is marked as urgent, so you should probably click its box.\""))
+          '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"Please click the box representing the file you wish to edit or view. I notice that one file is marked as urgent, so you should probably click its box.\"") (success)))
         ((in? @menu-box @pc)
-          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should click the menu box, as you previously set it up as an urgent task.\""))
+          '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"You should click the menu box, as you previously set it up as an urgent task.\"") (success)))
         (true
-          (success :message "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"I can't help you at this point.\""))))))
+          '((narrate "You push the friendly-looking HELP key. A spritely little box appears on the screen, which reads: \"I can't help you at this point.\"") (success)))))))
 
 ; === PC Screen Objects ===
 ; These represent on-screen UI elements that appear on the PC.
@@ -281,14 +286,15 @@
   :properties (:nodesc true :readable true :text "Edit Classics Paper.")
 
   :behaviors (
-    :examine (fn () (success :message "The most immediate thing you see is the red menu box that refers to an urgent task."))
-    :read (fn () (success :message "It says \"Edit Classics Paper\" in an urgent-looking shade of red."))
+    :examine (fn () '((focus @menu-box "The most immediate thing you see is the red menu box that refers to an urgent task.") (success)))
+    :read (fn () '((narrate "It says \"Edit Classics Paper\" in an urgent-looking shade of red.") (success)))
 
     ; CLICK - open the YAK editor
     :click (fn ()
       '((move @menu-box nil)
         (move @yak-window @pc)
-        (success :message "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red.")))))
+        (narrate "The menu box is replaced by the YAK text editor and menu boxes listing the titles of your files. The one for your paper is highlighted in a rather urgent-looking shade of red.")
+        (success)))))
 
 (object @yak-window
   :description "YAK editor"
@@ -296,8 +302,8 @@
   :properties (:nodesc true :readable true :text "YAK 5.3")
 
   :behaviors (
-    :examine (fn () (success :message "There's a box for your paper."))
-    :read (fn () (success :message "There's a box for your paper."))
+    :examine (fn () '((focus @yak-window "There's a box for your paper.") (success)))
+    :read (fn () '((narrate "There's a box for your paper.") (success)))
 
     ; CLICK - open the paper (reveals the odd text)
     :click (fn ()
@@ -308,12 +314,14 @@
             (move @odd-paper @pc)
             (move @more-box @pc)
             (set @odd-paper :touched true)
-            (success :message "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different.")))
+            (narrate "You click the box for your paper, and the box grows reassuringly until it fills most of the screen. Unfortunately, the text that fills it bears no resemblance to your paper. The title is the same, but after that, there is something different, very different.")
+            (success)))
 
         ; Already seen - paper is lost
         (true
-          (success
-            :message "Nothing happens. \"Your paper is lost!\" reminds the hacker."))))))
+          '((say @hacker "Your paper is lost!")
+            (narrate "Nothing happens.")
+            (success)))))))
 
 (object @odd-paper
   :description "classics paper"
@@ -331,13 +339,14 @@
         ((not (queued? compulsion))
           '((queue compulsion 2)
             (set-prop @odd-paper read-page true)
-            (success :context ((possession-starting true))
-                     :message "As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the \"MORE\" box...")))
+            (narrate "As you look at it more closely, you find it hard to focus on the screen, but impossible to look away. Your finger strays toward the \"MORE\" box...")
+            (success)))
 
         ; Already reading/possessed
         (true
           '((set-prop @odd-paper read-page true)
-            (success :message "You click the \"MORE\" box and read what appears.")))))))
+            (narrate "You click the \"MORE\" box and read what appears.")
+            (success)))))))
 
 (object @more-box
   :description "more box"
@@ -345,8 +354,8 @@
   :properties (:readable true :nodesc true)
 
   :behaviors (
-    :examine (fn () (success :message "It says \"MORE\" in a subdued typeface."))
-    :read (fn () (success :message "It says \"MORE\" in a subdued typeface."))
+    :examine (fn () '((focus @more-box "It says \"MORE\" in a subdued typeface.") (success)))
+    :read (fn () '((narrate "It says \"MORE\" in a subdued typeface.") (success)))
 
     ; CLICK - advance through the strange document
     :click (fn ()
@@ -359,4 +368,5 @@
         ; Read the page - advance
         (true
           '((set-prop @odd-paper read-page false)
-            (success :message "You touch the MORE box, and a new page appears.")))))))
+            (narrate "You touch the MORE box, and a new page appears.")
+            (success)))))))

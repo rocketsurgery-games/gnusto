@@ -48,6 +48,7 @@ Test groups with shared setup:
 Result predicates (check last action result):
     (outcome? success|blocked|error|redirect)
     (context? KEY VALUE)
+    (output? TEXT)            - some emitted narration/dialogue contains TEXT
     (victory? true|false)
     (death? true|false)
 
@@ -71,15 +72,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..sexpr import SExpr, Symbol, Keyword, SList, parse, parse_all, to_string
-from ..parser import load_grue, GrueWorld
-from ..runtime import GrueRuntime, ActionResult
-from ..expr import ExprEvaluator, EffectExecutor, EvalError
+from ..expr import EffectExecutor, EvalError, ExprEvaluator
+from ..parser import GrueWorld, load_grue
+from ..runtime import ActionResult, GrueRuntime
+from ..sexpr import Keyword, SExpr, SList, Symbol, parse, parse_all, to_string
 
 
 @dataclass
 class TestResult:
     """Result of running a single test."""
+
     name: str
     passed: bool
     failures: list[str] = field(default_factory=list)
@@ -89,6 +91,7 @@ class TestResult:
 @dataclass
 class TestSuiteResult:
     """Result of running a test suite."""
+
     world_path: str
     test_path: str
     results: list[TestResult] = field(default_factory=list)
@@ -142,9 +145,7 @@ class TestRunner:
         """
         if len(test_form) < 2:
             return TestResult(
-                name="<invalid>",
-                passed=False,
-                error="Test form too short"
+                name="<invalid>", passed=False, error="Test form too short"
             )
 
         name = test_form[1]
@@ -171,7 +172,7 @@ class TestRunner:
                     return TestResult(
                         name=test_name,
                         passed=False,
-                        error=f"Missing value for :{item.name}"
+                        error=f"Missing value for :{item.name}",
                     )
                 value = test_form[i + 1]
 
@@ -189,9 +190,7 @@ class TestRunner:
 
         if not forms:
             return TestResult(
-                name=test_name,
-                passed=False,
-                error="Test has no body forms"
+                name=test_name, passed=False, error="Test has no body forms"
             )
 
         runtime = GrueRuntime(self.world)
@@ -208,24 +207,14 @@ class TestRunner:
                 all_failures.extend(failures)
 
             return TestResult(
-                name=test_name,
-                passed=len(all_failures) == 0,
-                failures=all_failures
+                name=test_name, passed=len(all_failures) == 0, failures=all_failures
             )
 
         except Exception as e:
-            return TestResult(
-                name=test_name,
-                passed=False,
-                error=str(e)
-            )
+            return TestResult(name=test_name, passed=False, error=str(e))
 
     def _run_form(
-        self,
-        runtime: GrueRuntime,
-        executor: EffectExecutor,
-        form: SExpr,
-        form_idx: int
+        self, runtime: GrueRuntime, executor: EffectExecutor, form: SExpr, form_idx: int
     ) -> list[str]:
         """Run a single form in a sequential test body."""
         if not isinstance(form, SList) or len(form) == 0:
@@ -258,6 +247,7 @@ class TestRunner:
             # Setup operations - execute directly as effects
             try:
                 from ..runtime import EffectExecutor
+
                 executor = EffectExecutor(runtime)
                 executor.execute(form)
                 return []
@@ -266,12 +256,7 @@ class TestRunner:
         else:
             return [f"Form {form_idx}: Unknown form type '{form_type}'"]
 
-    def _run_do(
-        self,
-        runtime: GrueRuntime,
-        form: SList,
-        form_idx: int
-    ) -> list[str]:
+    def _run_do(self, runtime: GrueRuntime, form: SList, form_idx: int) -> list[str]:
         """Run a bare (do ...) form. Stores result for subsequent assertions."""
         try:
             self._last_result = self._execute_action(runtime, form)
@@ -289,12 +274,7 @@ class TestRunner:
         except Exception as e:
             return [f"Form {form_idx}: {e}"]
 
-    def _run_run(
-        self,
-        runtime: GrueRuntime,
-        form: SList,
-        form_idx: int
-    ) -> list[str]:
+    def _run_run(self, runtime: GrueRuntime, form: SList, form_idx: int) -> list[str]:
         """Run a (run ACTION-LIST) form - execute a list of actions."""
         failures: list[str] = []
 
@@ -316,9 +296,11 @@ class TestRunner:
 
         if isinstance(action_list_expr, SList):
             # Check if it's a quoted list: (quote (...))
-            if (len(action_list_expr) == 2 and
-                isinstance(action_list_expr[0], Symbol) and
-                action_list_expr[0].name == "quote"):
+            if (
+                len(action_list_expr) == 2
+                and isinstance(action_list_expr[0], Symbol)
+                and action_list_expr[0].name == "quote"
+            ):
                 inner = action_list_expr[1]
                 if isinstance(inner, SList):
                     action_list = list(inner.items)
@@ -347,20 +329,27 @@ class TestRunner:
     # Other predicates (held?, in?, visible?, etc.) work via ExprEvaluator fallback.
     _EXPECTATION_PREDICATES = {
         # Result predicates (require _last_result)
-        "outcome?", "context?", "death?", "victory?",
+        "outcome?",
+        "context?",
+        "output?",
+        "death?",
+        "victory?",
         # State predicates (with explicit handlers for better error messages)
-        "player-at?", "has-flag?", "no-flag?", "not-flag?", "loc?",
-        "prop?", "queued?", "not-queued?",
+        "player-at?",
+        "has-flag?",
+        "no-flag?",
+        "not-flag?",
+        "loc?",
+        "prop?",
+        "queued?",
+        "not-queued?",
     }
 
     # Result predicates require a last action result to check
-    _RESULT_PREDICATES = {"outcome?", "context?", "death?", "victory?"}
+    _RESULT_PREDICATES = {"outcome?", "context?", "output?", "death?", "victory?"}
 
     def _run_assert(
-        self,
-        runtime: GrueRuntime,
-        assert_form: SList,
-        assert_idx: int
+        self, runtime: GrueRuntime, assert_form: SList, assert_idx: int
     ) -> list[str]:
         """Run an (assert PREDICATE) form - check predicate, fail if false.
 
@@ -377,10 +366,12 @@ class TestRunner:
         predicate = assert_form[1]
 
         # Check if this is an expectation predicate (handled by _check_expectations)
-        if (isinstance(predicate, SList) and len(predicate) > 0 and
-            isinstance(predicate[0], Symbol) and
-            predicate[0].name in self._EXPECTATION_PREDICATES):
-
+        if (
+            isinstance(predicate, SList)
+            and len(predicate) > 0
+            and isinstance(predicate[0], Symbol)
+            and predicate[0].name in self._EXPECTATION_PREDICATES
+        ):
             pred_name = predicate[0].name
 
             # Result predicates require a last action result
@@ -404,9 +395,13 @@ class TestRunner:
                 evaluator = ExprEvaluator(runtime, self._functions)
                 result = evaluator.eval(predicate)
                 if not result:
-                    failures.append(f"Assert {assert_idx}: {to_string(predicate)} is false")
+                    failures.append(
+                        f"Assert {assert_idx}: {to_string(predicate)} is false"
+                    )
             except Exception as e:
-                failures.append(f"Assert {assert_idx}: Error evaluating {to_string(predicate)}: {e}")
+                failures.append(
+                    f"Assert {assert_idx}: Error evaluating {to_string(predicate)}: {e}"
+                )
 
         return failures
 
@@ -415,13 +410,15 @@ class TestRunner:
         runtime: GrueRuntime,
         until_form: SList,
         until_idx: int,
-        max_iterations: int = 100
+        max_iterations: int = 100,
     ) -> list[str]:
         """Run an (until PREDICATE ACTION...) form - loop until predicate is true."""
         failures: list[str] = []
 
         if len(until_form) < 3:
-            failures.append(f"Until {until_idx}: Requires predicate and at least one action")
+            failures.append(
+                f"Until {until_idx}: Requires predicate and at least one action"
+            )
             return failures
 
         predicate = until_form[1]
@@ -537,10 +534,7 @@ class TestRunner:
         return kwargs
 
     def _check_expectations(
-        self,
-        runtime: GrueRuntime,
-        result: ActionResult,
-        predicates: list[SExpr]
+        self, runtime: GrueRuntime, result: ActionResult, predicates: list[SExpr]
     ) -> list[str]:
         """Check expectation predicates, return list of failures."""
         failures = []
@@ -594,6 +588,26 @@ class TestRunner:
                         f"Context['{key}'] expected '{expected}', got '{context_dict[key]}'"
                     )
 
+            elif name == "output?":
+                # (output? TEXT) - passes if any player-facing output entry's text
+                # contains TEXT. The canonical way to assert on emitted narration/
+                # dialogue now that text flows through the output stream, not
+                # terminator context (gnusto-7256.3).
+                if len(pred) != 2:
+                    failures.append("(output? TEXT) requires 1 argument")
+                    continue
+                expected = pred[1]
+                if isinstance(expected, Symbol):
+                    expected = expected.name
+                expected = str(expected)
+                output = getattr(result, "output", None) or []
+                texts = [str(text) for (_typ, _ent, text) in output]
+                if not any(expected in t for t in texts):
+                    shown = " | ".join(texts) if texts else "(no output)"
+                    failures.append(
+                        f"Expected output containing '{expected}', got: {shown}"
+                    )
+
             elif name == "player-at?":
                 if len(pred) != 2:
                     failures.append("(player-at? ROOM) requires 1 argument")
@@ -603,9 +617,7 @@ class TestRunner:
                     expected = expected.name
                 actual = runtime.get_player_location()
                 if actual != expected:
-                    failures.append(
-                        f"Expected player at '{expected}', got '{actual}'"
-                    )
+                    failures.append(f"Expected player at '{expected}', got '{actual}'")
 
             elif name == "has-flag?":
                 if len(pred) != 3:
@@ -797,11 +809,13 @@ class TestRunner:
         Supports both legacy (:action/:expect) and sequential styles for nested tests.
         """
         if len(group_form) < 2:
-            return [TestResult(
-                name="<invalid group>",
-                passed=False,
-                error="Test-group form too short"
-            )]
+            return [
+                TestResult(
+                    name="<invalid group>",
+                    passed=False,
+                    error="Test-group form too short",
+                )
+            ]
 
         name = group_form[1]
         if isinstance(name, str):
@@ -821,11 +835,13 @@ class TestRunner:
 
             if isinstance(item, Keyword):
                 if i + 1 >= len(group_form):
-                    return [TestResult(
-                        name=group_name,
-                        passed=False,
-                        error=f"Missing value for :{item.name}"
-                    )]
+                    return [
+                        TestResult(
+                            name=group_name,
+                            passed=False,
+                            error=f"Missing value for :{item.name}",
+                        )
+                    ]
                 value = group_form[i + 1]
 
                 if item.name == "setup":
@@ -868,7 +884,11 @@ class TestRunner:
             j = 2
             while j < len(test_form):
                 item = test_form[j]
-                if isinstance(item, Keyword) and item.name == "setup" and j + 1 < len(test_form):
+                if (
+                    isinstance(item, Keyword)
+                    and item.name == "setup"
+                    and j + 1 < len(test_form)
+                ):
                     value = test_form[j + 1]
                     if isinstance(value, SList):
                         test_setup = list(value.items)
@@ -916,17 +936,16 @@ class TestRunner:
             elif head.name == "defn":
                 # Global function definition for tests
                 try:
-                    executor = EffectExecutor(
-                        _DummyState(),
-                        self._functions
-                    )
+                    executor = EffectExecutor(_DummyState(), self._functions)
                     executor.execute(form)
                 except Exception as e:
-                    results.append(TestResult(
-                        name=f"defn {to_string(form[1]) if len(form) > 1 else '?'}",
-                        passed=False,
-                        error=str(e)
-                    ))
+                    results.append(
+                        TestResult(
+                            name=f"defn {to_string(form[1]) if len(form) > 1 else '?'}",
+                            passed=False,
+                            error=str(e),
+                        )
+                    )
             elif head.name == "def":
                 # Global constant definition: (def NAME VALUE)
                 if len(form) >= 3:
@@ -935,23 +954,25 @@ class TestRunner:
                     if isinstance(def_name, Symbol):
                         self._globals[def_name.name] = def_value
                     else:
-                        results.append(TestResult(
-                            name=f"def {to_string(def_name)}",
-                            passed=False,
-                            error="def name must be a symbol"
-                        ))
+                        results.append(
+                            TestResult(
+                                name=f"def {to_string(def_name)}",
+                                passed=False,
+                                error="def name must be a symbol",
+                            )
+                        )
 
         return results
 
 
 class _DummyState:
     """Minimal state for parsing defn forms."""
+
     pass
 
 
 def run_tests(
-    world_path: str | Path,
-    test_path: str | Path | None = None
+    world_path: str | Path, test_path: str | Path | None = None
 ) -> TestSuiteResult:
     """
     Run tests against a world.
@@ -983,16 +1004,11 @@ def run_tests(
     results = runner.run_suite(test_source)
 
     return TestSuiteResult(
-        world_path=str(world_path),
-        test_path=str(test_path),
-        results=results
+        world_path=str(world_path), test_path=str(test_path), results=results
     )
 
 
-def run_tests_from_string(
-    world: GrueWorld,
-    test_source: str
-) -> list[TestResult]:
+def run_tests_from_string(world: GrueWorld, test_source: str) -> list[TestResult]:
     """Run tests from a string against a loaded world."""
     runner = TestRunner(world)
     return runner.run_suite(test_source)
