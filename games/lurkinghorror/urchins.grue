@@ -57,7 +57,7 @@
     :through (fn ()
       (cond
         ((:freed @urchins)
-          (success :message "A few of the urchins grab feebly at you as you pass, but none is a serious barrier."))
+          '((narrate "A few of the urchins grab feebly at you as you pass, but none is a serious barrier.") (success)))
         ((in? @urchins @slots)
           (blocked :reason blocked
                    :message "Something is blocking the downward passage. It's moving, slowly and painfully, trying to climb up."))
@@ -73,36 +73,38 @@
   :properties (:nodesc true :open true :container true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The slots are narrow burrows apparently dug by hand out of the mud of the chamber walls."
-             (if (in? @urchins @slots)
-               " Most of the slots have a thin wire or rope heading into them. You begin to be quite certain that there is something moving inside the slot you are looking at."
-               ""))))
+      `((focus @slots
+          ,(str "The slots are narrow burrows apparently dug by hand out of the mud of the chamber walls."
+               (if (in? @urchins @slots)
+                 " Most of the slots have a thin wire or rope heading into them. You begin to be quite certain that there is something moving inside the slot you are looking at."
+                 "")))
+        (success)))
 
     :enter (fn ()
-      (success :message
-        (str "You squeeze your way into one of the slots. The mud coats you with a cold, slimy coat which makes it barely possible to breathe."
-             (if (in? @urchins @slots)
-               " You are about halfway in when your hands touch something fleshy in front of you. It's cold and dead. On the other hand, it moves."
-               "")
-             " You slide out with all the speed you can muster.")))
+      `((narrate
+          ,(str "You squeeze your way into one of the slots. The mud coats you with a cold, slimy coat which makes it barely possible to breathe."
+               (if (in? @urchins @slots)
+                 " You are about halfway in when your hands touch something fleshy in front of you. It's cold and dead. On the other hand, it moves."
+                 "")
+               " You slide out with all the speed you can muster."))
+        (success)))
 
     :look-inside (fn ()
-      (success :message "You can't see anything but the wet walls of the burrow."))
+      '((narrate "You can't see anything but the wet walls of the burrow.") (success)))
 
     :reach-in (fn ()
       (cond
         ((not (in? @urchins @slots))
-          (success :message "There is nothing in the slots but cold, wet mud."))
+          '((narrate "There is nothing in the slots but cold, wet mud.") (success)))
         (true
-          (success :message "You reach inside, oblivious to the cold clammy mud. At first you feel nothing, but just at the limit of your stretch, you feel flesh. It's cold and dead. You jerk your hand back out."))))
+          '((narrate "You reach inside, oblivious to the cold clammy mud. At first you feel nothing, but just at the limit of your stretch, you feel flesh. It's cold and dead. You jerk your hand back out.") (success)))))
 
     :listen (fn ()
       (cond
         ((in? @urchins @slots)
-          (success :message "The noise, as you listen more carefully, resolves itself into voices. They are chanting, but the words are unknown to you."))
+          '((narrate "The noise, as you listen more carefully, resolves itself into voices. They are chanting, but the words are unknown to you.") (success)))
         (true
-          (success :message "You hear nothing."))))))
+          '((narrate "You hear nothing.") (success)))))))
 
 ; === Urchins (group in large chamber) ===
 
@@ -120,32 +122,33 @@
           (success :context ((description "There are urchins here."))))))
 
     :examine (fn ()
-      (success :message
-        (str "These are not normal looking urchins. Their clothes are muddy and tattered. They are barefoot in midwinter, and covered with mud. Around their heads are draped the "
-             (if (:freed @urchins) "stubs of the " "")
-             "ropy growths that you've been noticing in this area. Although their eyes are open, they stare catatonically.")))
+      `((focus @urchins
+          ,(str "These are not normal looking urchins. Their clothes are muddy and tattered. They are barefoot in midwinter, and covered with mud. Around their heads are draped the "
+               (if (:freed @urchins) "stubs of the " "")
+               "ropy growths that you've been noticing in this area. Although their eyes are open, they stare catatonically."))
+        (success)))
 
     :talk-to (fn ()
       (cond
         ((:freed @urchins)
-          (success :message "There is no response. It's as though they don't hear you."))
+          '((narrate "There is no response. It's as though they don't hear you.") (success)))
         (true
-          (success :message "The urchins turn to you in unison. They smile, revealing red, broken teeth. They never stop their deep-voiced, incomprehensible chant."))))
+          '((narrate "The urchins turn to you in unison. They smile, revealing red, broken teeth. They never stop their deep-voiced, incomprehensible chant.") (success)))))
 
     :attack (fn ()
-      (success :message "They ignore you."))
+      '((narrate "They ignore you.") (success)))
 
     :search (fn ()
-      (success :message "They ignore you."))
+      '((narrate "They ignore you.") (success)))
 
     :wake (fn ()
-      (success :message "They seem quite awake."))
+      '((narrate "They seem quite awake.") (success)))
 
     :listen (fn ()
-      (success :message "The strange chant never stops. They don't move their lips to make it. It resonates deep within their chests."))
+      '((narrate "The strange chant never stops. They don't move their lips to make it. It resonates deep within their chests.") (success)))
 
     :give (fn (?item)
-      (success :message "They ignore your offer, caught up in something only they can sense."))))
+      '((narrate "They ignore your offer, caught up in something only they can sense.") (success)))))
 
 ; === Urchin Wire (controls urchins, can be cut) ===
 
@@ -155,13 +158,14 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "These are thin, fibrous, ropy growths. They look very tough."))
+      '((focus @urchin-wire "These are thin, fibrous, ropy growths. They look very tough.") (success)))
 
     :follow (fn ()
-      (success :message
-        (str "They go from the "
-             (if (in? @urchins @slots) "slots" "urchins")
-             " down the tunnel.")))
+      `((narrate
+          ,(str "They go from the "
+               (if (in? @urchins @slots) "slots" "urchins")
+               " down the tunnel."))
+        (success)))
 
     :cut (fn (?tool)
       (cond
@@ -172,14 +176,14 @@
             (set @urchins :invisible false)
             (move @urchins @large-chamber)
             (move @urchin-wire nil)
-            (success
-              :message ,(str "You strain and push the two handles of the bolt cutter together with all your strength. At first it looks like nothing will happen, but then, with a loud click, the jaws cut the wire!\n\nThe wire, as though under tension, rapidly begins to curl up, disappearing down the tunnel and away. "
-                             (if (in? @urchins @slots)
-                               "Urchins burst forth from the slots. "
-                               "")
-                             "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you."))))
+            (narrate ,(str "You strain and push the two handles of the bolt cutter together with all your strength. At first it looks like nothing will happen, but then, with a loud click, the jaws cut the wire!\n\nThe wire, as though under tension, rapidly begins to curl up, disappearing down the tunnel and away. "
+                           (if (in? @urchins @slots)
+                             "Urchins burst forth from the slots. "
+                             "")
+                           "The effect on the urchins is electric (perhaps literally). They twitch, jerk spasmodically, and fall to the ground almost in unison. They have lost all interest in you."))
+            (success)))
         ((or (:weapon ?tool) (:tool ?tool))
-          (success :message "That drives the wire into the mud, but doesn't cut it."))
+          '((narrate "That drives the wire into the mud, but doesn't cut it.") (success)))
         (true
           (blocked :reason wrong-tool :message "That won't cut through this wire."))))))
 
@@ -195,30 +199,37 @@
         ((description "Slouching nearby is an urchin. He's a youngish teenager wearing a ski hat, running shoes, and a bulky, suspiciously bumpy, threadbare parka. He's jumpy, and looks suspiciously at you."))))
 
     :examine (fn ()
-      (success :message "This is an urchin. He's a youngish teenager wearing a ski hat, running shoes, and a bulky, suspiciously bumpy, threadbare parka. He's jumpy, and looks suspiciously at you."))
+      '((focus @urchin "This is an urchin. He's a youngish teenager wearing a ski hat, running shoes, and a bulky, suspiciously bumpy, threadbare parka. He's jumpy, and looks suspiciously at you.") (success)))
 
     :smell (fn ()
-      (success :message "He smells damp. There is also a slight odor of fast food."))
+      '((narrate "He smells damp. There is also a slight odor of fast food.") (success)))
 
     :talk-to (fn ()
-      (success :message "\"I don't hafta say anything. I ain't done nothing.\" He seems very nervous about talking to you."))
+      '((say @urchin "I don't hafta say anything. I ain't done nothing.")
+        (narrate "He seems very nervous about talking to you.")
+        (success)))
 
     :ask-about (fn (?topic)
       (cond
         ((= ?topic @urchin)
-          (success :message "\"I just came in to get out of the snow. I wouldn't come in here if it wasn't snowing.\" He seems very nervous about talking to you."))
+          '((say @urchin "I just came in to get out of the snow. I wouldn't come in here if it wasn't snowing.")
+            (narrate "He seems very nervous about talking to you.")
+            (success)))
         ((= ?topic @urchins)
-          (success :message "\"The word is out on the street, man. Don't go to Tech, or you're gonna be gone, ya know? I wouldn't be here myself if I had a warm place to go.\" He seems very nervous about talking to you."))
+          '((say @urchin "The word is out on the street, man. Don't go to Tech, or you're gonna be gone, ya know? I wouldn't be here myself if I had a warm place to go.")
+            (narrate "He seems very nervous about talking to you.")
+            (success)))
         (true
-          (success :message "He doesn't reply. He seems very nervous about talking to you."))))
+          '((narrate "He doesn't reply. He seems very nervous about talking to you.") (success)))))
 
     :attack (fn ()
       (cond
         ((not (:rmung @urchin))
           '((set @urchin :rmung true)
-            (success :message "The urchin backs off, and then draws a very large switchblade out of his parka. He waves it menacingly at you.")))
+            (narrate "The urchin backs off, and then draws a very large switchblade out of his parka. He waves it menacingly at you.")
+            (success)))
         (true
-          (success :message "The urchin laughs in your face, fending you off with his switchblade."))))
+          '((narrate "The urchin laughs in your face, fending you off with his switchblade.") (success)))))
 
     ; Show/give mummified hand -> urchin drops bolt cutters and flees
     :give (fn (?item)
@@ -228,10 +239,14 @@
           '((move @urchin nil)
             (set @bolt-cutters :invisible false)
             (move @bolt-cutters (loc @player))
-            (success
-              :message "The urchin sees the hand twitching. \"I heard what happens around here! I'm not gettin' fed to a monster!\" He lets loose a scream of fear and zooms away. Something drops from beneath his parka as he departs. He slows for a moment, decides not to retrieve it, and is quickly out of sight.")))
+            (narrate "The urchin sees the hand twitching.")
+            (say @urchin "I heard what happens around here! I'm not gettin' fed to a monster!")
+            (narrate "He lets loose a scream of fear and zooms away. Something drops from beneath his parka as he departs. He slows for a moment, decides not to retrieve it, and is quickly out of sight.")
+            (success)))
         (true
-          (success :message "\"You expect me to believe garbage like that?\" the urchin sneers. He seems very nervous about talking to you."))))
+          '((say @urchin "You expect me to believe garbage like that?")
+            (narrate "the urchin sneers. He seems very nervous about talking to you.")
+            (success)))))
 
     :show (fn (?item)
       ; Same as give for the hand
@@ -239,7 +254,7 @@
         ((and (= ?item @mummified-hand) (:person @mummified-hand))
           (redirect :action (do @urchin :give ?item)))
         (true
-          (success :message "The urchin glances at it suspiciously but shows no interest. He seems very nervous about talking to you."))))))
+          '((narrate "The urchin glances at it suspiciously but shows no interest. He seems very nervous about talking to you.") (success)))))))
 
 ; === Urchin Clothes (for examining) ===
 
@@ -249,7 +264,7 @@
   :properties (:nodesc true :trytake true :takeable true)
   :behaviors (
     :examine (fn ()
-      (success :message "It bulges in odd places."))
+      '((focus @urchin-clothes "It bulges in odd places.") (success)))
 
     :take (fn ()
       (blocked :reason refused :message "\"Hey! Keep off, sucker!\""))
@@ -266,12 +281,12 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "This is a heavy duty bolt or chain cutter, standard equipment for local bicycle thieves. It will defeat any but the heaviest bicycle chains."))
+      '((focus @bolt-cutters "This is a heavy duty bolt or chain cutter, standard equipment for local bicycle thieves. It will defeat any but the heaviest bicycle chains.") (success)))
 
     :cut (fn (?target)
       (cond
         ((not ?target)
-          (success :message "What do you want to cut?"))
+          '((narrate "What do you want to cut?") (success)))
         (true
           ; Let the target object handle cutting
           (redirect :action (do ?target :cut @bolt-cutters)))))))

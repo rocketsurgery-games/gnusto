@@ -32,8 +32,8 @@
       (true '((success "A hacker is here.")))))
 
     :examine (fn () (cond
-      ((here? @inner-lair) '((success "He's muddy, wet, and tired looking.")))
-      (true                `((success ,hacker-desc))))) ; Normal state - at his own terminal
+      ((here? @inner-lair) '((focus @hacker "He's muddy, wet, and tired looking.") (success)))
+      (true                `((focus @hacker ,hacker-desc) (success))))) ; Normal state - at his own terminal
 
     :smell (fn () '((success "Either the hacker, his clothing, or both are in need of cleaning.")))
     :listen (fn () '((success "He is humming something. It sounds classical, perhaps Bach?")))

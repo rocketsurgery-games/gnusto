@@ -98,7 +98,8 @@
     :examine (fn ()
       (cond
         ((= (loc @player) @tomb)
-          (success :message "It reads \"The Tomb of the Unknown Tool.\""))
+          '((focus @graffiti "It reads \"The Tomb of the Unknown Tool.\"")
+            (success)))
         (true
           (blocked :reason not-here :message "You don't see any notable graffiti here."))))))
 
@@ -111,8 +112,8 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The padlock has been spray painted many times by graffiti artists. It's currently fluorescent purple. In
+      `((focus @padlock
+          ,(str "The padlock has been spray painted many times by graffiti artists. It's currently fluorescent purple. In
               spite of the many coats of paint, the lock manages to be rusty and, in fact, almost slimy-looking. The padlock is "
              (if (:locked ?self)
                (str "locked"
@@ -120,7 +121,8 @@
                       " to the hatch"
                       ""))
                "unlocked")
-             ".")))
+             "."))
+        (success)))
 
     :take (fn ()
       (cond
@@ -136,7 +138,8 @@
     :unlock (fn ()
       (cond
         ((not (:locked ?self))
-          (success :message "The padlock is already unlocked."))
+          '((narrate "The padlock is already unlocked.")
+            (success)))
         (true
           (blocked :reason need-tool :message "You'll need some way to cut through that lock."))))
 
@@ -145,11 +148,12 @@
         ((not (held? @bolt-cutters))
           (blocked :reason need-tool :message "You don't have anything that could cut through that."))
         ((not (:locked ?self))
-          (success :message "The padlock is already cut open."))
+          '((narrate "The padlock is already cut open.")
+            (success)))
         (true
           '((set ?self :locked false)
             (set @padlock :attached-to nil)
             (move ?self (loc @player))
-            (success :message "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls
-                               to the floor.")))))))
-
+            (narrate "The bolt cutters slice through the rusty hasp with a satisfying crunch. The padlock falls
+                               to the floor.")
+            (success)))))))

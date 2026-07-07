@@ -166,7 +166,7 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message (str "The elevator doors are " (if (:open ?self) "open" "closed") ".")))
+      `((focus @elevator-door ,(str "The elevator doors are " (if (:open ?self) "open" "closed") ".")) (success)))
     :open (fn ()
       (redirect :action (do @open-button :push)))
     :close (fn ()
@@ -181,19 +181,21 @@
   :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
-      (success :message "It's a white button labeled \"OPEN\"."))
+      '((focus @open-button "It's a white button labeled \"OPEN\".") (success)))
     :push (fn ()
       (cond
         ((not (:stopped @cs-elevator-room))
-          (success :message "The elevator is still moving. Nothing happens."))
+          '((narrate "The elevator is still moving. Nothing happens.") (success)))
         ((:open @elevator-door)
           '((queue elevator-door-closes 2)
-            (success :message "The doors stay open.")))
+            (narrate "The doors stay open.")
+            (success)))
         (true
           '((set (door-at-elevator) :open true)
             (set @elevator-door :open true)
             (queue elevator-door-closes 2)
-            (success :message "The doors spring open.")))))))
+            (narrate "The doors spring open.")
+            (success)))))))
 
 ; Close button - closes doors
 (object @close-button
@@ -202,37 +204,39 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a white button labeled \"CLOSE\"."))
+      '((focus @close-button "It's a white button labeled \"CLOSE\".") (success)))
     :push (fn () (cond
       ((not (:stopped @cs-elevator-room))
-        (success :message "The elevator is moving, the door is closed."))
+        '((narrate "The elevator is moving, the door is closed.") (success)))
       ((not (:open @elevator-door))
-        (success :message "The door is already closed."))
+        '((narrate "The door is already closed.") (success)))
       (true
         '((queue elevator-door-closes 2)
-          (success :message "You push the button.")))))))
+          (narrate "You push the button.")
+          (success)))))))
 
 ; Floor buttons (B, 1, 2, 3)
 ; Shared behavior functions for individual floor buttons
 
 (defn floor-button-examine (?button)
   (let ((?floor (prop ?button floor)))
-    (success :message (str "The " (nth floor-names ?floor) " button is "
-                          (if (go-button-pressed? ?floor) "glowing" "dark") "."))))
+    `((focus ,?button ,(str "The " (nth floor-names ?floor) " button is "
+                          (if (go-button-pressed? ?floor) "glowing" "dark") ".")) (success))))
 
 (defn floor-button-push (?button)
   (let ((?floor (prop ?button floor)))
     (cond
       ((= (:floor @cs-elevator-room) ?floor)
-        (success :message "The button doesn't light."))
+        '((narrate "The button doesn't light.") (success)))
       ((go-button-pressed? ?floor)
-        (success :message "That button is already glowing."))
+        '((narrate "That button is already glowing.") (success)))
       (true
         (let ((?new-buttons (list-set (:go-buttons @cs-elevator-room) ?floor true)))
           (pick-direction)  ; Sets (:direction @cs-elevator-room)
           `((set @cs-elevator-room :go-buttons ,?new-buttons)
             (queue elevator-moves 1)
-            (success :message ,(str "The button for the " (nth floor-names ?floor) " begins to glow."))))))))
+            (narrate ,(str "The button for the " (nth floor-names ?floor) " begins to glow."))
+            (success)))))))
 
 ; Shared behaviors for individual floor buttons
 (def floor-button-behaviors
@@ -253,8 +257,8 @@
                                         nil))
                             (range 4))))
         (if (empty? ?glowing)
-          (success :message "The floor buttons are labeled B, 1, 2, and 3. None are glowing.")
-          (success :message (str "The floor buttons are labeled B, 1, 2, and 3. Glowing: " (join ", " ?glowing) ".")))))))
+          '((focus @floor-button "The floor buttons are labeled B, 1, 2, and 3. None are glowing.") (success))
+          `((focus @floor-button ,(str "The floor buttons are labeled B, 1, 2, and 3. Glowing: " (join ", " ?glowing) ".")) (success)))))))
 
 (object @basement-button
   :description "B button"
@@ -286,9 +290,9 @@
   :location @cs-elevator-room
   :properties (:nodesc true )
   :behaviors (
-    :examine (fn () (success :message "A red button labeled \"ALARM\"."))
+    :examine (fn () '((focus @alarm-button "A red button labeled \"ALARM\".") (success)))
     :push (fn ()
-      (success :message "For as long as you hold the button down, an ear-splitting alarm bell rings."))))
+      '((narrate "For as long as you hold the button down, an ear-splitting alarm bell rings.") (success)))))
 
 ; Stop switch - does nothing
 (object @stop-switch
@@ -296,10 +300,10 @@
   :location @cs-elevator-room
   :properties (:nodesc true)
   :behaviors (
-    :examine (fn () (success :message "A small switch labeled \"STOP\"."))
-    :turn (fn () (success :message "You flip the switch, but nothing happens."))
-    :turn-on (fn () (success :message "You flip the switch, but nothing happens."))
-    :turn-off (fn () (success :message "You flip the switch, but nothing happens."))))
+    :examine (fn () '((focus @stop-switch "A small switch labeled \"STOP\".") (success)))
+    :turn (fn () '((narrate "You flip the switch, but nothing happens.") (success)))
+    :turn-on (fn () '((narrate "You flip the switch, but nothing happens.") (success)))
+    :turn-off (fn () '((narrate "You flip the switch, but nothing happens.") (success)))))
 
 ; Access panel
 (object @access-panel
@@ -317,7 +321,7 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message (str "A small access panel in the wall. It is " (if (:open ?self) "open" "closed") ".")))))
+      `((focus @access-panel ,(str "A small access panel in the wall. It is " (if (:open ?self) "open" "closed") ".")) (success)))))
 
 ; === Call Buttons (outside elevator on each floor) ===
 
@@ -330,26 +334,28 @@
     :examine (fn ()
       (let ((?floor (prop (loc @player) floor)))
         (if (and ?floor (up-button-pressed? ?floor))
-          (success :message "The up-arrow is glowing.")
-          (success :message "A white button with an up arrow."))))
+          '((focus @up-button "The up-arrow is glowing.") (success))
+          '((focus @up-button "A white button with an up arrow.") (success)))))
     :push (fn ()
       (let ((?floor (prop (loc @player) floor)))
         (cond
           ((nil? ?floor)
             (blocked :reason no-floor :message "There's no elevator here."))
           ((up-button-pressed? ?floor)
-            (success :message "That button is already glowing."))
+            '((narrate "That button is already glowing.") (success)))
           ((and (:stopped @cs-elevator-room) (= ?floor (:floor @cs-elevator-room)))
             ; Elevator is here - just open the doors
             '((queue elevator-door-opens 1)
-              (success :message "You push the up-arrow.")))
+              (narrate "You push the up-arrow.")
+              (success)))
           (true
             ; Call the elevator
             (let ((?new-buttons (list-set (:up-buttons @cs-elevator-room) ?floor true)))
               (pick-direction)
               `((set @cs-elevator-room :up-buttons ,?new-buttons)
                 (queue elevator-moves 1)
-                (success :message "The up-arrow begins to glow.")))))))))
+                (narrate "The up-arrow begins to glow.")
+                (success)))))))))
 
 ; Down arrow button - calls elevator to come down
 (object @down-button
@@ -360,26 +366,28 @@
     :examine (fn ()
       (let ((?floor (prop (loc @player) floor)))
         (if (and ?floor (down-button-pressed? ?floor))
-          (success :message "The down-arrow is glowing.")
-          (success :message "A white button with a down arrow."))))
+          '((focus @down-button "The down-arrow is glowing.") (success))
+          '((focus @down-button "A white button with a down arrow.") (success)))))
     :push (fn ()
       (let ((?floor (prop (loc @player) floor)))
         (cond
           ((nil? ?floor)
             (blocked :reason no-floor :message "There's no elevator here."))
           ((down-button-pressed? ?floor)
-            (success :message "That button is already glowing."))
+            '((narrate "That button is already glowing.") (success)))
           ((and (:stopped @cs-elevator-room) (= ?floor (:floor @cs-elevator-room)))
             ; Elevator is here - just open the doors
             '((queue elevator-door-opens 1)
-              (success :message "You push the down-arrow.")))
+              (narrate "You push the down-arrow.")
+              (success)))
           (true
             ; Call the elevator
             (let ((?new-buttons (list-set (:down-buttons @cs-elevator-room) ?floor true)))
               (pick-direction)
               `((set @cs-elevator-room :down-buttons ,?new-buttons)
                 (queue elevator-moves 1)
-                (success :message "The down-arrow begins to glow.")))))))))
+                (narrate "The down-arrow begins to glow.")
+                (success)))))))))
 
 ; === Elevator Doors (one per floor) ===
 ; All doors share common behavior functions - each door has a :floor property.
@@ -387,8 +395,8 @@
 (defn elevator-door-examine (?door)
   (let ((?floor (prop ?door floor))
         (?here (elevator-at-floor? ?floor)))
-    (success :message (str "The elevator doors are " (if (:open ?door) "open" "closed") "."
-                          (if (and (:open ?door) ?here) " The elevator is beyond." "")))))
+    `((focus ,?door ,(str "The elevator doors are " (if (:open ?door) "open" "closed") "."
+                          (if (and (:open ?door) ?here) " The elevator is beyond." ""))) (success))))
 
 (defn elevator-door-open (?door)
   (let ((?floor (prop ?door floor)))
@@ -402,7 +410,8 @@
         '((set ?self :open true)
           (set @elevator-door :open true)
           (queue elevator-door-closes 2)
-          (success :message "The doors slide open."))))))
+          (narrate "The doors slide open.")
+          (success))))))
 
 (defn elevator-door-close (?door)
   (cond
@@ -412,7 +421,8 @@
       ; Note: ?door = ?self when called from behaviors
       '((set ?self :open false)
         (set @elevator-door :open false)
-        (success :message "The doors slide closed.")))))
+        (narrate "The doors slide closed.")
+        (success)))))
 
 (defn elevator-door-through (?door)
   (let ((?floor (prop ?door floor)))

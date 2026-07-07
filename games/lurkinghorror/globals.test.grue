@@ -15,52 +15,52 @@
 (test "examine yourself"
   (do @me :examine)
   (assert (outcome? success))
-  (assert (context? message "You look tired but determined.")))
+  (assert (output? "You look tired but determined.")))
 
 (test "examine hands"
   (do @hands :examine)
   (assert (outcome? success))
-  (assert (context? message "They're still attached to your wrists.")))
+  (assert (output? "They're still attached to your wrists.")))
 
 (test "examine feet"
   (do @feet :examine)
   (assert (outcome? success))
-  (assert (context? message "They're at the ends of your legs, as usual.")))
+  (assert (output? "They're at the ends of your legs, as usual.")))
 
 (test "examine head"
   (do @head :examine)
   (assert (outcome? success))
-  (assert (context? message "It's on your shoulders.")))
+  (assert (output? "It's on your shoulders.")))
 
 (test "open eyes"
   (do @eyes :open)
   (assert (outcome? success))
-  (assert (context? message "They are.")))
+  (assert (output? "They are.")))
 
 (test "close eyes"
   (do @eyes :close)
   (assert (outcome? success))
-  (assert (context? message "That won't help.")))
+  (assert (output? "That won't help.")))
 
 (test "listen to yourself"
   (do @me :listen)
   (assert (outcome? success))
-  (assert (context? message "Yes?")))
+  (assert (output? "Yes?")))
 
 (test "wake yourself"
   (do @me :wake)
   (assert (outcome? success))
-  (assert (context? message "You already are.")))
+  (assert (output? "You already are.")))
 
 (test "follow yourself"
   (do @me :follow)
   (assert (outcome? success))
-  (assert (context? message "You're getting ahead of yourself.")))
+  (assert (output? "You're getting ahead of yourself.")))
 
 (test "examine wall"
   (do @wall :examine)
   (assert (outcome? success))
-  (assert (context? message "It looks like a wall.")))
+  (assert (output? "It looks like a wall.")))
 
 (test "push wall"
   (do @wall :push)
@@ -69,17 +69,17 @@
 (test "examine north wall"
   (do @north-wall :examine)
   (assert (outcome? success))
-  (assert (context? message "It looks like a wall.")))
+  (assert (output? "It looks like a wall.")))
 
 (test "examine ground"
   (do @ground :examine)
   (assert (outcome? success))
-  (assert (context? message "It's still there.")))
+  (assert (output? "It's still there.")))
 
 (test "look under ground"
   (do @ground :look-under)
   (assert (outcome? success))
-  (assert (context? message "You never did master X-rays. Freshman physics was such a drag.")))
+  (assert (output? "You never did master X-rays. Freshman physics was such a drag.")))
 
 (test "climb ground"
   (do @ground :climb)
@@ -88,28 +88,28 @@
 (test "ceiling look under"
   (do @ceiling :look-under)
   (assert (outcome? success))
-  (assert (context? message "You look around the room.")))
+  (assert (output? "You look around the room.")))
 
 (test "examine air"
   (do @air :examine)
   (assert (outcome? success))
-  (assert (context? message "You see nothing special about the air.")))
+  (assert (output? "You see nothing special about the air.")))
 
 (test "examine dirt"
   (do @dirt :examine)
   (assert (outcome? success))
-  (assert (context? message "You see nothing special about the dirt.")))
+  (assert (output? "You see nothing special about the dirt.")))
 
 (test "examine noise"
   (do @noise :examine)
   (assert (outcome? success))
-  (assert (context? message "You see nothing special about the noise.")))
+  (assert (output? "You see nothing special about the noise.")))
 
 (test "turn on light when already lit"
   :setup ((set @terminal-room :lit true))
   (do @light :turn-on)
   (assert (outcome? success))
-  (assert (context? message "It's already light.")))
+  (assert (output? "It's already light.")))
 
 (test "turn off light"
   (do @light :turn-off)
@@ -119,30 +119,30 @@
   :setup ((move @player @courtyard))
   (do @snow :examine)
   (assert (outcome? success))
-  (assert (context? message "It's still coming down.")))
+  (assert (output? "It's still coming down.")))
 
 (test "examine snow inside"
   :setup ((move @player @terminal-room) (set @terminal-room :outside false))
   (do @snow :examine)
   (assert (outcome? success))
-  (assert (context? message "You are inside.")))
+  (assert (output? "You are inside.")))
 
 (test "find sleep"
   (do @global-sleep :find)
   (assert (outcome? success))
-  (assert (context? message "Sleep anywhere.")))
+  (assert (output? "Sleep anywhere.")))
 
 (test "examine room"
   (do @global-room :examine)
   (assert (outcome? success))
-  (assert (context? message "You look around the room.")))
+  (assert (output? "You look around the room.")))
 
 (test "reach in hole"
   (do @global-hole :reach-in)
   (assert (outcome? success))
-  (assert (context? message "You find nothing of interest.")))
+  (assert (output? "You find nothing of interest.")))
 
 (test "walk to corridor"
   (do @corridor :walk-to)
   (assert (outcome? success))
-  (assert (context? message "Walking around reveals nothing new. To move elsewhere, just type the desired direction.")))
+  (assert (output? "Walking around reveals nothing new. To move elsewhere, just type the desired direction.")))

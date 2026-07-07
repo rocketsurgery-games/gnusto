@@ -20,26 +20,28 @@
             "A disabled floor waxer looms nearby.")))))
 
     :examine (fn ()
-      (success :message
-        (str "It's a large floor waxer, big enough to ride in"
-             (if (= (loc @maintenance-man) @floor-waxer)
-               (str ", and in fact there is a maintenance man riding it")
-               "")
-             ". It actually looks sort of like a small bulldozer. "
-             (if (:severed @power-cord)
-               "Its power cord has been severed."
-               "A thick power cord leads from here to a wall socket somewhere to the west."))))
+      `((focus @floor-waxer
+          ,(str "It's a large floor waxer, big enough to ride in"
+               (if (= (loc @maintenance-man) @floor-waxer)
+                 (str ", and in fact there is a maintenance man riding it")
+                 "")
+               ". It actually looks sort of like a small bulldozer. "
+               (if (:severed @power-cord)
+                 "Its power cord has been severed."
+                 "A thick power cord leads from here to a wall socket somewhere to the west.")))
+        (success)))
 
     :listen (fn ()
       (cond
         ((:severed @power-cord)
-          (success :message "It's silent now."))
+          '((narrate "It's silent now.") (success)))
         (true
-          (success :message
-            (str "It makes a ghastly whirring, whining sound."
-                 (if (= (loc @floor-waxer) (loc @player))
-                   " This close, it's almost unbearable."
-                   ""))))))
+          `((narrate
+              ,(str "It makes a ghastly whirring, whining sound."
+                   (if (= (loc @floor-waxer) (loc @player))
+                     " This close, it's almost unbearable."
+                     "")))
+            (success)))))
 
     :board (fn ()
       (cond
@@ -71,15 +73,15 @@
     :examine (fn ()
       (cond
         ((:severed @power-cord)
-          (success :message "The maintenance man is very annoyed with you."))
+          '((focus @maintenance-man "The maintenance man is very annoyed with you.") (success)))
         (true
-          (success :message "He looks tired, bored, almost zombie-like."))))
+          '((focus @maintenance-man "He looks tired, bored, almost zombie-like.") (success)))))
 
     :ask-about (fn (?topic)
-      (success :message "He doesn't react."))
+      '((narrate "He doesn't react.") (success)))
 
     :tell-about (fn (?topic)
-      (success :message "He doesn't react."))
+      '((narrate "He doesn't react.") (success)))
 
     :attack (fn ()
       (cond
@@ -95,13 +97,15 @@
             ((= (loc @floor-wax) (loc @maintenance-man))
               ; He's slipping - hard to hit
               '((move @axe (loc @maintenance-man))
-                (success :message "The axe misses by a mile as the maintenance man slips again!")))
+                (narrate "The axe misses by a mile as the maintenance man slips again!")
+                (success)))
             (true
               ; Direct hit - kills him
               '((move @maintenance-man nil)
                 (move @axe (loc @player))
                 (dequeue maint-attack)
-                (success :message "The axe strikes the maintenance man in the side of the neck and his head comes cleanly off. The head bounces once and rolls. As it rolls, it begins to shrink and to change in color. Small hairless bodies flee from the remains of the corpse and scatter into the darkness. You stand there, covered with unspeakable ichor, still clutching the axe. There's nothing much left of the maintenance man but some puddled clothes.")))))))))
+                (narrate "The axe strikes the maintenance man in the side of the neck and his head comes cleanly off. The head bounces once and rolls. As it rolls, it begins to shrink and to change in color. Small hairless bodies flee from the remains of the corpse and scatter into the darkness. You stand there, covered with unspeakable ichor, still clutching the axe. There's nothing much left of the maintenance man but some puddled clothes.")
+                (success)))))))))
 
 ; ============================================================
 ; POWER CORD
@@ -116,15 +120,16 @@
     :examine (fn ()
       (cond
         ((:severed @power-cord)
-          (success :message "The thick power cord terminates in a severed stump."))
+          '((focus @power-cord "The thick power cord terminates in a severed stump.") (success)))
         (true
           (let ((?waxer-loc (loc @floor-waxer)))
-            (success :message
-              (str "It's a thick black power cord. It runs from a plug on the wall here "
-                   (cond
-                     ((= ?waxer-loc (loc @player)) "to a large floor waxer.")
-                     ((or (= ?waxer-loc @inf-1) (= ?waxer-loc @inf-2)) "away to the east.")
-                     (true "away to the west."))))))))
+            `((focus @power-cord
+                ,(str "It's a thick black power cord. It runs from a plug on the wall here "
+                     (cond
+                       ((= ?waxer-loc (loc @player)) "to a large floor waxer.")
+                       ((or (= ?waxer-loc @inf-1) (= ?waxer-loc @inf-2)) "away to the east.")
+                       (true "away to the west."))))
+              (success))))))
 
     :take (fn ()
       (blocked :reason immovable
@@ -142,7 +147,8 @@
           '((set @power-cord :severed true)
             (dequeue waxer-moves)
             (queue maint-attack 2)
-            (success :message "The axe crashes against the floor, and the power cord severs! The whine of the floor waxer slows, and the maintenance man jerks to alertness.")))))))
+            (narrate "The axe crashes against the floor, and the power cord severs! The whine of the floor waxer slows, and the maintenance man jerks to alertness.")
+            (success)))))))
 
 ; ============================================================
 ; PLASTIC CONTAINER & FLOOR WAX
@@ -156,14 +162,15 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "It's a plain plastic container with something written on it. "
-             (if (= (loc @floor-wax) ?self)
-               "Inside is some viscous liquid."
-               "It appears to be empty."))))
+      `((focus @plastic-container
+          ,(str "It's a plain plastic container with something written on it. "
+               (if (= (loc @floor-wax) ?self)
+                 "Inside is some viscous liquid."
+                 "It appears to be empty.")))
+        (success)))
 
     :read (fn ()
-      (success :message "\"Frobozz Magic Floor Wax (and Dessert Topping)\""))))
+      '((narrate "\"Frobozz Magic Floor Wax (and Dessert Topping)\"") (success)))))
 
 (object @floor-wax
   :location @plastic-container
@@ -181,11 +188,11 @@
     :examine (fn ()
       (cond
         ((= (loc ?self) @plastic-container)
-          (success :message "It's a viscous, smelly liquid."))
+          '((focus @floor-wax "It's a viscous, smelly liquid.") (success)))
         ((= (loc ?self) (loc @player))
-          (success :message "The floor is covered from wall to wall with slippery floor wax."))
+          '((focus @floor-wax "The floor is covered from wall to wall with slippery floor wax.") (success)))
         (true
-          (success :message "It's a viscous, smelly liquid."))))
+          '((focus @floor-wax "It's a viscous, smelly liquid.") (success)))))
 
     :pour (fn ()
       (cond
@@ -199,7 +206,7 @@
           (let ((?here (loc @player))
                 (?mm-here (= (loc @maintenance-man) ?here)))
             `((move @floor-wax ,?here)
-              (success :message
+              (narrate
                 ,(str "You pour the floor wax all over the floor. It spreads like ants at a picnic."
                       (if (not (:outside ?here))
                         " The floor is now covered from wall to wall with slippery floor wax."
@@ -208,7 +215,8 @@
                         (str " The maintenance man, attempting to get closer to you, enters the "
                              "waxed part of the floor. He begins to slip and slide, barely able "
                              "to maintain his balance, much less advance.")
-                        ""))))))))))
+                        "")))
+              (success))))))))
 
 ; ============================================================
 ; EMERGENCY CABINET & AXE
@@ -229,18 +237,19 @@
                "glass-fronted emergency cabinet here.")))))
 
     :examine (fn ()
-      (success :message
-        (str "It's one of those little cabinets you see in institutional buildings that "
-             "usually contains a fire hose and a fire axe. "
-             (if (= (loc @axe) ?self) "This one seems to only have an axe. " "")
-             "It "
-             (if (:rmung ?self) "had" "has")
-             " a transparent window"
-             (if (:rmung ?self) " but apparently some vandal smashed it" "")
-             ". There is writing on the cabinet.")))
+      `((focus @emergency-cabinet
+          ,(str "It's one of those little cabinets you see in institutional buildings that "
+               "usually contains a fire hose and a fire axe. "
+               (if (= (loc @axe) ?self) "This one seems to only have an axe. " "")
+               "It "
+               (if (:rmung ?self) "had" "has")
+               " a transparent window"
+               (if (:rmung ?self) " but apparently some vandal smashed it" "")
+               ". There is writing on the cabinet."))
+        (success)))
 
     :read (fn ()
-      (success :message "\"In case of emergency, break glass.\""))
+      '((narrate "\"In case of emergency, break glass.\"") (success)))
 
     :open (fn ()
       (cond
@@ -248,23 +257,24 @@
           (blocked :reason read-sign
             :message "You should read the sign."))
         (true
-          (success :message "It's already open."))))
+          '((narrate "It's already open.") (success)))))
 
     :look-inside (fn ()
       (cond
         ((= (loc @axe) ?self)
-          (success :message "Inside the cabinet you see a fire axe."))
+          '((narrate "Inside the cabinet you see a fire axe.") (success)))
         (true
-          (success :message "The cabinet is empty."))))
+          '((narrate "The cabinet is empty.") (success)))))
 
     :break (fn ()
       (cond
         ((:rmung ?self)
-          (success :message "The cabinet is already smashed."))
+          '((narrate "The cabinet is already smashed.") (success)))
         ((held? @gloves)
           '((set @emergency-cabinet :open true)
             (set @emergency-cabinet :rmung true)
-            (success :message "Wearing the heavy gloves, you confidently smash the glass with a blow of your hands!")))
+            (narrate "Wearing the heavy gloves, you confidently smash the glass with a blow of your hands!")
+            (success)))
         (true
           (blocked :reason bare-hands
             :message "You hit at the glass with your hands, but you can't hit hard enough to break it: you might cut yourself on the glass."))))
@@ -316,7 +326,8 @@
                 ; No wax - he blocks
                 (true
                   '((queue maint-descend)
-                    (success :message "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer and blocks your way.")))))
+                    (narrate "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer and blocks your way.")
+                    (success)))))
             ; Cord not severed - waxer blocks
             (true
               (blocked :reason waxer-blocking

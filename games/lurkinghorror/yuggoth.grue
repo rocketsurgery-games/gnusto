@@ -81,10 +81,12 @@
       ((= (loc @player) @yuggoth)
         ; bowl-room's on-enter re-queues yuggoth-advance
         '((move @player @bowl-room)
-          (success :context ((description "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise.")))))
+          (narrate "From below, a low noise begins, and slowly builds. You feel yourself drawn downward by the noise.")
+          (success)))
       ((= (loc @player) @bowl-room)
         '((move @player @platform-room)
-          (success :context ((description "The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise.")))))
+          (narrate "The crowd around you begins to sway and groan. They are expecting something. You are drawn forward by the noise.")
+          (success)))
       (true
         '((dequeue yuggoth-advance)
           (success)))))
@@ -97,7 +99,8 @@
   :properties (:nodesc true :vehicle true :surface true)
   :behaviors (
     :examine (fn ()
-      (success :message "The platform is made of the same rocks as the surrounding terrain. In fact, you can't tell whether it is natural or constructed."))
+      '((focus @platform "The platform is made of the same rocks as the surrounding terrain. In fact, you can't tell whether it is natural or constructed.")
+        (success)))
 
     :enter (fn ()
       (cond
@@ -124,7 +127,8 @@
           (success :context ((description "A smooth, shiny stone lies here."))))))
 
     :examine (fn ()
-      (success :message "It's a smooth, shiny piece of what might be obsidian. Scratched on it is a symbol."))
+      '((focus @smooth-stone "It's a smooth, shiny piece of what might be obsidian. Scratched on it is a symbol.")
+        (success)))
 
     :take (fn ()
       (cond
@@ -133,13 +137,15 @@
           '((set ?self :touched true)
             (move ?self @player)
             (queue lurker-appears)
-            (success :message "You pick up the stone. It feels warm in your hand.")))
+            (narrate "You pick up the stone. It feels warm in your hand.")
+            (success)))
         ; Normal take elsewhere
         (true
           (default))))
 
     :rub (fn ()
-      (success :message "The stone is smooth and cool."))))
+      '((narrate "The stone is smooth and cool.")
+        (success)))))
 
 (object @stone-symbol
   :location @smooth-stone
@@ -148,7 +154,8 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The symbol appears carved into the smooth stone, perhaps with a claw. It depicts something that hurts to look at directly."))
+      '((focus @stone-symbol "The symbol appears carved into the smooth stone, perhaps with a claw. It depicts something that hurts to look at directly.")
+        (success)))
 
     :read (fn ()
       (redirect :action (do ?self :examine)))))
@@ -172,15 +179,19 @@
     :examine (fn ()
       (cond
         ((> (:count @lurker) 1)
-          (success :message "It is large, smooth and yet scaly. It has too many limbs, and they are not in the right places. To look at it gives you a headache."))
+          '((focus @lurker "It is large, smooth and yet scaly. It has too many limbs, and they are not in the right places. To look at it gives you a headache.")
+            (success)))
         (true
-          (success :message "You see a visible darkness, in a shape not easily grasped."))))
+          '((focus @lurker "You see a visible darkness, in a shape not easily grasped.")
+            (success)))))
 
     :smell (fn ()
-      (success :message "The thing gives off a charnel stench."))
+      '((narrate "The thing gives off a charnel stench.")
+        (success)))
 
     :talk-to (fn ()
-      (success :message "There is no response. You are not even sure that you produced any sound when you spoke."))))
+      '((narrate "There is no response. You are not even sure that you produced any sound when you spoke.")
+        (success)))))
 
 ; === Lurker Appears Event ===
 ; 3-stage event triggered by taking the smooth-stone.
@@ -192,20 +203,22 @@
       1 '((set @lurker :count 1)
           (move @lurker @platform-room)
           (queue lurker-appears)
-          (success :context ((description "Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens."))))
+          (narrate "Suddenly, the dimness becomes darkness, and the crowd around you explodes with excitement. You are jostled and shoved from all sides. A low keening begins, building into a deafening, almost mechanical chant. The darkness before you compacts and deepens.")
+          (success))
 
       2 '((set @lurker :count 2)
           (queue lurker-appears)
-          (success :context ((description "The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand."))))
+          (narrate "The darkness before you, now visible, is a creature. It towers over the now-silent crowd. The thing jerks this way and that, spraying a foul ichor. Its palps twitch expectantly, then pound impatiently against the rock. You can feel the smooth stone vibrating in your hand.")
+          (success))
 
       3 '((dequeue lurker-appears)
           (move @lurker nil)
           (set @lurker :count 0)
           (move @player @terminal-room)
-          (success :context ((description "The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.")
-                            (transition "You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand."))))
+          (emphasize "The thing now turns, sensing the presence of the stone. It quests almost blindly for it, then those surrounding you thrust you forward. The thing stoops, its mandibles grasping you. You are lifted towards its gaping maw. The stench and the sounds issuing from it are overwhelming, and you fall unconscious.")
+          (splash "You awaken with a start, sitting in a chair in the terminal room. The stone is still clutched in your hand.")
+          (success))
 
       ; Fallback
       '((dequeue lurker-appears)
         (success))))
-

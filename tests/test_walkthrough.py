@@ -7,10 +7,11 @@ Each test section corresponds to a part of the walkthrough.
 Bugs discovered here should be filed as type=bug with LH tag.
 """
 
-import pytest
 from pathlib import Path
 
-from grue import load_grue, GrueRuntime
+import pytest
+
+from grue import GrueRuntime, load_grue
 
 
 @pytest.fixture
@@ -56,13 +57,15 @@ class TestPart1TerminalRoom:
         """Can examine the hacker."""
         result = game.do("@hacker", "examine")
         assert result.outcome == "success"
-        # Should get descriptive text
-        assert result.context, "Examine should return context"
+        # Descriptive text now flows through the output stream (gnusto-7256).
+        assert result.output, "Examine should produce output"
 
     def test_login_to_pc(self, game):
         """Can login to the PC."""
         result = game.do("@pc", "turn-on")
-        assert result.outcome in ("success", "blocked"), f"Unexpected outcome: {result.outcome}"
+        assert result.outcome in ("success", "blocked"), (
+            f"Unexpected outcome: {result.outcome}"
+        )
         # Note: Actual login sequence may need specific commands
 
 
@@ -205,9 +208,9 @@ class TestPart3Basement:
     def test_can_reach_aero_basement(self, game):
         """Can navigate to aero basement via stairs."""
         game.do("_movement", "go", "south")  # cs-2nd
-        game.do("_movement", "go", "down")   # comp-center
-        game.do("_movement", "go", "down")   # cs-basement
-        game.do("_movement", "go", "west")   # aero-basement
+        game.do("_movement", "go", "down")  # comp-center
+        game.do("_movement", "go", "down")  # cs-basement
+        game.do("_movement", "go", "west")  # aero-basement
 
         assert game.get_player_location() == "@aero-basement"
         assert "@forklift" in game.get_visible_objects()
@@ -217,9 +220,9 @@ class TestPart3Basement:
         game.do("_movement", "go", "south")
         game.do("_movement", "go", "down")
         game.do("_movement", "go", "down")
-        game.do("_movement", "go", "west")   # aero-basement
-        game.do("_movement", "go", "west")   # aero-stairs
-        game.do("_movement", "go", "up")     # aero-lobby
+        game.do("_movement", "go", "west")  # aero-basement
+        game.do("_movement", "go", "west")  # aero-stairs
+        game.do("_movement", "go", "up")  # aero-lobby
         game.do("_movement", "go", "south")  # inf-1
 
         assert game.get_player_location() == "@inf-1"
@@ -251,7 +254,9 @@ class TestPart3Basement:
                     result = game.do("_movement", "go", "east")
                 else:
                     break  # Different kind of block, stop retrying
-            assert result.outcome == "success", f"Failed at {game.get_player_location()}"
+            assert result.outcome == "success", (
+                f"Failed at {game.get_player_location()}"
+            )
 
         assert game.get_player_location() == "@inf-5"
 
@@ -281,11 +286,11 @@ class TestPart4Chemistry:
     def _navigate_to_chemistry(self, game):
         """Navigate from terminal room to chemistry building."""
         game.do("_movement", "go", "south")  # cs-2nd
-        game.do("_movement", "go", "down")   # comp-center
-        game.do("_movement", "go", "down")   # cs-basement
-        game.do("_movement", "go", "west")   # aero-basement
-        game.do("_movement", "go", "west")   # aero-stairs
-        game.do("_movement", "go", "up")     # aero-lobby
+        game.do("_movement", "go", "down")  # comp-center
+        game.do("_movement", "go", "down")  # cs-basement
+        game.do("_movement", "go", "west")  # aero-basement
+        game.do("_movement", "go", "west")  # aero-stairs
+        game.do("_movement", "go", "up")  # aero-lobby
         game.do("_movement", "go", "south")  # inf-1
 
         # Traverse infinite corridor, waiting for waxer if needed
@@ -390,11 +395,11 @@ class TestPart5Hand:
         """Navigate from terminal room to Brown Building dome."""
         # Terminal room -> cs-2nd -> comp-center -> cs-basement -> aero-basement
         game.do("_movement", "go", "south")  # cs-2nd
-        game.do("_movement", "go", "down")   # comp-center
-        game.do("_movement", "go", "down")   # cs-basement
-        game.do("_movement", "go", "west")   # aero-basement
-        game.do("_movement", "go", "west")   # aero-stairs
-        game.do("_movement", "go", "up")     # aero-lobby
+        game.do("_movement", "go", "down")  # comp-center
+        game.do("_movement", "go", "down")  # cs-basement
+        game.do("_movement", "go", "west")  # aero-basement
+        game.do("_movement", "go", "west")  # aero-stairs
+        game.do("_movement", "go", "up")  # aero-lobby
 
         # Traverse infinite corridor to inf-5 (waxer may block)
         game.do("_movement", "go", "south")  # inf-1
@@ -403,10 +408,10 @@ class TestPart5Hand:
 
         # inf-5 -> nutrition-bldg (also via waxer barrier)
         self._wait_for_waxer(game, "north")  # nutrition-bldg
-        game.do("_movement", "go", "down")   # brown-tunnel
-        game.do("_movement", "go", "se")     # brown-basement
-        game.do("_movement", "go", "up")     # brown-building
-        game.do("_movement", "go", "up")     # brown-top-floor
+        game.do("_movement", "go", "down")  # brown-tunnel
+        game.do("_movement", "go", "se")  # brown-basement
+        game.do("_movement", "go", "up")  # brown-building
+        game.do("_movement", "go", "up")  # brown-top-floor
 
     def test_can_navigate_to_brown_building(self, game):
         """Can navigate from terminal room to Brown Building top floor."""
@@ -448,8 +453,8 @@ class TestPart5Hand:
 
         game.do("@roof-door", "unlock", "@master-key")
         game.do("@roof-door", "open")
-        game.do("_movement", "go", "west")   # brown-roof
-        game.do("_movement", "go", "up")     # inside-dome
+        game.do("_movement", "go", "west")  # brown-roof
+        game.do("_movement", "go", "up")  # inside-dome
 
         assert game.get_player_location() == "@inside-dome"
         # Tub is NDESCBIT (scenery) so check it exists via do
@@ -469,9 +474,9 @@ class TestPart5Hand:
         # Search the tub
         result = game.do("@tub", "search")
         assert result.outcome == "success"
-        # Check message is in context
-        context_dict = dict(result.context)
-        assert "hand" in context_dict.get("message", "").lower()
+        # Descriptive text now flows through the output stream (gnusto-7256).
+        output_text = " ".join(text for (_t, _e, text) in result.output).lower()
+        assert "hand" in output_text
 
         # Hand should now be in tub (visible via its location)
         hand = game.state.objects.get("@mummified-hand")
@@ -561,14 +566,17 @@ class TestPart6SteamTunnels:
 
     Blocked by infinite corridor traversal issues.
     """
+
     pass  # TODO
 
 
 class TestPart7Maze:
     """Part 7: The Maze (Lair)."""
+
     pass  # TODO
 
 
 class TestPart8FinalBattle:
     """Part 8: Final Battle."""
+
     pass  # TODO

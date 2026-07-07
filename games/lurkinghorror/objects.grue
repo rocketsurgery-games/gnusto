@@ -32,12 +32,12 @@
     :examine (fn ()
       (cond
         ((and (in? @chinese-food @carton) (> (prop @chinese-food heat) 8))
-         (success :message "It's a Chinese food carton with a symbol on the front. The carton feels warm."))
+         '((focus @carton "It's a Chinese food carton with a symbol on the front. The carton feels warm.") (success)))
         (true
-         (success :message "It's a Chinese food carton with a symbol on the front."))))
+         '((focus @carton "It's a Chinese food carton with a symbol on the front.") (success)))))
 
     :read (fn ()
-      (success :message "The symbol doesn't look like Chinese, English, or any other language you know. It looks more like an occult symbol."))
+      '((narrate "The symbol doesn't look like Chinese, English, or any other language you know. It looks more like an occult symbol.") (success)))
 
     :eat (fn ()
       (blocked :reason inedible
@@ -61,8 +61,8 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message (str "This is a carton of " (heat-desc ?self)
-        " Szechuan shrimp. Lovely red peppers poke out of the sauce.")))
+      `((focus @chinese-food ,(str "This is a carton of " (heat-desc ?self)
+        " Szechuan shrimp. Lovely red peppers poke out of the sauce.")) (success)))
 
     :take (fn ()
       (cond
@@ -71,16 +71,17 @@
            :message "If you take it out, it will spill all over you. Why not take the carton instead?"))
         (true
          '((take ?self)
-           (success :message "Taken.")))))
+           (narrate "Taken.")
+           (success)))))
 
     :eat (fn ()
       `((move ?self nil)
-        (success
-          :message ,(str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
-                         ". You immediately want to drink something to wash it down."))))
+        (narrate ,(str "It's very (chemically) hot, spicy, and " (heat-desc ?self)
+                       ". You immediately want to drink something to wash it down."))
+        (success)))
 
     :taste (fn ()
-      (success :message (str "It's very (chemically) hot, spicy, and " (heat-desc ?self) ".")))))
+      `((narrate ,(str "It's very (chemically) hot, spicy, and " (heat-desc ?self) ".")) (success)))))
 
 (object @snack
   :description "package of Funny Bones"
@@ -96,10 +97,10 @@
                            (str "an open, " (heat-desc ?self))
                            "an open"))
                       (true "a"))))
-        (success :message (str "This is " ?state " package of Funny Bones, a snack food made with peanut butter and chocolate cake."))))
+        `((focus @snack ,(str "This is " ?state " package of Funny Bones, a snack food made with peanut butter and chocolate cake.")) (success))))
 
     :read (fn ()
-      (success :message "The wrapper says \"Funny Bones\" in colorful letters."))
+      '((narrate "The wrapper says \"Funny Bones\" in colorful letters.") (success)))
 
     :open (fn ()
       (cond
@@ -107,7 +108,8 @@
          (blocked :reason already-open :message "It's already open."))
         (true
          '((set ?self :open true)
-           (success :message "You open the package, revealing yummy junk food inside.")))))
+           (narrate "You open the package, revealing yummy junk food inside.")
+           (success)))))
 
     :eat (fn ()
       (cond
@@ -117,11 +119,13 @@
          (blocked :reason too-hot :message "You discover that they are too hot to eat."))
         ((:open ?self)
          '((set ?self :rmung true)
-           (success :message "You devour the delicious food-like substance.")))
+           (narrate "You devour the delicious food-like substance.")
+           (success)))
         (true
          '((set ?self :open true)
            (set ?self :rmung true)
-           (success :message "You tear open the package and devour the delicious food-like substance.")))))))
+           (narrate "You tear open the package and devour the delicious food-like substance.")
+           (success)))))))
 
 (object @coke
   :description "two liter bottle of Classic Coke"
@@ -137,26 +141,27 @@
                          ((= ?siz 3) " partly full")
                          ((= ?siz 4) " partly empty")
                          (true " full"))))
-        (success :message (str "This is a" ?fullness " two-liter bottle of "
-                               (if (> ?siz 1) (str (heat-desc ?self) " ") "")
-                               "Classic Coke."))))
+        `((focus @coke ,(str "This is a" ?fullness " two-liter bottle of "
+                             (if (> ?siz 1) (str (heat-desc ?self) " ") "")
+                             "Classic Coke.")) (success))))
 
     :taste (fn ()
-      (success :message "Tastes like the real thing."))
+      '((narrate "Tastes like the real thing.") (success)))
 
     :drink (fn ()
       (cond
         ((> (prop ?self size) 1)
          '((dec ?self :size)
-           (success :message "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now.")))
+           (narrate "Delicious! Contains caffeine, one of the four basic food groups. Too bad they make it with fructose these days, instead of sucrose. You feel much more alert and awake now.")
+           (success)))
         (true
          (blocked :reason empty :message "The bottle is empty."))))
 
     :open (fn ()
-      (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))
+      '((narrate "You fiddle with the cap for a while. What fun! Much better than working on your paper.") (success)))
 
     :close (fn ()
-      (success :message "You fiddle with the cap for a while. What fun! Much better than working on your paper."))))
+      '((narrate "You fiddle with the cap for a while. What fun! Much better than working on your paper.") (success)))))
 
 ; === Conversation Topics (abstract nouns for ASK/TELL ABOUT) ===
 ; NOTE: @students is defined in alchemy.grue, @urchins in urchins.grue,

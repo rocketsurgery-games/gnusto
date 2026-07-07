@@ -55,7 +55,8 @@
       (cond
         ((not (:outside ?from))
           '((queue freezing)
-            (success :message "As you leave, the door closes and locks behind you.")))
+            (narrate "As you leave, the door closes and locks behind you.")
+            (success)))
         (true (success))))))
 
 (room @great-court
@@ -70,7 +71,8 @@
       (cond
         ((not (:outside ?from))
           '((queue freezing)
-            (success :message "As you leave, the door closes and locks behind you.")))
+            (narrate "As you leave, the door closes and locks behind you.")
+            (success)))
         (true (success))))))
 
 (room @brown-basement
@@ -125,7 +127,8 @@
       (cond
         ((and (= (:count @flier) 0) (held? @smooth-stone))
           '((queue flier-approach)
-            (success :message "As you enter the dome, you feel a chill that has nothing to do with the temperature.")))
+            (narrate "As you enter the dome, you feel a chill that has nothing to do with the temperature.")
+            (success)))
         (true (success))))
 
     ; Also trigger when entering with the hand
@@ -144,7 +147,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "The elevator appears to be out of order."))
+      '((focus @brown-elevator "The elevator appears to be out of order.")
+        (success)))
 
     :open (fn ()
       (blocked :reason broken :message "It's broken."))
@@ -158,10 +162,11 @@
   :properties (:nodesc true :door true :openable true :locked true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "It's a heavy door leading to the roof. It is currently "
-             (if (:open ?self) "open" "closed and locked")
-             ".")))
+      `((focus @roof-door
+          ,(str "It's a heavy door leading to the roof. It is currently "
+                (if (:open ?self) "open" "closed and locked")
+                "."))
+        (success)))
 
     :open (fn ()
       (cond
@@ -171,7 +176,8 @@
           (blocked :reason locked :message "The door is securely locked."))
         (true
           '((set ?self :open true)
-            (success :message "You push the door open, revealing a windswept, snow-covered roof. Frigid wind whips snow into your face.")))))
+            (narrate "You push the door open, revealing a windswept, snow-covered roof. Frigid wind whips snow into your face.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -179,7 +185,8 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((set ?self :open false)
-            (success :message "You close the door, muffling the howling wind.")))))
+            (narrate "You close the door, muffling the howling wind.")
+            (success)))))
 
     :unlock (fn (?key)
       (cond
@@ -189,7 +196,8 @@
           (blocked :reason already-unlocked :message "It's already unlocked."))
         (true
           '((set ?self :locked false)
-            (success :message "The door is now unlocked.")))))
+            (narrate "The door is now unlocked.")
+            (success)))))
 
     :through (fn ()
       (cond
@@ -234,7 +242,8 @@
       (redirect :action (do ?self :read)))
 
     :read (fn ()
-      (success :message "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below, it says \"This means you!\" and below that in different handwriting, it says \"Who, me?\""))))
+      '((narrate "It says \"NO ADMITTANCE!\" In smaller, hand-written letters below, it says \"This means you!\" and below that in different handwriting, it says \"Who, me?\"")
+        (success)))))
 
 ; === Weather Dome (scenery) ===
 
@@ -244,7 +253,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "The dome is large and semitransparent. It's made of some sort of milky-colored plastic. It dominates the roof. You can climb up to the entrance via a short ladder."))
+      '((focus @weather-dome "The dome is large and semitransparent. It's made of some sort of milky-colored plastic. It dominates the roof. You can climb up to the entrance via a short ladder.")
+        (success)))
 
     :enter (fn ()
       (redirect :action (do (loc @player) :go up)))
@@ -258,7 +268,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a short metal ladder leading up to the dome entrance."))
+      '((focus @dome-ladder "It's a short metal ladder leading up to the dome entrance.")
+        (success)))
 
     :climb (fn ()
       (redirect :action (do (loc @player) :go up)))))
@@ -271,17 +282,20 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a small peach tree planted in a very large tub of earth. It appears healthy, although as it is wintertime, the tree has no leaves."))
+      '((focus @peach-tree "It's a small peach tree planted in a very large tub of earth. It appears healthy, although as it is wintertime, the tree has no leaves.")
+        (success)))
 
     :shake (fn ()
-      (success :message "You shake it, but nothing drops. Its branches are bare."))
+      '((narrate "You shake it, but nothing drops. Its branches are bare.")
+        (success)))
 
     :climb (fn ()
       (blocked :reason slippery
                :message "You start to climb the tree, but as you get partway up, your hands encounter a slippery substance which covers the limbs at this height. Not only is it extremely unpleasant to touch, it makes the tree too slippery to climb any further."))
 
     :rub (fn ()
-      (success :message "It feels like wood, but there is something slippery on it higher up."))
+      '((narrate "It feels like wood, but there is something slippery on it higher up.")
+        (success)))
 
     :attack (fn (?weapon)
       (blocked :reason vandalism
@@ -294,16 +308,18 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The tub is full of dirt and \"condo chips\" (those pine bark chips that are spread around condos and shopping centers by the ton). The dirt has been disturbed recently."))
+      '((focus @tub "The tub is full of dirt and \"condo chips\" (those pine bark chips that are spread around condos and shopping centers by the ton). The dirt has been disturbed recently.")
+        (success)))
 
     :search (fn ()
       (cond
         ((not (:touched @mummified-hand))
           '((set @mummified-hand :touched true)
             (move @mummified-hand ?self)
-            (success :message "You root around in the dirt for a while, when you encounter something hard. Further exploration reveals it to be a dried, chewed looking human hand.")))
+            (narrate "You root around in the dirt for a while, when you encounter something hard. Further exploration reveals it to be a dried, chewed looking human hand.")
+            (success)))
         (true
-          (success :message "You find nothing further, which is something of a relief."))))
+          '((narrate "You find nothing further, which is something of a relief.") (success)))))
 
     :dig (fn ()
       (redirect :action (do ?self :search)))))
@@ -331,20 +347,22 @@
       (cond
         ((:person ?self)
           ; Animated hand - show stains, scars, ring if present, tattoo
-          (success :message
-            (str "There are stains, scars, "
-                 (if (in? @ring ?self) "a brass hyrax, " "")
-                 "and a tattoo on the hand.")))
+          `((focus @mummified-hand
+              ,(str "There are stains, scars, "
+                    (if (in? @ring ?self) "a brass hyrax, " "")
+                    "and a tattoo on the hand."))
+            (success)))
         (true
           ; Mummified - detailed description
-          (success :message "The hand is very old. It's dry and very light, mummified in fact. There are stains, scars, and dried blood on it. There is a tattoo on the back of it. The hand appears to have been severed by the application of very sharp teeth, perhaps an animal's."))))
+          '((focus @mummified-hand "The hand is very old. It's dry and very light, mummified in fact. There are stains, scars, and dried blood on it. There is a tattoo on the back of it. The hand appears to have been severed by the application of very sharp teeth, perhaps an animal's.")
+            (success)))))
 
     :rub (fn ()
       (cond
         ((:person ?self)
-          (success :message "It's warm and dry."))
+          '((narrate "It's warm and dry.") (success)))
         (true
-          (success :message "It's dry and cold. In fact, it's mummified."))))
+          '((narrate "It's dry and cold. In fact, it's mummified.") (success)))))
 
     ; Animated hand wiggles away from hostile actions
     :take (fn ()
@@ -352,9 +370,9 @@
         ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
-              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+              '((narrate "The human hand, muddy and wet, wiggles out of your grasp.") (success)))
             ((held? ?self)
-              (success :message "The human hand scuttles away to your other shoulder."))
+              '((narrate "The human hand scuttles away to your other shoulder.") (success)))
             (true (default))))
         (true (default))))
 
@@ -363,9 +381,9 @@
         ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
-              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+              '((narrate "The human hand, muddy and wet, wiggles out of your grasp.") (success)))
             ((held? ?self)
-              (success :message "The human hand scuttles away to your other shoulder."))
+              '((narrate "The human hand scuttles away to your other shoulder.") (success)))
             (true (default))))
         (true (default))))
 
@@ -374,9 +392,9 @@
         ((:person ?self)
           (cond
             ((= (loc @player) @inner-lair)
-              (success :message "The human hand, muddy and wet, wiggles out of your grasp."))
+              '((narrate "The human hand, muddy and wet, wiggles out of your grasp.") (success)))
             ((held? ?self)
-              (success :message "The human hand scuttles away to your other shoulder."))
+              '((narrate "The human hand scuttles away to your other shoulder.") (success)))
             (true (default))))
         (true (default))))
 
@@ -386,13 +404,14 @@
         ((:person ?self)
           (cond
             ((in? ?self @vat)
-              (success :message "The hand is preoccupied."))
+              '((narrate "The hand is preoccupied.") (success)))
             ((:person ?item)
-              (success :message "The hand doesn't react."))
+              '((narrate "The hand doesn't react.") (success)))
             (true
-              (success :message
-                (str "The hand scurries to the " (desc ?item)
-                     " and touches it all over, much as a blind person would examine something.")))))
+              `((narrate
+                  ,(str "The hand scurries to the " (desc ?item)
+                        " and touches it all over, much as a blind person would examine something."))
+                (success)))))
         (true
           (blocked :reason inanimate :message "The hand doesn't react."))))))
 
@@ -402,7 +421,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "The tattoo is old and faded. It was done in red ink and is very artistically drawn. It depicts a strange symbol."))
+      '((focus @tattoo "The tattoo is old and faded. It was done in red ink and is very artistically drawn. It depicts a strange symbol.")
+        (success)))
 
     :read (fn ()
       (redirect :action (do ?self :examine)))))
@@ -417,7 +437,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "You can't tell much from here. It's large and dark, but the dome obscures all detail."))))
+      '((focus @flier-shape "You can't tell much from here. It's large and dark, but the dome obscures all detail.")
+        (success)))))
 
 (object @flier
   :location nil  ; Appears during flier encounter
@@ -430,10 +451,12 @@
         ((description "A dark shape watches balefully from nearby."))))
 
     :examine (fn ()
-      (success :message "Like a black sheet flapping in the wind, the dark flier is hard to see. Red eyes glow like coals on its scaly, bullet-shaped head. Human-like hands clench and unclench. Sharp needles of teeth project wickedly from its twisted jaw."))
+      '((focus @flier "Like a black sheet flapping in the wind, the dark flier is hard to see. Red eyes glow like coals on its scaly, bullet-shaped head. Human-like hands clench and unclench. Sharp needles of teeth project wickedly from its twisted jaw.")
+        (success)))
 
     :smell (fn ()
-      (success :message "Its stench is that of a foul eater of carrion, overlaid with another smell you can't place, but which is even less appetizing."))
+      '((narrate "Its stench is that of a foul eater of carrion, overlaid with another smell you can't place, but which is even less appetizing.")
+        (success)))
 
     :attack (fn (?weapon)
       (cond
@@ -442,7 +465,8 @@
           '((move @flier nil)
             (set @flier :count 0)
             (dequeue flier-approach)
-            (success :message "You hurl the stone at the creature. It strikes true! The flier shrieks in pain and fury, then flees into the storm, disappearing from view.")))
+            (narrate "You hurl the stone at the creature. It strikes true! The flier shrieks in pain and fury, then flees into the storm, disappearing from view.")
+            (success)))
         (true
           (blocked :reason ineffective
                    :message "Hissing and screeching, the creature fends off your attack. Its head jerks from side to side, watching you."))))
@@ -455,10 +479,11 @@
             (move @flier nil)
             (set @flier :count 0)
             (dequeue flier-approach)
-            (success :message "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale.")))
+            (narrate "In a snake-like strike, the creature snaps at the mummified hand! With a disgusting gobbling noise, the flier swallows the hand, and then, its wings beating feebly against the wind, it sails away into the gale.")
+            (success)))
         ((= ?item @smooth-stone)
           ; Smooth stone scares it but doesn't drive it away
-          (success :message "The creature edges away from the stone."))
+          '((narrate "The creature edges away from the stone.") (success)))
         (true
           (blocked :reason not-interested :message "The creature shows no interest in that."))))
 
@@ -470,7 +495,8 @@
         (true
           ; Flier dodges other thrown items
           `((move ?item (loc @player))
-            (success :message ,(str "The creature darts to the side, dodging the " (desc ?item) "."))))))))
+            (narrate ,(str "The creature darts to the side, dodging the " (desc ?item) "."))
+            (success)))))))
 
 ; === Flier Approach Event ===
 ; Multi-stage creature approach. Each turn advances the counter.
@@ -507,24 +533,28 @@
                   (move @flier-shape @inside-dome)
                   (move @flier @brown-roof)
                   (queue flier-approach)
-                  (success :context ((description ,?msg)))))
+                  (narrate ,?msg)
+                  (success)))
               ; Stage 3: Shape drops, flier visible
               ((= ?stage 3)
                 `((set @flier :count ,?stage)
                   (move @flier-shape nil)
                   (queue flier-approach)
-                  (success :context ((description ,?msg)))))
+                  (narrate ,?msg)
+                  (success)))
               ; Stage 5: Flier enters if in dome
               ((= ?stage 5)
                 `((set @flier :count ,?stage)
                   ,@(if ?in-dome '((move @flier @inside-dome)) '())
                   (queue flier-approach)
-                  (success :context ((description ,?msg)))))
+                  (narrate ,?msg)
+                  (success)))
               ; Other stages (2, 4)
               (true
                 `((set @flier :count ,?stage)
                   (queue flier-approach)
-                  (success :context ((description ,?msg))))))))
+                  (narrate ,?msg)
+                  (success))))))
 
         ; Stage 6+: Flier attacks, may eat hand
         ((held? @mummified-hand)
@@ -533,7 +563,8 @@
             (move @flier nil)
             (dequeue flier-approach)
             (set @flier :count 0)
-            (success :context ((description "In a snake-like strike, the creature attacks! Its toothy jaws close on your hand! Not your hand, but the mummified hand you dug out of the tub! With a disgusting gobbling noise, the flier swallows the hand, and then sails away into the gale.")))))
+            (narrate "In a snake-like strike, the creature attacks! Its toothy jaws close on your hand! Not your hand, but the mummified hand you dug out of the tub! With a disgusting gobbling noise, the flier swallows the hand, and then sails away into the gale.")
+            (success)))
 
         ; No hand - player is in danger
         (true

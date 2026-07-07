@@ -19,7 +19,7 @@
     :examine (fn ()
       (cond
         (true
-          (success :message "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable."))))
+          '((focus @chair "It's a molded plastic chair, a cheap knock-off of a designer chair, and even more uncomfortable.") (success)))))
 
     :take (fn ()
       (cond
@@ -36,12 +36,14 @@
           (blocked :reason already-there :message "You are."))
         (true
           '((move ?actor @chair)
-            (success :message "You are now sitting in the chair.")))))
+            (narrate "You are now sitting in the chair.")
+            (success)))))
 
     :stand (fn ()
       (cond
         ((in? ?actor @chair)
           '((move ?actor (loc @chair))
-            (success :message "You get out of the chair.")))
+            (narrate "You get out of the chair.")
+            (success)))
         (true
           (blocked :reason not-in-vehicle :message "You're not in the chair."))))))

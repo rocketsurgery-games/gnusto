@@ -12,11 +12,11 @@
   :properties (:nodesc true :tool true :touched true )
   :behaviors (
     :examine (fn ()
-      (success :message "They're still attached to your wrists."))
+      '((focus @hands "They're still attached to your wrists.") (success)))
     :default (fn (?verb)
       (cond
         ((= ?verb :rub)
-          (success :message "You rub your hands together for warmth."))
+          '((narrate "You rub your hands together for warmth.") (success)))
         (true (default))))))
 
 (object @feet
@@ -25,7 +25,7 @@
   :properties (:nodesc true :tool true :touched true )
   :behaviors (
     :examine (fn ()
-      (success :message "They're at the ends of your legs, as usual."))))
+      '((focus @feet "They're at the ends of your legs, as usual.") (success)))))
 
 (object @head
   :description "your head"
@@ -33,7 +33,7 @@
   :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
-      (success :message "It's on your shoulders."))))
+      '((focus @head "It's on your shoulders.") (success)))))
 
 (object @eyes
   :description "your eyes"
@@ -41,9 +41,9 @@
   :properties (:nodesc true )
   :behaviors (
     :open (fn ()
-      (success :message "They are."))
+      '((narrate "They are.") (success)))
     :close (fn ()
-      (success :message "That won't help."))))
+      '((narrate "That won't help.") (success)))))
 
 (object @me
   :description "yourself"
@@ -52,21 +52,21 @@
   :behaviors (
     :examine (fn ()
       ; TODO: V-DIAGNOSE - show status/health
-      (success :message "You look tired but determined."))
+      '((focus @me "You look tired but determined.") (success)))
     :listen (fn ()
-      (success :message "Yes?"))
+      '((narrate "Yes?") (success)))
     :wake (fn ()
-      (success :message "You already are."))
+      '((narrate "You already are.") (success)))
     :follow (fn ()
-      (success :message "You're getting ahead of yourself."))
+      '((narrate "You're getting ahead of yourself.") (success)))
     :look-behind (fn ()
       (cond
         ((< (random 100) 80)
-          (success :message "You look back over your shoulder. There's nothing there."))
+          '((narrate "You look back over your shoulder. There's nothing there.") (success)))
         ((< (random 100) 80)
-          (success :message "You look back over your shoulder. Was that a flicker of movement in the distance?"))
+          '((narrate "You look back over your shoulder. Was that a flicker of movement in the distance?") (success)))
         (true
-          (success :message "You look back over your shoulder. You see something duck back into the shadows."))))))
+          '((narrate "You look back over your shoulder. You see something duck back into the shadows.") (success)))))))
 
 ; ============================================================
 ; ENVIRONMENTAL GLOBALS
@@ -80,7 +80,7 @@
     :turn-on (fn ()
       (cond
         ((:lit (loc (player)))
-          (success :message "It's already light."))
+          '((narrate "It's already light.") (success)))
         (true
           (blocked :reason no-source :message "You need a light source!"))))
     :turn-off (fn ()
@@ -93,7 +93,7 @@
   :behaviors (
     :look-under (fn ()
       ; In ZIL this redirects to V-LOOK; we just return success since look is special
-      (success :message "You look around the room."))))
+      '((narrate "You look around the room.") (success)))))
 
 (object @air
   :description "air"
@@ -107,9 +107,9 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's still there."))
+      '((focus @ground "It's still there.") (success)))
     :look-under (fn ()
-      (success :message "You never did master X-rays. Freshman physics was such a drag."))
+      '((narrate "You never did master X-rays. Freshman physics was such a drag.") (success)))
     :climb (fn ()
       (blocked :reason waste :message "That would be a waste of time."))))
 
@@ -126,9 +126,9 @@
   :behaviors (
     :through (fn ()
       ; V-WALK-AROUND in ZIL
-      (success :message "Walking around reveals nothing new. To move elsewhere, just type the desired direction."))
+      '((narrate "Walking around reveals nothing new. To move elsewhere, just type the desired direction.") (success)))
     :walk-to (fn ()
-      (success :message "Walking around reveals nothing new. To move elsewhere, just type the desired direction."))))
+      '((narrate "Walking around reveals nothing new. To move elsewhere, just type the desired direction.") (success)))))
 
 (object @noise
   :description "noise"
@@ -137,7 +137,7 @@
   ; No :examine - falls through to default "You see nothing special about the noise."
   :behaviors (
     :listen (fn ()
-      (success :message "You listen carefully."))))
+      '((narrate "You listen carefully.") (success)))))
 
 (object @snow
   :description "snow"
@@ -147,9 +147,9 @@
     :examine (fn ()
       (cond
         ((:outside (loc (player)))
-          (success :message "It's still coming down."))
+          '((focus @snow "It's still coming down.") (success)))
         (true
-          (success :message "You are inside."))))))
+          '((focus @snow "You are inside.") (success)))))))
 
 ; ============================================================
 ; WALLS
@@ -161,7 +161,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It looks like a wall."))
+      '((focus @wall "It looks like a wall.") (success)))
     :push (fn ()
       (blocked :reason solid :message "You can't pull down a wall that easily."))
     :pull (fn ()
@@ -173,7 +173,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It looks like a wall."))
+      '((focus @north-wall "It looks like a wall.") (success)))
     :default (fn (?verb)
       (redirect :action (do @wall ?verb)))))
 
@@ -183,7 +183,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It looks like a wall."))
+      '((focus @south-wall "It looks like a wall.") (success)))
     :default (fn (?verb)
       (redirect :action (do @wall ?verb)))))
 
@@ -193,7 +193,7 @@
   :properties (:nodesc true )
   :behaviors (
     :examine (fn ()
-      (success :message "It looks like a wall."))
+      '((focus @east-wall "It looks like a wall.") (success)))
     :default (fn (?verb)
       (redirect :action (do @wall ?verb)))))
 
@@ -203,7 +203,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It looks like a wall."))
+      '((focus @west-wall "It looks like a wall.") (success)))
     :default (fn (?verb)
       (redirect :action (do @wall ?verb)))))
 
@@ -218,9 +218,9 @@
   :behaviors (
     :examine (fn ()
       ; In ZIL this redirects to V-LOOK
-      (success :message "You look around the room."))
+      '((focus @global-room "You look around the room.") (success)))
     :look-inside (fn ()
-      (success :message "You look around the room."))
+      '((narrate "You look around the room.") (success)))
     :leave (fn ()
       ; Would need movement redirect - not supported yet
       (blocked :reason need-direction :message "Which way do you want to go?"))
@@ -236,7 +236,7 @@
   :properties (:nodesc true :touched true)
   :behaviors (
     :reach-in (fn ()
-      (success :message "You find nothing of interest."))))
+      '((narrate "You find nothing of interest.") (success)))))
 
 ; ============================================================
 ; SLEEP
@@ -254,4 +254,4 @@
       ; "go to sleep" -> "sleep"
       (redirect :action (sleep)))
     :find (fn ()
-      (success :message "Sleep anywhere."))))
+      '((narrate "Sleep anywhere.") (success)))))

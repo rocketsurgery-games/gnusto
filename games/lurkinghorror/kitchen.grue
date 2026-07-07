@@ -63,16 +63,16 @@
 
   :behaviors (
     :examine (fn ()
-      (success :context
-        ((description
-          (if (queued? microwave-running)
+      `((focus @microwave
+          ,(if (queued? microwave-running)
             "The microwave oven hangs over the kitchen counter. It has more complicated controls
             than your PC. There is an LED readout above the controls. The microwave is on."
             (str "The microwave oven hangs over the kitchen counter. It has more complicated
                  controls than your PC. There is an LED readout above the controls. The microwave is off
                  and it's "
                  (if (:open ?self) "open" "closed")
-                 "."))))))
+                 ".")))
+        (success)))
 
     :open (fn ()
       (cond
@@ -82,10 +82,12 @@
           ; Microwave is running - turn it off when opening
           '((set ?self :open true)
             (dequeue microwave-running)
-            (success :context ((description "The microwave oven shuts off, and is now open.")))))
+            (narrate "The microwave oven shuts off, and is now open.")
+            (success)))
         (true
           '((set ?self :open true)
-            (success :context ((description "The microwave oven is now open.")))))))
+            (narrate "The microwave oven is now open.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -93,7 +95,8 @@
           (blocked :reason already-closed))
         (true
           '((set ?self :open false)
-            (success :context ((description "The microwave oven is now closed.")))))))
+            (narrate "The microwave oven is now closed.")
+            (success)))))
 
     ; === LLM Interface Behaviors ===
     ; These are the primary way to interact with the microwave.
@@ -110,7 +113,8 @@
                      :context ((description "You can't set it for that long a time."))))
           (true
             `((set @microwave :timer ,?seconds)
-              (success :context ((description ,(str "The timer display now reads " display ".")))))))))
+              (narrate ,(str "The timer display now reads " display "."))
+              (success))))))
 
     ; Set temperature: (do @microwave :set-temp warm/low/medium/high)
     :set-temp (fn (?level :symbol)
@@ -120,16 +124,20 @@
                    :context ((description "Nothing happens."))))
         ((= ?level 'warm)
           '((set @microwave :temp 1)
-            (success :context ((description "The bottom of the display now reads \"WARM\".")))))
+            (narrate "The bottom of the display now reads \"WARM\".")
+            (success)))
         ((= ?level 'low)
           '((set @microwave :temp 2)
-            (success :context ((description "The bottom of the display now reads \"LOW\".")))))
+            (narrate "The bottom of the display now reads \"LOW\".")
+            (success)))
         ((= ?level 'medium)
           '((set @microwave :temp 3)
-            (success :context ((description "The bottom of the display now reads \"MEDIUM\".")))))
+            (narrate "The bottom of the display now reads \"MEDIUM\".")
+            (success)))
         ((= ?level 'high)
           '((set @microwave :temp 4)
-            (success :context ((description "The bottom of the display now reads \"HIGH\".")))))
+            (narrate "The bottom of the display now reads \"HIGH\".")
+            (success)))
         (true
           (blocked :reason unknown-temp
                    :context ((description "Unknown temperature setting. Use warm, low, medium, or high."))))))
@@ -150,17 +158,20 @@
           ; No temp set - default to high (4)
           '((set @microwave :temp 4)
             (queue microwave-running)
-            (success :context ((description "The microwave starts up. The timer begins counting down.")))))
+            (narrate "The microwave starts up. The timer begins counting down.")
+            (success)))
         (true
           '((queue microwave-running)
-            (success :context ((description "The microwave starts up. The timer begins counting down.")))))))
+            (narrate "The microwave starts up. The timer begins counting down.")
+            (success)))))
 
     ; Stop the microwave: (do @microwave :stop)
     :stop (fn ()
       (cond
         ((queued? microwave-running)
           `((dequeue microwave-running)
-            (success :context ((description ,(str "The microwave stops. The timer display now reads " (format-timer) "."))))))
+            (narrate ,(str "The microwave stops. The timer display now reads " (format-timer) "."))
+            (success)))
         (true
           (blocked :reason already-off
                    :context ((description "It's already off."))))))
@@ -173,7 +184,8 @@
                    :context ((description "Nothing happens."))))
         (true
           '((set @microwave :timer 0)
-            (success :context ((description "The timer clears to zero.")))))))
+            (narrate "The timer clears to zero.")
+            (success)))))
 
     ; Aliases for turn-on/turn-off
     :turn-on (fn () (redirect :action (do @microwave :start)))
@@ -199,15 +211,15 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :context
-        ((description (str "There are controls labelled 0 to 9, WM, LO, MED, HI, START, CLEAR, and STOP. "
+      `((focus @controls ,(str "There are controls labelled 0 to 9, WM, LO, MED, HI, START, CLEAR, and STOP. "
                           "The timer display now reads " (format-timer) "."
-                          " The display shows \"" (nth temp-names (:temp @microwave)) "\".")))))
+                          " The display shows \"" (nth temp-names (:temp @microwave)) "\"."))
+        (success)))
 
     ; Redirect push to the microwave's explicit behaviors
     :push (fn ()
-      (success :context
-        ((description "You can set the timer, temperature, and start/stop the microwave."))))))
+      '((narrate "You can set the timer, temperature, and start/stop the microwave.")
+        (success)))))
 
 ; === LED Readout/Display ===
 
@@ -217,12 +229,12 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :context
-        ((description (str "The display is currently displaying "
+      `((focus @readout ,(str "The display is currently displaying "
                           (if (= (:timer @microwave) 0)
                             "the current time"
                             (format-timer))
-                          " and the word \"" (nth temp-names (:temp @microwave)) "\".")))))))
+                          " and the word \"" (nth temp-names (:temp @microwave)) "\"."))
+        (success)))))
 
 ; === Kitchen Counter ===
 
@@ -246,20 +258,20 @@
 
   :behaviors (
     :examine (fn ()
-      (success :context
-        ((description (str "This is a medium-sized refrigerator whose door is "
+      `((focus @refrigerator ,(str "This is a medium-sized refrigerator whose door is "
                           (if (:open ?self) "open" "closed")
-                          ". There is a sign on the front.")))))
+                          ". There is a sign on the front."))
+        (success)))
 
     :read (fn ()
-      (success :context
-        ((description "\"Everything in this fridge must have a name and date on it!\" (The sign has neither.)"))))
+      '((narrate "\"Everything in this fridge must have a name and date on it!\" (The sign has neither.)")
+        (success)))
 
     :look-inside (fn ()
       (cond
         ((:open ?self)
-          (success :context
-            ((description "The interior of the refrigerator is appalling. There are soggy lunch bags, ancient sandwiches and other less identifiable items."))))
+          '((narrate "The interior of the refrigerator is appalling. There are soggy lunch bags, ancient sandwiches and other less identifiable items.")
+            (success)))
         (true
           (blocked :reason closed
                    :context ((description "You have to open it to look in it."))))))
@@ -284,8 +296,8 @@
           `((set @microwave :timer 0)
             (dequeue microwave-running)
             ,@(heat-microwave-contents-effects)
-            (success :context ((description "The microwave stops.")
-                              (timer-display "0:00"))))
+            (narrate "The microwave stops.")
+            (success :context ((timer-display "0:00"))))
           `((set @microwave :timer ,new-timer)
             ,@(heat-microwave-contents-effects)
             (success :context ((timer-display ,(str (/ new-timer 60) ":"

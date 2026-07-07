@@ -67,7 +67,8 @@
           '((set @tentacle :invisible true)
             (set @dome-ladder :touched true)
             (move @dome-ladder ?self)
-            (success :message "You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone.")))
+            (narrate "You stand up on the catwalk, catching your breath for a moment. Your eyes stray along the strand you climbed. It trails along the catwalk, where it joins something large and squishy squatting at the far side. A single, bright-blue eye opens in the squishy mass, and the tentacle (for that's what it is) retracts. The mass almost flows through the spaces in the catwalk railing and drops to the floor fifteen feet below. Before you can react, it's gone.")
+            (success)))
         (true (success))))))
 
 (room @dome-roof
@@ -85,7 +86,8 @@
       (cond
         ((= ?from @top-of-dome)
           '((queue freezing)
-            (success :message "You enter the freezing, biting cold of the blizzard.")))
+            (narrate "You enter the freezing, biting cold of the blizzard.")
+            (success)))
         (true (success))))))
 
 (room @on-dome
@@ -96,7 +98,8 @@
 
   :behaviors (
     :on-enter (fn (?from)
-      (success :message "You scramble up the icy surface of the dome, almost slipping a few times, but finally you make it to the top."))))
+      '((narrate "You scramble up the icy surface of the dome, almost slipping a few times, but finally you make it to the top.")
+        (success)))))
 
 ; === Tentacle Barrier Objects ===
 
@@ -113,7 +116,8 @@
           (blocked :reason burns
                    :message "You start to climb up the strand, but the glistening wet stuff begins to burn your hands. You get a few feet up before the pain is too much. You drop back to the floor."))
         (true
-          (success :message "The wet stuff on the strand sticks to the gloves, but doesn't otherwise affect you. You have a little trouble climbing up to the catwalk, but grab the rail just before your strength gives out. You heave yourself up onto the catwalk."))))))
+          '((narrate "The wet stuff on the strand sticks to the gloves, but doesn't otherwise affect you. You have a little trouble climbing up to the catwalk, but grab the rail just before your strength gives out. You heave yourself up onto the catwalk.")
+            (success)))))))
 
 (object @tentacle-descend
   :location @top-of-dome
@@ -144,13 +148,16 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "The strand is wet and glistening. It extends upward into the dome, leading to a narrow catwalk."))
+      '((focus @tentacle "The strand is wet and glistening. It extends upward into the dome, leading to a narrow catwalk.")
+        (success)))
 
     :take (fn ()
-      (success :message "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it."))
+      '((narrate "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it.")
+        (success)))
 
     :rub (fn ()
-      (success :message "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it."))
+      '((narrate "It's wet, and when you touch it, some of the wetness sticks to your hands, and stings. The strand twitches a little when you touch it.")
+        (success)))
 
     :climb (fn ()
       (redirect :action (do (loc @player) :go up)))))
@@ -163,7 +170,8 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a narrow metal catwalk that circles the interior of the dome near the top."))))
+      '((focus @catwalk "It's a narrow metal catwalk that circles the interior of the dome near the top.")
+        (success)))))
 
 ; === Dome Ladder ===
 
@@ -183,7 +191,8 @@
           (success :context ((description "A wooden ladder is here."))))))
 
     :examine (fn ()
-      (success :message "It's a sturdy wooden ladder, about eight feet long."))))
+      '((focus @dome-ladder "It's a sturdy wooden ladder, about eight feet long.")
+        (success)))))
 
 ; === Dome Door ===
 
@@ -193,7 +202,8 @@
   :properties (:nodesc true :door true :openable true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a small metal door, the same color as the dome."))
+      '((focus @dome-door "It's a small metal door, the same color as the dome.")
+        (success)))
 
     :open (fn ()
       (cond
@@ -201,7 +211,8 @@
           (blocked :reason already-open :message "It's already open."))
         (true
           '((set ?self :open true)
-            (success :message "You open the door, and freezing air, blowing snow, and howling wind enter and whip around you.")))))
+            (narrate "You open the door, and freezing air, blowing snow, and howling wind enter and whip around you.")
+            (success)))))
 
     :close (fn ()
       (cond
@@ -209,7 +220,8 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((set ?self :open false)
-            (success :message "You close the door, blocking out the howling wind.")))))
+            (narrate "You close the door, blocking out the howling wind.")
+            (success)))))
 
     :through (fn ()
       (cond
@@ -226,12 +238,13 @@
   :properties (:takeable true :trytake true :weapon true :rmung false :touched false)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This is a cylindrical bronze plug about two inches in diameter"
-             (if (not (:touched ?self))
-               ". It is set in the center of the flat part of the dome."
-               " and one inch high.")
-             "")))
+      `((focus @bronze-plug
+          ,(str "This is a cylindrical bronze plug about two inches in diameter"
+                (if (not (:touched ?self))
+                  ". It is set in the center of the flat part of the dome."
+                  " and one inch high.")
+                ""))
+        (success)))
 
     :take (fn ()
       (cond
@@ -249,13 +262,14 @@
             (set ?self :touched true)
             (move @secret-hole @on-dome)
             (take ?self)
-            (success :message
+            (narrate
               ,(str "You pry the plug out of its socket, revealing a cylindrical hole about the same diameter but somewhat deeper. "
                     (if (not (:touched @note))
                       "There is a piece of paper in the hole."
                       (if (in? @note @secret-hole)
                         "There is a piece of paper in the hole."
-                        "The hole is empty."))))))))
+                        "The hole is empty."))))
+            (success)))))
 
     :put (fn (?container)
       (cond
@@ -263,7 +277,8 @@
           '((set ?self :rmung false)
             (move @secret-hole nil)
             (move ?self @on-dome)
-            (success :message "You insert the plug in the hole.")))
+            (narrate "You insert the plug in the hole.")
+            (success)))
         (true
           (default))))))
 
@@ -283,9 +298,9 @@
     :read (fn ()
       `((set ?self :rmung true)
         ,@(if (not (held? ?self)) '((take ?self)) '())
-        (success :message "You unroll the piece of paper and read the shaky handwriting:
+        (narrate "You unroll the piece of paper and read the shaky handwriting:
 
 \"I can no longer face what I've been doing. I can't sleep, I start at the slightest noise, and even dulling my senses with alcohol or drugs is no longer enough. I refuse to participate in what he is doing any more. Either he is insane, or I am insane, or (and this is what I fear most) the universe itself is insane. I have only one final warning: I am the only suicide, but I will not be the final death.\"
 
-The name signed to it is oddly familiar.")))))
-
+The name signed to it is oddly familiar.")
+        (success)))))

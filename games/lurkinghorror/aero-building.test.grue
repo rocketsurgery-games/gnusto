@@ -64,7 +64,7 @@
   :setup ((move @player @tomb))
   (do @graffiti :examine)
   (assert (outcome? success))
-  (assert (context? message "It reads \"The Tomb of the Unknown Tool.\"")))
+  (assert (output? "It reads \"The Tomb of the Unknown Tool.\"")))
 
 (test-group "padlock puzzle"
   :setup ((move @player @tomb) (set @padlock :attached-to @access-hatch) (set @padlock :locked true))

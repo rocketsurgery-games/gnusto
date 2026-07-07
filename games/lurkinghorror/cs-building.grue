@@ -158,7 +158,8 @@
         (let ((?new-count (+ (:freeze-count @player) 1)))
           `((set @player :freeze-count ,?new-count)
             (queue freezing 4)
-            (success :context ((description ,(nth messages (:freeze-count @player))))))))))
+            (narrate ,(nth messages (:freeze-count @player)))
+            (success))))))
 
 ; === Office Door ===
 ; Offices are always inaccessible - this is just flavor.
@@ -168,6 +169,6 @@
   :location nil  ; Global object, appears in rooms with offices
   :properties (:nodesc true :door true :openable true)
   :behaviors (
-    :examine (fn () (success :message "The offices are dark and locked."))
+    :examine (fn () '((focus @office-door "The offices are dark and locked.") (success)))
     :open (fn () (blocked :reason locked :message "The offices are inaccessible."))
     :knock (fn () (blocked :reason no-answer :message "No one answers."))))

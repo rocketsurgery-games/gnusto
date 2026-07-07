@@ -4,7 +4,7 @@ title: 'P3: migrate Lurking Horror to the block vocabulary (canonical conversion
 type: task
 priority: 1
 created: '2026-07-07T21:51:39Z'
-updated: '2026-07-07T22:51:52Z'
+updated: '2026-07-07T23:11:27Z'
 labels:
 - lurkinghorror
 - lang
@@ -21,3 +21,7 @@ Slice 1 (terminal-room + pc) done. Added (output? TEXT) test predicate (asserts 
 ---
 ▸ 2026-07-07T22:51:52Z
 Slice 2 (parallel sub-agents): migrated lair.grue (61 sites: 19 focus/42 narrate), cs-basement.grue (22: 11 focus/11 narrate), steam-tunnels.grue (41: 17 focus/24 narrate) + steam-tunnels.test.grue (1 context?message->output?). Rules confirmed by agents: object :examine->focus, other success text->narrate, blocked & room/object :describe(:context((description))) untouched, :render kept (drives art). All 477 grue pass. DEFERRED: (a) alchemy.grue migration — user has uncommitted WIP (pentagram line-wrapping) staged there, so I backed the agent's migration out to avoid contaminating user work; redo alchemy after user's WIP lands. (b) Stylistic consistency pass at end of P3: event/one-time :context((description))->narrate (lair left some as context; steam-tunnels/terminal-room converted), :context((ambient))->narrate (steam-tunnels, 3 sites; currently never rendered), death/victory climax descriptions -> narrate/emphasize.
+
+---
+▸ 2026-07-07T23:11:27Z
+Slice 3 (parallel sub-agents, wave 2): migrated brown-building, great-dome, elevator, cs-building, maintenance-man, urchins, globals, objects, chair, kitchen, yuggoth, aero-building, hacker (+ cs-2nd/infinite-corridor had nothing to migrate). Applied refined rules: object :examine->focus; event/one-time :context((description))/((ambient))->narrate; room+object :describe stay structural; NPC dialogue->say; :render kept. Also migrated the STDLIB defaults in src/grue/builtins.grue (take/drop/open/close/put/examine success text -> narrate) so default responses flow through the output stream consistently; this fixed the 3 globals default-examine test failures. Updated globals.test.grue (24 context?message->output?), aero-building.test.grue (1), steam-tunnels earlier, and tests/test_walkthrough.py (2 examine/search assertions -> output). 477 grue + 765 python pass. STILL DEFERRED: alchemy.grue (user WIP). Remaining consistency polish tracked for end-of-P3.

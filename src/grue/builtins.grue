@@ -83,7 +83,7 @@
     (blocked :reason not-here :message "You don't see that here."))
 
   (true
-    '((move ?self ?actor) (success :message "Taken.")))))
+    '((move ?self ?actor) (narrate "Taken.") (success)))))
 
 ; === drop ===
 ; Default drop behavior - must be holding the object
@@ -93,7 +93,7 @@
     (blocked :reason not-held :message "You're not carrying that."))
 
   (true
-    '((move ?self (loc ?actor)) (success :message "Dropped.")))))
+    '((move ?self (loc ?actor)) (narrate "Dropped.") (success)))))
 
 ; === open ===
 ; Default open behavior for OPENABLE objects
@@ -106,7 +106,7 @@
     (blocked :reason already-open :message "It's already open."))
 
   (true
-    '((set ?self :open true) (success :message "Opened.")))))
+    '((set ?self :open true) (narrate "Opened.") (success)))))
 
 ; === close ===
 ; Default close behavior for OPENABLE objects
@@ -119,7 +119,7 @@
     (blocked :reason already-closed :message "It's already closed."))
 
   (true
-    '((set ?self :open false) (success :message "Closed.")))))
+    '((set ?self :open false) (narrate "Closed.") (success)))))
 
 ; === put ===
 ; Default put behavior - put ?self into ?value (the container)
@@ -137,10 +137,10 @@
     (blocked :reason closed :message "It's closed."))
 
   (true
-    '((move ?self ?value) (success :message "Done.")))))
+    '((move ?self ?value) (narrate "Done.") (success)))))
 
 ; === examine ===
 ; Default examine behavior - returns generic message when object has no :examine handler
 
 (default examine
-  (success :message (str "You see nothing special about the " (desc ?self) ".")))
+  `((narrate ,(str "You see nothing special about the " (desc ?self) ".")) (success)))
