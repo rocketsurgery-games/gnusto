@@ -131,27 +131,26 @@ gnusto games/lurkinghorror/
 
 Any OpenAI-compatible local server works (llama.cpp, vLLM, etc.) — just set the model ID with an `openai/` prefix and point `GRUE_LLM_API_BASE` at the server.
 
-### Full-agent vs. parse-only mode
+### Engine-authoritative text (default) vs. LLM narration
 
-The agent runs in one of two modes:
+The game is the author of record. By **default**, the LLM only parses the player's input into
+actions; the game's own output effects (`narrate`/`say`/`focus`/`reveal`/`emphasize`/`splash`/
+`sfx` — see `docs/grue.md`) are shown verbatim as the narration. Because the model never
+writes prose in this mode, it cannot skip or fabricate text — what you authored is what the
+player reads. This is the right default for Infocom-style conversions with hand-crafted text.
 
-- **Full-agent mode** (default for strong external models): the model chooses actions AND
-  authors the narrative prose (via content blocks). The system prompt instructs it to relay
-  the engine's reported outcomes faithfully — never to invent results, and to stop on a
-  `blocked`/`error` result rather than paper over it.
-- **Parse-only mode**: the model ONLY translates the player's input into actions; the game
-  engine emits all text. Presentation intent is derived deterministically from the engine
-  result (an examine-style verb on an entity that has art becomes a `focus` panel; dialogue
-  becomes `speak`; everything else is plain `narrate`). Because the model never authors
-  prose, it cannot fabricate outcomes — useful for correctness-sensitive runs and for weaker
-  models.
-
-Parse-only mode is enabled automatically for local models, and can be forced on any model
-with the `--parse-only` flag:
+Full-agent **LLM narration** is available as an opt-in with `--llm-narration`: the model both
+chooses actions and authors the prose (relaying the engine's outcomes faithfully — never
+inventing results, stopping on `blocked`/`error`). It's useful for experimentation, but for a
+game whose text is already written, the engine-authoritative default is preferred.
 
 ```bash
-gnusto games/lurkinghorror/ --parse-only
+gnusto games/lurkinghorror/                 # engine-authored text (default)
+gnusto games/lurkinghorror/ --llm-narration # LLM writes the prose
 ```
+
+(A future per-beat `:generate` hook will let a game request LLM-generated text for specific
+moments while keeping everything else engine-authored.)
 
 ## Narrative Generation
 

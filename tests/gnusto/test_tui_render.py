@@ -10,8 +10,23 @@ from io import StringIO
 
 from rich.console import Console
 
-from gnusto.render import EntityInfo, ExitDetail, RoomEnter
+from gnusto.render import (
+    Ambient,
+    Caption,
+    EntityInfo,
+    ExitDetail,
+    Focus,
+    Narrate,
+    NarrativeBlock,
+    Reveal,
+    RoomEnter,
+    Sfx,
+    Speak,
+    Splash,
+    Think,
+)
 from gnusto.tui import SimpleTUI
+from gnusto.web import block_to_dict
 
 
 def _tui_with_capture():
@@ -47,6 +62,58 @@ def test_render_room_enter_projects_structured_exits_and_entities():
     assert "Exits: south, north" in out
     assert "chair" in out and "PC" in out
     assert "brass key" in out
+
+
+# A factory for every narrative block type. The test below asserts this covers
+# ALL NarrativeBlock subclasses, so a new block type can't be added without a
+# renderer in both the TUI and the web serializer (gnusto-7256.4).
+_BLOCK_FACTORIES = {
+    Narrate: lambda: Narrate(text="prose"),
+    Speak: lambda: Speak(speaker="@hacker", text="hi"),
+    Think: lambda: Think(text="hmm"),
+    Ambient: lambda: Ambient(text="a hum"),
+    Reveal: lambda: Reveal(text="a key!", entity="@key"),
+    Focus: lambda: Focus(text="a close look", entity="@idol"),
+    Caption: lambda: Caption(text="Meanwhile..."),
+    Splash: lambda: Splash(text="THE END", entity=None),
+    Sfx: lambda: Sfx(text="kaboom"),
+}
+
+_EXPECTED_WEB_TYPE = {
+    Narrate: "narrate",
+    Speak: "speak",
+    Think: "think",
+    Ambient: "ambient",
+    Reveal: "reveal",
+    Focus: "focus",
+    Caption: "caption",
+    Splash: "splash",
+    Sfx: "sfx",
+}
+
+
+def test_every_narrative_block_type_has_a_factory():
+    """Adding a NarrativeBlock subclass forces adding it to the render tests."""
+    missing = set(NarrativeBlock.__subclasses__()) - set(_BLOCK_FACTORIES)
+    assert not missing, f"Add these block types to the render tests: {missing}"
+
+
+def test_tui_renders_every_narrative_block():
+    """No narrative block type is silently dropped by the TUI (Caption/Splash/Sfx
+    used to fall through with no output)."""
+    for cls, make in _BLOCK_FACTORIES.items():
+        tui, buf = _tui_with_capture()
+        tui.render_block(make())
+        assert buf.getvalue().strip(), f"TUI produced no output for {cls.__name__}"
+
+
+def test_web_serializes_every_narrative_block():
+    """block_to_dict maps every narrative block to its real type, never 'unknown'."""
+    for cls, make in _BLOCK_FACTORIES.items():
+        d = block_to_dict(make())
+        assert d["type"] == _EXPECTED_WEB_TYPE[cls], (
+            f"web block_to_dict misrenders {cls.__name__}: {d['type']}"
+        )
 
 
 def test_render_room_enter_without_exits_or_objects():

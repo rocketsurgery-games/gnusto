@@ -75,10 +75,11 @@ Examples:
         "(e.g., 'anthropic/claude-sonnet-4-5-20250929')",
     )
     parser.add_argument(
-        "--parse-only",
+        "--llm-narration",
         action="store_true",
-        help="Parse-only mode: the LLM only chooses actions; the game engine "
-        "emits all text (no model-authored prose). On by default for local models.",
+        help="Full-agent mode: let the LLM author narration from scratch. By "
+        "default the game engine's authored text is shown verbatim and the LLM "
+        "only parses the player's commands into actions.",
     )
     parser.add_argument(
         "--debug",
@@ -112,9 +113,9 @@ Examples:
 
     args = parser.parse_args()
     llm_config = resolve_llm_config(args.model)
-    # Only force parse-only when the flag is given; otherwise leave it to the
-    # per-model default (None -> auto-enabled for local models).
-    parse_only = True if args.parse_only else None
+    # Engine-authoritative text is the default (None -> True in from_game_file);
+    # --llm-narration opts into full-agent prose generation.
+    parse_only = False if args.llm_narration else None
 
     if args.web:
         from .web import run_server

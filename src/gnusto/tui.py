@@ -18,6 +18,7 @@ from .llm import LLMConfig
 from .render import (
     ActionResult,
     Ambient,
+    Caption,
     ContentBlock,
     DebugInfo,
     Focus,
@@ -25,7 +26,9 @@ from .render import (
     Narrate,
     Reveal,
     RoomEnter,
+    Sfx,
     Speak,
+    Splash,
     SystemMessage,
     Think,
     build_room_block,
@@ -168,6 +171,23 @@ class SimpleTUI:
             self.console.print(styled)
             self.console.print()
 
+        elif isinstance(block, Caption):
+            # Narrator's out-of-world voice: a set-apart caption line.
+            self.console.print(Text(block.text, style="dim italic cyan"))
+            self.console.print()
+
+        elif isinstance(block, Splash):
+            # Full-bleed dramatic beat: rule it off and center bold text.
+            self.console.rule(style="red")
+            self.console.print(Text(block.text, style="bold red", justify="center"))
+            self.console.rule(style="red")
+            self.console.print()
+
+        elif isinstance(block, Sfx):
+            # Onomatopoeia lettering.
+            self.console.print(Text(block.text.upper(), style="bold yellow"))
+            self.console.print()
+
         elif isinstance(block, Image):
             image_path = Path(block.src.lstrip("/"))
             if not image_path.is_absolute():
@@ -195,6 +215,15 @@ class SimpleTUI:
             for line in block.content.split("\n"):
                 if line:
                     self.console.print(Text(f"  {line}", style="dim"))
+
+        else:
+            # Drift guard: a block type with no renderer here. Fall back to its
+            # text so nothing is silently dropped (the block-vocabulary test
+            # enforces that every narrative type gets a real branch).
+            text = getattr(block, "text", None)
+            if text:
+                self.console.print(style_narrative(str(text)))
+                self.console.print()
 
     def _handle_slash_command(self, command: str) -> bool:
         """Handle slash commands. Returns False to quit."""

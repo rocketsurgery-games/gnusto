@@ -428,10 +428,12 @@ class GameSession:
         evaluator = ReplEvaluator(runtime)
         llm = LLMClient(llm_config)
 
-        # Auto-enable parsing-only mode for local models
+        # Default to engine-authoritative text: the game's output effects are the
+        # canonical narration (gnusto-7256.4). The LLM parses actions; it does not
+        # write prose unless full-agent narration is explicitly opted into
+        # (parsing_only=False). Per-beat LLM generation is a future :generate hook.
         if parsing_only is None:
-            config = llm_config or LLMConfig.from_env()
-            parsing_only = config.api_base is not None
+            parsing_only = True
 
         session = cls(
             runtime=runtime,
