@@ -40,7 +40,8 @@
           '((set @professor :visited true)
             (set @alchemy-door :locked true)
             (set @alchemy-door :open false)
-            (success :message "The door closes behind you.")))
+            (narrate "The door closes behind you.")
+            (success)))
         (true (success))))))
 
 (room @alchemy-dept
@@ -150,9 +151,10 @@
         ((in? @professor @alchemy-dept)
           '((move @professor @alchemy-lab)
             (set @alchemy-lab :lit true)
-            (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather
+            (narrate "\"Ah! You'd like to see the lab?\" the professor asks in a rather
             unctuous tone. \"Come right in!\" He ushers you through the archway into the lab,
-            following quickly behind you and turning on the lights.")))
+            following quickly behind you and turning on the lights.")
+            (success)))
         (true (success))))))
 
 ; Barrier for exiting alchemy lab to dept
@@ -207,8 +209,8 @@
   :properties (:nodesc true :door true :openable true :locked true :readable true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This is a standard Tech door. It's made of black-painted wood and has a "
+      `((focus @alchemy-door
+          ,(str "This is a standard Tech door. It's made of black-painted wood and has a "
              (if (:rmung @alchemy-window) "badly cracked " "")
              "frosted glass window with "
              (if (= (loc @player) @alchemy-dept)
@@ -218,23 +220,24 @@
                       (:lit @alchemy-dept)
                       (not (:dead @professor)))
                " There is a light on inside."
-               ""))))
+               "")))
+        (success)))
 
     :look-inside (fn ()
       (cond
         ((= (loc @player) @alchemy-dept)
-          (success :message "You are inside it already."))
+          '((narrate "You are inside it already.") (success)))
         ((not (:lit @alchemy-dept))
-          (success :message "It's dark inside."))
+          '((narrate "It's dark inside.") (success)))
         ((not (:dead @professor))
-          (success :message "Every so often, you see a shadow move across the window."))
+          '((narrate "Every so often, you see a shadow move across the window.") (success)))
         (true
-          (success :message "You don't see anything in particular, other than that the light is on inside."))))
+          '((narrate "You don't see anything in particular, other than that the light is on inside.") (success)))))
 
     :read (fn ()
       (cond
         ((= (loc @player) @chemistry-bldg)
-          (success :message "Painted on the door, in calligraphy indistinguishable from any other door at Tech, is the phrase \"Department of Alchemy.\" You always used to wonder what was behind that door."))
+          '((narrate "Painted on the door, in calligraphy indistinguishable from any other door at Tech, is the phrase \"Department of Alchemy.\" You always used to wonder what was behind that door.") (success)))
         (true
           (blocked :reason wrong-side :message "You can't read it from this side."))))
 
@@ -248,7 +251,8 @@
         ((= ?tool @master-key)
           '((set ?self :locked false)
             (queue answer-door 3)
-            (success :message "You try the master key in the lock...")))
+            (narrate "You try the master key in the lock...")
+            (success)))
         ((or (= ?tool @key-1) (= ?tool @key-2) (= ?tool @key-3) (= ?tool @key-4))
           (blocked :reason wrong-key :message "It doesn't even fit the lock."))
         (true
@@ -258,9 +262,10 @@
       (cond
         ((= (loc @player) @chemistry-bldg)
           '((queue answer-door 3)
-            (success :message "You knock on the door. The hollow sound reverberates down the hall. You sort of wish you had knocked more softly.")))
+            (narrate "You knock on the door. The hollow sound reverberates down the hall. You sort of wish you had knocked more softly.")
+            (success)))
         (true
-          (success :message "You knock on the door."))))
+          '((narrate "You knock on the door.") (success)))))
 
     :kick (fn ()
       (redirect :action (do ?self :knock)))
@@ -285,11 +290,12 @@
   :properties (:nodesc true :readable true :transparent true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "It's a frosted glass window. It's more or less opaque."
+      `((focus @alchemy-window
+          ,(str "It's a frosted glass window. It's more or less opaque."
              (if (:rmung ?self)
                " It's covered with a maze of cracks."
-               ""))))
+               "")))
+        (success)))
 
     :read (fn ()
       (redirect :action (do @alchemy-door :read)))
@@ -304,17 +310,21 @@
         (cond
           ((or (not ?tool) (= ?tool @hands))
             `(,@queue-effect
-              (success :message "There is no effect, other than your hands getting somewhat sore and a lot of noise being produced.")))
+              (narrate "There is no effect, other than your hands getting somewhat sore and a lot of noise being produced.")
+              (success)))
           ((not (:weapon ?tool))
             `(,@queue-effect
-              (success :message ,(str "The " (desc ?tool) " bounces harmlessly off the glass."))))
+              (narrate ,(str "The " (desc ?tool) " bounces harmlessly off the glass."))
+              (success)))
           ((:rmung ?self)
             `(,@queue-effect
-              (success :message "Further attacks do little to worsen the damage.")))
+              (narrate "Further attacks do little to worsen the damage.")
+              (success)))
           (true
             `(,@queue-effect
               (set ?self :rmung true)
-              (success :message "You smash the glass, and cracks spread all over the pane from the point of impact. The window remains whole, though, as it's made of wire reinforced glass."))))))))
+              (narrate "You smash the glass, and cracks spread all over the pane from the point of impact. The window remains whole, though, as it's made of wire reinforced glass.")
+              (success))))))))
 
 ; === Sign-up Sheet ===
 
@@ -330,11 +340,12 @@
         ,@(if (not (or (:rmung @note) (:remembered @signup)))
               '((queue remember-student 4))
               '())
-        (success :message
+        (focus @signup
           ,(str "This appears to be a sign-up sheet for the lab. Strangely, although few daytime segments are used, almost all of the nighttime ones are. Most seem to have been taken by two different people, the professor and another, presumably one of his graduate students."
                (if (or (:rmung @note) (:remembered @signup))
                  " With a start, you realize that the author of the suicide note was the heavy user of the lab."
-                 " The name of the graduate student is oddly familiar.")))))
+                 " The name of the graduate student is oddly familiar.")))
+        (success)))
 
     :read (fn ()
       (redirect :action (do ?self :examine)))
@@ -354,11 +365,12 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This archway, part of the oldest section of Tech, is between a lab and the headquarters of the Alchemy Department."
+      `((focus @archway
+          ,(str "This archway, part of the oldest section of Tech, is between a lab and the headquarters of the Alchemy Department."
              (if (and (= (loc @player) @alchemy-dept) (not (:touched @signup)))
                " To the right of the archway is a sheet of paper. It looks like a sign-up sheet."
-               ""))))
+               "")))
+        (success)))
 
     :through (fn ()
       (cond
@@ -393,11 +405,11 @@
     :look-inside (fn ()
       (cond
         ((= (loc @player) @alchemy-dept)
-          (success :message "It looks like a lab."))
+          '((narrate "It looks like a lab.") (success)))
         ((= (loc @player) @under-alchemy-lab)
           (cond
             ((:open @alchemy-trap-door)
-              (success :message "It looks like a lab."))
+              '((narrate "It looks like a lab.") (success)))
             (true
               (blocked :reason referring :message "You can't see it from here."))))
         (true
@@ -413,9 +425,9 @@
     :examine (fn ()
       (cond
         ((= (loc @player) @alchemy-lab)
-          (success :message "It looks like a hinged metal plate. There is a handle on one edge."))
+          '((focus @alchemy-trap-door "It looks like a hinged metal plate. There is a handle on one edge.") (success)))
         (true
-          (success :message "It looks like a metal plate in the ceiling."))))
+          '((focus @alchemy-trap-door "It looks like a metal plate in the ceiling.") (success)))))
 
     :through (fn ()
       (cond
@@ -434,7 +446,8 @@
               (blocked :reason already-open :message "It's already open."))
             (true
               '((set ?self :open true)
-                (success :message "It swings open easily.")))))
+                (narrate "It swings open easily.")
+                (success)))))
         (true  ; From under-alchemy-lab
           (cond
             ((not (:moved @lab-bench))
@@ -443,7 +456,8 @@
               (blocked :reason already-open :message "It's already open."))
             (true
               '((set ?self :open true)
-                (success :message "It pushes open easily.")))))))
+                (narrate "It pushes open easily.")
+                (success)))))))
 
     :raise (fn ()
       (redirect :action (do ?self :open)))
@@ -460,22 +474,23 @@
           (blocked :reason already-closed :message "It's already closed."))
         (true
           '((set ?self :open false)
-            (success :message "You push it closed.")))))
+            (narrate "You push it closed.")
+            (success)))))
 
     :look-inside (fn ()
       (cond
         ((= (loc @player) @alchemy-lab)
           (cond
             ((:open ?self)
-              (success :message "You see a dark tunnel below."))
+              '((narrate "You see a dark tunnel below.") (success)))
             (true
-              (success :message "Your X-ray eyes appear to be nonfunctional today."))))
+              '((narrate "Your X-ray eyes appear to be nonfunctional today.") (success)))))
         (true  ; From below
           (cond
             ((:open ?self)
-              (success :message "You see a laboratory."))
+              '((narrate "You see a laboratory.") (success)))
             (true
-              (success :message "Pushing the plate up as far as you can, you can see part of a workroom or lab of some kind."))))))))
+              '((narrate "Pushing the plate up as far as you can, you can see part of a workroom or lab of some kind.") (success)))))))))
 
 ; === Ladder (global object for under-alchemy-lab) ===
 
@@ -485,7 +500,7 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      (success :message "It's a rusty metal ladder set into the wall."))
+      '((focus @alchemy-ladder "It's a rusty metal ladder set into the wall.") (success)))
 
     :climb (fn ()
       (redirect :action (go :direction up)))))
@@ -499,23 +514,25 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "The bench is a chemistry lab bench. It has a marble top, and casters at each corner. Various equipment litters the bench, none of which you recognize.")))
+      `((focus @lab-bench
+          ,(str "The bench is a chemistry lab bench. It has a marble top, and casters at each corner. Various equipment litters the bench, none of which you recognize."))
+        (success)))
 
     :look-under (fn ()
       (cond
         ((not (:moved @lab-bench))
-          (success :message "You can see a metal plate beneath the bench. Only part of it is visible."))
+          '((narrate "You can see a metal plate beneath the bench. Only part of it is visible.") (success)))
         (true
-          (success :message "Nothing but concrete floor there."))))
+          '((narrate "Nothing but concrete floor there.") (success)))))
 
     :move (fn ()
       (cond
         ((not (:moved @lab-bench))
           '((set @lab-bench :moved true)
-            (success :message "It's heavy, but it moves, revealing a hinged metal trapdoor beneath.")))
+            (narrate "It's heavy, but it moves, revealing a hinged metal trapdoor beneath.")
+            (success)))
         (true
-          (success :message "It rolls a little."))))
+          '((narrate "It rolls a little.") (success)))))
 
     :push (fn ()
       (redirect :action (do ?self :move)))))
@@ -530,11 +547,12 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "For want of a better word, call this a pentagram. It isn't particularly pentagonal, but it's an odd shape chalked on the floor, and it's roughly pentagonal."))
+      '((focus @pentagram "For want of a better word, call this a pentagram. It isn't particularly pentagonal, but it's an odd shape chalked on the floor, and it's roughly pentagonal.") (success)))
 
     :enter (fn ()
       '((move @player ?self)
-        (success :message "You get into the pentagram, being careful not to further scuff the chalk.")))
+        (narrate "You get into the pentagram, being careful not to further scuff the chalk.")
+        (success)))
 
     :board (fn ()
       (cond
@@ -547,13 +565,15 @@
       (cond
         ((not (> (:ritual-stage @professor) 0))
           '((move @player @alchemy-lab)
-            (success :message "You get out of the pentagram, being careful not to further scuff the chalk.")))
+            (narrate "You get out of the pentagram, being careful not to further scuff the chalk.")
+            (success)))
         ((not (:rmung ?self))
           (blocked :reason magical-barrier
                    :message "Your feet approach the chalk line, and then stop. You can't push your way out."))
         (true
           '((move @player @alchemy-lab)
-            (success :message "You push your way through a soft spot just over the scuff marks, and are outside the pentagram. The air is thick and close.")))))
+            (narrate "You push your way through a soft spot just over the scuff marks, and are outside the pentagram. The air is thick and close.")
+            (success)))))
 
     :disembark (fn ()
       (redirect :action (do ?self :exit)))
@@ -564,15 +584,15 @@
         ((or (not ?tool) (= ?tool @hands) (= ?tool @feet))
           (blocked :reason body-blocked :message "You try, but no part of your body will touch the chalk lines."))
         ((:rmung ?self)
-          (success :message "You scuff it up some more."))
+          '((narrate "You scuff it up some more.") (success)))
         ((= ?tool @knife)
           '((set ?self :rmung true)
-            (success :context ((prof-reacts true))
-                     :message "You cut the outer lines of the pentagram. It no longer completely encloses you.")))
+            (narrate "You cut the outer lines of the pentagram. It no longer completely encloses you.")
+            (success :context ((prof-reacts true)))))
         ((or (:weapon ?tool) (:tool ?tool))
-          (success :message (str "The " (desc ?tool) " passes over the chalk line, but doesn't have any effect on it.")))
+          `((narrate ,(str "The " (desc ?tool) " passes over the chalk line, but doesn't have any effect on it.")) (success)))
         (true
-          (success :message (str "The " (desc ?tool) " doesn't even touch the chalk line.")))))
+          `((narrate ,(str "The " (desc ?tool) " doesn't even touch the chalk line.")) (success)))))
 
     :cut (fn (?tool)
       (redirect :action (do ?self :rub ?tool)))
@@ -601,10 +621,10 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message "This is a large (a couple of liters, at least) glass or pyrex vat. It has a label stuck to it."))
+      '((focus @vat "This is a large (a couple of liters, at least) glass or pyrex vat. It has a label stuck to it.") (success)))
 
     :read (fn ()
-      (success :message (prop ?self :text)))
+      `((narrate ,(prop ?self :text)) (success)))
 
     ; Note: explicit (held? ?obj) needed for back-propagation to find preconditions
     :put (fn (?obj)
@@ -615,23 +635,27 @@
           (default))
         ((= ?obj @dead-rat)
           '((move ?obj nil)
-            (success :message "You dip the dead rat into the elixir. Almost immediately it convulses, begins to flop around in the liquid, and then springs out onto the floor! It scurries away before you can catch it.")))
+            (narrate "You dip the dead rat into the elixir. Almost immediately it convulses, begins to flop around in the liquid, and then springs out onto the floor! It scurries away before you can catch it.")
+            (success)))
         ((= ?obj @mummified-hand)
           (cond
             ((:person @mummified-hand)
               '((move ?obj ?self)
-                (success :message "Nothing unusual happens (compared to the first time, anyway).")))
+                (narrate "Nothing unusual happens (compared to the first time, anyway).")
+                (success)))
             (true
               '((move ?obj ?self)
                 (queue animate-hand)
-                (success :message "When you dip the mummified hand in the liquid, the elixir begins to bubble furiously. You can't really see the hand, except when a finger pokes up every so often.")))))
+                (narrate "When you dip the mummified hand in the liquid, the elixir begins to bubble furiously. You can't really see the hand, except when a finger pokes up every so often.")
+                (success)))))
         (true
           `((set ?obj :wearable false)
             (move ?obj ?self)
-            (success :message ,(str "You drop the " (desc ?obj) " into the vat, where it is completely covered by the tarry liquid."))))))
+            (narrate ,(str "You drop the " (desc ?obj) " into the vat, where it is completely covered by the tarry liquid."))
+            (success)))))
 
     :reach-in (fn ()
-      (success :message "You feel the thick tarry liquid."))))
+      '((narrate "You feel the thick tarry liquid.") (success)))))
 
 ; === Elixir ===
 
@@ -641,15 +665,15 @@
   :properties (:takeable true :trytake true)
   :behaviors (
     :examine (fn ()
-      (success :message "The elixir is thick and tarry. Torpid bubbles break the surface every so
-      often, though you can find no source of heat to produce them."))
+      '((focus @elixir "The elixir is thick and tarry. Torpid bubbles break the surface every so
+      often, though you can find no source of heat to produce them.") (success)))
 
     :drink (fn ()
       (blocked :reason too-thick :message "It would be like drinking road tar."))
 
     :rub (fn ()
-      (success :message "You touch the liquid with your finger. It's very unpleasant. The liquid is
-      stingingly hot. You pull your finger out, and it is some time before it feels normal again."))
+      '((narrate "You touch the liquid with your finger. It's very unpleasant. The liquid is
+      stingingly hot. You pull your finger out, and it is some time before it feels normal again.") (success)))
 
     :take (fn ()
       (cond
@@ -679,15 +703,16 @@
 
   :behaviors (
     :examine (fn ()
-      (success :message
-        (str "This machine looks just like the ones in the terminal room. "
+      `((focus @lovecraft
+          ,(str "This machine looks just like the ones in the terminal room. "
              (prop ?self :text)
              (if (not (:powered ?self))
                " It's turned off."
-               ""))))
+               "")))
+        (success)))
 
     :read (fn ()
-      (success :message (prop ?self :text)))
+      `((narrate ,(prop ?self :text)) (success)))
 
     :turn-on (fn ()
       (cond
@@ -695,13 +720,14 @@
           (blocked :reason already-on :message "It's on, for what little good that will do you."))
         (true
           `((set ?self :powered true)
-            (success :message
+            (narrate
               ,(str "You turn the machine on, it performs a quick self-check, and then displays a
               message on the screen: \"Unable to boot because: No disk inserted. Please insert a
               dismountable disk.\""
                    (if (in? @professor (loc @player))
                      " The professor, who has been watching you, smiles."
-                     "")))))))
+                     "")))
+            (success)))))
 
     :turn-off (fn ()
       (cond
@@ -709,7 +735,8 @@
           (blocked :reason already-off :message "It's already off."))
         (true
           '((set ?self :powered false)
-            (success :message "You turn off the computer.")))))))
+            (narrate "You turn off the computer.")
+            (success)))))))
 
 ; === Brass Hyrax (Ring) ===
 
@@ -719,8 +746,8 @@
   :properties (:takeable true :trytake true :touched true :wearable false)
   :behaviors (
     :examine (fn ()
-      (success :message "The G.U.E. Tech class ring is a gold ring depicting a hyrax eating a twig.
-      Such rings are familiarly known as \"brass hyraxes.\""))
+      '((focus @ring "The G.U.E. Tech class ring is a gold ring depicting a hyrax eating a twig.
+      Such rings are familiarly known as \"brass hyraxes.\"") (success)))
 
     :wear (fn ()
       (cond
@@ -728,7 +755,8 @@
           (blocked :reason gloves-in-way :message "The ring won't go on over the gloves."))
         (true
           '((set ?self :wearable true)
-            (success :message "It fits surprisingly well.")))))
+            (narrate "It fits surprisingly well.")
+            (success)))))
 
     :take-off (fn ()
       (cond
@@ -738,7 +766,8 @@
           (blocked :reason not-worn :message "You're not wearing that."))
         (true
           '((set ?self :wearable false)
-            (success :message "You take off the ring.")))))
+            (narrate "You take off the ring.")
+            (success)))))
 
     ; PUT RING ON HAND - the key puzzle mechanic
     :put-on (fn (?target)
@@ -749,7 +778,8 @@
               ; Animated hand accepts the ring
               '((set ?self :wearable false)
                 (move ?self @mummified-hand)
-                (success :message "The ring fits the hand perfectly.")))
+                (narrate "The ring fits the hand perfectly.")
+                (success)))
             (true
               ; Mummified hand is too dry
               (blocked :reason too-dry
@@ -790,12 +820,13 @@
         ((:dead @professor)
           (blocked :reason dead :message "The professor is no more."))
         (true
-          (success :message
-            (str "The man looks like a professor. He's wearing a white lab coat, rather stained with
+          `((focus @professor
+              ,(str "The man looks like a professor. He's wearing a white lab coat, rather stained with
                   chemicals, and a G.U.E. Tech class ring. "
                  (if (= (loc @player) @alchemy-dept)
                    "He watches you with an ambiguously predatory air."
-                   "He's working on something at the lab bench in front of him."))))))
+                   "He's working on something at the lab bench in front of him.")))
+            (success)))))
 
     ; Ask professor about things
     :ask (fn (?topic)
@@ -806,45 +837,47 @@
           (blocked :reason busy :message "The professor is intently following his ritual and won't be distracted."))
         ((= ?topic @odd-paper)
           '((set @professor :mad true)
-            (success :message "\"I don't like your insinuations.\"")))
+            (say @professor "I don't like your insinuations.")
+            (success)))
         ((= ?topic @ring)
-          (success :message "\"Just a trinket.\""))
+          '((say @professor "Just a trinket.") (success)))
         ((= ?topic @lab-global)
           (cond
             ((:seen-note @professor)
               '((move @professor @alchemy-lab)
                 (set @alchemy-lab :lit true)
-                (success :message "\"Ah! You'd like to see the lab?\" the professor asks in a rather
+                (narrate "\"Ah! You'd like to see the lab?\" the professor asks in a rather
                 unctuous tone. \"Come right in!\" He ushers you through the archway into the lab,
-                following quickly behind you and turning on the lights.")))
+                following quickly behind you and turning on the lights.")
+                (success)))
             (true
               (blocked :reason professor-blocks
                        :message "The professor stops you, not too gently. \"Sorry,\" he says,
                        although he doesn't sound too sorry. \"There are very delicate experiments
                        going on in the lab. You might hurt something.\""))))
         ((= ?topic @signup)
-          (success :message "\"We don't have much lab space. Everyone has to sign up for lab time.\""))
+          '((say @professor "We don't have much lab space. Everyone has to sign up for lab time.") (success)))
         ((= ?topic @students)
-          (success :message "\"I don't know anything about them. Tech is high-pressure. Some people can't take it.\""))
+          '((say @professor "I don't know anything about them. Tech is high-pressure. Some people can't take it.") (success)))
         ((= ?topic @note)
           (cond
             ((:seen-note @professor)
-              (success :message "\"Obviously a nut case. He knew he was going to flunk out, and this
-              is clearly an attempt to put the blame somewhere else.\""))
+              '((say @professor "Obviously a nut case. He knew he was going to flunk out, and this
+              is clearly an attempt to put the blame somewhere else.") (success)))
             (true
-              (success :message "\"What note is that?\" he asks, nervously."))))
+              '((narrate "\"What note is that?\" he asks, nervously.") (success)))))
         ((= ?topic @vat)
-          (success :message "\"Just a little experiment of mine. The label is just a joke.\""))
+          '((say @professor "Just a little experiment of mine. The label is just a joke.") (success)))
         ((= ?topic @lovecraft)
-          (success :message "\"The machines in our department have names like that. Lovecraft wrote
+          '((say @professor "The machines in our department have names like that. Lovecraft wrote
           some stories about alchemy. We've got Paracelsus, Dunsany, and a couple of others,
-          too.\""))
+          too.") (success)))
         (true
           (cond
             ((> (:ritual-stage @professor) 0)
               (blocked :reason no-response :message "There is no response."))
             (true
-              (success :message "The professor looks at you in much the way a cat looks at a mouse."))))))
+              '((narrate "The professor looks at you in much the way a cat looks at a mouse.") (success)))))))
 
     :tell-about (fn (?topic)
       (redirect :action (do ?self :ask ?topic)))
@@ -862,16 +895,18 @@
         ((or (= ?obj @smooth-stone) (= ?obj @mummified-hand) (= ?obj @knife))
           '((set @professor :mad true)
             (move ?obj @professor)
-            (success :message "\"Very interesting! I'll take that!\"")))
+            (say @professor "Very interesting! I'll take that!")
+            (success)))
         ((= ?obj @note)
           '((set @professor :seen-note true)
             (set @professor :mad true)
             (move ?obj @professor)
-            (success :message "He reads it carefully. \"What drivel! This just confirms my
+            (narrate "He reads it carefully. \"What drivel! This just confirms my
             suspicions. He had clearly gone over the edge. Drug use, drinking, insanity. It's only
-            too bad that I didn't realize what was happening. I might have helped him.\"")))
+            too bad that I didn't realize what was happening. I might have helped him.\"")
+            (success)))
         (true
-          (success :message "He doesn't seem interested."))))
+          '((narrate "He doesn't seem interested.") (success)))))
 
     :show (fn (?obj)
       (redirect :action (do ?self :give ?obj)))
@@ -890,12 +925,14 @@
             ((and ?weapon (:weapon ?weapon))
               `((set @professor :mad true)
                 (move ?weapon @professor)
-                (success :message ,(str "With contemptuous ease, the professor prevents you. \"I'll
+                (narrate ,(str "With contemptuous ease, the professor prevents you. \"I'll
                 take this,\" he says. \"Just for safekeeping.\" He makes the " (desc ?weapon) "
-                disappear."))))
+                disappear."))
+                (success)))
             (true
               '((set @professor :mad true)
-                (success :message "With contemptuous ease, the professor prevents you.")))))))
+                (narrate "With contemptuous ease, the professor prevents you.")
+                (success)))))))
 
     :kick (fn ()
       (redirect :action (do ?self :attack nil)))
@@ -908,9 +945,10 @@
       (cond
         ((in? @ring ?self)
           '((set @professor :mad true)
-            (success :message "He thrusts his hand into his pocket.")))
+            (narrate "He thrusts his hand into his pocket.")
+            (success)))
         (true
-          (success :message "\"You'll get it. All in good time.\""))))
+          '((say @professor "You'll get it. All in good time.") (success)))))
 
     :look-inside (fn ()
       (redirect :action (do ?self :search)))))
@@ -923,10 +961,10 @@
   :properties (:invisible true :nodesc true :person true :known true)
   :behaviors (
     :examine (fn ()
-      (success :message "You see no missing students."))
+      '((focus @students "You see no missing students.") (success)))
 
     :help (fn ()
-      (success :message "They may be beyond help."))))
+      '((narrate "They may be beyond help.") (success)))))
 
 ; === Events ===
 
@@ -937,18 +975,20 @@
     (cond
       ((:dead @professor)
         '((dequeue answer-door)
-          (success :message "There is no sign of life behind the door.")))
+          (narrate "There is no sign of life behind the door.")
+          (success)))
       (true
         `((move @professor @alchemy-dept)
           (queue professor-watches)
           (move @player @alchemy-dept)
           (dequeue answer-door)
-          (success :message
+          (narrate
             ,(str "The door opens partway, revealing a professorial man in a white lab coat. He smiles. "
                  (if (not (:visited @professor))
                    "\"Good evening! I don't get many visitors this late. You're not one of my students, are you?\""
                    "\"Back for another visit, are you?\"")
-                 " He ushers you into the room without waiting for an answer, closing the door behind you."))))))
+                 " He ushers you into the room without waiting for an answer, closing the door behind you."))
+          (success)))))
 
 ; Professor watches player in alchemy-dept
 (event professor-watches
@@ -960,22 +1000,24 @@
           (success)))
       (true
         `((queue professor-watches)
-          (success :message
+          (narrate
             ,(str "The professor "
                  (if (and (:mad @professor) (:seen-note @professor))
                    "gazes at you with a distinctly predatory air."
                    (if (:mad @professor)
                      "gazes at you with malign intent."
-                     "gazes at you in a bored and distracted way."))))))))
+                     "gazes at you in a bored and distracted way."))))
+          (success)))))
 
 ; Remember student event - triggered by reading sign-up sheet
 (event remember-student
   :on-turn
     '((set @signup :remembered true)
       (dequeue remember-student)
-      (success :message "Suddenly, you remember why the graduate student's name was familiar. He was
+      (narrate "Suddenly, you remember why the graduate student's name was familiar. He was
       a missing student, until his body was found smashed and broken at the base of the tallest
-      building on campus.")))
+      building on campus.")
+      (success)))
 
 ; Animate hand event - hand comes to life in vat
 (event animate-hand
@@ -988,21 +1030,25 @@
         ((:person @mummified-hand)
           ; Already animated, just trying to escape
           '((queue animate-hand)
-            (success :message "The hand is trying to crawl out of the vat. The fingers flex and grab
-            at the slippery sides, but in vain.")))
+            (narrate "The hand is trying to crawl out of the vat. The fingers flex and grab
+            at the slippery sides, but in vain.")
+            (success)))
         ((= (:animation-count @mummified-hand) 0)
           `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
-            (success :message "The hand bobs to the surface. It's odd, but it looked like one of the
-            fingers moved.")))
+            (narrate "The hand bobs to the surface. It's odd, but it looked like one of the
+            fingers moved.")
+            (success)))
         ((= (:animation-count @mummified-hand) 1)
           `((set @mummified-hand :animation-count ,?new-count)
             (queue animate-hand)
-            (success :message "The hand splashes to the surface. The fingers are moving!")))
+            (narrate "The hand splashes to the surface. The fingers are moving!")
+            (success)))
         (true
           '((set @mummified-hand :person true)
             (queue animate-hand)
-            (success :message "The hand is trying to crawl out of the vat."))))))
+            (narrate "The hand is trying to crawl out of the vat.")
+            (success))))))
 
 ; Professor ritual event - the 8-stage cutscene in the lab
 ; This is triggered when player enters the lab with professor
@@ -1084,50 +1130,53 @@
           `((set @professor :ritual-stage ,?next-stage)
             (move @player @pentagram)
             (queue professor-ritual)
-            (success :render :stage1 :message ,stage1)))
+            (narrate ,stage1)
+            (success :render :stage1)))
 
         ((= (:ritual-stage @professor) 1)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage2 :message ,stage2)))
+            (narrate ,stage2)
+            (success :render :stage2)))
 
         ((= (:ritual-stage @professor) 2)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage3 :message ,stage3)))
+            (narrate ,stage3)
+            (success :render :stage3)))
 
         ((= (:ritual-stage @professor) 3)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage4
-                     :message ,(str stage4
-                                    (if (:rmung @pentagram)
-                                      ", the professor having difficulty with the almost unpronounceable words"
-                                      "")))))
+            (narrate ,(str stage4
+                           (if (:rmung @pentagram)
+                             ", the professor having difficulty with the almost unpronounceable words"
+                             "")))
+            (success :render :stage4)))
 
         ((= (:ritual-stage @professor) 4)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage5 :message ,stage5)))
+            (narrate ,stage5)
+            (success :render :stage5)))
 
         ((= (:ritual-stage @professor) 5)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage6
-                     :message ,(str stage6 " The professor "
+            (narrate ,(str stage6 " The professor "
                         (cond
                             ((not (in? @player @pentagram))
                                 "is alternately looking at you and at the mist.")
                             ((:rmung @pentagram)
                                 "gestures in your direction, an overtone of terror in his voice.")
                             (true
-                                "chants more rapidly, producing strange guttural sounds, scarcely human."))))))
+                                "chants more rapidly, producing strange guttural sounds, scarcely human."))))
+            (success :render :stage6)))
 
         ((= (:ritual-stage @professor) 6)
           `((set @professor :ritual-stage ,?next-stage)
             (queue professor-ritual)
-            (success :render :stage7
-                     :message ,(
+            (narrate ,(
                         str stage7
                         (cond
                             ((not (in? @player @pentagram))
@@ -1137,7 +1186,8 @@
                             ((:rmung @pentagram)
                                 " The professor points madly toward you, and the mist follows.")
                             (true
-                                " The professor's brow drips with sweat."))))))
+                                " The professor's brow drips with sweat."))))
+            (success :render :stage7)))
 
         ; Stage 8 - death or escape
         ((= (:ritual-stage @professor) 7)
@@ -1160,7 +1210,8 @@
                       '((set @alchemy-trap-door :open false))
                       '())
                 (dequeue professor-ritual)
-                (success :render :stage8-survive :message ,stage8-survive)))))
+                (narrate ,stage8-survive)
+                (success :render :stage8-survive)))))
 
         (true
           '((dequeue professor-ritual)
