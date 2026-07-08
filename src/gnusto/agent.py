@@ -1176,52 +1176,58 @@ class GameSession:
 
         return (raw_results, text or "Done.")
 
+    def _debug_output_lines(self, output: Any) -> list[str]:
+        """Debug lines for a result's output stream, uniform across result types.
+
+        One place so the debug view can't drift from the vocabulary the way the
+        event branch did (it used to show only narrate/say and omit the rest).
+        """
+        lines: list[str] = []
+        for out_type, entity, text in output or []:
+            if not text:
+                continue
+            if out_type == "say" and entity:
+                lines.append(f'{entity}: "{text}"')
+            else:
+                lines.append(f"{out_type}: {text}")
+        return lines
+
+    def _debug_effects_lines(self, effects: Any) -> list[str]:
+        """Debug lines for an effect list (aligned continuation)."""
+        effects = list(effects or [])
+        if not effects:
+            return []
+        lines = [f"effects: {effects[0]}"]
+        lines.extend(f"         {eff}" for eff in effects[1:])
+        return lines
+
     def _format_compact_debug(self, results: list[Any]) -> str:
         """Format results in compact debug format for display."""
-        lines = []
+        lines: list[str] = []
         for result in results:
             if isinstance(result, ActionDone):
-                # Show key context fields
-                for key, value in result.context:
-                    lines.append(f"{key}: {value}")
-                # Show output (narrate/say)
-                for out_type, entity, text in result.output:
-                    if out_type == "say" and entity:
-                        lines.append(f'{entity}: "{text}"')
-                    elif out_type == "narrate":
-                        lines.append(f"narrate: {text}")
-                # Show reason if present
+                lines.extend(f"{key}: {value}" for key, value in result.context)
+                lines.extend(self._debug_output_lines(result.output))
                 if result.reason:
                     lines.append(f"description: {result.reason}")
-                # Show effects
-                if result.effects:
-                    if len(result.effects) == 1:
-                        lines.append(f"effects: {result.effects[0]}")
-                    else:
-                        lines.append("effects: " + result.effects[0])
-                        for eff in result.effects[1:]:
-                            lines.append(f"         {eff}")
+                lines.extend(self._debug_effects_lines(result.effects))
             elif isinstance(result, ActionBlocked):
                 lines.append(f"blocked: {result.reason}")
                 if result.message:
                     lines.append(f"message: {result.message}")
-                for out_type, entity, text in result.output:
-                    if out_type == "say" and entity:
-                        lines.append(f'{entity}: "{text}"')
+                lines.extend(self._debug_output_lines(result.output))
             elif isinstance(result, ActionError):
                 lines.append(f"error: {result.message}")
             elif isinstance(result, ActionResult):
-                # From runtime.ActionResult
+                # A runtime.ActionResult here is a TRIGGERED EVENT (not the player's
+                # action). Label it so its effects/output aren't "causeless".
+                lines.append("[triggered event]")
                 lines.append(f"outcome: {result.outcome}")
-                for key, value in result.context:
-                    lines.append(f"{key}: {value}")
-                if result.effects_applied:
-                    if len(result.effects_applied) == 1:
-                        lines.append(f"effects: {result.effects_applied[0]}")
-                    else:
-                        lines.append("effects: " + result.effects_applied[0])
-                        for eff in result.effects_applied[1:]:
-                            lines.append(f"         {eff}")
+                lines.extend(f"{key}: {value}" for key, value in result.context)
+                lines.extend(self._debug_output_lines(getattr(result, "output", None)))
+                if getattr(result, "reason", None):
+                    lines.append(f"description: {result.reason}")
+                lines.extend(self._debug_effects_lines(result.effects_applied))
         return "\n".join(lines)
 
     def _format_result_debug(self, result: Any) -> str:

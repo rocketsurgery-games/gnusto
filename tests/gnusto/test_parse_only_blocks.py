@@ -223,3 +223,45 @@ def test_blocks_to_text_flattens_stream(monkeypatch):
     assert (
         sess._blocks_to_text(blocks) == 'The door creaks open. @hacker: "Losing, huh?"'
     )
+
+
+def test_debug_shows_triggered_event_output():
+    """The debug view must show a triggered event's narration, not just its effects
+    (the compulsion-pages regression: event output was dropped from debug)."""
+    from grue.runtime import ActionResult as RuntimeActionResult
+
+    sess = GameSession.__new__(GameSession)
+    action = ActionDone(
+        message="",
+        context=[],
+        effects=["set-prop @odd-paper read-page = False"],
+        redirects=[],
+        output=[("narrate", None, "You touch the MORE box, and a new page appears.")],
+    )
+    event = RuntimeActionResult(
+        outcome="success",
+        context=[],
+        effects_applied=["set @hacker comp-cnt = 3"],
+        output=[("narrate", None, "The third page is in the same script...")],
+    )
+    dbg = sess._format_compact_debug([action, event])
+
+    assert "narrate: You touch the MORE box, and a new page appears." in dbg
+    assert "[triggered event]" in dbg
+    # Previously dropped from debug even though it rendered to the player:
+    assert "narrate: The third page is in the same script..." in dbg
+
+
+def test_debug_shows_non_narrate_output_types():
+    """focus/emphasize/etc. output types appear in debug, not just narrate/say."""
+    sess = GameSession.__new__(GameSession)
+    result = ActionDone(
+        message="",
+        context=[],
+        effects=[],
+        redirects=[],
+        output=[("focus", "@idol", "A jade idol."), ("sfx", None, "KRA-KOOM")],
+    )
+    dbg = sess._format_compact_debug([result])
+    assert "focus: A jade idol." in dbg
+    assert "sfx: KRA-KOOM" in dbg
