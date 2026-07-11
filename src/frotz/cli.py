@@ -692,6 +692,36 @@ def _resolve_on_disk(assets: Path, key: str) -> Path | None:
     return None
 
 
+def cmd_lint(args: argparse.Namespace) -> int:
+    """Run the static game-logic lints (event-queue contract, ...)."""
+    from grue.lint import lint_world
+
+    game_path = Path(args.game)
+    if not game_path.exists():
+        print(f"Error: {game_path} not found", file=sys.stderr)
+        return 1
+
+    try:
+        world = load_grue(str(game_path))
+    except Exception as e:
+        print(f"Error loading game: {e}", file=sys.stderr)
+        return 1
+
+    errors = lint_world(world)
+    if not errors:
+        print(f"✓ {world.name or game_path}: no lint issues")
+        return 0
+
+    n_err = sum(1 for e in errors if e.severity == "error")
+    for e in errors:
+        print(str(e))
+    print(f"\n{len(errors)} issue(s) ({n_err} error, {len(errors) - n_err} warning)")
+    # Errors fail the run; warnings alone fail only under --strict.
+    if n_err or args.strict:
+        return 1
+    return 0
+
+
 def cmd_render(args: argparse.Namespace) -> int:
     """Enumerate the render manifest and run the explosion-guard lint."""
     from grue.render import assemble_style, build_render_manifest, lint_render
@@ -960,6 +990,29 @@ def main(args: list[str] | None = None) -> int:
         help="List missing keys and orphan files",
     )
     render_parser.set_defaults(func=cmd_render)
+
+    # lint subcommand
+    lint_parser = subparsers.add_parser(
+        "lint",
+        help="Run static game-logic lints (event-queue contract, ...)",
+        description=(
+            "Static checks on game logic. Currently flags self-advancing counter "
+            "events (condp on a property they mutate) that are only queued with a "
+            "finite countdown and never re-queue themselves — under the one-shot "
+            "queue contract they fire once, leaving later stages unreachable "
+            "(the class of bug behind `compulsion`)."
+        ),
+    )
+    lint_parser.add_argument(
+        "game",
+        help="Path to game directory or .grue file",
+    )
+    lint_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero on warnings too (not just errors)",
+    )
+    lint_parser.set_defaults(func=cmd_lint)
 
     # Parse args
     opts = parser.parse_args(args)

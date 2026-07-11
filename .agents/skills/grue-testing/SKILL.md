@@ -21,6 +21,11 @@ elevator soft-lock slipped past ~30 unit tests (see yak `gnusto-3306`).
 Both suites must stay green: **`grue-test games/lurkinghorror/`** and
 **`python -m pytest tests -q`**.
 
+**Static lint:** run **`frotz lint <game>`** to catch dropped event chains — a
+self-advancing counter event queued only finitely that forgets to re-queue
+itself (the `compulsion` bug class). It's also asserted lint-clean for LH in
+pytest, so a regression fails CI.
+
 ## grue-test DSL
 
 ```grue

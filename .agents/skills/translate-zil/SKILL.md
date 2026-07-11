@@ -114,8 +114,10 @@ Grue's queue matches ZIL's `CLOCKER` (see `source/misc.zil`) exactly:
 
 So when ZIL does `<QUEUE I-X 2>` then re-queues with `<QUEUE I-X 1>` each turn,
 the Grue event **must** include `(queue X 1)` in its advancing branches. A
-finite-countdown event that neither re-queues nor dequeues is almost always a
-bug (it will fire once instead of chaining). See `docs/grue.md`.
+A finite-countdown event that neither re-queues nor dequeues is almost always a
+bug (it will fire once instead of chaining). See `docs/grue.md`. Run
+**`frotz lint <game>`** after converting an event with a `(condp = (:counter ...))`
+state machine — it flags exactly this dropped-chain mistake.
 
 ## Truthiness gotcha (ZIL 0 is true; Grue 0 is currently false)
 

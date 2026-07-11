@@ -190,6 +190,31 @@ The manifest builder and lint live in `grue.render`; this is the enumeration
 step that feeds `filfre brief` / `filfre fill` (see [`docs/render.md`](render.md)
 and [`docs/filfre.md`](filfre.md)).
 
+### `frotz lint` - Static Game-Logic Lint
+
+Static checks on game logic (distinct from the render lint above). Run it on a
+game directory or `.grue` file:
+
+```bash
+frotz lint games/lurkinghorror        # report issues
+frotz lint games/lurkinghorror --strict   # exit non-zero on warnings too
+```
+
+Current checks:
+
+1. **Dropped event chain** — flags a self-advancing counter event (one that
+   dispatches via `(condp = (:prop @ent) ...)` and mutates that same `(:prop
+   @ent)` across stages) which is only ever queued with a *finite* countdown and
+   never re-queues itself. Under the ZIL-faithful one-shot queue contract
+   (see [`docs/grue.md`](grue.md)) such an event fires exactly once, so its
+   later stages are unreachable — the class of bug behind the `compulsion`
+   nightmare sequence. Fix by re-queuing in the advancing branches
+   (`(queue X 1)`) or queuing indefinitely (`(queue X)`).
+
+Exits non-zero on any error, and on warnings under `--strict`. The lint lives in
+`grue.lint` (`lint_world`) and is also asserted lint-clean for The Lurking
+Horror in the pytest suite, so a re-introduced dropped chain fails CI.
+
 ## State Specification Syntax
 
 Constraints use Grue syntax or shorthand:
