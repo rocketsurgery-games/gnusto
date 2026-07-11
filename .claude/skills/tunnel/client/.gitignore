@@ -1,4 +1,0 @@
-node_modules/
-*.tsbuildinfo
-build/**/*.map
-build/tests/
