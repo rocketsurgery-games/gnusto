@@ -4,10 +4,14 @@ title: Test & debug tooling for timed/event-driven mechanics
 type: task
 priority: 2
 created: '2026-07-11T22:52:54Z'
-updated: '2026-07-11T22:52:54Z'
+updated: '2026-07-11T23:45:04Z'
 labels:
 - testing
 - runtime
 ---
 
 Herd for test/debug improvements motivated by the elevator soft-lock (gnusto-f95a.1) slipping past ~30 single-turn unit tests. The gap: tests asserted single-turn post-conditions from hand-built setups; nothing rode multiple turns or ran an event long enough to expose 'fires forever', and no static check flagged the missing dequeue/re-queue.
+
+---
+▸ 2026-07-11T23:45:04Z
+All children shorn: .1 dropped-chain lint (frotz lint), .2 (wait N)/(advance N)+queue-countdown? assertions, .3 REPL (queues) inspector + (wait N).
