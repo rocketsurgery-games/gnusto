@@ -39,7 +39,8 @@ Test groups with shared setup:
     (do @obj :verb args...)   - Execute action
     (assert PRED)             - Check predicate, fail if false
     (until PRED BODY...)      - Loop until predicate true (max 100 iterations)
-    (wait)                    - Pass time and process queued events
+    (wait)                    - Pass one turn, processing queued events
+    (wait N) / (advance N)    - Pass N turns (for timed/event mechanics)
     (run ACTION-LIST)         - Execute a list of actions (symbol or quoted list)
     (go :direction DIR)       - Shorthand for movement
 
@@ -62,6 +63,7 @@ State predicates (check game state):
     (prop? OBJ PROP VALUE)   - Object property equals value
     (queued? EVENT)
     (not-queued? EVENT)
+    (queue-countdown? EVENT N)  - EVENT queued with countdown N (N=nil: indefinite)
 
 Usage:
     from grue.test import run_tests
@@ -232,8 +234,12 @@ class TestRunner:
             return self._run_assert(runtime, form, form_idx)
         elif form_type == "until":
             return self._run_until(runtime, form, form_idx)
-        elif form_type == "wait":
-            return self._run_wait(runtime, form_idx)
+        elif form_type in ("wait", "advance"):
+            try:
+                self._last_result = self._execute_action(runtime, form)
+                return []
+            except Exception as e:
+                return [f"Form {form_idx}: {e}"]
         elif form_type == "run":
             return self._run_run(runtime, form, form_idx)
         elif form_type == "go":
@@ -264,15 +270,7 @@ class TestRunner:
         except Exception as e:
             return [f"Form {form_idx}: {e}"]
 
-    def _run_wait(self, runtime: GrueRuntime, form_idx: int) -> list[str]:
-        """Run a (wait) form - process events. Stores first event result."""
-        try:
-            results = runtime.process_events()
-            if results:
-                self._last_result = results[0]
-            return []
-        except Exception as e:
-            return [f"Form {form_idx}: {e}"]
+
 
     def _run_run(self, runtime: GrueRuntime, form: SList, form_idx: int) -> list[str]:
         """Run a (run ACTION-LIST) form - execute a list of actions."""
@@ -343,6 +341,7 @@ class TestRunner:
         "prop?",
         "queued?",
         "not-queued?",
+        "queue-countdown?",
     }
 
     # Result predicates require a last action result to check
@@ -504,12 +503,21 @@ class TestRunner:
                 raise EvalError("(go ...) requires :direction")
             return runtime.do("_movement", "go", direction)
 
-        elif name == "wait":
-            # Pass time and process queued events
-            results = runtime.process_events()
-            if results:
-                return results[0]
-            return ActionResult(outcome="success", context=[("waited", True)])
+        elif name in ("wait", "advance"):
+            # (wait) / (wait N) / (advance N): pass N turns (default 1),
+            # processing queued events each turn. Returns the last event result.
+            count = 1
+            if len(action) >= 2:
+                raw = action[1]
+                if not isinstance(raw, int) or raw < 1:
+                    raise EvalError(f"({name} N): N must be a positive integer")
+                count = raw
+            last: ActionResult | None = None
+            for _ in range(count):
+                results = runtime.process_events()
+                if results:
+                    last = results[-1]
+            return last or ActionResult(outcome="success", context=[("waited", True)])
 
         else:
             raise EvalError(f"Unknown action type: {name}")
@@ -716,6 +724,33 @@ class TestRunner:
                     event = event.name
                 if runtime.is_queued(event):
                     failures.append(f"Event '{event}' should not be queued")
+
+            elif name == "queue-countdown?":
+                # (queue-countdown? EVENT N) - event queued with countdown N.
+                # Use N = nil to assert an indefinite queue.
+                if len(pred) != 3:
+                    failures.append(
+                        "(queue-countdown? EVENT N) requires 2 arguments"
+                    )
+                    continue
+                event = pred[1]
+                if isinstance(event, Symbol):
+                    event = event.name
+                expected = pred[2]
+                if isinstance(expected, Symbol) and expected.name == "nil":
+                    expected = None
+                if not runtime.is_queued(event):
+                    failures.append(
+                        f"Event '{event}' is not queued (expected countdown "
+                        f"{expected})"
+                    )
+                else:
+                    actual = runtime.get_queue_countdown(event)
+                    if actual != expected:
+                        failures.append(
+                            f"Event '{event}' countdown is {actual}, expected "
+                            f"{expected}"
+                        )
 
             elif name == "not-flag?":
                 # Alias for no-flag? - check object does NOT have a property

@@ -34,6 +34,7 @@ pytest, so a regression fails CI.
   (test "does the thing"
     :setup (...)                 ; optional per-test setup, overrides group
     (do @obj :verb)              ; actions: (do @o :verb [@arg]), (go :direction south), (wait)
+    (advance 5)                  ; (wait N)/(advance N): pass N turns at once
     (until PRED (wait))          ; loop BODY until PRED is true (max 100 iterations)
     (assert (outcome? success))
     (assert (loc? @player @room))))
@@ -42,7 +43,8 @@ pytest, so a regression fails CI.
 **Assertion predicates** (`(assert (PRED ...))`):
 `outcome?`, `context?`, `output?` (substring of emitted text), `death?`,
 `victory?`, `player-at?`, `loc?`, `prop?`, `has-flag?`, `no-flag?`, `not-flag?`,
-`queued?`, `not-queued?`.
+`queued?`, `not-queued?`, `queue-countdown?` (`(queue-countdown? EVENT N)`;
+`N = nil` asserts an indefinite queue).
 
 **Setup effects** run as real mutations: `move`, `set`, `inc`, `queue`,
 `dequeue`, `take`. Use them to reconstruct precise state deterministically.
@@ -78,6 +80,8 @@ Queue bugs hide unless you check them. Given the ZIL-faithful contract
 - **One-shot fired → gone:** after the fire turn, `(assert (not-queued? X))`.
   This is the single assertion that would have caught the elevator/compulsion
   bugs directly.
+- **Countdown ticks as expected:** `(assert (queue-countdown? X 2))` right after
+  queuing, then `(advance 1)` and `(assert (queue-countdown? X 1))`.
 - **Chain keeps running:** for an event that re-queues itself, `(assert (queued? X))`
   still holds across turns; assert the per-turn effect advances.
 - **Indefinite stops on dequeue:** drive it to its terminal branch, then
@@ -91,6 +95,10 @@ Deterministic (no LLM), great for isolating a game bug:
 printf '(go south)\n(do @down-button :push)\n(wait)\n(wait)\n' > /tmp/probe.grue
 grue-repl games/lurkinghorror/ < /tmp/probe.grue 2>&1 | grep -nE '===|Effect:|EVENT'
 ```
+
+In the REPL, **`(queues)`** dumps the live event queue with countdowns and
+**`(wait N)` / `(advance N)`** passes N turns at once — the fast way to watch a
+timed mechanic settle without diving into source.
 
 Through the real LLM loop (parse-only is the default; engine emits the text):
 

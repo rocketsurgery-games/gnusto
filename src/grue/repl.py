@@ -9,6 +9,7 @@ Meta:
     (inventory)               - Show player inventory
     (state)                   - Show full game state
     (exits)                   - Show available exits
+    (queues)                  - Show the live event queue with countdowns
     (reset)                   - Reset to initial state
     (help)                    - Show this help
     (quit)                    - Exit REPL
@@ -18,6 +19,7 @@ Game Actions (what the gameplay agent uses):
     (do TARGET :verb ARG1 ARG2 ...)       - Action with arguments
     (go DIRECTION)                        - Move in direction
     (wait)                                - Pass time, process events
+    (wait N) / (advance N)                - Pass N turns (timed/event mechanics)
 
 Examples:
     (do @door :open)                      - Open the door
@@ -202,9 +204,16 @@ class QueryValue:
 
 @dataclass
 class WaitResult:
-    """Result of waiting (passing time)."""
+    """Result of waiting (passing time). ``turns`` process_events cycles run."""
 
-    pass
+    turns: int = 1
+
+
+@dataclass
+class QueuesResult:
+    """Display the live event queue (event -> countdown)."""
+
+    runtime: GrueRuntime
 
 
 @dataclass
@@ -244,6 +253,8 @@ class ReplEvaluator:
             "go": self._cmd_go,
             "do": self._cmd_do,
             "wait": self._cmd_wait,
+            "advance": self._cmd_wait,
+            "queues": self._cmd_queues,
         }
 
         # Effect commands (direct state mutation for testing/debugging)
@@ -353,8 +364,18 @@ class ReplEvaluator:
         return ResetResult()
 
     def _cmd_wait(self, expr: SList) -> WaitResult:
-        """Execute (wait) - pass time and process events."""
-        return WaitResult()
+        """Execute (wait) / (wait N) / (advance N) - pass N turns (default 1)."""
+        turns = 1
+        if len(expr) >= 2:
+            raw = expr[1]
+            if not isinstance(raw, int) or raw < 1:
+                raise EvalError("(wait N): N must be a positive integer")
+            turns = raw
+        return WaitResult(turns=turns)
+
+    def _cmd_queues(self, expr: SList) -> QueuesResult:
+        """Execute (queues) - show the live event queue with countdowns."""
+        return QueuesResult(runtime=self.runtime)
 
     def _cmd_go(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
         """Execute (go DIRECTION)."""
@@ -520,7 +541,21 @@ def print_result(result: Any) -> bool:
         return True
 
     if isinstance(result, WaitResult):
-        print("[Time passes...]")
+        if result.turns > 1:
+            print(f"[Time passes... x{result.turns}]")
+        else:
+            print("[Time passes...]")
+        return True
+
+    if isinstance(result, QueuesResult):
+        queues = result.runtime.state.queues
+        if not queues:
+            print("[Queue empty]")
+        else:
+            print("[Event queue]")
+            for event, countdown in queues.items():
+                when = "indefinite" if countdown is None else f"countdown={countdown}"
+                print(f"  {event}: {when}")
         return True
 
     if isinstance(result, LocationResult):
@@ -681,22 +716,25 @@ def main():
             continue
 
         # Process events (game loop - events fire after each player action)
-        # Only process after actions that advance time (do, go, wait)
+        # Only process after actions that advance time (do, go, wait). A
+        # (wait N)/(advance N) runs the event loop N times.
         if isinstance(result, (ActionDone, ActionBlocked, WaitResult)):
-            event_results = runtime.process_events()
-            for event_result in event_results:
-                # Find the event name from queues (best effort)
-                event_name = "event"
-                print_result(
-                    EventResult(
-                        event_name=event_name,
-                        outcome=event_result.outcome,
-                        context=list(event_result.context)
-                        if event_result.context
-                        else [],
-                        effects=[str(e) for e in event_result.effects_applied],
+            turns = result.turns if isinstance(result, WaitResult) else 1
+            for _ in range(turns):
+                event_results = runtime.process_events()
+                for event_result in event_results:
+                    # Find the event name from queues (best effort)
+                    event_name = "event"
+                    print_result(
+                        EventResult(
+                            event_name=event_name,
+                            outcome=event_result.outcome,
+                            context=list(event_result.context)
+                            if event_result.context
+                            else [],
+                            effects=[str(e) for e in event_result.effects_applied],
+                        )
                     )
-                )
 
         # Check win/lose
         if runtime.check_victory():

@@ -124,6 +124,18 @@
 ; (which refuses to move while any door is open) spun forever and the car could
 ; never leave a floor. These tests ride the whole loop; (until ...) keeps them
 ; robust against the exact turn counts of the call/scan timing.
+; Exercises the DSL lifecycle helpers: (queue-countdown? ...) and (advance N).
+(test-group "elevator queue lifecycle"
+  :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true))
+
+  (test "calling the elevator queues a one-shot move, which advances then clears"
+    (do @down-button :push)
+    (assert (queue-countdown? elevator-moves 1))   ; one-shot armed for this turn
+    (advance 8)                                     ; ride the scan out to a stop
+    (assert (prop? @cs-elevator-room floor 2))      ; arrived at the called floor
+    (assert (prop? @cs-elevator-room stopped true))
+    (assert (not-queued? elevator-moves))))         ; one-shot chain settled, idle
+
 (test-group "elevator full ride"
   :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true))
 
