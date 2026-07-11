@@ -197,7 +197,7 @@ npm run build                       # production build
 ```
 
 When converting ZIL to Grue, see the conventions in
-[`CLAUDE.md`](CLAUDE.md) and [`games/notes.md`](games/notes.md): remove ported ZIL comments
+[`AGENTS.md`](AGENTS.md) and [`games/notes.md`](games/notes.md): remove ported ZIL comments
 as you go, add Grue tests alongside, and file any bug in already-converted code as P1.
 
 ---
@@ -255,5 +255,5 @@ yaks stats                # progress overview
 | [`docs/frotz.md`](docs/frotz.md) | Static analysis tools |
 | [`docs/render.md`](docs/render.md) | Rendering pipeline & visual style (static illustration, panel stream) |
 | [`docs/filfre.md`](docs/filfre.md) | The `filfre` image-generation CLI |
-| [`CLAUDE.md`](CLAUDE.md) | Conventions for AI assistants working in this repo |
+| [`AGENTS.md`](AGENTS.md) | Conventions for AI assistants working in this repo |
 | [`games/lurkinghorror/README.md`](games/lurkinghorror/README.md) | Lead conversion notes (ZIL → Grue) |

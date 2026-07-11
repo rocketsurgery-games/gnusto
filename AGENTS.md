@@ -82,9 +82,22 @@ filfre generate --prompt "A scene" -r lantern.png -r table.png -o scene.png
 ```
 
 
+# Skills
+
+Project-local skills live in `.agents/skills/<name>/SKILL.md`. Reach for them by name:
+
+- **`translate-zil`** — converting ZIL/MDL source to Grue (vocabulary, event-queue contract, truthiness gotchas).
+- **`grue-testing`** — how to test games: `grue-test` vs `pytest` vs `grue-repl`, multi-turn `(until ...)` tests, event-lifecycle assertions, and manual TUI/REPL probing.
+
+
 # Converting ZIL to Grue
 
 When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their yaks P1, so we fix them before moving on to the rest of the conversion.
+
+See the `translate-zil` skill for the full mapping. Two hard-won gotchas worth repeating here:
+
+- **Event queue is ZIL-`CLOCKER`-faithful.** `(queue X N)` with a finite `N` is a **one-shot** that auto-dequeues when it fires; to keep firing, the `:on-turn` body must re-queue itself (the chain idiom, e.g. `(queue X 1)`). `(queue X)` / `nil` / negative is **indefinite** (fires every turn until `(dequeue X)`). See `docs/grue.md`.
+- **Truthiness currently leaks from Python:** `0`, `""`, `[]`, `{}` are all falsy — unlike ZIL/Clojure where only `<>`/`nil`/`false` is false. Beware `(and ?floor ...)` / `(if some-count ...)` where the value can legitimately be `0` (this caused a real basement-floor bug). Use `(nil? x)` / `(empty? x)` / explicit numeric compares. (Tracked for a fix in yak `gnusto-be0a`.)
 
 As we work through converting The Lurking Horror as a starting point, we're keeping notes on what we learn in
 ./games/lurkinghorror/README.md.
@@ -108,7 +121,7 @@ parser-level distinctions.
 
 IMPORTANT: As you convert to Grue, always look for opportunities to improve the language design for flexibility and expressiveness. If you see such an opportunity, or any language construct that isn't generalized, or doesn't behave as an experienced Scheme/Clojure developer might expect, stop and initiate a discussion with the user.
 
-We're keeping the yak "Language & runtime design tweaks" (gnusto-ntr) around to capture language changes as we go. Always track language & runtime improvements & fixes in this epic.
+Always track language & runtime improvements and fixes as yaks (label them `lang` / `runtime`) so design decisions and their rationale are captured.
 
 **Documentation:** When adding new language features, entity fields, or changing behavior, update the relevant docs:
 - `docs/grue.md` - Language reference (syntax, semantics, entity fields)
@@ -119,5 +132,5 @@ We're keeping the yak "Language & runtime design tweaks" (gnusto-ntr) around to 
 
 ## Task tracking
 
-This project uses Yaks to track its own work. Every piece of work must be bracketed: `/yaks:shave` before coding, `/yaks:shorn` right after committing. The Yaks skill has the full workflow — follow it.
+This project uses Yaks to track its own work. Every piece of work must be bracketed: shave a yak before coding, shear it right after committing. Follow the **`yak`** skill for the full workflow.
 
