@@ -546,10 +546,22 @@ Event queues track ongoing situations that affect behavior. They map to ZIL's
 (queued? COMPULSION)          ; is player under compulsion?
 
 ; Activate/deactivate events in effects
-(queue HACKER-HELPS)          ; start the event (indefinite)
-(queue LANTERN 200)           ; start with 200-turn countdown
+(queue HACKER-HELPS)          ; indefinite: fires every turn until dequeued
+(queue LANTERN 200)           ; one-shot: fires once, 200 turns from now
 (dequeue HACKER-HELPS)        ; end the event
 ```
+
+**Queue contract (ZIL-faithful).** The countdown determines whether an event
+is a one-shot or indefinite, mirroring ZIL's `CLOCKER`:
+
+| Countdown | Meaning |
+|-----------|---------|
+| omitted / `nil` | **Indefinite.** Fires every turn and is *never* auto-removed; the `:on-turn` body must `(dequeue …)` itself to stop. (ZIL `-1`.) |
+| `N` (>= 1) | **One-shot.** Counts down each turn; fires on turn `N` (`1` = this turn), then **auto-dequeues**. To repeat, the body re-queues itself. |
+| negative | Indefinite (same as `nil`). |
+
+This means a finite-countdown event that wants to keep running must re-queue
+itself each turn (the chain idiom) — it will *not* keep firing on its own.
 
 **Use in behaviors:**
 
@@ -596,12 +608,20 @@ to ZIL's interrupt routines (`I-HACKER-HELPS`, `I-FOOD-HINT`, etc.).
 - `:on-turn` - A `cond` form evaluated each turn the event is active
 
 **Event lifecycle:**
-1. Queue an event with `(queue event-name)` or `(queue event-name countdown)`
+1. Queue an event with `(queue event-name)` (indefinite) or
+   `(queue event-name countdown)` (one-shot after `countdown` turns).
 2. Each turn, queued events are processed:
-   - If countdown > 0, decrement and skip
-   - If location constraint exists and player isn't there, skip
-   - Otherwise, evaluate the `:on-turn` cond
-3. Event stays queued until explicitly dequeued with `(dequeue event-name)`
+   - If countdown > 1, decrement and skip (not yet due)
+   - If a location constraint exists and the player isn't there, skip
+   - Otherwise fire: **one-shot events (finite countdown) auto-dequeue as they
+     fire**; indefinite events (queued with no/negative countdown) stay queued
+   - Evaluate the `:on-turn` cond
+3. An indefinite event stays queued until it `(dequeue …)`s itself. A one-shot
+   that wants to continue must re-queue itself (the chain idiom below).
+
+This matches ZIL's `CLOCKER`, which clears a positive-tick interrupt before
+invoking it (so the routine may re-queue itself) and leaves `-1` (indefinite)
+interrupts running every turn.
 
 **Common patterns:**
 

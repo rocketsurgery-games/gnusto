@@ -117,6 +117,31 @@
     (assert (no-flag? @elevator-door-1 open)))
 )
 
+; === End-to-end ride (regression for gnusto-f95a.1 soft-lock) ===
+; Before the ZIL-faithful queue contract (gnusto-aab0), a fired one-shot event
+; was never dequeued, so elevator-door-opens re-fired every turn, perpetually
+; re-arming elevator-door-closes. The doors never shut, so elevator-moves
+; (which refuses to move while any door is open) spun forever and the car could
+; never leave a floor. These tests ride the whole loop; (until ...) keeps them
+; robust against the exact turn counts of the call/scan timing.
+(test-group "elevator full ride"
+  :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true))
+
+  (test "call, board, ride to the basement, and disembark"
+    (do @down-button :push)
+    (until (:open @elevator-door-2) (wait))          ; car arrives at floor 2
+    (assert (prop? @cs-elevator-room floor 2))
+    (go :direction south)                             ; board
+    (assert (loc? @player @cs-elevator-room))
+    (do @basement-button :push)
+    (until (= (:floor @cs-elevator-room) 0) (wait))   ; descend to basement
+    (assert (prop? @cs-elevator-room stopped true))
+    (assert (not-queued? elevator-moves))             ; car idle, not spinning
+    (until (:open @elevator-door-b) (wait))           ; doors open at basement
+    (go :direction north)                             ; disembark
+    (assert (loc? @player @cs-basement)))
+)
+
 (test-group "elevator movement"
   :setup ((move @player @cs-elevator-room) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true) (set @elevator-door :open false) (set @elevator-door-1 :open false) (set @cs-elevator-room :go-buttons '(false false false true)) (queue elevator-moves 0))
 

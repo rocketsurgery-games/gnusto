@@ -576,14 +576,27 @@ class GrueRuntime:
             if event_def.location is not None and event_def.location != player_room:
                 continue
 
-            # Decrement countdown if present and check if ready to fire
-            # countdown=N means "fire on the Nth turn" (1-indexed)
-            # countdown=1 fires now, countdown=2 fires next turn, etc.
-            # countdown=0 or countdown=None means indefinite (fire every turn)
+            # Decrement countdown if present and check if ready to fire.
+            #
+            # Contract (ZIL CLOCKER-faithful; see games/lurkinghorror/source/
+            # misc.zil and yak gnusto-aab0):
+            #   countdown=N (N>=1): ONE-SHOT. Decrement each turn; countdown=1
+            #     fires this turn, then the event AUTO-DEQUEUES. To repeat, the
+            #     event body re-queues itself (the chain idiom).
+            #   countdown=0: ONE-SHOT, fires this turn, then auto-dequeues.
+            #   countdown=None or negative (ZIL -1): INDEFINITE. Fires every
+            #     turn and is never auto-dequeued; the body must (dequeue X).
             countdown = self.state.queues.get(event_name)
             if countdown is not None and countdown > 1:
                 self.state.queues[event_name] = countdown - 1
                 continue
+
+            # One-shot events auto-dequeue on fire. Remove BEFORE evaluating so
+            # that a body which re-queues itself (chain idiom) survives -- this
+            # mirrors ZIL clearing C-RTN before APPLY. queue/dequeue effects
+            # mutate state.queues synchronously during body evaluation.
+            if countdown is not None and countdown >= 0:
+                del self.state.queues[event_name]
 
             # Fire the event
             result = self._evaluate_event(event_def)

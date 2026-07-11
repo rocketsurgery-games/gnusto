@@ -186,24 +186,49 @@ class TestPart3Basement:
     5. Use the forklift to access the "Tomb of the Unknown Tool"
     """
 
-    def test_can_call_elevator(self, game):
-        """Can call the elevator using call buttons."""
-        # Go to cs-2nd (has floor property)
+    def test_can_ride_elevator_to_basement(self, game):
+        """Call the elevator, board it, and ride all the way to the basement.
+
+        Regression for gnusto-f95a.1: the elevator used to soft-lock once its
+        doors opened -- elevator-door-opens re-fired every turn (the runtime
+        never dequeued a fired one-shot), perpetually re-arming
+        elevator-door-closes so the doors never shut and the car could never
+        move. Fixed by the ZIL-faithful queue contract (gnusto-aab0): a finite
+        countdown is a one-shot that auto-dequeues on fire.
+        """
+        def open_p(door_id):
+            return game.state.objects.get(door_id).properties.get("open")
+
+        def run_until(cond, limit=25):
+            for _ in range(limit):
+                if cond():
+                    return True
+                game.process_events()
+            return cond()
+
+        # Go to cs-2nd (has floor property) and call the elevator.
         game.do("_movement", "go", "south")
         assert game.get_player_location() == "@cs-2nd"
+        assert game.do("@down-button", "push").outcome == "success"
 
-        # Push the down button to call elevator
-        result = game.do("@down-button", "push")
-        assert result.outcome == "success"
+        # The car arrives at floor 2 and its doors open (no soft-lock).
+        assert run_until(lambda: open_p("@elevator-door-2")), (
+            "elevator never arrived at floor 2 with open doors"
+        )
 
-        # Wait for elevator to arrive and open doors
-        # Takes ~6 turns: queue(1) -> start moving(2) -> arrive(4) -> open doors(6)
-        for _ in range(8):
-            game.process_events()
+        # Board, select the basement, and ride down.
+        game.do("_movement", "go", "south")
+        assert game.get_player_location() == "@cs-elevator-room"
+        game.do("@basement-button", "push")
 
-        # Elevator door should be open
-        door = game.state.objects.get("@elevator-door-2")
-        assert door.properties.get("open")
+        # Doors close, the car descends 2 -> 1 -> 0, and opens at the basement.
+        assert run_until(lambda: open_p("@elevator-door-b")), (
+            "elevator never reached the basement with open doors"
+        )
+
+        # Disembark into the basement.
+        game.do("_movement", "go", "north")
+        assert game.get_player_location() == "@cs-basement"
 
     def test_can_reach_aero_basement(self, game):
         """Can navigate to aero basement via stairs."""

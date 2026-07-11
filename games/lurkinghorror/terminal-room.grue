@@ -133,10 +133,13 @@
     repelled at the same time, you wonder: is that a mouth, and what is in it?")
 
   :location @terminal-room
+  ; ZIL I-COMPULSION (pc.zil): a one-shot that re-queues itself each turn while
+  ; pages remain, then dequeues on the final page. Each non-terminal turn must
+  ; (queue compulsion 1) to advance to the next page (chain idiom).
   :on-turn (condp = (:comp-cnt @hacker)
-    0 `((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (narrate ,page1-desc) (success))
-    1 `((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (narrate ,page2-desc) (success))
-    2 `((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (narrate ,page3-desc) (success))
+    0 `((set @hacker :comp-cnt 1) (set-prop @odd-paper read-page true) (queue compulsion 1) (narrate ,page1-desc) (success))
+    1 `((set @hacker :comp-cnt 2) (set-prop @odd-paper read-page true) (queue compulsion 1) (narrate ,page2-desc) (success))
+    2 `((set @hacker :comp-cnt 3) (set-prop @odd-paper read-page true) (queue compulsion 1) (narrate ,page3-desc) (success))
     3 `((set @hacker :comp-cnt 4) (dequeue compulsion)
         (move @more-box nil) (move @menu-box @pc)
         (move @player @yuggoth)
