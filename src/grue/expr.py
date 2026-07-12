@@ -1324,22 +1324,45 @@ class ExprEvaluator:
 
     # === Boolean operators ===
 
-    def _eval_and(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(and EXPR ...)"""
-        for item in form.items[1:]:
-            if not is_truthy(self.eval(item, env)):
-                return False
-        return True
+    def _eval_and(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(and EXPR ...)
 
-    def _eval_or(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(or EXPR ...)"""
+        Clojure/LISP-faithful: returns the DECIDING operand's value, not a
+        coerced bool (yak gnusto-294d). Evaluates left to right; returns the
+        first falsy value (``nil``/``false``), or the last value if all are
+        truthy. ``(and)`` with no args is ``true``. This makes ``(and a b)``
+        usable as a value-select idiom, while every condition site stays
+        correct because they test the result with ``is_truthy``.
+        """
+        result: Any = True
         for item in form.items[1:]:
-            if is_truthy(self.eval(item, env)):
-                return True
-        return False
+            result = self.eval(item, env)
+            if not is_truthy(result):
+                return result
+        return result
+
+    def _eval_or(self, form: SList, env: Optional[Environment] = None) -> Any:
+        """(or EXPR ...)
+
+        Clojure/LISP-faithful: returns the DECIDING operand's value, not a
+        coerced bool (yak gnusto-294d). Evaluates left to right; returns the
+        first truthy value, or the last value if none are truthy. ``(or)``
+        with no args is ``nil``. This makes ``(or x default)`` usable as a
+        value-select idiom, while every condition site stays correct because
+        they test the result with ``is_truthy``.
+        """
+        result: Any = None
+        for item in form.items[1:]:
+            result = self.eval(item, env)
+            if is_truthy(result):
+                return result
+        return result
 
     def _eval_not(self, form: SList, env: Optional[Environment] = None) -> bool:
-        """(not EXPR)"""
+        """(not EXPR)
+
+        Returns a strict bool, matching Clojure's ``not`` (yak gnusto-294d).
+        """
         if len(form) != 2:
             raise EvalError(f"'not' expects 1 argument, got {len(form) - 1}")
         return not is_truthy(self.eval(form[1], env))

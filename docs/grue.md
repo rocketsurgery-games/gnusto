@@ -1235,12 +1235,31 @@ Consequences for conditionals (`if`/`when`/`cond`/`and`/`or`/`not`/`condp`, and
 This is why `(and ?floor ...)` is safe even when `?floor` is `0` (the basement).
 
 #### `(and EXPR ...)`
-Short-circuit logical AND. Returns false at first falsy value, otherwise returns
-last value. Arguments evaluated left-to-right, stopping at first false.
+Short-circuit logical AND. Clojure/LISP-faithful: returns the **deciding
+operand's value**, not a coerced bool. Arguments are evaluated left-to-right;
+returns the first falsy value (`nil`/`false`), or the last value if all are
+truthy. `(and)` with no args is `true`. Because `0`/`""` are truthy, `(and a b)`
+doubles as a value-select idiom.
+```scheme
+(and 1 2 3)     ; => 3   (all truthy -> last)
+(and 1 nil 3)   ; => nil (first falsy short-circuits)
+(and)           ; => true
+```
 
 #### `(or EXPR ...)`
-Short-circuit logical OR. Returns first truthy value, or false if all falsy.
-Arguments evaluated left-to-right, stopping at first true.
+Short-circuit logical OR. Clojure/LISP-faithful: returns the **deciding
+operand's value**, not a coerced bool. Arguments are evaluated left-to-right;
+returns the first truthy value, or the last value if none are truthy. `(or)`
+with no args is `nil`. This makes `(or x default)` a value-select idiom.
+```scheme
+(or nil 5)      ; => 5   (first truthy)
+(or 1 2)        ; => 1
+(or nil false)  ; => false (none truthy -> last)
+```
+
+#### `(not EXPR)`
+Logical negation. Returns a **strict bool** (`true`/`false`), matching Clojure —
+the one boolean operator that coerces, since its whole job is to flip truthiness.
 
 #### `(when COND EFFECT)`
 Conditional effect. Only executes EFFECT if COND is truthy.

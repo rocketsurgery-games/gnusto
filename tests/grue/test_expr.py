@@ -172,6 +172,38 @@ class TestBooleanOperators:
         assert eval_predicate("(not (:takeable DOOR))", state) is True
         assert eval_predicate("(not (:takeable FLASHLIGHT))", state) is False
 
+    def _val(self, src):
+        """Evaluate an expression to its raw value (not coerced to bool)."""
+        return ExprEvaluator(MockWorldState()).eval(parse(src))
+
+    def test_and_returns_deciding_value(self):
+        # Clojure/LISP-faithful: (and ...) returns the deciding operand's value,
+        # not a coerced bool (yak gnusto-294d).
+        assert self._val("(and 1 2)") == 2  # all truthy -> last
+        assert self._val("(and 1 2 3)") == 3
+        assert self._val('(and 1 "hi")') == "hi"
+        assert self._val("(and 1 nil 3)") is None  # first falsy (nil) short-circuits
+        assert self._val("(and 1 false 3)") is False  # first falsy (false)
+        assert self._val("(and)") is True  # no args -> true
+        # 0 and "" are truthy in Grue, so they don't short-circuit.
+        assert self._val('(and 0 "")') == ""
+
+    def test_or_returns_deciding_value(self):
+        assert self._val("(or nil 5)") == 5  # first truthy
+        assert self._val("(or false 5)") == 5
+        assert self._val("(or 1 2)") == 1  # first truthy wins
+        assert self._val("(or nil false)") is False  # none truthy -> last
+        assert self._val("(or nil nil)") is None
+        assert self._val("(or)") is None  # no args -> nil
+        # 0 is truthy in Grue: (or 0 5) selects 0, enabling (or x default).
+        assert self._val("(or 0 5)") == 0
+
+    def test_not_stays_bool(self):
+        # (not ...) returns a strict bool, matching Clojure.
+        assert self._val("(not nil)") is True
+        assert self._val("(not 0)") is False  # 0 is truthy
+        assert self._val("(not 5)") is False
+
     def test_complex_boolean(self):
         state = MockWorldState()
         # TAKE precondition: has TAKEBIT, is visible, not already held

@@ -4,7 +4,7 @@ title: and/or should return the deciding value, not a coerced bool (Clojure/LISP
 type: task
 priority: 3
 created: '2026-07-11T23:59:44Z'
-updated: '2026-07-11T23:59:44Z'
+updated: '2026-07-12T00:52:28Z'
 labels:
 - lang
 - runtime
