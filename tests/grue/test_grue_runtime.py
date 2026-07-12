@@ -1439,3 +1439,82 @@ class TestEffectListSyntax:
         assert runtime.state.objects["@treasure"].location == "@player"
         assert runtime.state.objects["@treasure"].properties.get("taken")
         assert runtime.get_object_property("@player", "score") == 10
+
+
+class TestDarkness:
+    """Deterministic darkness / light model (gnusto-fa93.4)."""
+
+    def test_room_lit_by_default(self):
+        """A room that doesn't declare :lit is lit (darkness is opt-in)."""
+        source = """
+        (world :player @player)
+        (room CAVE :description "A cave")
+        (object @player :location CAVE)
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.is_room_lit("CAVE") is True
+
+    def test_lit_false_room_is_dark(self):
+        """A room declared :lit false with no light source is dark."""
+        source = """
+        (world :player @player
+          :dark-message "It is pitch black. You are likely to be eaten by a grue.")
+        (room CAVE :description "A cave" :properties (:lit false))
+        (object @player :location CAVE)
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.is_room_lit("CAVE") is False
+        assert rt.get_room_description() == (
+            "It is pitch black. You are likely to be eaten by a grue."
+        )
+        assert rt.get_visible_objects(for_description=True) == []
+
+    def test_default_dark_message(self):
+        source = """
+        (world :player @player)
+        (room CAVE :description "A cave" :properties (:lit false))
+        (object @player :location CAVE)
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.get_room_description() == "It is pitch black."
+
+    def test_light_source_illuminates_dark_room(self):
+        """Carrying a lit light source relights an otherwise-dark room."""
+        source = """
+        (world :player @player)
+        (room CAVE :description "A cave" :properties (:lit false))
+        (object @player :location CAVE)
+        (object @lamp :location @player :properties (:takeable true :lightable true))
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.is_room_lit("CAVE") is False   # lamp off
+        rt.set_object_property("@lamp", "lit", True)
+        assert rt.is_room_lit("CAVE") is True     # lamp on
+
+    def test_dark_hides_listing_but_not_accessibility(self):
+        """Darkness suppresses the room listing only; objects stay accessible."""
+        source = """
+        (world :player @player)
+        (room CAVE :description "A cave" :properties (:lit false))
+        (object @player :location CAVE)
+        (object @rock :location CAVE :properties (:takeable true))
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert "@rock" not in rt.get_visible_objects(for_description=True)
+        assert "@rock" in rt.get_visible_objects(for_description=False)
+
+
+class TestStartEvents:
+    """Persistent always-on events queued at init (world :start-events)."""
+
+    def test_start_events_queued_at_init(self):
+        source = """
+        (world :player @player :start-events (background-clock))
+        (room LOBBY :description "A lobby")
+        (object @player :location LOBBY)
+        (event background-clock :on-turn (success))
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.is_queued("background-clock")
+        # Indefinite (None countdown), so it survives turns.
+        assert rt.get_queue_countdown("background-clock") is None

@@ -1,0 +1,37 @@
+; Tests for the grue darkness hazard.
+; The attic (:lit false) is the test bed for darkness. grue-lurks is auto-queued
+; from turn 1 via the world's :start-events.
+
+(test-group "the grue"
+  :setup ((move @player @attic) (set @player :dark-turns 0) (set @player :grue-grace 1) (move @lamp @living-room))
+
+  (test "lingering in the dark ticks the grue counter"
+    (wait)
+    (assert (outcome? success))
+    (assert (prop? @player dark-turns 1))
+    (assert (prop? @player dead false)))
+
+  (test "the grue strikes once the grace is exhausted"
+    :setup ((move @player @attic) (set @player :dark-turns 1) (set @player :grue-grace 1) (move @lamp @living-room))
+    (wait)
+    (assert (prop? @player dead true)))
+
+  (test "a lit lamp keeps the grue away"
+    :setup ((move @player @attic) (set @player :dark-turns 0) (set @player :grue-grace 1) (move @lamp @player) (set @lamp :lit true))
+    (wait)
+    (assert (outcome? success))
+    (assert (prop? @player dark-turns 0))
+    (assert (prop? @player dead false)))
+
+  (test "reaching light resets the dark-turn counter"
+    :setup ((move @player @attic) (set @player :dark-turns 1) (set @player :grue-grace 1) (move @lamp @player) (set @lamp :lit true))
+    (wait)
+    (assert (prop? @player dark-turns 0))
+    (assert (prop? @player dead false)))
+
+  (test "a lit room is never dark (no grue in the living room)"
+    :setup ((move @player @living-room) (set @player :dark-turns 0) (set @player :grue-grace 1))
+    (wait)
+    (assert (outcome? success))
+    (assert (prop? @player dead false)))
+)

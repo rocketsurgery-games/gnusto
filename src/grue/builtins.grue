@@ -64,6 +64,31 @@
   (filter (fn (?x) (not (:invisible ?x))) (contents (player))))
 
 ; ============================================================
+; LIGHT & DARKNESS
+; ============================================================
+; The engine's perception layer consults (lit? ROOM) to decide whether the
+; player can see (see GrueRuntime.is_room_lit). Darkness is OPT-IN: a room's
+; own :lit defaults to true, so only a room declared :lit false can go dark,
+; and it becomes lit again if an accessible light source is on.
+
+; (light-source? OBJ) - is OBJ a light source that is currently on?
+; Uses defaulted keyword lookups so probing an object that declares neither
+; property is safe (returns false rather than raising).
+(defn light-source? (?o)
+  (and (:lightable ?o false) (:lit ?o false)))
+
+; (accessible ROOM) - objects the player could draw light from: everything in
+; the room plus everything the player is carrying.
+(defn accessible (?room)
+  (concat (contents ?room) (contents (player))))
+
+; (lit? ROOM) - is ROOM lit? Either inherently lit (its :lit, default true) or
+; an accessible light source is on.
+(defn lit? (?room)
+  (or (:lit ?room true)
+      (some (fn (?o) (light-source? ?o)) (accessible ?room))))
+
+; ============================================================
 ; DEFAULT BEHAVIORS
 ; ============================================================
 ; These behaviors apply when an object doesn't define its own

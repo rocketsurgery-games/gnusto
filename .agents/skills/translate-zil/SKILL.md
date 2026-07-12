@@ -139,6 +139,23 @@ bug (it will fire once instead of chaining). See `docs/grue.md`. Run
 **`frotz lint <game>`** after converting an event with a `(condp = (:counter ...))`
 state machine — it flags exactly this dropped-chain mistake.
 
+## Light, darkness, and environmental hazards
+
+Darkness is engine-supported and **opt-in**. A room's `:lit` defaults to true, so
+declare `:lit false` (ZIL rooms lacking `ONBIT`) to make a room dark; it relights
+if the player carries/【has present】a `:lightable` object switched `:lit true`
+(ZIL `LIGHTBIT`, e.g. the brass lantern). The engine's `(lit? ROOM)` predicate
+(`builtins.grue`) drives perception: in an unlit room the description becomes the
+world `:dark-message` and objects aren't listed. See `docs/grue.md`.
+
+The *danger* of the dark (ZIL's random grue death) is **game code**, written as a
+normal turn-based **hazard event** — the same shape as LH's `freezing`: reset a
+counter when safe, tick it while in the hazard, deliver a deterministic death
+once a configurable grace is spent (drop ZIL's RNG so frotz stays sound). Queue a
+persistent hazard from turn 1 with the world's `:start-events (evt …)`. ZIL's
+other environmental death timers (freezing, drowning, suffocation) convert to the
+same pattern.
+
 ## Truthiness (Grue matches ZIL/Clojure)
 
 In ZIL/MDL only `<>` is false — `0`, strings, and objects are truthy, which is

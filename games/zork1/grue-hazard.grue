@@ -1,0 +1,36 @@
+; The grue — Zork's darkness hazard.
+;
+; ZIL models this by rolling a random grue death whenever the player moves in an
+; unlit room (gverbs.zil / gglobals.zil GRUE-FUNCTION). We drop the randomness so
+; the world stays statically analyzable (frotz), and instead give a deterministic,
+; configurable grace: the player may linger :grue-grace turns in the dark before
+; the grue strikes.
+;
+; This is the same hazard-event shape as The Lurking Horror's `freezing` event
+; (go outside -> freeze unless you get indoors; here: go dark -> get eaten unless
+; you find light). It is queued from turn 1 via the world's :start-events, so the
+; grue "is always lurking" whether or not the player has descended.
+;
+; The pitch-black warning itself is the engine's perception layer (the world
+; :dark-message); this event only counts the dark turns and delivers the death.
+
+(event grue-lurks
+  :on-turn
+    (cond
+      ; In the light: safe. Reset the counter if it had started ticking.
+      ((lit? (loc @player))
+        (cond
+          ((> (:dark-turns @player) 0)
+            '((set @player :dark-turns 0) (success)))
+          (true (success))))
+
+      ; In the dark, still within the grace period: tick the counter.
+      ((< (:dark-turns @player) (:grue-grace @player))
+        (let ((?n (+ (:dark-turns @player) 1)))
+          `((set @player :dark-turns ,?n) (success))))
+
+      ; In the dark past the grace: the grue strikes.
+      (true
+        (blocked :reason death
+                 :context ((death true)
+                           (description "Oh, no! You have walked into the slavering fangs of a lurking grue!"))))))

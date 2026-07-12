@@ -287,6 +287,10 @@ class GrueWorld:
     visual_style: dict[str, Any] = field(
         default_factory=dict
     )  # world-level render style (:prompt, :palette, :aspect-ratio, ...)
+    dark_message: str = "It is pitch black."  # shown when the player's room is unlit
+    start_events: list[str] = field(
+        default_factory=list
+    )  # events queued (indefinitely) at game start — always-on background events
 
 
 # === Helper functions for form handlers ===
@@ -716,6 +720,13 @@ def _parse_world(expr: SList, world: GrueWorld) -> None:
                 }
     if "player" in kwargs:
         world.player = expect_symbol(kwargs["player"], "world player")
+    if "dark-message" in kwargs:
+        world.dark_message = expect_string(kwargs["dark-message"], "world dark-message")
+    if "start-events" in kwargs:
+        se = kwargs["start-events"]
+        if not isinstance(se, SList):
+            raise FormParseError("world :start-events must be a list of event names")
+        world.start_events = [expect_symbol(e, "start event") for e in se]
 
 
 @form("room")

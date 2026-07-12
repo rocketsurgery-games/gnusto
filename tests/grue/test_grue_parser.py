@@ -27,6 +27,20 @@ class TestBasicParsing:
         assert world.description == "A test world"
         assert len(world.rooms) == 0
         assert len(world.objects) == 0
+        # Darkness/start-events defaults
+        assert world.dark_message == "It is pitch black."
+        assert world.start_events == []
+
+    def test_world_dark_message_and_start_events(self):
+        """Parse world :dark-message and :start-events."""
+        source = """
+        (world :player @player
+          :dark-message "It is pitch black. You are likely to be eaten by a grue."
+          :start-events (grue-lurks background-clock))
+        """
+        world = parse_grue(source)
+        assert world.dark_message == "It is pitch black. You are likely to be eaten by a grue."
+        assert world.start_events == ["grue-lurks", "background-clock"]
 
     def test_simple_room(self):
         """Parse a simple room."""

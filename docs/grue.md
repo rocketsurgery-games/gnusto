@@ -697,6 +697,49 @@ Games track turns via the `:moves` property on the player, incremented on succes
 For static analysis, we model time as part of state: each turn increments
 the player's `:moves` and may trigger countdown-based events.
 
+### Light and Darkness
+
+Darkness is **opt-in** and computed by the built-in Grue predicate `(lit? ROOM)`
+(in `builtins.grue`):
+
+```scheme
+(defn light-source? (?o) (and (:lightable ?o false) (:lit ?o false)))
+(defn lit? (?room)
+  (or (:lit ?room true)                              ; room's own light (default lit)
+      (some (fn (?o) (light-source? ?o)) (accessible ?room))))  ; a carried/present lamp
+```
+
+A room's own `:lit` **defaults to `true`**, so only a room declared `:lit false`
+can go dark — and it becomes lit again if an accessible object is a light source
+(a `:lightable` object currently switched `:lit true`, e.g. a lantern).
+
+The engine consults `lit?` in its perception layer (`GrueRuntime.is_room_lit`):
+when the player's room is unlit, the room description is replaced by the world's
+`:dark-message` and no objects are listed. Darkness only hides the *listing* —
+raw accessibility is unchanged, so a game/player can still act on known objects by
+name in the dark; the deterrent is a hazard (the grue), not inaccessibility.
+
+```scheme
+(world :name "..." :player @player
+  ; Shown whenever the player's room is unlit (default: "It is pitch black.").
+  :dark-message "It is pitch black. You are likely to be eaten by a grue."
+  ; Events queued (indefinitely) at game start — always-on background hazards/clocks.
+  :start-events (grue-lurks))
+
+(room @attic :description "Attic" :properties (:lit false))   ; opt into darkness
+(object @lamp :properties (:takeable true :lightable true))   ; a switchable light source
+```
+
+The **danger** of the dark is game-specific and lives in a normal turn-based
+event (the *hazard pattern*; see `grue-lurks` in `games/zork1/` and `freezing`
+in The Lurking Horror): each turn, reset a counter when safe, tick it while in
+the dark, and deliver a deterministic death once a configurable grace is
+exhausted. Keeping the death deterministic (no RNG) preserves static analysis.
+
+**`:start-events`** queues the named events indefinitely at init, so a persistent
+background event (an ever-lurking grue, an ambient clock, an NPC scheduler) is
+live from turn 1 without a game having to bootstrap it from a room `:on-enter`.
+
 ### Win/Lose Conditions
 
 ```scheme
@@ -706,10 +749,7 @@ the player's `:moves` and may trigger countdown-based events.
   :context ((ending good)))
 
 (defeat eaten-by-grue
-  :when (and (not (:lit (loc (player))))
-             (not (some (fn (?obj) (and (:light ?obj)
-                                        (:on ?obj)))
-                        (inventory))))
+  :when (:dead @player)                ; set by the grue-lurks hazard's (death true) context
   :context ((death-type grue)))
 
 (defeat fell-in-pit

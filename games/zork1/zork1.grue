@@ -7,6 +7,13 @@
 
   :player @player
 
+  ; Darkness: in an unlit room the player can't see. Zork's dark message carries
+  ; the grue warning; the death itself comes from the grue-lurks hazard event.
+  :dark-message "It is pitch black. You are likely to be eaten by a grue."
+
+  ; The grue is always lurking, descended or not: queue its hazard from turn 1.
+  :start-events (grue-lurks)
+
   ; Visual style for generated illustrations: vintage fantasy-adventure line art.
   :visual-style (
       :prompt "Style: broad alla prima brush strokes, suitable only as a rough mockup for a human
@@ -44,4 +51,7 @@
     :dead false
     :won false
     :score 0
-    :moves 0))
+    :moves 0
+    ; Darkness/grue bookkeeping (see grue-hazard.grue).
+    :dark-turns 0
+    :grue-grace 1))

@@ -56,6 +56,29 @@ patterns that show up in both are near-universal and belong in the shared
   scans the narrate/focus/say output stream. `context?` is an *exact* match (no
   substring). Worth an explicit line in the `grue-testing` skill.
 
+## Engine improvements made
+
+- **Deterministic darkness/light + persistent start-events (gnusto-fa93.4).**
+  Motivated by Zork's underground. Design settled with the user:
+  - `lit?`/`light-source?`/`accessible` are **pure Grue** in `builtins.grue`
+    (keyword lookups return defaults, so probing `:lightable` on any object is
+    safe). Darkness is **opt-in**: a room's `:lit` defaults true; only `:lit
+    false` rooms can go dark, relit by a carried/present lit `:lightable`.
+  - Perception is a **thin Python seam** (`is_room_lit` -> the Grue `lit?`):
+    `get_room_description` returns the world `:dark-message`, and
+    `get_visible_objects(for_description)` returns `[]`, when the player's room
+    is unlit. Only the *listing* is suppressed — accessibility (`take` by name)
+    is unchanged; the deterrent is the grue.
+  - The grue **danger** is game-specific Grue (`grue-hazard.grue`), a hazard
+    event of the exact same shape as LH `freezing`: reset when lit, tick a
+    `:dark-turns` counter while dark, deterministic death once `:grue-grace`
+    (default 1) is spent. No RNG (frotz stays sound). Divergence from ZIL, which
+    rolls a random grue death on *movement* in the dark; we count turns, which
+    makes the grace clean and is analyzable. Noted intentionally.
+  - **`:start-events (evt …)`** (world) queues events indefinitely at init — a
+    general facility for always-on background events ("the grue is always
+    lurking"; clocks; NPC schedulers). Used to start `grue-lurks` from turn 1.
+
 ## Language improvements made
 
 - **Message-only exits → `:blocked` (gnusto-fa93.2).** ZIL rooms very frequently

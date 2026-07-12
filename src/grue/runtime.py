@@ -223,6 +223,12 @@ class GrueRuntime:
                 properties=props,
             )
 
+        # Queue always-on background events (world :start-events) indefinitely,
+        # so persistent hazards/clocks (e.g. the ever-lurking grue) are live from
+        # turn 1 without a game having to bootstrap them from a room :on-enter.
+        for event_name in self.world.start_events:
+            state.queues[event_name] = None  # None = indefinite (ZIL -1)
+
         return state
 
     def _increment_moves(self) -> None:
@@ -678,6 +684,27 @@ class GrueRuntime:
     # High-level convenience methods
     # -------------------------------------------------------------------------
 
+    def is_room_lit(self, room_name: str | None = None) -> bool:
+        """Is the given room lit?
+
+        Delegates to the Grue ``(lit? …)`` predicate in builtins.grue (the room's
+        own ``:lit`` — defaulting *lit* — OR an accessible light source that is on).
+        Darkness is therefore opt-in: a room only goes dark if it declares
+        ``:lit false`` and no light source is present. Fails open (lit) so a
+        missing/erroring predicate never plunges a game into darkness.
+        """
+        if room_name is None:
+            room_name = self.get_player_room()
+        if not room_name:
+            return True
+        evaluator = ExprEvaluator(self, self._functions)
+        env = Environment(bindings={"room": room_name})
+        expr = SList([Symbol("lit?"), Symbol("?room")])
+        try:
+            return is_truthy(evaluator.eval(expr, env))
+        except Exception:
+            return True
+
     def get_room_description(self, room_name: str | None = None) -> str:
         """Get a room's description.
 
@@ -689,6 +716,11 @@ class GrueRuntime:
         room = self.world.rooms.get(room_name)
         if not room:
             return ""
+
+        # Darkness: if the player can't see, the room's own prose is replaced by
+        # the (game-customizable) dark message. Only affects the player's room.
+        if room_name == self.get_player_room() and not self.is_room_lit(room_name):
+            return self.world.dark_message
 
         # Check for :describe behavior (dynamic description)
         describe_behavior = None
@@ -826,6 +858,11 @@ class GrueRuntime:
             for_description: If True, exclude NDESCBIT objects (for room listings).
                             If False, include all visible objects (for interaction).
         """
+        # Darkness only suppresses the *room listing* (for_description); it does
+        # not change raw accessibility (is_visible), so a game/player can still
+        # act on known objects by name in the dark — the deterrent is the grue.
+        if for_description and not self.is_room_lit():
+            return []
         result = []
         for name in self.state.objects:
             if name == self.player_name:
