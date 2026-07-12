@@ -122,22 +122,40 @@
     '((set ?self :open false) (narrate "Closed.") (success)))))
 
 ; === put ===
-; Default put behavior - put ?self into ?value (the container)
-; Syntax: (do @item :put @container)
-
+; Default put behavior - put an item into a container. Bidirectional: the
+; natural-language "put X in Y" is ambiguous about which entity is the target,
+; and the LLM can't reliably guess, so we accept BOTH forms (gnusto-1ce1):
+;   (do @item :put @container)   - item-first  (?self=item,      ?value=container)
+;   (do @container :put @item)   - container-first (?self=container, ?value=item)
+; The item-first reading is tried first; if it doesn't apply, the reversed
+; reading is used. This also matches the container-first shape of custom :put
+; behaviors (e.g. @vat).
 (default put (cond
+  ; Item-first: ?self is a held item, ?value is a container.
+  ((and (held-by? ?self ?actor) (:container ?value))
+    (cond
+      ((and (:openable ?value) (not (:open ?value)))
+        (blocked :reason closed :message "It's closed."))
+      (true
+        '((move ?self ?value) (narrate "Done.") (success)))))
+
+  ; Container-first: ?self is a container, ?value is a held item.
+  ((and (:container ?self) (held-by? ?value ?actor))
+    (cond
+      ((and (:openable ?self) (not (:open ?self)))
+        (blocked :reason closed :message "It's closed."))
+      (true
+        '((move ?value ?self) (narrate "Done.") (success)))))
+
+  ; Neither reading works - diagnose the most likely intent (item-first).
   ((not (held-by? ?self ?actor))
     (blocked :reason not-held :message "You're not carrying that."))
 
   ((not (:container ?value))
     (blocked :reason not-container :message "That's not a container."))
 
-  ; Container must be open (has OPENBIT) or not be openable at all
-  ((and (:openable ?value) (not (:open ?value)))
-    (blocked :reason closed :message "It's closed."))
-
   (true
-    '((move ?self ?value) (narrate "Done.") (success)))))
+    (blocked :reason cannot-put :message "You can't put that there."))))
 
 ; === examine ===
 ; Default examine behavior - returns generic message when object has no :examine handler
