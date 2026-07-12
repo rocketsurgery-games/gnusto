@@ -24,7 +24,7 @@ from copy import deepcopy
 from .parser import GrueWorld, GrueBehavior
 from .expr import (
     ExprEvaluator, EffectExecutor, EffectInterpreter, GrueFn, Environment, quote_to_data,
-    BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault
+    BehaviorSuccess, BehaviorBlocked, BehaviorRedirect, BehaviorDefault, is_truthy
 )
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 
@@ -1606,7 +1606,7 @@ class GrueRuntime:
         evaluator = ExprEvaluator(self, self._functions)
 
         try:
-            return bool(evaluator.eval(self.world.victory.when))
+            return is_truthy(evaluator.eval(self.world.victory.when))
         except Exception:
             return False
 
@@ -1616,7 +1616,7 @@ class GrueRuntime:
 
         for name, defeat in self.world.defeat.items():
             try:
-                if evaluator.eval(defeat.when):
+                if is_truthy(evaluator.eval(defeat.when)):
                     return name
             except Exception:
                 continue

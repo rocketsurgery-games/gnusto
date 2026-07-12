@@ -48,6 +48,20 @@ from typing import Any, Callable, Optional, Protocol
 from .sexpr import Keyword, SExpr, SList, Symbol, parse, parse_param_list
 
 
+def is_truthy(value: Any) -> bool:
+    """Grue truthiness, LISP/Clojure-faithful: only ``nil`` (None) and ``false``
+    are falsy. Everything else — including ``0``, ``0.0``, ``""``, ``[]``, ``{}``
+    — is truthy.
+
+    This is deliberately NOT Python truthiness: ZIL/MDL (false is ``<>``), Scheme
+    (``#f``), Common Lisp (``nil``), and Clojure (``nil``/``false``) all treat
+    ``0`` and empty collections as true. Testing a value's truthiness directly
+    (e.g. ``(and ?floor ...)`` where ``?floor`` may be ``0``) must use this, not
+    Python's ``bool()``. See yak gnusto-be0a.
+    """
+    return value is not None and value is not False
+
+
 def quote_to_data(expr: SExpr) -> Any:
     """Convert quoted AST to Python data structures.
 
@@ -1313,14 +1327,14 @@ class ExprEvaluator:
     def _eval_and(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(and EXPR ...)"""
         for item in form.items[1:]:
-            if not self.eval(item, env):
+            if not is_truthy(self.eval(item, env)):
                 return False
         return True
 
     def _eval_or(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(or EXPR ...)"""
         for item in form.items[1:]:
-            if self.eval(item, env):
+            if is_truthy(self.eval(item, env)):
                 return True
         return False
 
@@ -1328,7 +1342,7 @@ class ExprEvaluator:
         """(not EXPR)"""
         if len(form) != 2:
             raise EvalError(f"'not' expects 1 argument, got {len(form) - 1}")
-        return not self.eval(form[1], env)
+        return not is_truthy(self.eval(form[1], env))
 
     def _eval_nil(self, form: SList, env: Optional[Environment] = None) -> bool:
         """(nil? EXPR) - check if value is nil/None.
@@ -1759,7 +1773,7 @@ class ExprEvaluator:
 
         condition = self.eval(form[1], env)
 
-        if condition:
+        if is_truthy(condition):
             return self.eval(form[2], env)
         elif len(form) == 4:
             return self.eval(form[3], env)
@@ -1779,7 +1793,7 @@ class ExprEvaluator:
             raise EvalError(f"'when' expects at least 2 arguments, got {len(form) - 1}")
 
         condition = self.eval(form[1], env)
-        if condition:
+        if is_truthy(condition):
             result = None
             for expr in form.items[2:]:
                 result = self.eval(expr, env)
@@ -1852,7 +1866,7 @@ class ExprEvaluator:
 
             test = clause[0]
 
-            if self.eval(test, env):
+            if is_truthy(self.eval(test, env)):
                 # Evaluate all expressions in the clause, return the last one
                 result = None
                 for expr in clause.items[1:]:
@@ -1989,7 +2003,7 @@ class ExprEvaluator:
             # Evaluate predicate call: (pred test-val expr-val)
             # Build SList with evaluated values (wrapped for eval)
             pred_call = SList([pred, test_val, expr_val])
-            if self.eval(pred_call, env):
+            if is_truthy(self.eval(pred_call, env)):
                 return self.eval(result, env)
 
             i += 2
@@ -2084,7 +2098,7 @@ class ExprEvaluator:
             test = items[i]
             expr = items[i + 1]
 
-            if self.eval(test, env):
+            if is_truthy(self.eval(test, env)):
                 # Thread value as first argument
                 if isinstance(expr, SList) and len(expr) > 0:
                     # Insert value after the function name
@@ -2126,7 +2140,7 @@ class ExprEvaluator:
             test = items[i]
             expr = items[i + 1]
 
-            if self.eval(test, env):
+            if is_truthy(self.eval(test, env)):
                 # Thread value as last argument
                 if isinstance(expr, SList) and len(expr) > 0:
                     # Append value to the end
@@ -2982,7 +2996,7 @@ class ExprEvaluator:
                 f"'filter' second argument must be a sequence, got {type(coll).__name__}"
             )
 
-        return [item for item in coll if self.call_fn(pred, [item])]
+        return [item for item in coll if is_truthy(self.call_fn(pred, [item]))]
 
     def _eval_remove(self, form: SList, env: Optional[Environment] = None) -> list:
         """(remove PRED COLL) - remove elements matching predicate (opposite of filter).
@@ -3006,7 +3020,7 @@ class ExprEvaluator:
                 f"'remove' second argument must be a sequence, got {type(coll).__name__}"
             )
 
-        return [item for item in coll if not self.call_fn(pred, [item])]
+        return [item for item in coll if not is_truthy(self.call_fn(pred, [item]))]
 
     def _eval_keep(self, form: SList, env: Optional[Environment] = None) -> list:
         """(keep FN COLL) - like map but removes nil results.
@@ -3325,7 +3339,7 @@ class ExprEvaluator:
 
         for item in collection:
             result = self.call_fn(pred, [item])
-            if result:
+            if is_truthy(result):
                 return result
         return None
 
@@ -3353,7 +3367,7 @@ class ExprEvaluator:
 
         for item in collection:
             result = self.call_fn(pred, [item])
-            if not result:
+            if not is_truthy(result):
                 return False
         return True
 
@@ -3701,7 +3715,7 @@ def eval_predicate(
     functions = _get_cached_builtin_functions() if include_builtins else {}
     evaluator = ExprEvaluator(state, functions)
     result = evaluator.eval(expr)
-    return bool(result)
+    return is_truthy(result)
 
 
 def execute_effect(expr: str | SExpr, state: MutableWorldState) -> None:

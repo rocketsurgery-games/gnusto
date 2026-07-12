@@ -74,7 +74,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..expr import EffectExecutor, EvalError, ExprEvaluator
+from ..expr import EffectExecutor, EvalError, ExprEvaluator, is_truthy
 from ..parser import GrueWorld, load_grue
 from ..runtime import ActionResult, GrueRuntime
 from ..sexpr import Keyword, SExpr, SList, Symbol, parse, parse_all, to_string
@@ -393,7 +393,7 @@ class TestRunner:
             try:
                 evaluator = ExprEvaluator(runtime, self._functions)
                 result = evaluator.eval(predicate)
-                if not result:
+                if not is_truthy(result):
                     failures.append(
                         f"Assert {assert_idx}: {to_string(predicate)} is false"
                     )
@@ -428,7 +428,7 @@ class TestRunner:
         for iteration in range(max_iterations):
             # Check if condition is met
             try:
-                if evaluator.eval(predicate):
+                if is_truthy(evaluator.eval(predicate)):
                     return failures  # Success - condition met
             except Exception as e:
                 failures.append(f"Until {until_idx}: Error evaluating predicate: {e}")
@@ -820,7 +820,7 @@ class TestRunner:
                 # Try evaluating as a general predicate
                 try:
                     evaluator = ExprEvaluator(runtime, self._functions)
-                    if not evaluator.eval(pred):
+                    if not is_truthy(evaluator.eval(pred)):
                         failures.append(f"Predicate failed: {to_string(pred)}")
                 except Exception as e:
                     failures.append(f"Error evaluating {to_string(pred)}: {e}")

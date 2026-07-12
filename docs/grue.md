@@ -1215,6 +1215,25 @@ a quoted effect list:
 - `(redirect :action EXPR)` - Delegate to another action
 - `(default :action EXPR)` - Fall through to default, optionally with explicit action
 
+#### Truthiness
+
+Grue is LISP/Clojure-faithful: **only `nil` and `false` are falsy.** Everything
+else is truthy — including `0`, `0.0`, `""` (empty string), `[]`/`()` (empty
+list), and `{}` (empty map). This matches Scheme (`#f`), Common Lisp (`nil`),
+Clojure (`nil`/`false`), and ZIL/MDL (the `<>` FALSE object), and is deliberately
+*not* Python truthiness.
+
+Consequences for conditionals (`if`/`when`/`cond`/`and`/`or`/`not`/`condp`, and
+`some`/`every?`/`filter`/`remove`):
+
+- A numeric value of `0` is **true**. To test "is this count zero?", compare
+  explicitly: `(= n 0)` / `(> n 0)` — never `(if n ...)`.
+- An empty collection is **true**. To test "is this non-empty?", use
+  `(not (empty? xs))` (or `(seq xs)`), not `(if xs ...)`.
+- Use `(nil? x)` to test specifically for `nil`, and `(empty? x)` for emptiness.
+
+This is why `(and ?floor ...)` is safe even when `?floor` is `0` (the basement).
+
 #### `(and EXPR ...)`
 Short-circuit logical AND. Returns false at first falsy value, otherwise returns
 last value. Arguments evaluated left-to-right, stopping at first false.

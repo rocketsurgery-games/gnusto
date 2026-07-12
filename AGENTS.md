@@ -97,7 +97,7 @@ When converting ZIL source to Grue, make sure to remove the converted ZIL commen
 See the `translate-zil` skill for the full mapping. Two hard-won gotchas worth repeating here:
 
 - **Event queue is ZIL-`CLOCKER`-faithful.** `(queue X N)` with a finite `N` is a **one-shot** that auto-dequeues when it fires; to keep firing, the `:on-turn` body must re-queue itself (the chain idiom, e.g. `(queue X 1)`). `(queue X)` / `nil` / negative is **indefinite** (fires every turn until `(dequeue X)`). See `docs/grue.md`.
-- **Truthiness currently leaks from Python:** `0`, `""`, `[]`, `{}` are all falsy — unlike ZIL/Clojure where only `<>`/`nil`/`false` is false. Beware `(and ?floor ...)` / `(if some-count ...)` where the value can legitimately be `0` (this caused a real basement-floor bug). Use `(nil? x)` / `(empty? x)` / explicit numeric compares. (Tracked for a fix in yak `gnusto-be0a`.)
+- **Truthiness is LISP/Clojure-faithful:** only `nil` and `false` are falsy; `0`, `""`, `[]`, `{}` are all **truthy** (like ZIL's `<>`-only-false). So `(and ?floor ...)` is safe when `?floor` is `0`. To test emptiness/zero use `(empty? x)` / `(= n 0)` / `(nil? x)`, not raw truthiness. See `docs/grue.md`. (One residual leak: `and`/`or` still return a coerced bool instead of the deciding value — yak `gnusto-294d`.)
 
 As we work through converting The Lurking Horror as a starting point, we're keeping notes on what we learn in
 ./games/lurkinghorror/README.md.

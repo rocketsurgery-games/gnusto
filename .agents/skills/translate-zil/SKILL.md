@@ -119,19 +119,14 @@ bug (it will fire once instead of chaining). See `docs/grue.md`. Run
 **`frotz lint <game>`** after converting an event with a `(condp = (:counter ...))`
 state machine — it flags exactly this dropped-chain mistake.
 
-## Truthiness gotcha (ZIL 0 is true; Grue 0 is currently false)
+## Truthiness (Grue matches ZIL/Clojure)
 
-In ZIL/MDL only `<>` is false — `0` is truthy, which is why ZIL uses explicit
-`<ZERO?>` / `<G? x 0>` everywhere. Grue currently leaks Python truthiness, so
-`0`, `""`, `[]`, `{}` are **falsy**. When a value can legitimately be `0` (a
-floor number, a counter, an index), never test it with raw truthiness:
-
-- ZIL `<COND (<GET ...> ...)>` on a numeric → Grue `(if (not (nil? x)) ...)` or
-  an explicit compare, **not** `(if x ...)`.
-- Beware `(and ?floor ...)` when `?floor` can be `0` — this caused a real
-  basement bug. Use `(nil? x)` / `(empty? x)` / `(= x 0)` as appropriate.
-
-(This asymmetry is tracked for a possible language fix in yak `gnusto-be0a`.)
+In ZIL/MDL only `<>` is false — `0`, strings, and objects are truthy, which is
+why ZIL uses explicit `<ZERO?>` / `<G? x 0>` everywhere. **Grue matches this:**
+only `nil` and `false` are falsy; `0`/`""`/`[]`/`{}` are truthy. So a ZIL
+`<COND (<GET ...> ...)>` on a numeric maps cleanly to `(if (:prop @x) ...)` and
+`(and ?floor ...)` works even when `?floor` is `0`. Still prefer explicit
+compares (`(= x 0)`, `(> x 0)`) or `(empty? x)` / `(nil? x)` when you mean them.
 
 ## Example
 
