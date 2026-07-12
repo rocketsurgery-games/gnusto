@@ -4,7 +4,7 @@ title: 'P4: de-drift renderers — declare vocabulary once, exhaustive TUI + web
 type: task
 priority: 2
 created: '2026-07-07T21:51:39Z'
-updated: '2026-07-08T04:02:48Z'
+updated: '2026-07-12T00:10:36Z'
 labels:
 - render
 depends_on:
@@ -20,3 +20,7 @@ Core done. (A) MODE FLIP: engine-authoritative text is now the DEFAULT for all m
 ---
 ▸ 2026-07-08T04:02:48Z
 Debug-formatter de-drift (user-reported): _format_compact_debug is a third result formatter that branched on the two result types (grue.repl.ActionDone for actions vs grue.runtime.ActionResult for events) and the EVENT branch omitted output + reason -> triggered-event narration (e.g. compulsion pages) rendered to the player but was missing from debug. Also both branches only printed narrate/say, dropping focus/reveal/emphasize/splash/sfx. Fix: factored output + effects printing into _debug_output_lines/_debug_effects_lines used by ALL branches (uniform, drift-proof), show output+reason for events, and label event results '[triggered event]' so their effects aren't causeless. Tests added. 770 python + 477 grue pass. Root cause is the two parallel result types + isinstance branching; noted for possible future unification.
+
+---
+▸ 2026-07-12T00:10:36Z
+Finishing per user call. Core delivered + committed (9aa2481, c92bce6): engine-authoritative text is the default (parsing_only None->True; --llm-narration opt-in); TUI/web renderers de-drifted (Caption/Splash/Sfx + fallback; drift-guard test over NarrativeBlock.__subclasses__); debug formatter unified across result types. Deferred 'declare vocabulary once' registry + Svelte-side reconciliation promoted to root todo gnusto-26e7.

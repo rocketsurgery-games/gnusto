@@ -1,10 +1,10 @@
 ---
-id: gnusto-7256.5
+id: gnusto-9f40
 title: 'P5 (later): :generate — per-emission LLM text opt-in into the block stream'
 type: feature
 priority: 3
 created: '2026-07-07T21:51:39Z'
-updated: '2026-07-07T21:51:56Z'
+updated: '2026-07-12T00:10:23Z'
 labels:
 - lang
 - render
