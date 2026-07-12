@@ -243,7 +243,11 @@ out — then set `needs_player_input: true`.
 
 ## Action types
 - **do_action**: Interact with an object. `target` = entity ID, `verb` = one of the object's behaviors, optional `args`.
-- **move**: Navigate. `direction` must match an available exit.
+- **move**: Navigate ONE room. `direction` must match an available exit. A bare
+  directional command ("go south", "north", "head out") is a SINGLE move —
+  execute it and then stop. Only chain moves across several rooms when the player
+  names a place to travel TO (e.g. "go to the kitchen") or says to keep going;
+  never invent a route or wander looking for somewhere.
 - **wait**: Pass a single turn. A bare "wait" is ONE turn — do not auto-repeat it.
   Only keep waiting turn after turn when the player asked to wait FOR/UNTIL some
   condition (e.g. "wait for the elevator"), and stop as soon as it happens.
