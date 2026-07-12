@@ -157,6 +157,28 @@
   (true
     (blocked :reason cannot-put :message "You can't put that there."))))
 
+; === throw ===
+; Default throw behavior. "throw X at Y" naturally parses to (do @X :throw @Y)
+; (item-first), but games model throwing-at-a-target as attacking the target
+; WITH the item, e.g. (do @frob :attack @stone). Redirect so the natural,
+; item-first phrasing works without the LLM having to guess the direction
+; (gnusto-7f83; sibling of the bidirectional put, gnusto-1ce1).
+; Syntax: (do @item :throw @target)  ->  (do @target :attack @item)
+
+(default throw (cond
+  ((not (held-by? ?self ?actor))
+    (blocked :reason not-held :message "You're not holding that."))
+
+  ; Thrown AT a target -> attack that target with this item.
+  (?value
+    (redirect :action (do ?value :attack ?self)))
+
+  ; Bare throw -> it simply lands in the room.
+  (true
+    '((move ?self (loc ?actor))
+      (narrate "You throw it. It clatters to the ground nearby.")
+      (success)))))
+
 ; === examine ===
 ; Default examine behavior - returns generic message when object has no :examine handler
 
