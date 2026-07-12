@@ -54,4 +54,6 @@
     :moves 0
     ; Darkness/grue bookkeeping (see grue-hazard.grue).
     :dark-turns 0
-    :grue-grace 1))
+    :grue-grace 1
+    ; Dam flood hazard bookkeeping (see reservoir.grue).
+    :flood-level 0))

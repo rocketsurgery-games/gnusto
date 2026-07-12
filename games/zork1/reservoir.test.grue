@@ -1,0 +1,139 @@
+; Tests for the Reservoir / Dam water-level slice.
+; Dam Room and Dam Lobby are lit; the reservoir/maintenance/loud rooms are dark.
+
+; === The dam control panel ===
+
+(test-group "the bolt and the gates"
+  :setup ((move @player @dam-room)
+          (set @dam :gates-open false) (set @dam :bolt-enabled false)
+          (move @wrench @player))
+
+  (test "the bolt won't turn with the wrong tool"
+    (do @bolt :turn @screwdriver)
+    (assert (outcome? blocked))
+    (assert (context? message "The bolt won't turn using that.")))
+
+  (test "the bolt won't turn until the panel is energized"
+    (do @bolt :turn @wrench)
+    (assert (outcome? blocked))
+    (assert (context? message "The bolt won't turn with your best effort.")))
+
+  (test "turning the energized bolt opens the gates and drains the lake"
+    :setup ((move @player @dam-room) (set @dam :gates-open false) (set @dam :bolt-enabled true)
+            (move @wrench @player) (set @trunk :invisible true))
+    (do @bolt :turn @wrench)
+    (assert (outcome? success))
+    (assert (prop? @dam gates-open true))
+    (assert (no-flag? @trunk invisible))
+    (assert (output? "water pours through the dam")))
+
+  (test "turning it again closes the gates and refills"
+    :setup ((move @player @dam-room) (set @dam :gates-open true) (set @dam :bolt-enabled true)
+            (move @wrench @player) (set @trunk :invisible false))
+    (do @bolt :turn @wrench)
+    (assert (prop? @dam gates-open false))
+    (assert (has-flag? @trunk invisible)))
+)
+
+(test-group "the yellow button energizes the panel"
+  :setup ((move @player @maintenance-room) (set @dam :bolt-enabled false)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "pressing yellow lights the bubble"
+    (do @yellow-button :push)
+    (assert (outcome? success))
+    (assert (prop? @dam bolt-enabled true)))
+
+  (test "pressing brown de-energizes it"
+    :setup ((move @player @maintenance-room) (set @dam :bolt-enabled true) (move @lamp @player) (set @lamp :lit true))
+    (do @brown-button :push)
+    (assert (prop? @dam bolt-enabled false)))
+)
+
+(test-group "the red button lights the room"
+  :setup ((move @player @maintenance-room) (set @maintenance-room :lit false))
+
+  (test "red turns the maintenance-room lights on"
+    (do @red-button :push)
+    (assert (outcome? success))
+    (assert (:lit @maintenance-room))
+    (assert (output? "come on")))
+
+  (test "and off again"
+    :setup ((move @player @maintenance-room) (set @maintenance-room :lit true))
+    (do @red-button :push)
+    (assert (no-flag? @maintenance-room lit))
+    (assert (output? "shut off")))
+)
+
+; === Crossing the reservoir ===
+
+(test-group "crossing the reservoir"
+  :setup ((move @player @reservoir-south) (move @lamp @player) (set @lamp :lit true))
+
+  (test "you would drown while the lake is full"
+    :setup ((move @player @reservoir-south) (set @dam :gates-open false) (move @lamp @player) (set @lamp :lit true))
+    (go :direction north)
+    (assert (outcome? blocked))
+    (assert (context? message "You would drown.")))
+
+  (test "once drained you can cross north"
+    :setup ((move @player @reservoir-south) (set @dam :gates-open true) (move @lamp @player) (set @lamp :lit true))
+    (go :direction north)
+    (assert (loc? @player @reservoir))
+    (go :direction north)
+    (assert (loc? @player @reservoir-north)))
+
+  (test "the trunk is takeable once the lake is drained"
+    :setup ((move @player @reservoir) (set @dam :gates-open true) (set @trunk :invisible false)
+            (move @lamp @player) (set @lamp :lit true))
+    (do @trunk :take)
+    (assert (outcome? success))
+    (assert (held? @trunk)))
+)
+
+; === The Loud Room ===
+
+(test-group "the loud room"
+  :setup ((move @player @loud-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "the bar can't be taken while the room roars"
+    :setup ((move @player @loud-room) (set @dam :gates-open false) (move @lamp @player) (set @lamp :lit true))
+    (do @bar :take)
+    (assert (outcome? blocked))
+    (assert (context? message "The acoustics of the room are so loud that you can't concentrate well enough to take anything.")))
+
+  (test "draining the reservoir quiets the room so you can take the bar"
+    :setup ((move @player @loud-room) (set @dam :gates-open true) (move @lamp @player) (set @lamp :lit true))
+    (do @bar :take)
+    (assert (outcome? success))
+    (assert (held? @bar)))
+)
+
+; === The blue-button flood trap ===
+
+(test-group "the flood trap"
+  :setup ((move @player @maintenance-room) (set @player :flood-level 0)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "pressing blue springs a leak and starts the flood"
+    (do @blue-button :push)
+    (assert (outcome? success))
+    (assert (queued? dam-flood))
+    (assert (output? "a leak has sprung")))
+
+  (test "lingering in the flooding room drowns you"
+    :setup ((move @player @maintenance-room) (set @player :flood-level 4) (queue dam-flood)
+            (move @lamp @player) (set @lamp :lit true))
+    (wait)
+    (assert (prop? @player dead true)))
+
+  (test "leaving the room escapes the flood"
+    :setup ((move @player @maintenance-room) (set @player :flood-level 2) (queue dam-flood)
+            (move @lamp @player) (set @lamp :lit true))
+    (go :direction south)
+    (assert (loc? @player @dam-lobby))
+    (wait)                       ; the flood event sees you've left and stops
+    (assert (not (queued? dam-flood)))
+    (assert (prop? @player dead false)))
+)

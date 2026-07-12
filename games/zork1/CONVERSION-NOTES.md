@@ -145,6 +145,33 @@ patterns that show up in both are near-universal and belong in the shared
   *dynamic* description (it still reads "nailed shut" after MAGIC-FLAG — ZIL's
   LIVING-ROOM-FCN rewrites it; minor cosmetic, tracked).
 
+## Slice 7 (reservoir + dam) observations
+
+- **Water-level state machine.** The dam is a clean multi-step puzzle: yellow
+  button -> `:bolt-enabled` (energize the bubble), turn the bolt *with the
+  wrench* -> toggle `:gates-open` (== ZIL LOW-TIDE), which reveals the trunk,
+  opens the reservoir crossing (`:via @reservoir-water`), and quiets the Loud
+  Room so the platinum bar is takeable. ZIL's ~8-turn drain/fill
+  (I-REMPTY/I-RFILL) is collapsed to an immediate flip (deterministic; the delay
+  wasn't puzzle-critical).
+- **The red button showcases the darkness system:** the Maintenance Room is dark
+  (no ONBIT), and the red button toggles its `:lit` — you press it by name in the
+  dark (accessibility is unaffected) and the room lights up.
+- **The blue-button flood is a THIRD hazard event** (after the grue and LH's
+  freezing), reusing the exact pattern: rise while you stay, dequeue+reset when
+  you leave, deterministic drown past the grace. The pattern is proving very
+  robust — reinforcing the case for a shared `hazard` helper (wishlist / adjacent
+  to gnusto-fa93.9).
+- **`frotz map` drove the slice.** Its frontier list picked the targets
+  (@loud-room/@reservoir-south/@deep-canyon), and after wiring it advanced to the
+  next frontier (@atlantis-room/@dam-base/@damp-cave) — exactly the ledger I
+  wanted. Deferred: the Loud Room `echo` verb (bar is quieted via draining for
+  now); the river/boat area (@dam-base) and Atlantis (@reservoir-north north).
+- **Testing nuance:** a bare `(go)` doesn't advance the event clock for a
+  same-turn `(queued?)` check the way `(wait)` does — assert event dequeue after a
+  following `(wait)` (matches the LH freezing tests). Worth verifying whether the
+  harness should process events on movement turns too.
+
 ## Engine improvements made
 
 - **Deterministic darkness/light + persistent start-events (gnusto-fa93.4).**

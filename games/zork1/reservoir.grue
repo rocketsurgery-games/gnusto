@@ -1,0 +1,309 @@
+; Flood Control Dam #3, the Reservoir, and the Loud Room.
+;
+; The dam's water-level puzzle: press the YELLOW button (Maintenance Room) to
+; energize the control bubble so the BOLT will turn; turn the bolt with the
+; WRENCH to open the sluice gates; the reservoir drains, revealing the TRUNK of
+; jewels, letting you cross north, and quieting the Loud Room enough to take the
+; platinum bar. The BLUE button is a flood trap; RED toggles the (dark)
+; Maintenance Room lights; BROWN de-energizes the bolt.
+;
+; ZIL: 1dungeon.zil (RESERVOIR-SOUTH/RESERVOIR/RESERVOIR-NORTH, STREAM-VIEW,
+; DAM-ROOM/DAM-LOBBY/MAINTENANCE-ROOM, LOUD-ROOM, DEEP-CANYON; DAM, BOLT, BUBBLE,
+; TRUNK, WRENCH, GUIDE, buttons); 1actions.zil (BOLT-F, BUTTON-F, DAM-FUNCTION,
+; I-REMPTY/I-RFILL, LOUD-ROOM-FCN, I-MAINT-ROOM).
+;
+; DETERMINISTIC CONVERSION: ZIL drains/fills the reservoir over ~8 turns
+; (I-REMPTY/I-RFILL) and floods the maintenance room over ~14 (I-MAINT-ROOM). We
+; make the drain/fill immediate (turning the bolt flips the state at once) and
+; model the flood as a bounded deterministic hazard (like the grue/freezing).
+; :gates-open on @dam == ZIL LOW-TIDE (reservoir drained).
+
+; === Reservoir crossing (south / middle / north) ===
+
+(room @reservoir-south
+  :description "Reservoir South"
+  :ldesc "You are in a long room on the south shore of a large lake, far too deep and wide for crossing."
+  :rdesc "The rocky south shore of a broad underground lake vanishing into darkness, passages leading off in several directions; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((se :to @deep-canyon)
+     (sw :to @chasm-room)
+     (east :to @dam-room)
+     (west :to @stream-view)
+     (north :to @reservoir :via @reservoir-water)))
+
+(room @reservoir
+  :description "Reservoir"
+  :ldesc "You are on the reservoir bed. A slimy stone bottom stretches north and south; the dam looms to the east."
+  :rdesc "The drained muddy bed of a reservoir, slick stone stretching north and south under lantern-light, the bulk of a dam to the east. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @reservoir-north)
+     (south :to @reservoir-south)
+     (down :blocked "The dam blocks your way.")))
+
+(room @reservoir-north
+  :description "Reservoir North"
+  :ldesc "You are in a large cavernous room, the north end of a large lake."
+  :rdesc "The cavernous north shore of an underground lake, a passage leading north and the lakebed to the south; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @atlantis-room)                    ; later slice
+     (south :to @reservoir :via @reservoir-water)))
+
+(room @stream-view
+  :description "Stream View"
+  :ldesc "You are standing on a path beside a gently flowing stream. The path follows the stream, which
+  flows from west to east."
+  :rdesc "A rocky path beside a gently flowing underground stream running west to east; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @reservoir-south)
+     (west :blocked "The stream emerges from a spot too small for you to enter.")))
+
+; The lake is uncrossable until the dam drains it (ZIL LOW-TIDE).
+(object @reservoir-water
+  :description "reservoir"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((:gates-open @dam) (success))
+        (true (blocked :message "You would drown."))))))
+
+; === Flood Control Dam #3 ===
+
+(room @dam-room
+  :description "Dam"
+  :ldesc "You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction
+  in times far distant. There is a control panel here, on which a large metal bolt is mounted. Directly
+  above the bolt is a small green plastic bubble."
+  :rdesc "The top of a massive concrete flood-control dam, a rusted control panel with a large metal bolt and a small green bubble; a reservoir to the west, a spillway dropping east. Empty of people."
+  :properties (:lit true)   ; DAM-ROOM has ONBIT
+  :exits
+    ((south :to @deep-canyon)
+     (north :to @dam-lobby)
+     (west :to @reservoir-south)
+     (down :to @dam-base)      ; river area — later slice
+     (east :to @dam-base))
+  :visible (@dam @bolt @bubble))
+
+(room @dam-lobby
+  :description "Dam Lobby"
+  :ldesc "This room appears to have been the waiting room for groups touring the dam. There are open
+  doorways here to the north and east marked \"Private\", and there is a path leading south over the top
+  of the dam."
+  :rdesc "A dusty dam tour waiting room, doorways marked \"Private\" to the north and east, a path south over the dam; institutional gloom, its own light. Empty of people."
+  :properties (:lit true)   ; DAM-LOBBY has ONBIT
+  :exits
+    ((south :to @dam-room)
+     (north :to @maintenance-room)
+     (east :to @maintenance-room))
+  :visible (@guide))
+
+(room @maintenance-room
+  :description "Maintenance Room"
+  :ldesc "This is what appears to have been the maintenance room for Flood Control Dam #3. Apparently,
+  this room has been ransacked recently, for most of the valuable equipment is gone. On the wall in front
+  of you is a group of buttons colored blue, yellow, brown, and red. There are doorways to the west and
+  south."
+  :rdesc "A ransacked dam maintenance room, a wall panel of four colored buttons (blue, yellow, brown, red), empty tool racks, doorways west and south; deep shadow. Empty of people."
+  :properties (:lit false)   ; no ONBIT — dark until the red button lights it
+  :exits
+    ((south :to @dam-lobby)
+     (west :to @dam-lobby))
+  :visible (@blue-button @yellow-button @brown-button @red-button @wrench @tool-chest @screwdriver))
+
+; The dam / control panel. :gates-open is ZIL LOW-TIDE; :bolt-enabled is GATE-FLAG.
+(object @dam
+  :location @dam-room
+  :description "dam"
+  :properties (:nodesc true :gates-open false :bolt-enabled false)
+  :behaviors (
+    :examine (fn ()
+      '((focus @dam "Flood Control Dam #3 holds back a vast reservoir. A control panel with a bolt and a green bubble governs the sluice gates.") (success)))
+    :open (fn () (blocked :message "Sounds reasonable, but this isn't how."))
+    :close (fn () (blocked :message "Sounds reasonable, but this isn't how."))))
+
+(object @bolt
+  :location @dam-room
+  :description "bolt"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @bolt "It's a large metal bolt set in the control panel.") (success)))
+    :take (fn () (blocked :message "It is an integral part of the control panel."))
+    ; Turn with the wrench, once the yellow button has energized the panel.
+    :turn (fn (?with)
+      (cond
+        ((not (= ?with @wrench))
+          (blocked :message "The bolt won't turn using that."))
+        ((not (:bolt-enabled @dam))
+          (blocked :message "The bolt won't turn with your best effort."))
+        ((:gates-open @dam)
+          '((set @dam :gates-open false)
+            (set @trunk :invisible true)
+            (narrate "The sluice gates close and water starts to collect behind the dam.")
+            (success)))
+        (true
+          '((set @dam :gates-open true)
+            (set @trunk :invisible false)
+            (narrate "The sluice gates open and water pours through the dam. The great reservoir behind it drains away.")
+            (success)))))))
+
+(object @bubble
+  :location @dam-room
+  :description "green bubble"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:bolt-enabled @dam) '((focus @bubble "The green bubble is glowing.") (success)))
+        (true '((focus @bubble "The small green plastic bubble is dark.") (success)))))
+    :take (fn () (blocked :message "It is an integral part of the control panel."))))
+
+; === The buttons (BUTTON-F) ===
+
+(object @yellow-button
+  :location @maintenance-room
+  :description "yellow button"
+  :properties (:nodesc true)
+  :behaviors (
+    :read (fn () '((narrate "They're greek to you.") (success)))
+    :push (fn ()
+      '((set @dam :bolt-enabled true) (narrate "Click. The green bubble on the dam begins to glow.") (success)))))
+
+(object @brown-button
+  :location @maintenance-room
+  :description "brown button"
+  :properties (:nodesc true)
+  :behaviors (
+    :read (fn () '((narrate "They're greek to you.") (success)))
+    :push (fn ()
+      '((set @dam :bolt-enabled false) (narrate "Click.") (success)))))
+
+(object @red-button
+  :location @maintenance-room
+  :description "red button"
+  :properties (:nodesc true)
+  :behaviors (
+    :read (fn () '((narrate "They're greek to you.") (success)))
+    :push (fn ()
+      (cond
+        ((:lit @maintenance-room)
+          '((set @maintenance-room :lit false) (narrate "The lights within the room shut off.") (success)))
+        (true
+          '((set @maintenance-room :lit true) (narrate "The lights within the room come on.") (success)))))))
+
+(object @blue-button
+  :location @maintenance-room
+  :description "blue button"
+  :properties (:nodesc true)
+  :behaviors (
+    :read (fn () '((narrate "They're greek to you.") (success)))
+    ; The flood trap: a leak bursts and the room begins to fill (I-MAINT-ROOM).
+    :push (fn ()
+      (cond
+        ((> (:flood-level @player) 0)
+          (blocked :message "The blue button appears to be jammed."))
+        (true
+          '((queue dam-flood)
+            (narrate "There is a rumbling sound and a stream of water bursts from the east wall of the room: a leak has sprung in a pipe.")
+            (success)))))))
+
+; Deterministic flood hazard (ZIL I-MAINT-ROOM). Rises each turn you remain in
+; the flooding room; leaving is safe. Drown once it goes over your head.
+(event dam-flood
+  :on-turn
+    (cond
+      ((not (= (loc @player) @maintenance-room))
+        '((dequeue dam-flood) (set @player :flood-level 0) (success)))
+      ((>= (:flood-level @player) 4)
+        (blocked :reason death
+                 :context ((death true)
+                           (description "The water has risen over your head. I'm afraid you have drowned yourself."))))
+      (true
+        (let ((?n (+ (:flood-level @player) 1)))
+          `((set @player :flood-level ,?n)
+            (narrate "The water is rising alarmingly.")
+            (success))))))
+
+; === Loot & scenery ===
+
+(object @trunk
+  :location @reservoir
+  :description "trunk of jewels"
+  ; Submerged (invisible) until the reservoir is drained.
+  :properties (:takeable true :treasure true :invisible true :value 15 :tvalue 5)
+  :behaviors (
+    :examine (fn () '((focus @trunk "It's an old trunk, bulging with assorted jewels.") (success)))))
+
+(object @wrench
+  :location @maintenance-room
+  :description "wrench"
+  :properties (:takeable true :tool true)
+  :behaviors (
+    :examine (fn () '((focus @wrench "It's a heavy iron wrench.") (success)))))
+
+(object @screwdriver
+  :location @maintenance-room
+  :description "screwdriver"
+  :properties (:takeable true :tool true))
+
+(object @tool-chest
+  :location @maintenance-room
+  :description "group of tool chests"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @tool-chest "The chests are all empty.") (success)))
+    :take (fn () (blocked :message "The chests are so rusty and corroded that they crumble when you touch them."))))
+
+(object @guide
+  :location @dam-lobby
+  :description "tour guidebook"
+  :properties (:takeable true :readable true)
+  :behaviors (
+    :read (fn ()
+      '((narrate "\"Flood Control Dam #3 was constructed in 783 GUE with a grant of 37 million zorkmids. Take one of our free brochures. To open the gates, press the yellow button, then turn the bolt with a wrench.\"")
+        (success)))
+    :examine (fn () (redirect :action (do @guide :read)))))
+
+; === Deep Canyon + Loud Room ===
+
+(room @deep-canyon
+  :description "Deep Canyon"
+  :ldesc "You are on the south edge of a deep canyon. Passages lead off in several directions; from far
+  below comes the sound of rushing water."
+  :rdesc "The rim of a deep dark canyon, passages branching off, the sound of water echoing up from far below; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((nw :to @reservoir-south)
+     (east :to @dam-room)
+     (sw :to @ns-passage)
+     (down :to @loud-room)))
+
+(room @loud-room
+  :description "Loud Room"
+  :ldesc "This is a large room with a ceiling which cannot be detected from the ground. There is a narrow
+  passage from east to west and a stone stairway leading upward."
+  :rdesc "A vast echoing stone chamber whose ceiling is lost in darkness, a narrow east-west passage and a stone stairway rising; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @damp-cave)          ; river area — later slice
+     (west :to @round-room)
+     (up :to @deep-canyon)))
+
+; The platinum bar can't be taken while the room is deafeningly loud; draining
+; the reservoir (stopping the rushing water) quiets it (ZIL LOW-TIDE / LOUD-FLAG).
+(object @bar
+  :location @loud-room
+  :description "platinum bar"
+  :properties (:takeable true :treasure true :value 10 :tvalue 5)
+  :behaviors (
+    :examine (fn () '((focus @bar "It's a large bar of platinum.") (success)))
+    :take (fn ()
+      (cond
+        ((:gates-open @dam)
+          '((move @bar @player) (narrate "Taken.") (success)))
+        (true
+          (blocked :message "The acoustics of the room are so loud that you can't concentrate well enough to take anything."))))))
