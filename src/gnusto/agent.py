@@ -1318,6 +1318,10 @@ class GameSession:
                 event_name = getattr(result, "event_name", None)
                 lines.append(f"[event: {event_name}]" if event_name else "[triggered event]")
                 lines.append(f"outcome: {result.outcome}")
+                # Surface the error text; without this an event that throws just
+                # shows a bare "outcome: error" (gnusto-2340).
+                if getattr(result, "error", None):
+                    lines.append(f"error: {result.error}")
                 lines.extend(self._debug_context_lines(result.context))
                 lines.extend(self._debug_output_lines(getattr(result, "output", None)))
                 if getattr(result, "reason", None):
