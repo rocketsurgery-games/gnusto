@@ -100,6 +100,13 @@ In the REPL, **`(queues)`** dumps the live event queue with countdowns and
 **`(wait N)` / `(advance N)`** passes N turns at once — the fast way to watch a
 timed mechanic settle without diving into source.
 
+**Checkpointing:** `(save [slot])` / `(load [slot])` / `(saves)` persist and
+restore runtime state (to `~/.gnusto/saves/<game>/`), so you can drive a game to
+an interesting state once, save it, and re-load it at the top of later probe
+scripts instead of replaying the whole sequence. The same slots are shared with
+the LLM CLI's `/save` and `/load`, so you can even hand a REPL-built checkpoint
+to a `gnusto` session (and vice-versa).
+
 Through the real LLM loop (parse-only is the default; engine emits the text):
 
 ```bash

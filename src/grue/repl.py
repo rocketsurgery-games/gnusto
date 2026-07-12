@@ -10,6 +10,9 @@ Meta:
     (state)                   - Show full game state
     (exits)                   - Show available exits
     (queues)                  - Show the live event queue with countdowns
+    (save [slot])             - Save game state (default slot: "default")
+    (load [slot])             - Load a saved game state
+    (saves)                   - List saved games
     (reset)                   - Reset to initial state
     (help)                    - Show this help
     (quit)                    - Exit REPL
@@ -60,6 +63,7 @@ from typing import Any
 
 from . import GrueRuntime, load_grue
 from .expr import EffectExecutor, EvalError, ExprEvaluator
+from .save import list_saves, load_game, save_game
 from .sexpr import Keyword, SExpr, SExprError, SList, Symbol, parse, to_string
 
 
@@ -226,6 +230,28 @@ class EventResult:
     effects: list[str]
 
 
+@dataclass
+class SaveResult:
+    """Result of saving the game."""
+
+    path: str
+
+
+@dataclass
+class LoadResult:
+    """Result of loading the game."""
+
+    warnings: list[str]
+    location: "LocationResult | None" = None
+
+
+@dataclass
+class SavesResult:
+    """List of available saves (slot, timestamp, path)."""
+
+    saves: list[tuple[str, str, Any]]
+
+
 # === REPL Evaluator ===
 
 
@@ -255,6 +281,9 @@ class ReplEvaluator:
             "wait": self._cmd_wait,
             "advance": self._cmd_wait,
             "queues": self._cmd_queues,
+            "save": self._cmd_save,
+            "load": self._cmd_load,
+            "saves": self._cmd_saves,
         }
 
         # Effect commands (direct state mutation for testing/debugging)
@@ -376,6 +405,31 @@ class ReplEvaluator:
     def _cmd_queues(self, expr: SList) -> QueuesResult:
         """Execute (queues) - show the live event queue with countdowns."""
         return QueuesResult(runtime=self.runtime)
+
+    def _slot_arg(self, expr: SList, default: str = "default") -> str:
+        """Extract an optional save-slot name from (cmd [slot])."""
+        if len(expr) >= 2:
+            return self._to_string(expr[1])
+        return default
+
+    def _cmd_save(self, expr: SList) -> "SaveResult":
+        """Execute (save [slot]) - persist the runtime state to disk."""
+        path = save_game(self.runtime, self._slot_arg(expr))
+        return SaveResult(path=str(path))
+
+    def _cmd_load(self, expr: SList) -> "LoadResult":
+        """Execute (load [slot]) - restore runtime state from disk."""
+        slot = self._slot_arg(expr)
+        try:
+            _history, _summaries, warnings = load_game(self.runtime, slot)
+        except FileNotFoundError:
+            raise EvalError(f"No save found for slot '{slot}'")
+        return LoadResult(warnings=warnings, location=self._make_location_result())
+
+    def _cmd_saves(self, expr: SList) -> "SavesResult":
+        """Execute (saves) - list available saves for this game."""
+        game_name = self.runtime.world.name or "unknown"
+        return SavesResult(saves=list_saves(game_name))
 
     def _cmd_go(self, expr: SList) -> ActionDone | ActionBlocked | ActionError:
         """Execute (go DIRECTION)."""
@@ -538,6 +592,27 @@ def print_result(result: Any) -> bool:
 
     if isinstance(result, ResetResult):
         print("[Reset]")
+        return True
+
+    if isinstance(result, SaveResult):
+        print(f"[Saved to {result.path}]")
+        return True
+
+    if isinstance(result, LoadResult):
+        for w in result.warnings:
+            print(f"  Warning: {w}")
+        print("[Loaded]")
+        if result.location:
+            print_result(result.location)
+        return True
+
+    if isinstance(result, SavesResult):
+        if not result.saves:
+            print("[No saves]")
+        else:
+            print("[Saves]")
+            for slot, timestamp, _ in result.saves:
+                print(f"  {slot}: {timestamp}")
         return True
 
     if isinstance(result, WaitResult):
