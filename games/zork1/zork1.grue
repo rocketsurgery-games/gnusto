@@ -1,0 +1,47 @@
+(world
+  :name "Zork I"
+  :description "Conversion of Infocom's _Zork I: The Great Underground Empire_ to FrotzLM / Grue"
+
+  :intro "ZORK I: The Great Underground Empire. You are standing in an open field west of a white
+  house, with a boarded front door. There is a small mailbox here."
+
+  :player @player
+
+  ; Visual style for generated illustrations: vintage fantasy-adventure line art.
+  :visual-style (
+      :prompt "Style: broad alla prima brush strokes, suitable only as a rough mockup for a human
+      artist, but little detail."
+
+      :palette "muted earthy fantasy tones: mossy greens, weathered browns, cool slate shadows, pale daylight"
+
+      :swatches (:bg "#0d1410" :panel "#16211a" :panel-2 "#1e2c22"
+                 :ink "#070a07" :line "#3a4a3c"
+                 :accent "#c9a227" :accent-glow "#f0d668" :warm "#c88a4a"
+                 :paper "#e9e2cc" :paper-ink "#1b1712"
+                 :text "#e0e6dc" :text-dim "#93a394")
+
+      :aspect-ratio "1:1"
+
+      :kinds (:room   (:aspect-ratio "16:9"
+                       :prompt "Wide establishing shot of the empty location; environment only, no people, cinematic framing with room to breathe.")
+              :object (:prompt "A single subject, centered, isolated on a flat pure-black background; no scene, no props, no floor, even studio lighting."))))
+
+
+; Victory: place all treasures in the trophy case and enter the Stone Barrow.
+; ZIL tracks this with WON-FLAG; modeled here as a player property, set by the
+; endgame (deferred until the treasure/scoring slice).
+(victory :when (:won @player))
+
+; Defeat: player dies (grue, combat, misadventure). Marked by :dead.
+(defeat death
+  :when (:dead @player)
+  :context ((message "You have died.")))
+
+(object @player
+  :location @west-of-house
+  :properties (
+    :person true
+    :dead false
+    :won false
+    :score 0
+    :moves 0))

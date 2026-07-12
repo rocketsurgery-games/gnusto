@@ -1,0 +1,134 @@
+; Tests for the White House exterior slice.
+
+; === Navigation around the house ring ===
+
+(test-group "west of house navigation"
+  :setup ((move @player @west-of-house))
+
+  (test "north to north of house"
+    (go :direction north)
+    (assert (loc? @player @north-of-house)))
+
+  (test "south to south of house"
+    (go :direction south)
+    (assert (loc? @player @south-of-house)))
+
+  (test "ne to north of house"
+    (go :direction ne)
+    (assert (loc? @player @north-of-house)))
+
+  (test "se to south of house"
+    (go :direction se)
+    (assert (loc? @player @south-of-house)))
+
+  (test "east is boarded (front door)"
+    (go :direction east)
+    (assert (outcome? blocked))
+    (assert (loc? @player @west-of-house)))
+)
+
+(test-group "north of house navigation"
+  :setup ((move @player @north-of-house))
+
+  (test "west back to west of house"
+    (go :direction west)
+    (assert (loc? @player @west-of-house)))
+
+  (test "east to behind house"
+    (go :direction east)
+    (assert (loc? @player @east-of-house)))
+
+  (test "south is boarded windows"
+    (go :direction south)
+    (assert (outcome? blocked))
+    (assert (loc? @player @north-of-house)))
+)
+
+(test-group "south of house navigation"
+  :setup ((move @player @south-of-house))
+
+  (test "nw back to west of house"
+    (go :direction nw)
+    (assert (loc? @player @west-of-house)))
+
+  (test "ne to behind house"
+    (go :direction ne)
+    (assert (loc? @player @east-of-house)))
+
+  (test "north is boarded windows"
+    (go :direction north)
+    (assert (outcome? blocked))
+    (assert (loc? @player @south-of-house)))
+)
+
+(test-group "behind house navigation"
+  :setup ((move @player @east-of-house))
+
+  (test "north to north of house"
+    (go :direction north)
+    (assert (loc? @player @north-of-house)))
+
+  (test "sw to south of house"
+    (go :direction sw)
+    (assert (loc? @player @south-of-house)))
+)
+
+; === Mailbox and leaflet ===
+
+(test-group "mailbox"
+  :setup ((move @player @west-of-house))
+
+  (test "mailbox starts closed"
+    (do @mailbox :examine)
+    (assert (no-flag? @mailbox open)))
+
+  (test "cannot take the mailbox"
+    (do @mailbox :take)
+    (assert (outcome? blocked)))
+
+  (test "can open the mailbox"
+    (do @mailbox :open)
+    (assert (outcome? success))
+    (assert (:open @mailbox)))
+
+  (test "can take the leaflet from an open mailbox"
+    :setup ((move @player @west-of-house) (set @mailbox :open true))
+    (do @leaflet :take)
+    (assert (outcome? success))
+    (assert (held? @leaflet)))
+
+  (test "reading the leaflet shows the welcome blurb"
+    :setup ((move @player @west-of-house) (set @mailbox :open true) (move @leaflet @player))
+    (do @leaflet :read)
+    (assert (outcome? success))
+    (assert (output? "WELCOME TO ZORK")))
+)
+
+; === Scenery ===
+
+(test-group "house scenery"
+  :setup ((move @player @west-of-house))
+
+  (test "examine the white house"
+    (do @white-house :examine)
+    (assert (outcome? success))
+    (assert (output? "beautiful colonial house")))
+
+  (test "the boards are securely fastened"
+    (do @board :take)
+    (assert (outcome? blocked))
+    (assert (context? message "The boards are securely fastened.")))
+
+  (test "the front door cannot be opened"
+    (do @front-door :open)
+    (assert (outcome? blocked)))
+)
+
+(test-group "boarded windows"
+  :setup ((move @player @north-of-house))
+
+  (test "boarded windows can't be opened"
+    (do @boarded-window :open)
+    (assert (outcome? blocked))
+    (assert (context? message "The windows are boarded and can't be opened.")))
+)

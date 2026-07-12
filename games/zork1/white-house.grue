@@ -1,0 +1,169 @@
+; The White House exterior — the four rooms surrounding the boarded-up white
+; house, plus the mailbox/leaflet and the shared scenery (house, boards,
+; forest, windows, front door).
+;
+; ZIL: 1dungeon.zil (WEST-OF-HOUSE, NORTH-OF-HOUSE, SOUTH-OF-HOUSE,
+; EAST-OF-HOUSE, MAILBOX, ADVERTISEMENT, and the LOCAL-GLOBALS scenery);
+; 1actions.zil (WEST-HOUSE, EAST-HOUSE, WHITE-HOUSE-F, BOARD-F,
+; BOARDED-WINDOW-FCN, FRONT-DOOR-FCN, MAILBOX-F).
+
+; === Rooms ===
+
+(room @west-of-house
+  :description "West of House"
+  :ldesc "You are standing in an open field west of a white house, with a boarded front door."
+  :rdesc "An open grassy field in daylight before the west face of a white colonial house with a boarded-up front door; forest at the treeline, overcast sky. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((north :to @north-of-house)
+     (south :to @south-of-house)
+     (ne :to @north-of-house)
+     (se :to @south-of-house)
+     (west :to @forest-1)             ; forest ring — later slice
+     (east :to @west-of-house :via @front-door))  ; boarded, blocked
+  :visible (@white-house @front-door @board @forest))
+
+(room @north-of-house
+  :description "North of House"
+  :ldesc "You are facing the north side of a white house. There is no door here, and all the windows
+  are boarded up. To the north a narrow path winds through the trees."
+  :rdesc "The north face of a white colonial house, all windows boarded over, no door; a narrow dirt path winds north into dark trees. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((sw :to @west-of-house)
+     (se :to @east-of-house)
+     (west :to @west-of-house)
+     (east :to @east-of-house)
+     (north :to @path)                ; forest ring — later slice
+     (south :to @north-of-house :via @boarded-window))  ; boarded, blocked
+  :visible (@white-house @boarded-window @board @forest))
+
+(room @south-of-house
+  :description "South of House"
+  :ldesc "You are facing the south side of a white house. There is no door here, and all the windows
+  are boarded."
+  :rdesc "The south face of a white colonial house, all windows boarded over, no door; forest crowding close, overcast daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((west :to @west-of-house)
+     (east :to @east-of-house)
+     (ne :to @east-of-house)
+     (nw :to @west-of-house)
+     (south :to @forest-3)            ; forest ring — later slice
+     (north :to @south-of-house :via @boarded-window))  ; boarded, blocked
+  :visible (@white-house @boarded-window @board @forest))
+
+(room @east-of-house
+  :description "Behind House"
+  :ldesc "You are behind the white house. A path leads into the forest to the east. In one corner of
+  the house there is a small window which is slightly ajar."
+  :rdesc "The rear of a white colonial house, a small window slightly ajar in one corner; a path leads east into dense forest, overcast daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((north :to @north-of-house)
+     (south :to @south-of-house)
+     (sw :to @south-of-house)
+     (nw :to @north-of-house)
+     (east :to @clearing))            ; forest ring — later slice
+     ; west/in -> @kitchen via @kitchen-window: house-interior slice
+  :visible (@white-house @forest))
+
+; === Scenery (ZIL LOCAL-GLOBALS / GLOBAL-OBJECTS) ===
+; No physical location; surfaced in the rooms that reference them via :visible.
+
+; The white house itself. ZIL WHITE-HOUSE-F: examine describes it; here at the
+; exterior "find" is cheeky, and "enter/open" is refused (no way in from here).
+(object @white-house
+  :description "white house"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @white-house "The house is a beautiful colonial house which is painted white. It is
+      clear that the owners must have been extremely wealthy.")
+        (success)))
+    :find (fn ()
+      '((narrate "It's right here! Are you blind or something?") (success)))
+    :open (fn ()
+      (blocked :reason no-entry :message "I can't see how to get in from here."))
+    :through (fn ()
+      (blocked :reason no-entry :message "I can't see how to get in from here."))
+    :burn (fn ()
+      (blocked :reason absurd :message "You must be joking."))))
+
+; The boards nailed over the front door. ZIL BOARD-F.
+(object @board
+  :description "board"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :take (fn ()
+      (blocked :reason fastened :message "The boards are securely fastened."))
+    :examine (fn ()
+      '((focus @board "The boards are securely fastened.") (success)))))
+
+; The surrounding forest. ZIL FOREST object (FOREST-F handles walk/listen/find).
+(object @forest
+  :description "forest"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @forest "The forest is dense with trees in all directions.") (success)))
+    :find (fn ()
+      '((narrate "You cannot see the forest for the trees.") (success)))
+    :listen (fn ()
+      '((narrate "The pines and the hemlocks seem to be murmuring.") (success)))))
+
+; The boarded windows on the north/south faces. ZIL BOARDED-WINDOW-FCN.
+; Doubles as the barrier for the boarded north/south exits.
+(object @boarded-window
+  :description "boarded window"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :open (fn ()
+      (blocked :reason boarded :message "The windows are boarded and can't be opened."))
+    :through (fn ()
+      (blocked :reason boarded :message "The windows are all boarded."))))
+
+; The boarded front door on the west face. ZIL FRONT-DOOR-FCN. Doubles as the
+; barrier for the boarded east exit out of West of House.
+(object @front-door
+  :description "door"
+  :location nil
+  :properties (:nodesc true :door true)
+  :behaviors (
+    :open (fn ()
+      (blocked :reason boarded :message "The door cannot be opened."))
+    :through (fn ()
+      (blocked :reason boarded :message "The door is boarded and you can't remove the boards."))
+    :burn (fn ()
+      (blocked :reason absurd :message "You cannot burn this door."))))
+
+; === Mailbox and leaflet ===
+
+; ZIL MAILBOX: CONTBIT TRYTAKEBIT, CAPACITY 10; MAILBOX-F refuses TAKE.
+; Starts closed (no OPENBIT).
+(object @mailbox
+  :location @west-of-house
+  :description "small mailbox"
+  :properties (:container true :openable true :searchable true)
+  :behaviors (
+    :take (fn ()
+      (blocked :reason anchored :message "It is securely anchored."))))
+
+; ZIL ADVERTISEMENT: READBIT TAKEBIT BURNBIT; TEXT is the welcome blurb.
+(object @leaflet
+  :location @mailbox
+  :description "leaflet"
+  :properties (:takeable true :readable true :burnable true)
+  :behaviors (
+    :read (fn ()
+      '((narrate "\"WELCOME TO ZORK!
+
+ZORK is a game of adventure, danger, and low cunning. In it you will explore some of the most
+amazing territory ever seen by mortals. No computer should be without one!\"")
+        (success)))
+    :examine (fn ()
+      (redirect :action (do @leaflet :read)))))
