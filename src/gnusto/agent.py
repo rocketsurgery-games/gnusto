@@ -1192,6 +1192,21 @@ class GameSession:
                 lines.append(f"{out_type}: {text}")
         return lines
 
+    def _debug_context_lines(self, context: Any) -> list[str]:
+        """Debug lines for a result's context pairs.
+
+        Suppress None/empty-string values so events that fire with no text
+        don't emit noise like ``description: None`` (gnusto-0bf7.4). Keep
+        falsy-but-meaningful values (``0``, ``False``) since 0 is truthy in
+        Grue and a real debug signal.
+        """
+        lines: list[str] = []
+        for key, value in context or []:
+            if value is None or value == "":
+                continue
+            lines.append(f"{key}: {value}")
+        return lines
+
     def _debug_effects_lines(self, effects: Any) -> list[str]:
         """Debug lines for an effect list (aligned continuation)."""
         effects = list(effects or [])
@@ -1206,7 +1221,7 @@ class GameSession:
         lines: list[str] = []
         for result in results:
             if isinstance(result, ActionDone):
-                lines.extend(f"{key}: {value}" for key, value in result.context)
+                lines.extend(self._debug_context_lines(result.context))
                 lines.extend(self._debug_output_lines(result.output))
                 if result.reason:
                     lines.append(f"description: {result.reason}")
@@ -1225,7 +1240,7 @@ class GameSession:
                 event_name = getattr(result, "event_name", None)
                 lines.append(f"[event: {event_name}]" if event_name else "[triggered event]")
                 lines.append(f"outcome: {result.outcome}")
-                lines.extend(f"{key}: {value}" for key, value in result.context)
+                lines.extend(self._debug_context_lines(result.context))
                 lines.extend(self._debug_output_lines(getattr(result, "output", None)))
                 if getattr(result, "reason", None):
                     lines.append(f"description: {result.reason}")

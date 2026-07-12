@@ -4,7 +4,7 @@ title: 'Drop ''description: None'' noise in compact debug formatter'
 type: task
 priority: 3
 created: '2026-07-11T14:37:39Z'
-updated: '2026-07-11T14:37:39Z'
+updated: '2026-07-12T00:28:53Z'
 labels:
 - harness
 - debug
