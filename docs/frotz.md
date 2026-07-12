@@ -211,6 +211,17 @@ Current checks:
    nightmare sequence. Fix by re-queuing in the advancing branches
    (`(queue X 1)`) or queuing indefinitely (`(queue X)`).
 
+2. **Undeclared property write** (error) — flags a `set`/`set-prop`/`inc`/`dec`
+   that writes a property the target entity never declares in its
+   `:properties`/`:flags` (nor gains via an implied flag like `:openable →
+   :open`). Grue is strict, so such a write raises `Undeclared property write`
+   at runtime — but only when that path executes, so a write in a cold branch
+   survives a green test suite and only crashes in real play (the endgame
+   `hacker-returns` bug). Only statically resolvable targets are checked: a
+   literal `@entity`, or `?self` inside that entity's own behaviors; writes to
+   `?actor` or a computed target are skipped. Fix by declaring the property
+   (with a default value) or removing the stray write.
+
 Exits non-zero on any error, and on warnings under `--strict`. The lint lives in
 `grue.lint` (`lint_world`) and is also asserted lint-clean for The Lurking
 Horror in the pytest suite, so a re-introduced dropped chain fails CI.

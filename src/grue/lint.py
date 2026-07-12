@@ -214,6 +214,139 @@ def lint_events(world: Any) -> list[LintError]:
     return errors
 
 
+# --- Undeclared property writes ---------------------------------------------
+
+# Capability flag -> implied state property (mirrors GrueRuntime.IMPLIED_PROPERTIES).
+_IMPLIED_PROPERTIES: dict[str, str] = {
+    "openable": "open",
+    "wearable": "worn",
+    "lightable": "lit",
+}
+
+_WRITE_HEADS = frozenset({"set", "set-prop", "inc", "dec"})
+
+
+def _declared_properties(world: Any, entity: str) -> set[str] | None:
+    """Statically compute the declared properties of an entity, mirroring
+    ``GrueRuntime._get_declared_properties``. Returns None for an unknown entity
+    (can't verify writes against it)."""
+    defn = getattr(world, "objects", {}).get(entity) or getattr(
+        world, "rooms", {}
+    ).get(entity)
+    if defn is None:
+        return None
+    declared: set[str] = {"description", "location"}
+    props = dict(getattr(defn, "properties", {}) or {})
+    flags = list(getattr(defn, "flags", []) or [])
+    declared.update(props.keys())
+    declared.update(flags)
+    for f in flags:
+        props[f] = True
+    for flag, state_prop in _IMPLIED_PROPERTIES.items():
+        if props.get(flag):
+            declared.add(state_prop)
+    return declared
+
+
+def _bodies_with_owner(world: Any) -> Iterator[tuple[str | None, SExpr]]:
+    """Yield ``(owner, body)`` for every code-bearing form. ``owner`` is the
+    entity a behavior/nested form is defined on (so ``?self`` resolves), or None
+    where ``?self`` is not statically bound (events, defaults, free functions)."""
+    def owned(name: str, e: Any) -> Iterator[tuple[str | None, SExpr]]:
+        for attr in ("description", "ldesc", "render"):
+            val = getattr(e, attr, None)
+            if val is not None:
+                yield (name, val)
+        for b in getattr(e, "behaviors", []) or []:
+            if b.body is not None:
+                yield (name, b.body)
+        for nf in getattr(e, "nested_forms", []) or []:
+            yield (name, nf)
+        for ex in getattr(e, "exits", []) or []:
+            if getattr(ex, "when", None) is not None:
+                yield (name, ex.when)
+
+    for room_name, room in getattr(world, "rooms", {}).items():
+        yield from owned(room_name, room)
+    for obj_name, obj in getattr(world, "objects", {}).items():
+        yield from owned(obj_name, obj)
+    for event in getattr(world, "events", {}).values():
+        # Events have no ?self; only literal @entity writes are resolvable.
+        if event.body is not None:
+            yield (None, event.body)
+        for nf in getattr(event, "nested_forms", []) or []:
+            yield (None, nf)
+    for beh in getattr(world, "defaults", {}).values():
+        # Default behaviors are polymorphic: ?self is any object, unresolvable.
+        if beh.body is not None:
+            yield (None, beh.body)
+    for fn in getattr(world, "functions", {}).values():
+        if getattr(fn, "body", None) is not None:
+            yield (None, fn.body)
+
+
+def _resolve_write_target(target: SExpr, owner: str | None) -> str | None:
+    """The entity a write targets, if statically resolvable: a literal ``@x``, or
+    ``?self`` when the owning entity is known. Otherwise None (e.g. ``?actor``,
+    a computed target) — not verifiable, so skipped."""
+    if isinstance(target, Symbol):
+        if target.name.startswith("@"):
+            return target.name
+        if target.name in ("?self", "self") and owner is not None:
+            return owner
+    return None
+
+
+def lint_property_writes(world: Any) -> list[LintError]:
+    """Flag writes to properties not declared on the target entity.
+
+    Grue is strict: writing an undeclared property raises ``Undeclared property
+    write`` at runtime. But that only fires when the code path executes, so a
+    write in a cold branch (e.g. the endgame ``hacker-returns`` stages, yak
+    gnusto-4d05) survives a green test suite and only blows up in real play.
+    This catches the whole class statically.
+
+    Only checks writes whose target resolves statically — a literal ``@entity``
+    or ``?self`` inside that entity's own behaviors. Writes to ``?actor`` or
+    computed targets are skipped (not verifiable).
+    """
+    errors: list[LintError] = []
+    declared_cache: dict[str, set[str] | None] = {}
+    seen: set[tuple[str, str]] = set()
+
+    for owner, body in _bodies_with_owner(world):
+        for node in _walk(body):
+            if (
+                not isinstance(node, SList)
+                or len(node.items) < 3
+                or _head(node) not in _WRITE_HEADS
+            ):
+                continue
+            entity = _resolve_write_target(node.items[1], owner)
+            prop = _key_name(node.items[2])
+            if entity is None or prop is None:
+                continue
+            if entity not in declared_cache:
+                declared_cache[entity] = _declared_properties(world, entity)
+            declared = declared_cache[entity]
+            if declared is None:  # unknown entity target — can't verify
+                continue
+            if prop in declared or (entity, prop) in seen:
+                continue
+            seen.add((entity, prop))
+            errors.append(
+                LintError(
+                    entity,
+                    f"writes undeclared property (:{prop} {entity}); this raises "
+                    f"'Undeclared property write' at runtime whenever that path "
+                    f"executes. Declare :{prop} in the entity's :properties (with a "
+                    f"default value).",
+                    severity="error",
+                )
+            )
+    return errors
+
+
 def lint_world(world: Any) -> list[LintError]:
     """Run all game-logic lints. (Render specs: see render.lint_render.)"""
-    return list(lint_events(world))
+    return list(lint_events(world)) + list(lint_property_writes(world))
