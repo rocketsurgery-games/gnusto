@@ -50,6 +50,12 @@ frotz reach --to "@key@player" games/testgame --dot reach.dot
 # Full state space analysis with victory path
 frotz analyze games/testgame --walkthrough
 frotz analyze games/testgame --fast --dot states.dot
+
+# Room-topology map + dangling-reference report (conversion support)
+frotz map games/zork1                 # summary + "what's left to wire" frontier
+frotz map games/zork1 --rooms         # per-room exit listing (marks dark rooms)
+frotz map games/zork1 --dot map.dot   # Graphviz room graph
+frotz map games/zork1 --strict-refs   # fail on typo-prone :via/:visible refs
 ```
 
 **State specification syntax:**

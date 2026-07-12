@@ -8,6 +8,7 @@ Commands:
     reach     - Check if a state is reachable
     analyze   - Full state space analysis with victory path
     render    - Enumerate the render manifest + explosion-guard lint
+    map       - Room-topology dump + dangling-reference report (conversion support)
 
 Examples:
     frotz reach --to "@key@player" games/testgame
@@ -692,6 +693,47 @@ def _resolve_on_disk(assets: Path, key: str) -> Path | None:
     return None
 
 
+def cmd_map(args: argparse.Namespace) -> int:
+    """Dump the room topology + dangling-reference report."""
+    from grue.mapgraph import build_map, format_text, to_dot
+
+    game_path = Path(args.game)
+    if not game_path.exists():
+        print(f"Error: {game_path} not found", file=sys.stderr)
+        return 1
+
+    try:
+        world = load_grue(str(game_path))
+    except Exception as e:
+        print(f"Error loading game: {e}", file=sys.stderr)
+        return 1
+
+    report = build_map(world)
+
+    if args.dot is not None:
+        dot = to_dot(world)
+        if args.dot:
+            Path(args.dot).write_text(dot)
+            print(f"Wrote DOT graph to {args.dot} ({report.room_count} rooms)")
+        else:
+            print(dot)
+        return 0
+
+    print(format_text(world, report, show_rooms=args.rooms))
+
+    # By default this is informational: dangling exit targets AND object
+    # locations are usually the conversion frontier (rooms a later slice adds).
+    # --strict fails on ANY dangling reference (a "conversion complete" gate);
+    # --strict-refs fails only on the typo-prone kinds (:via / :visible), which
+    # name objects that should already exist.
+    typo_kinds = [d for d in report.dangling if d.kind in ("via", "visible")]
+    if args.strict and report.dangling:
+        return 1
+    if args.strict_refs and typo_kinds:
+        return 1
+    return 0
+
+
 def cmd_lint(args: argparse.Namespace) -> int:
     """Run the static game-logic lints (event-queue contract, ...)."""
     from grue.lint import lint_world
@@ -1013,6 +1055,37 @@ def main(args: list[str] | None = None) -> int:
         help="Exit non-zero on warnings too (not just errors)",
     )
     lint_parser.set_defaults(func=cmd_lint)
+
+    # map subcommand
+    map_parser = subparsers.add_parser(
+        "map",
+        help="Dump room topology + dangling-reference report (conversion support)",
+    )
+    map_parser.add_argument("game", help="Path to game directory or .grue file")
+    map_parser.add_argument(
+        "--rooms",
+        action="store_true",
+        help="Also list every room with its exits",
+    )
+    map_parser.add_argument(
+        "--dot",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="FILE",
+        help="Emit the room graph as Graphviz DOT (to FILE, or stdout if omitted)",
+    )
+    map_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero if ANY dangling reference exists (incl. the exit frontier)",
+    )
+    map_parser.add_argument(
+        "--strict-refs",
+        action="store_true",
+        help="Exit non-zero only on typo-prone dangling :via/:visible/:location refs",
+    )
+    map_parser.set_defaults(func=cmd_map)
 
     # Parse args
     opts = parser.parse_args(args)

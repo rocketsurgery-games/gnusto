@@ -132,10 +132,13 @@ patterns that show up in both are near-universal and belong in the shared
   @wooden-door)`, which flips the Living Room's long-nailed west door into the
   Strange Passage shortcut — a satisfying loop-closer three slices after the door
   was first stubbed.
-- **Tooling: the maze is the strongest case yet for a map/topology tool.** I
-  hand-verified ~20 rooms of deliberately non-Euclidean exits against the ZIL,
-  which is exactly the error-prone bookkeeping a `frotz map [--dot]` dump would
-  eliminate. Bumping that up my wishlist.
+- **Tooling: the maze motivated `frotz map`, now built (gnusto-otr.11).** It
+  dumps the room graph + a dangling-reference report: an exit/`:location`
+  *frontier* (the "what's left to wire" ledger — 10 undefined rooms + `@egg ->
+  @nest` for Zork right now) and typo-prone `:via`/`:visible` refs (`--strict-refs`
+  CI gate). It immediately paid off by finding latent LH issues (6 dangling
+  `:visible` refs; 23 objects at an undefined `@global`), tracked in
+  gnusto-otr.11.1. `--rooms` marks dark rooms; `--dot` renders Graphviz.
 - **Deferred:** thief + Treasure Room loot (next slice); the rusty-knife death
   curse and the skeleton "disturb the remains" curse (both simplified to
   warnings); the grating->surface opening (forest slice); and the Living Room's

@@ -226,6 +226,39 @@ Exits non-zero on any error, and on warnings under `--strict`. The lint lives in
 `grue.lint` (`lint_world`) and is also asserted lint-clean for The Lurking
 Horror in the pytest suite, so a re-introduced dropped chain fails CI.
 
+### `frotz map` - Room Topology + Dangling-Reference Report
+
+A **conversion-support** tool (distinct from the winnability analyses): it walks
+the static room graph and reports unresolved references and the connectivity
+itself. Invaluable when converting a large game incrementally, and for eyeballing
+a deliberately non-Euclidean area (a maze) against the source.
+
+```bash
+frotz map games/zork1                # summary + dangling-reference report
+frotz map games/zork1 --rooms        # also list every room with its exits
+frotz map games/zork1 --dot maze.dot # emit a Graphviz graph (or stdout if no FILE)
+frotz map games/zork1 --strict-refs  # CI gate: fail on typo-prone :via/:visible refs
+frotz map games/zork1 --strict       # fail on ANY dangling ref (conversion-complete gate)
+```
+
+It classifies dangling references into:
+
+- **Frontier** — exits `:to` an undefined room, and objects whose `:location` is
+  an undefined entity. Mid-conversion these are almost always *pending* (a room a
+  later slice will add), so they're informational; the grouped list doubles as a
+  "what's left to wire" ledger. (`:location nil` is intentional abstract scenery
+  and is never flagged.)
+- **Typo-prone** — `:via` barriers and `:visible` objects that aren't defined.
+  These name objects that should already exist, so `--strict-refs` fails on them.
+  (This check found 6 real dangling `:visible` refs and 23 objects at an undefined
+  `@global` sentinel in The Lurking Horror — see yak gnusto-otr.11.1.)
+
+The `--rooms` listing marks dark rooms (`:lit false`) and shows each exit's
+direction, target, `:via` barrier, and `[blocked]` message exits. The `--dot`
+graph renders defined rooms as solid boxes (dark rooms shaded), frontier rooms as
+dashed gray nodes, and labels every edge with its direction. The logic lives in
+`grue.mapgraph` (`build_map`, `format_text`, `to_dot`).
+
 ## State Specification Syntax
 
 Constraints use Grue syntax or shorthand:

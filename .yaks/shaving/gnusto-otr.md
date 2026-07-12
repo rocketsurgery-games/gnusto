@@ -4,7 +4,7 @@ title: IF Design Tools
 type: task
 priority: 4
 created: '2026-01-25T10:51:31.341008-05:00'
-updated: '2026-06-21T21:03:02Z'
+updated: '2026-07-12T19:12:32Z'
 ---
 
 CLI tools for interactive fiction designers to validate game designs, detect soft-locks,
