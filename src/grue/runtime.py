@@ -64,6 +64,7 @@ class ActionResult:
     error: str | None = None  # For errors
     redirects: list[SExpr] = field(default_factory=list)  # Chain of redirected actions
     output: list[tuple[str, str | None, str]] = field(default_factory=list)  # [(type, entity, text), ...]
+    event_name: str | None = None  # Set when this result came from a fired event (not a player action)
 
 
 class GrueRuntime:
@@ -598,8 +599,11 @@ class GrueRuntime:
             if countdown is not None and countdown >= 0:
                 del self.state.queues[event_name]
 
-            # Fire the event
+            # Fire the event. Tag the result with the event name so debug views
+            # (agent compact formatter, REPL) can attribute otherwise-causeless
+            # effects/output to the event that produced them (gnusto-0bf7.3).
             result = self._evaluate_event(event_def)
+            result.event_name = event_name
             results.append(result)
 
         return results

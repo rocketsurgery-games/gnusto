@@ -1220,8 +1220,10 @@ class GameSession:
                 lines.append(f"error: {result.message}")
             elif isinstance(result, ActionResult):
                 # A runtime.ActionResult here is a TRIGGERED EVENT (not the player's
-                # action). Label it so its effects/output aren't "causeless".
-                lines.append("[triggered event]")
+                # action). Label it with the event name so its effects/output
+                # aren't "causeless" (gnusto-0bf7.3).
+                event_name = getattr(result, "event_name", None)
+                lines.append(f"[event: {event_name}]" if event_name else "[triggered event]")
                 lines.append(f"outcome: {result.outcome}")
                 lines.extend(f"{key}: {value}" for key, value in result.context)
                 lines.extend(self._debug_output_lines(getattr(result, "output", None)))

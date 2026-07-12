@@ -723,8 +723,9 @@ def main():
             for _ in range(turns):
                 event_results = runtime.process_events()
                 for event_result in event_results:
-                    # Find the event name from queues (best effort)
-                    event_name = "event"
+                    # process_events tags each result with its event name
+                    # (gnusto-0bf7.3).
+                    event_name = event_result.event_name or "event"
                     print_result(
                         EventResult(
                             event_name=event_name,
