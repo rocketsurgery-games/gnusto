@@ -1,0 +1,111 @@
+; Tests for the Round Room hub + chasm/Gallery loop.
+; Most rooms are dark, so setups carry a lit lantern to keep the grue at bay.
+
+; === Round Room vicinity ===
+
+(test-group "round room vicinity"
+  :setup ((move @player @ew-passage) (move @lamp @player) (set @lamp :lit true))
+
+  (test "ew passage east to round room"
+    (go :direction east)
+    (assert (loc? @player @round-room)))
+
+  (test "ew passage west back to the troll room"
+    (go :direction west)
+    (assert (loc? @player @troll-room)))
+
+  (test "ew passage down to the chasm"
+    (go :direction down)
+    (assert (loc? @player @chasm-room)))
+
+  (test "round room north to the north-south passage"
+    :setup ((move @player @round-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction north)
+    (assert (loc? @player @ns-passage)))
+
+  (test "ns passage south back to the round room"
+    :setup ((move @player @ns-passage) (move @lamp @player) (set @lamp :lit true))
+    (go :direction south)
+    (assert (loc? @player @round-room)))
+
+  (test "chasm room up to the ew passage"
+    :setup ((move @player @chasm-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction up)
+    (assert (loc? @player @ew-passage)))
+
+  (test "chasm room down is refused"
+    :setup ((move @player @chasm-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "Are you out of your mind?")))
+)
+
+; === Chasm / Gallery loop ===
+
+(test-group "chasm gallery loop"
+  :setup ((move @player @east-of-chasm) (move @lamp @player) (set @lamp :lit true))
+
+  (test "east of chasm north to the cellar"
+    (go :direction north)
+    (assert (loc? @player @cellar)))
+
+  (test "east of chasm east to the gallery"
+    (go :direction east)
+    (assert (loc? @player @gallery)))
+
+  (test "the chasm below is refused"
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "The chasm probably leads straight to the infernal regions.")))
+
+  (test "gallery north to the studio"
+    :setup ((move @player @gallery))
+    (go :direction north)
+    (assert (loc? @player @studio)))
+)
+
+; === The painting ===
+
+(test-group "the painting"
+  :setup ((move @player @gallery))
+
+  (test "take the painting"
+    (do @painting :take)
+    (assert (outcome? success))
+    (assert (held? @painting)))
+
+  (test "destroying the painting ruins its value"
+    (do @painting :mung)
+    (assert (outcome? success))
+    (assert (prop? @painting tvalue 0))
+    (assert (output? "you have destroyed one")))
+)
+
+; === The Studio chimney (escape back to the Kitchen) ===
+
+(test-group "the studio chimney"
+  :setup ((move @player @studio))
+
+  (test "climb out carrying only the lit lantern"
+    :setup ((move @player @studio) (move @lamp @player) (set @lamp :lit true))
+    (go :direction up)
+    (assert (loc? @player @kitchen)))
+
+  (test "empty-handed is a bad idea"
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "Going up empty-handed is a bad idea."))
+    (assert (loc? @player @studio)))
+
+  (test "cannot climb without the lantern"
+    :setup ((move @player @studio) (move @sword @player))
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't get up there with what you're carrying.")))
+
+  (test "cannot climb overloaded"
+    :setup ((move @player @studio) (move @lamp @player) (set @lamp :lit true) (move @sword @player) (move @knife @player))
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't get up there with what you're carrying.")))
+)

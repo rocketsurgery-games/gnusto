@@ -61,7 +61,16 @@
   :properties (:nodesc true)
   :behaviors (
     :examine (fn ()
-      '((focus @chimney "The chimney leads downward, and looks climbable.") (success)))))
+      '((focus @chimney "The chimney leads upward, and looks climbable.") (success)))
+    ; Barrier for the Studio -> Kitchen chimney climb (ZIL UP-CHIMNEY-FUNCTION):
+    ; you may only ascend carrying the lantern and at most one other item.
+    :through (fn ()
+      (cond
+        ((empty? (inventory))
+          (blocked :message "Going up empty-handed is a bad idea."))
+        ((or (not (held? @lamp)) (> (count (inventory)) 2))
+          (blocked :message "You can't get up there with what you're carrying."))
+        (true (success))))))
 
 (object @stairs
   :description "staircase"

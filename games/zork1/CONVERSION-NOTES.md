@@ -60,6 +60,20 @@ patterns that show up in both are near-universal and belong in the shared
   gets its real workout here — the lit lantern becomes mandatory, and combat
   tests must carry one or the grue ends the fight.
 
+## Slice 4 (Round Room + chasm/Gallery loop) observations
+
+- **The chimney escape loop closes.** Studio -> up -> Kitchen via a `:via
+  @chimney` barrier whose `:through` enforces ZIL's UP-CHIMNEY-FUNCTION rule
+  (carry the lantern + at most one other item). This is the intended route for
+  hauling treasures back up to the trophy case, and it validated the reusable
+  scenery barrier + the `inventory`/`count`/`held?` builtins nicely.
+- **Gallery is the one lit underground room** (ONBIT -> `:lit true`); everything
+  else down here is `:lit false`, so the lantern stays mandatory.
+- **Treasure tagging convention** established for the upcoming scoring slice:
+  treasures carry `:treasure true :value N :tvalue N` (ZIL VALUE = take points,
+  TVALUE = trophy-case points). The painting is the first; scoring will consume
+  these when treasures land in the trophy case.
+
 ## Engine fixes made mid-slice
 
 - **Room `:on-enter` `(narrate …)` output was dropped from the `go` result.**

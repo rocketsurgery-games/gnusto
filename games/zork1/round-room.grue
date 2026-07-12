@@ -1,0 +1,129 @@
+; The Round Room hub and the chasm / Gallery loop.
+;
+; This connects the two dungeon entrances: the troll room (west) feeds the
+; East-West Passage -> Round Room hub; the cellar's south crawlway reaches
+; East of Chasm -> Gallery -> Studio, and the Studio chimney climbs back up to
+; the Kitchen (closing the "trapped underground" loop). All rooms are dark
+; except the Gallery (ONBIT), so the lantern stays essential.
+;
+; ZIL: 1dungeon.zil (EW-PASSAGE, ROUND-ROOM, CHASM-ROOM, NS-PASSAGE,
+; EAST-OF-CHASM, GALLERY, STUDIO; PAINTING); 1actions.zil (UP-CHIMNEY-FUNCTION,
+; PAINTING-FCN).
+;
+; Dangling exits to LOUD-ROOM / ENGRAVINGS-CAVE / NARROW-PASSAGE / DEEP-CANYON /
+; RESERVOIR-SOUTH are filled by later slices.
+
+; === Round Room vicinity (west branch, off the troll room) ===
+
+(room @ew-passage
+  :description "East-West Passage"
+  :ldesc "This is a narrow east-west passageway. There is a narrow stairway leading down at the north
+  end of the room."
+  :rdesc "A cramped east-west stone passage lit only by lantern-glow, a narrow stairway descending at the north end. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @round-room)
+     (west :to @troll-room)
+     (down :to @chasm-room)
+     (north :to @chasm-room))
+  :visible (@stairs))
+
+(room @round-room
+  :description "Round Room"
+  :ldesc "This is a circular stone room with passages in all directions. Several of them have
+  unfortunately been blocked by cave-ins."
+  :rdesc "A circular stone chamber with dark passages radiating in every direction, several choked with rubble from cave-ins; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @loud-room)              ; later slice
+     (west :to @ew-passage)
+     (north :to @ns-passage)
+     (south :to @narrow-passage)        ; later slice
+     (se :to @engravings-cave)))        ; later slice
+
+(room @chasm-room
+  :description "Chasm"
+  :ldesc "A chasm runs southwest to northeast and the path follows it. You are on the south side of the
+  chasm, where a crack opens into a passage."
+  :rdesc "A dark rift in the rock running southwest to northeast, a narrow ledge path along its south side and a crack opening into a passage; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((ne :to @reservoir-south)          ; later slice
+     (sw :to @ew-passage)
+     (up :to @ew-passage)
+     (south :to @ns-passage)
+     (down :blocked "Are you out of your mind?"))
+  :visible (@crack @stairs))
+
+(room @ns-passage
+  :description "North-South Passage"
+  :ldesc "This is a high north-south passage, which forks to the northeast."
+  :rdesc "A high, narrow north-south rock passage that forks to the northeast; lantern-lit shadow. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @chasm-room)
+     (ne :to @deep-canyon)              ; later slice
+     (south :to @round-room)))
+
+; === Chasm / Gallery loop (east branch, off the cellar) ===
+
+(room @east-of-chasm
+  :description "East of Chasm"
+  :ldesc "You are on the east edge of a chasm, the bottom of which cannot be seen. A narrow passage
+  goes north, and the path you are on continues to the east."
+  :rdesc "A ledge on the east edge of a bottomless chasm, a narrow passage north and a path continuing east; lantern-lit dark. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @cellar)
+     (east :to @gallery)
+     (down :blocked "The chasm probably leads straight to the infernal regions.")))
+
+(room @gallery
+  :description "Gallery"
+  :ldesc "This is an art gallery. Most of the paintings have been stolen by vandals with exceptional
+  taste. The vandals left through either the north or west exits."
+  :rdesc "A ransacked underground art gallery, bare hooks and pale rectangles on the walls where paintings once hung, exits north and west; its own dim light. Empty of people."
+  :properties (:lit true)   ; ONBIT — the one lit room down here
+  :exits
+    ((west :to @east-of-chasm)
+     (north :to @studio)))
+
+(room @studio
+  :description "Studio"
+  :ldesc "This appears to have been an artist's studio. The walls and floors are splattered with paints
+  of 69 different colors. Strangely enough, nothing of value is hanging here. At the south end of the
+  room is an open door (also covered with paint). A dark and narrow chimney leads up from a fireplace;
+  although you might be able to get up it, it seems unlikely you could get back down."
+  :rdesc "A ruined artist's studio, walls and floor spattered with paint of dozens of colors, a paint-covered door at the south end and a dark narrow chimney rising from a soot-stained fireplace; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((south :to @gallery)
+     (up :to @kitchen :via @chimney))
+  :visible (@chimney))
+
+; === The painting (treasure) ===
+; ZIL PAINTING: TAKEBIT BURNBIT, VALUE 4 / TVALUE 6. :value/:tvalue tag it for the
+; later trophy-case scoring slice; PAINTING-FCN handles destroying it.
+
+(object @painting
+  :location @gallery
+  :description "painting"
+  :properties (:takeable true :burnable true :treasure true :value 4 :tvalue 6)
+  :behaviors (
+    :examine (fn ()
+      '((focus @painting "A painting of unparalleled beauty by a neglected genius.") (success)))
+    :mung (fn ()
+      '((set @painting :tvalue 0)
+        (narrate "Congratulations! Unlike the other vandals, who merely stole the artist's masterpieces, you have destroyed one.")
+        (success)))
+    :burn (fn () (redirect :action (do @painting :mung)))))
+
+; === Scenery ===
+
+(object @crack
+  :description "crack"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @crack "It's a narrow crack in the rock.") (success)))
+    :through (fn () (blocked :message "You can't fit through the crack."))))
