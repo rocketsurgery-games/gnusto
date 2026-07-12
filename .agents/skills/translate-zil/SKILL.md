@@ -17,13 +17,17 @@ conversion — mirror its style. ZIL source lives under
 ## Workflow (non-negotiable)
 
 1. **Shave a yak before writing code** (see the `yak` skill).
-2. Translate the ZIL routine/file into Grue rooms/objects/behaviors/events.
-3. **Remove the ported ZIL comments once the code is fully implemented** — do
+2. **Bootstrap with `zilch`** if starting a game fresh: `zilch games/<game>/source -d games/<game>/converted` scaffolds `converted/*.grue` (with the ZIL preserved as comments). Hand-translate from there into clean root `.grue` files; never edit `converted/` for behavior. (See `games/notes.md`.)
+3. Translate the ZIL routine/file into Grue rooms/objects/behaviors/events.
+4. **Remove the ported ZIL comments once the code is fully implemented** — do
    not leave translated ZIL lingering as comments.
-4. **Add Grue tests as you go** (`*.test.grue`; see the `grue-testing` skill).
-5. **File bugs found in *already-converted* code as P1 yaks** so they're fixed
+5. **Add Grue tests as you go** (`*.test.grue`; see the `grue-testing` skill).
+6. **Run `frotz lint <game>` and keep both suites green** (`grue-test`, `pytest`)
+   before moving on — the lint catches undeclared-property writes and dropped
+   event chains in cold paths the tests never hit.
+7. **File bugs found in *already-converted* code as P1 yaks** so they're fixed
    before continuing the conversion.
-6. If you spot a language construct that isn't general, or that an experienced
+8. If you spot a language construct that isn't general, or that an experienced
    Scheme/Clojure dev wouldn't expect, **stop and discuss with the user**; track
    language/runtime work as `lang`/`runtime` yaks.
 
@@ -101,6 +105,21 @@ When the text is built from bindings or `(str ...)`, use quasiquote/unquote:
 (event my-event :location @foo :on-turn <cond/condp>)   ; maps to a ZIL I-* interrupt
 ```
 
+### Flags & properties
+
+ZIL `FLAGS` become `:properties`. The full ZIL-flag → Grue-property table and
+the common property combinations live in **`zil-flags.md`** (in this skill dir) —
+consult it when converting an object. Two rules that bite:
+
+- **Declare every property you touch.** Grue is strict: reading or writing a
+  property the entity doesn't declare in `:properties` raises at runtime. If an
+  event/behavior does `(set @x :foo ...)`, `@x` must declare `:foo` (with a
+  default). A stray write in a *cold* branch passes the tests and only crashes
+  in real play — **`frotz lint <game>` catches these statically** (see
+  `docs/frotz.md`). Fix by declaring the property or deleting the stray write.
+- **Drop parser vocab** (`SYNONYM`/`ADJECTIVE`/article flags): the LLM resolves
+  names and the formal `(do @x :verb @arg)` interface needs no adjectives.
+
 ## Event queue — ZIL `CLOCKER`-faithful (read this)
 
 Grue's queue matches ZIL's `CLOCKER` (see `source/misc.zil`) exactly:
@@ -114,7 +133,7 @@ Grue's queue matches ZIL's `CLOCKER` (see `source/misc.zil`) exactly:
 
 So when ZIL does `<QUEUE I-X 2>` then re-queues with `<QUEUE I-X 1>` each turn,
 the Grue event **must** include `(queue X 1)` in its advancing branches. A
-A finite-countdown event that neither re-queues nor dequeues is almost always a
+finite-countdown event that neither re-queues nor dequeues is almost always a
 bug (it will fire once instead of chaining). See `docs/grue.md`. Run
 **`frotz lint <game>`** after converting an event with a `(condp = (:counter ...))`
 state machine — it flags exactly this dropped-chain mistake.
@@ -127,6 +146,38 @@ only `nil` and `false` are falsy; `0`/`""`/`[]`/`{}` are truthy. So a ZIL
 `<COND (<GET ...> ...)>` on a numeric maps cleanly to `(if (:prop @x) ...)` and
 `(and ?floor ...)` works even when `?floor` is `0`. Still prefer explicit
 compares (`(= x 0)`, `(> x 0)`) or `(empty? x)` / `(nil? x)` when you mean them.
+
+## Conversion pitfalls (spot these — they generalize across Infocom games)
+
+- **Verb-level state machines.** Some mechanics live in verb routines
+  (`ACTION`/`V-*`), not object behaviors — easy to miss when porting object by
+  object. Look for `NEW-VERB` redirects and global flags (`FOO?`, `LOGGED-IN?`)
+  tracking a multi-step flow. Convert to object behaviors that branch on the
+  object's own properties (e.g. `:type` → `(redirect :action (do ?self :login ...))`
+  based on `(:username ?self)`).
+- **`INIT-*` reset routines.** ZIL `INIT-FOO` routines reset state (power-off,
+  close, leave) and are called from several places. Fold their effects into
+  *every* relevant behavior (e.g. turning a device off must also clear its
+  login/screen state). Search for `INIT-` and trace all call sites.
+- **Objects in limbo.** Objects with no `(IN ...)`, or `(IN LOCAL-GLOBALS)` /
+  `(IN GLOBAL-OBJECTS)`, don't start in a room. Give them `:location nil` and
+  reveal via effects (`(move @x @dest)`), or — for scenery visible from many
+  rooms (walls, forest, water) — a room `:visible` entry. See `zil-flags.md`.
+- **Physical parts vs conceptual contents.** `NDESCBIT` objects inside a
+  container are usually *part of* it (a PC's mouse/help-key), not transient
+  contents. Don't `(first (contents ?self))` blindly — check the specific
+  screen/contents object you mean.
+- **Two-object actions are direction-ambiguous.** "put X in Y", "throw X at Y",
+  "unlock X with Y" — the natural phrasing doesn't tell you which entity is the
+  action target. The engine's **default `put` and `throw` are bidirectional**
+  (`(do @item :put @container)` == `(do @container :put @item)`; `throw` at a
+  target redirects to `attack`). For a *custom* two-object verb, don't rely on
+  target/arg order the LLM can't guess — accept both, or `(redirect ...)` to a
+  canonical form. (yaks gnusto-1ce1 / gnusto-7f83)
+- **Test against the original.** Run the compiled game
+  (`dfrotz games/<game>/source/<game>.dat` or `frotz …`) to observe real
+  interaction flows — multi-step sequences, required preconditions, state
+  dependencies, and exact rejection messages that aren't obvious from the ZIL.
 
 ## Example
 

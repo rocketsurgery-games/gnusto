@@ -94,13 +94,14 @@ Project-local skills live in `.agents/skills/<name>/SKILL.md`. Reach for them by
 
 When converting ZIL source to Grue, make sure to remove the converted ZIL comments (once fully implemented) as you go. Make sure to add Grue tests as you go. When discovering bugs in *already converted* code, make their yaks P1, so we fix them before moving on to the rest of the conversion.
 
-See the `translate-zil` skill for the full mapping. Two hard-won gotchas worth repeating here:
+See the `translate-zil` skill for the full mapping (ZIL-flag → property reference, output vocabulary, and conversion pitfalls). Three hard-won gotchas worth repeating here:
 
 - **Event queue is ZIL-`CLOCKER`-faithful.** `(queue X N)` with a finite `N` is a **one-shot** that auto-dequeues when it fires; to keep firing, the `:on-turn` body must re-queue itself (the chain idiom, e.g. `(queue X 1)`). `(queue X)` / `nil` / negative is **indefinite** (fires every turn until `(dequeue X)`). See `docs/grue.md`.
 - **Truthiness is LISP/Clojure-faithful:** only `nil` and `false` are falsy; `0`, `""`, `[]`, `{}` are all **truthy** (like ZIL's `<>`-only-false). So `(and ?floor ...)` is safe when `?floor` is `0`. To test emptiness/zero use `(empty? x)` / `(= n 0)` / `(nil? x)`, not raw truthiness. See `docs/grue.md`. Also note `and`/`or` return the **deciding operand's value** (Clojure-faithful), not a coerced bool: `(or x default)` and `(and a b)` are value-select idioms. `(not ...)` stays a strict bool.
 
-As we work through converting The Lurking Horror as a starting point, we're keeping notes on what we learn in
-./games/lurkinghorror/README.md.
+- **Declare every property you touch.** Grue is strict: reading or writing an undeclared property raises at runtime, but only on the path that executes — so a stray write in a cold branch passes the tests and crashes only in real play. Run **`frotz lint <game>`** to catch undeclared-property writes (and dropped event chains) statically, and treat an `error` outcome as a bug to fix (never `blocked`). Engine errors are atomic (roll back) and fail tests loudly.
+
+Generalized ZIL→Grue lessons now live in the **`translate-zil` skill** (the source of truth). The Lurking Horror is the canonical reference conversion; its `README.md` keeps only LH-specific notes.
 
 
 # The Grue Language

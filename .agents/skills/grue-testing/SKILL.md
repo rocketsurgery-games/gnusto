@@ -21,10 +21,20 @@ elevator soft-lock slipped past ~30 unit tests (see yak `gnusto-3306`).
 Both suites must stay green: **`grue-test games/lurkinghorror/`** and
 **`python -m pytest tests -q`**.
 
-**Static lint:** run **`frotz lint <game>`** to catch dropped event chains — a
-self-advancing counter event queued only finitely that forgets to re-queue
-itself (the `compulsion` bug class). It's also asserted lint-clean for LH in
-pytest, so a regression fails CI.
+**Static lint:** run **`frotz lint <game>`** for two checks (see `docs/frotz.md`):
+(1) **dropped event chains** — a self-advancing counter event queued only
+finitely that forgets to re-queue itself (the `compulsion` bug class); and
+(2) **undeclared property writes** — a `set`/`inc`/`dec` to a property the target
+never declares, which raises at runtime but only on the path that executes
+(the endgame `hacker-returns` bug). Both are asserted clean for LH in pytest, so
+a regression fails CI. Lint before you trust a green suite: it catches
+cold-path bugs the tests never exercised.
+
+**Engine errors fail loudly.** An action or event that errors (`outcome=error`
+— undeclared property, uncaught exception, redirect loop) now **fails the test**
+(you'll see `engine error: …`), and its effects **roll back atomically** (no
+partial state). `error` is a bug, never an intended outcome — fix it, don't
+assert around it; intended refusals are `blocked`, not `error`. (yak gnusto-160b)
 
 ## grue-test DSL
 
