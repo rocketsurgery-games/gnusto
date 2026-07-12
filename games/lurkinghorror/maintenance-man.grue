@@ -392,7 +392,8 @@
             `((set @floor-waxer :going-west ,?new-west)
               (move @floor-waxer ,?next-loc)
               (queue waxer-moves 5)
-              (success :context ,(if ?msg `((description ,?msg)) nil))))))))
+              ,@(if ?msg `((narrate ,?msg)) '())
+              (success)))))))
 
 ; Maintenance man attack - chases player after cord is cut
 (event maint-attack
@@ -405,39 +406,42 @@
           (let ((?waxer-loc (loc @floor-waxer)))
             `((move @maintenance-man ,?waxer-loc)
               (queue maint-attack)
-              (success :context ((description
+              (narrate
                 ,(str "The maintenance man, growling foul-sounding imprecations, descends from the floor waxer"
                       (if (= (loc @floor-wax) ?waxer-loc)
                         ". But almost immediately, he slips on the floor wax."
-                        " and heads towards you."))))))))
+                        " and heads towards you.")))
+              (success))))
 
         ; If standing in floor wax, start dissolving
         ((= (loc @floor-wax) ?mm-loc)
           `((queue maint-dissolves 4)
             (dequeue maint-attack)
-            (success :context ((description
+            (narrate
               ,(if (:slip-seen @maintenance-man)
                  "The maintenance man continues slipping, falling, standing, and so on. He reminds you of a badly made windup toy."
-                 "The maintenance man slips on the floor wax!"))))))
+                 "The maintenance man slips on the floor wax!"))
+            (success)))
 
         ; If in same room as player with wax, slip
         ((and (= ?mm-loc ?player-loc) (= (loc @floor-wax) ?player-loc))
           '((set @maintenance-man :slip-seen true)
             (queue maint-dissolves 4)
             (dequeue maint-attack)
-            (success :context ((description "But he slips on the floor wax! He begins to flail about, barely able to stand.")))))
+            (narrate "But he slips on the floor wax! He begins to flail about, barely able to stand.")
+            (success)))
 
         ; If in same room, attack
         ((= ?mm-loc ?player-loc)
           (let ((?new-count (+ (:attack-count @maintenance-man) 1)))
             (if (>= ?new-count 3)
               `((set @maintenance-man :attack-count ,?new-count)
-                (blocked :reason death
-                  :context ((death true)
-                            (description "The maintenance man grabs you by the throat and lifts you off the ground with one hand. The hand feels very cold. Just as you expire, you realize you have never seen him blink."))))
+                (narrate "The maintenance man grabs you by the throat and lifts you off the ground with one hand. The hand feels very cold. Just as you expire, you realize you have never seen him blink.")
+                (blocked :reason death :context ((death true))))
               `((set @maintenance-man :attack-count ,?new-count)
                 (queue maint-attack)
-                (success :context ((description "The maintenance man stares with maniacal intensity at your throat.")))))))
+                (narrate "The maintenance man stares with maniacal intensity at your throat.")
+                (success)))))
 
         ; Chase player - move closer
         (true
@@ -451,7 +455,8 @@
                     (true ?mm-loc))))
             `((move @maintenance-man ,?next-loc)
               (queue maint-attack)
-              (success :context ((description "The maintenance man lurches toward you with surprising speed.")))))))))
+              (narrate "The maintenance man lurches toward you with surprising speed.")
+              (success)))))))
 
 ; Maintenance man dissolves after slipping on wax
 (event maint-dissolves
@@ -462,7 +467,7 @@
       `((move @maintenance-man nil)
         (dequeue maint-dissolves)
         (dequeue maint-attack)
-        (success :context
-          ,(if ?in-corridor
-             '((description "The maintenance man appears to shorten and almost dissolve. There is a great commotion, as though he is undergoing a convulsion of some sort, and then he appears to explode into a crowd of small squealing creatures. These, seeing you, scuttle off in the opposite direction and disappear."))
-             nil)))))
+        ,@(if ?in-corridor
+           '((narrate "The maintenance man appears to shorten and almost dissolve. There is a great commotion, as though he is undergoing a convulsion of some sort, and then he appears to explode into a crowd of small squealing creatures. These, seeing you, scuttle off in the opposite direction and disappear."))
+           '())
+        (success))))

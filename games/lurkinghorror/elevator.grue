@@ -488,7 +488,8 @@
           `((set ,?door :open true)
             (set @elevator-door :open true)
             (queue elevator-door-closes 2)
-            (success :context ((description ,(if (elevator-here?) "The elevator doors slide open." nil)))))))))
+            ,@(if (elevator-here?) '((narrate "The elevator doors slide open.")) '())
+            (success))))))
 
 ; Door closes event - auto-closes doors after 2 turns
 (event elevator-door-closes
@@ -504,7 +505,8 @@
           `((set ,?door :open false)
             (set @elevator-door :open false)
             ,@(if (elevator-called?) '((queue elevator-moves 1)) '())
-            (success :context ((description ,(if (elevator-here?) "The elevator doors slide closed." nil)))))))))
+            ,@(if (elevator-here?) '((narrate "The elevator doors slide closed.")) '())
+            (success))))))
 
 ; Main elevator movement event
 (event elevator-moves
@@ -523,11 +525,13 @@
           (true
             ; Start moving - pick direction first (side effect)
             (pick-direction)
-            `((set @cs-elevator-room :stopped false)
-              (queue elevator-moves 1)
-              (success :context ((description ,(if (here? @cs-elevator-room)
-                                                   (str "The elevator begins to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
-                                                   (if (prop (loc @player) floor) "You hear the elevator begin moving." nil)))))))))
+            (let ((?msg (if (here? @cs-elevator-room)
+                          (str "The elevator begins to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
+                          (if (prop (loc @player) floor) "You hear the elevator begin moving." nil))))
+              `((set @cs-elevator-room :stopped false)
+                (queue elevator-moves 1)
+                ,@(if ?msg `((narrate ,?msg)) '())
+                (success))))))
 
       ; Elevator is moving
       (true
@@ -545,32 +549,36 @@
           (cond
             ((should-stop-at? ?new-loc)
               ; Stop at this floor, clear button states
-              (let ((?was-go (go-button-pressed? ?new-loc)))
+              (let ((?was-go (go-button-pressed? ?new-loc))
+                    (?msg (if (here? @cs-elevator-room)
+                            (str "The elevator slows and comes to a stop."
+                                 (if ?was-go
+                                   (str " The button for the " (nth floor-names ?new-loc) " blinks off.")
+                                   ""))
+                            (if (prop (loc @player) floor)
+                              "You no longer hear the elevator moving."
+                              nil))))
                 `((set @cs-elevator-room :floor ,?new-loc)
                   (set @cs-elevator-room :go-buttons ,?new-go-buttons)
                   (set @cs-elevator-room :up-buttons ,?new-up-buttons)
                   (set @cs-elevator-room :down-buttons ,?new-down-buttons)
                   (set @cs-elevator-room :stopped true)
                   (queue elevator-door-opens 1)
-                  (success :context ((description ,(if (here? @cs-elevator-room)
-                                                       (str "The elevator slows and comes to a stop."
-                                                            (if ?was-go
-                                                              (str " The button for the " (nth floor-names ?new-loc) " blinks off.")
-                                                              ""))
-                                                       (if (prop (loc @player) floor)
-                                                         "You no longer hear the elevator moving."
-                                                         nil))))))))
+                  ,@(if ?msg `((narrate ,?msg)) '())
+                  (success))))
             (true
               ; Keep moving. Give the player feedback even when they're waiting
               ; on a floor -- especially when the car passes their floor without
               ; stopping (the elevator scan can send it the "wrong" way first).
-              (let ((?player-floor (prop (loc @player) floor)))
+              (let ((?player-floor (prop (loc @player) floor))
+                    (?msg (cond
+                            ((here? @cs-elevator-room)
+                              (str "The elevator continues to move " (if ?moving-up "upward" "downward") "."))
+                            ((nil? ?player-floor) nil)
+                            ((= ?new-loc ?player-floor)
+                              (str "The elevator passes your floor, still heading " (if ?moving-up "up" "down") "."))
+                            (true "You hear the elevator moving."))))
                 `((set @cs-elevator-room :floor ,?new-loc)
                   (queue elevator-moves 1)
-                  (success :context ((description ,(cond
-                                                     ((here? @cs-elevator-room)
-                                                       (str "The elevator continues to move " (if ?moving-up "upward" "downward") "."))
-                                                     ((nil? ?player-floor) nil)
-                                                     ((= ?new-loc ?player-floor)
-                                                       (str "The elevator passes your floor, still heading " (if ?moving-up "up" "down") "."))
-                                                     (true "You hear the elevator moving.")))))))))))))
+                    ,@(if ?msg `((narrate ,?msg)) '())
+                    (success)))))))))

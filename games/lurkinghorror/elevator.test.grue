@@ -146,7 +146,7 @@
     (do @down-button :push)
     (wait)   ; car begins to move
     (wait)   ; car reaches floor 2, passing the player while heading up
-    (assert (context? description "The elevator passes your floor, still heading up."))))
+    (assert (output? "The elevator passes your floor, still heading up."))))
 
 (test-group "elevator full ride"
   :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true))

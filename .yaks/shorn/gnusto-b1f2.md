@@ -4,7 +4,7 @@ title: Migrate remaining event description/ambient context to narrate (7256 stra
 type: task
 priority: 3
 created: '2026-07-12T00:09:11Z'
-updated: '2026-07-12T00:09:11Z'
+updated: '2026-07-12T01:13:12Z'
 labels:
 - lurkinghorror
 - render

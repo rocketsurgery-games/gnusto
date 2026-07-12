@@ -110,7 +110,7 @@
         (cond
           ((> ?seconds 3600)
             (blocked :reason too-long
-                     :context ((description "You can't set it for that long a time."))))
+                     :message "You can't set it for that long a time."))
           (true
             `((set @microwave :timer ,?seconds)
               (narrate ,(str "The timer display now reads " display "."))
@@ -121,7 +121,7 @@
       (cond
         ((queued? microwave-running)
           (blocked :reason running
-                   :context ((description "Nothing happens."))))
+                   :message "Nothing happens."))
         ((= ?level 'warm)
           '((set @microwave :temp 1)
             (narrate "The bottom of the display now reads \"WARM\".")
@@ -140,20 +140,20 @@
             (success)))
         (true
           (blocked :reason unknown-temp
-                   :context ((description "Unknown temperature setting. Use warm, low, medium, or high."))))))
+                   :message "Unknown temperature setting. Use warm, low, medium, or high."))))
 
     ; Start the microwave: (do @microwave :start)
     :start (fn ()
       (cond
         ((queued? microwave-running)
           (blocked :reason already-running
-                   :context ((description "It's already started."))))
+                   :message "It's already started."))
         ((:open ?self)
           (blocked :reason door-open
-                   :context ((description "Nothing happens, as there's a safety interlock engaged when the door is open."))))
+                   :message "Nothing happens, as there's a safety interlock engaged when the door is open."))
         ((= (:timer @microwave) 0)
           (blocked :reason no-time
-                   :context ((description "Nothing happens, as there's no time set on it yet."))))
+                   :message "Nothing happens, as there's no time set on it yet."))
         ((= (:temp @microwave) 0)
           ; No temp set - default to high (4)
           '((set @microwave :temp 4)
@@ -174,14 +174,14 @@
             (success)))
         (true
           (blocked :reason already-off
-                   :context ((description "It's already off."))))))
+                   :message "It's already off."))))
 
     ; Clear the timer: (do @microwave :clear)
     :clear (fn ()
       (cond
         ((queued? microwave-running)
           (blocked :reason running
-                   :context ((description "Nothing happens."))))
+                   :message "Nothing happens."))
         (true
           '((set @microwave :timer 0)
             (narrate "The timer clears to zero.")
@@ -193,7 +193,7 @@
 
     :unplug (fn ()
       (blocked :reason inaccessible
-               :context ((description "You can't get to the plug."))))))
+               :message "You can't get to the plug."))))
 
 ; === Microwave Controls ===
 ; Physical buttons: 0-9 (digits), WM/LO/MED/HI (temp), START/STOP/CLEAR
@@ -274,11 +274,11 @@
             (success)))
         (true
           (blocked :reason closed
-                   :context ((description "You have to open it to look in it."))))))
+                   :message "You have to open it to look in it."))))
 
     :unplug (fn ()
       (blocked :reason inaccessible
-               :context ((description "You can't get to the plug."))))))
+               :message "You can't get to the plug."))))
 
 ; === Microwave Running Event ===
 ; Each turn: decrement timer by 60 seconds, heat contents.

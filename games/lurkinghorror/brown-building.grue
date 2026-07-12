@@ -568,6 +568,5 @@
 
         ; No hand - player is in danger
         (true
-          (blocked :reason death
-                   :context ((death true)
-                             (description "The creature lunges at you with terrifying speed. Its claws tear into you, and the last thing you see is its blood-red mouth descending...")))))))
+          '((narrate "The creature lunges at you with terrifying speed. Its claws tear into you, and the last thing you see is its blood-red mouth descending...")
+            (blocked :reason death :context ((death true))))))))

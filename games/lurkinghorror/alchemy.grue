@@ -1194,9 +1194,10 @@
           (cond
             ; Player still in lab = death
             ((or (in? @player @pentagram) (= (loc @player) @alchemy-lab))
-              '((dequeue professor-ritual)
+              `((dequeue professor-ritual)
+                (narrate ,stage8-death)
                 (blocked :reason death :render :stage8-death
-                         :context ((death true) (description stage8-death)))))
+                         :context ((death true)))))
 
             ; Player escaped = survive
             (true
