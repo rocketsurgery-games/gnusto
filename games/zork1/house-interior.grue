@@ -49,7 +49,7 @@
   :properties (:lit true)
   :exits
     ((east :to @kitchen)
-     (west :to @living-room :via @wooden-door)     ; nailed shut (MAGIC-FLAG later)
+     (west :to @strange-passage :via @wooden-door)  ; nailed shut until the cyclops flees (MAGIC-FLAG)
      (down :to @cellar :via @trap-door))           ; @cellar: underground slice
   :visible (@stairs))
 
@@ -223,13 +223,18 @@
 (object @wooden-door
   :location @living-room
   :description "wooden door"
-  :properties (:nodesc true :door true :transparent true :readable true)
+  ; :magic (ZIL MAGIC-FLAG) is set when the cyclops smashes through from the far
+  ; side, leaving a cyclops-sized hole; until then the door is nailed shut.
+  :properties (:nodesc true :door true :transparent true :readable true :magic false)
   :behaviors (
     :read (fn ()
       '((narrate "The engravings translate to \"This space intentionally left blank.\"") (success)))
     :examine (fn () (redirect :action (do @wooden-door :read)))
     :open (fn () (blocked :message "The door cannot be opened."))
-    :through (fn () (blocked :message "The door is nailed shut."))))
+    :through (fn ()
+      (cond
+        ((:magic @wooden-door) (success))
+        (true (blocked :message "The door is nailed shut."))))))
 
 ; The brass lantern — the primary light source (ZIL LAMP, action LANTERN).
 ; Battery drain (I-LANTERN) deferred to the darkness slice.

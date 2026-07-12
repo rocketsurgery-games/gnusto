@@ -96,6 +96,31 @@ patterns that show up in both are near-universal and belong in the shared
   scans the narrate/focus/say output stream. `context?` is an *exact* match (no
   substring). Worth an explicit line in the `grue-testing` skill.
 
+## Slice 5 (maze + cyclops) observations
+
+- **Maze topology copied verbatim** (MAZE-1..15 + 4 dead ends + grating room).
+  The `MAZE-DIODES` one-way passages became plain exits to their fixed target;
+  the one-way-ness is inherent (the target has no reverse exit), so no special
+  machinery — only the courtesy "you can't get back" message is dropped.
+- **The cyclops is an unkillable NPC puzzle with two solutions**, both
+  deterministic: naming Ulysses/Odysseus (`:odysseus`) routs him — setting
+  `:subdued` (stairs up clear) *and* `(:magic @wooden-door)` (east wall smashed) —
+  while feeding lunch-then-water only lulls him asleep (stairs clear, wall
+  intact). The cyclops is again its own `:via` barrier for the stairs.
+- **MAGIC-FLAG finally wired.** The cyclops's flight sets `(:magic
+  @wooden-door)`, which flips the Living Room's long-nailed west door into the
+  Strange Passage shortcut — a satisfying loop-closer three slices after the door
+  was first stubbed.
+- **Tooling: the maze is the strongest case yet for a map/topology tool.** I
+  hand-verified ~20 rooms of deliberately non-Euclidean exits against the ZIL,
+  which is exactly the error-prone bookkeeping a `frotz map [--dot]` dump would
+  eliminate. Bumping that up my wishlist.
+- **Deferred:** thief + Treasure Room loot (next slice); the rusty-knife death
+  curse and the skeleton "disturb the remains" curse (both simplified to
+  warnings); the grating->surface opening (forest slice); and the Living Room's
+  *dynamic* description (it still reads "nailed shut" after MAGIC-FLAG — ZIL's
+  LIVING-ROOM-FCN rewrites it; minor cosmetic, tracked).
+
 ## Engine improvements made
 
 - **Deterministic darkness/light + persistent start-events (gnusto-fa93.4).**

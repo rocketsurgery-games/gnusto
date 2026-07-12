@@ -1,0 +1,149 @@
+; Tests for the Maze + Cyclops slice.
+; The maze and cyclops room are dark, so setups carry a lit lantern.
+
+; === Maze topology ===
+
+(test-group "maze navigation"
+  :setup ((move @player @maze-1) (move @lamp @player) (set @lamp :lit true))
+
+  (test "a known path threads the maze to the cyclops room"
+    (go :direction south)   ; maze-1 -> maze-2
+    (assert (loc? @player @maze-2))
+    (go :direction east)    ; maze-2 -> maze-3
+    (assert (loc? @player @maze-3))
+    (go :direction up)      ; maze-3 -> maze-5
+    (assert (loc? @player @maze-5))
+    (go :direction sw)      ; maze-5 -> maze-6
+    (assert (loc? @player @maze-6))
+    (go :direction east)    ; maze-6 -> maze-7
+    (assert (loc? @player @maze-7))
+    (go :direction south)   ; maze-7 -> maze-15
+    (assert (loc? @player @maze-15))
+    (go :direction se)      ; maze-15 -> cyclops room
+    (assert (loc? @player @cyclops-room)))
+
+  (test "a one-way diode drops you to maze 4 with no way back"
+    :setup ((move @player @maze-2) (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (loc? @player @maze-4))
+    ; maze-4 has no exit back up to maze-2
+    (go :direction up)
+    (assert (outcome? blocked)))
+
+  (test "dead ends bounce you back"
+    :setup ((move @player @maze-4) (move @lamp @player) (set @lamp :lit true))
+    (go :direction east)
+    (assert (loc? @player @dead-end-1))
+    (go :direction south)
+    (assert (loc? @player @maze-4)))
+)
+
+; === Skeleton loot (Maze 5) ===
+
+(test-group "the dead adventurer's remains"
+  :setup ((move @player @maze-5) (move @lamp @player) (set @lamp :lit true))
+
+  (test "take the bag of coins"
+    (do @bag-of-coins :take)
+    (assert (outcome? success))
+    (assert (held? @bag-of-coins)))
+
+  (test "take the skeleton key"
+    (do @skeleton-key :take)
+    (assert (outcome? success))
+    (assert (held? @skeleton-key)))
+
+  (test "the sword warns you when you touch the rusty knife"
+    :setup ((move @player @maze-5) (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @rusty-knife :take)
+    (assert (outcome? success))
+    (assert (held? @rusty-knife))
+    (assert (output? "blinding blue light")))
+
+  (test "you cannot take the skeleton"
+    (do @skeleton :take)
+    (assert (outcome? blocked)))
+)
+
+; === The cyclops ===
+
+(test-group "the cyclops blocks the way"
+  :setup ((move @player @cyclops-room) (set @cyclops :subdued false) (set @cyclops :fed false)
+          (move @cyclops @cyclops-room) (set @wooden-door :magic false)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "the stairs up are blocked"
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "The cyclops doesn't look like he'll let you past.")))
+
+  (test "the east wall is solid rock"
+    (go :direction east)
+    (assert (outcome? blocked))
+    (assert (context? message "The east wall is solid rock.")))
+
+  (test "you cannot kill the cyclops"
+    (do @cyclops :attack @sword)
+    (assert (outcome? success))
+    (assert (output? "ignores your pitiful attempt"))
+    (assert (prop? @cyclops subdued false)))
+
+  (test "naming Ulysses routs him and opens both ways"
+    (do @cyclops :odysseus)
+    (assert (outcome? success))
+    (assert (output? "flees the room"))
+    (assert (prop? @cyclops subdued true))
+    (assert (prop? @wooden-door magic true))
+    ; stairs up now clear
+    (go :direction up)
+    (assert (loc? @player @treasure-room)))
+
+  (test "after the cyclops flees the east wall is a passage"
+    :setup ((move @player @cyclops-room) (set @cyclops :subdued true) (move @cyclops nil)
+            (set @wooden-door :magic true) (move @lamp @player) (set @lamp :lit true))
+    (go :direction east)
+    (assert (loc? @player @strange-passage)))
+)
+
+(test-group "feeding the cyclops to sleep"
+  :setup ((move @player @cyclops-room) (set @cyclops :subdued false) (set @cyclops :fed false)
+          (move @cyclops @cyclops-room) (set @wooden-door :magic false)
+          (move @lunch @player) (move @water @player)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "lunch then water lulls him to sleep, clearing the stairs"
+    (do @cyclops :give @lunch)
+    (assert (prop? @cyclops fed true))
+    (do @cyclops :give @water)
+    (assert (prop? @cyclops subdued true))
+    (go :direction up)
+    (assert (loc? @player @treasure-room)))
+
+  (test "but feeding does not smash the east wall"
+    (do @cyclops :give @lunch)
+    (do @cyclops :give @water)
+    (assert (prop? @wooden-door magic false))
+    (go :direction east)
+    (assert (outcome? blocked)))
+)
+
+; === The Strange Passage shortcut (unlocks the Living Room door) ===
+
+(test-group "the strange passage"
+  :setup ((set @wooden-door :magic true) (move @lamp @player) (set @lamp :lit true))
+
+  (test "the living room's nailed door now opens west"
+    :setup ((move @player @living-room) (set @wooden-door :magic true) (move @lamp @player) (set @lamp :lit true))
+    (go :direction west)
+    (assert (loc? @player @strange-passage)))
+
+  (test "and the passage leads back east into the living room"
+    :setup ((move @player @strange-passage) (set @wooden-door :magic true) (move @lamp @player) (set @lamp :lit true))
+    (go :direction east)
+    (assert (loc? @player @living-room)))
+
+  (test "west from the strange passage returns to the cyclops room"
+    :setup ((move @player @strange-passage) (move @lamp @player) (set @lamp :lit true))
+    (go :direction west)
+    (assert (loc? @player @cyclops-room)))
+)
