@@ -1,0 +1,113 @@
+; The Cellar and the Troll Room — the entrance to the Great Underground Empire.
+; Both rooms are dark (no ONBIT in ZIL): the brass lantern and the grue hazard
+; (grue-hazard.grue) matter from here on.
+;
+; ZIL: 1dungeon.zil (CELLAR, TROLL-ROOM rooms; TROLL, AXE objects);
+; 1actions.zil (CELLAR-FCN, TROLL-FCN, AXE-F). The ZIL troll fight is a random
+; melee system (MELEE tables + PROB rolls); we convert it to a deterministic,
+; strength-based duel so the world stays statically analyzable (like the grue).
+;
+; Deferred (later slices / possible depth): troll counter-attacks & knockout /
+; unconscious states, give/throw-food mechanics, the troll grabbing a dropped
+; axe (TROLL-ROOM-F F-BUSY?).
+
+; === Cellar ===
+
+(room @cellar
+  :description "Cellar"
+  :ldesc "You are in a dark and damp cellar with a narrow passageway leading north, and a crawlway to
+  the south. On the west is the bottom of a steep metal ramp which is unclimbable."
+  :rdesc "A dark, damp stone cellar: a narrow passage leading north, a low crawlway to the south, and a steep unclimbable metal ramp against the west wall; heavy shadow. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @troll-room)
+     (south :to @east-of-chasm)                 ; underground — later slice
+     (up :to @living-room :via @trap-door)
+     (west :blocked "You try to ascend the ramp, but it is impossible, and you slide back down."))
+  :visible (@trap-door)   ; the barred door overhead is reachable from below
+  :behaviors (
+    ; CELLAR-FCN M-ENTER: descending through the open trap door slams it shut
+    ; behind you and bars it from above.
+    :on-enter (fn (?from)
+      (cond
+        ((and (:open @trap-door) (not (:touched @trap-door)))
+          '((set @trap-door :open false)
+            (set @trap-door :touched true)
+            (narrate "The trap door crashes shut, and you hear someone barring it.")
+            (success)))
+        (true (success))))))
+
+; === Troll Room ===
+
+(room @troll-room
+  :description "The Troll Room"
+  :ldesc "This is a small room with passages to the east and south and a forbidding hole leading west.
+  Bloodstains and deep scratches (perhaps made by an axe) mar the walls."
+  :rdesc "A small dark stone chamber, bloodstains and deep axe-scratches gouged across the walls, a passage east, a crawlway south, and a forbidding black hole leading west. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((south :to @cellar)
+     (east :to @ew-passage :via @troll)         ; gated by the troll — later slice
+     (west :to @maze-1 :via @troll))            ; gated by the troll — later slice
+  :visible (@troll))
+
+; === The Troll ===
+; ZIL TROLL: STRENGTH 2, blocks the east/west passages (TROLL-FLAG) until slain.
+; Deterministic duel: each armed blow lowers its strength; at 0 it dies, drops
+; the axe, and the passages open.
+
+(object @troll
+  :location @troll-room
+  :description "troll"
+  :ldesc "A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room."
+  :properties (:person true :fighting true :dead false :strength 2)
+  :behaviors (
+    :attack (fn (?weapon)
+      (cond
+        ((:dead ?self)
+          (blocked :message "The troll is already dead."))
+        ; Bare-handed against a troll is suicide (ZIL WEAPON-FUNCTION guard).
+        ((not (some (fn (?o) (:weapon ?o false)) (contents @player)))
+          (blocked :message "Trying to attack a troll with your bare hands is suicidal."))
+        (true
+          (let ((?s (- (:strength ?self) 1)))
+            (if (<= ?s 0)
+              '((set @troll :dead true)
+                (set @troll :fighting false)
+                (set @axe :invisible false)
+                (move @axe @troll-room)
+                (narrate "The fatal blow strikes the troll square in the heart: he dies. Almost as soon as
+                the troll breathes his last breath, a cloud of sinister black fog envelops him, and when the
+                fog lifts, the carcass has disappeared. His bloody axe clatters to the floor.")
+                (success))
+              `((set @troll :strength ,?s)
+                (narrate "The troll takes a heavy blow and staggers, but recovers and resumes his fighting stance.")
+                (success)))))))
+
+    ; The troll is the barrier for the east/west exits: it fends you off while
+    ; alive, and lets you pass once slain (ZIL TROLL-FLAG).
+    :through (fn ()
+      (cond
+        ((:dead ?self) (success))
+        (true (blocked :message "The troll fends you off with a menacing gesture."))))
+
+    :examine (fn ()
+      (cond
+        ((:dead ?self)
+          '((focus @troll "The troll is gone, leaving only the lingering reek of black fog.") (success)))
+        (true
+          '((focus @troll "A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.") (success)))))
+
+    :tell (fn ()
+      '((narrate "The troll isn't much of a conversationalist.") (success)))
+
+    :take (fn ()
+      (blocked :message "The troll spits in your face, saying \"Better luck next time.\""))))
+
+(object @axe
+  :location @troll
+  :description "bloody axe"
+  ; Held by the troll (and unseen) until he dies, then it drops into the room.
+  :properties (:weapon true :takeable true :invisible true)
+  :behaviors (
+    :examine (fn () '((focus @axe "It's a bloody axe.") (success)))))

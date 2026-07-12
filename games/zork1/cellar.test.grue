@@ -1,0 +1,86 @@
+; Tests for the Cellar + Troll Room slice.
+; The rooms are dark, so combat/movement tests carry a lit lantern (otherwise the
+; grue hazard would end things).
+
+; === Cellar / trap door ===
+
+(test-group "descending into the cellar"
+  :setup ((move @player @living-room)
+          (set @rug :moved true)
+          (set @trap-door :invisible false) (set @trap-door :open true) (set @trap-door :touched false)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "the trap door slams shut behind you"
+    (go :direction down)
+    (assert (loc? @player @cellar))
+    (assert (no-flag? @trap-door open))
+    (assert (prop? @trap-door touched true))
+    (assert (output? "crashes shut")))
+)
+
+(test-group "trapped below"
+  :setup ((move @player @cellar)
+          (set @trap-door :open false) (set @trap-door :touched true)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "the trap door is barred from above"
+    (do @trap-door :open)
+    (assert (outcome? blocked))
+    (assert (context? message "The door is locked from above.")))
+
+  (test "cannot climb the ramp to the west"
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (context? message "You try to ascend the ramp, but it is impossible, and you slide back down.")))
+
+  (test "north leads to the troll room"
+    (go :direction north)
+    (assert (loc? @player @troll-room)))
+)
+
+; === The troll ===
+
+(test-group "the troll"
+  :setup ((move @player @troll-room)
+          (set @troll :dead false) (set @troll :strength 2)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "the troll blocks the east passage"
+    (go :direction east)
+    (assert (outcome? blocked))
+    (assert (context? message "The troll fends you off with a menacing gesture."))
+    (assert (loc? @player @troll-room)))
+
+  (test "you can still retreat south to the cellar"
+    (go :direction south)
+    (assert (loc? @player @cellar)))
+
+  (test "attacking bare-handed is suicidal"
+    (do @troll :attack nil)
+    (assert (outcome? blocked))
+    (assert (context? message "Trying to attack a troll with your bare hands is suicidal.")))
+
+  (test "a single blow only staggers the troll"
+    :setup ((move @player @troll-room) (set @troll :dead false) (set @troll :strength 2)
+            (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @troll :attack @sword)
+    (assert (outcome? success))
+    (assert (prop? @troll dead false))
+    (assert (prop? @troll strength 1)))
+
+  (test "two blows slay the troll and drop the axe"
+    :setup ((move @player @troll-room) (set @troll :dead false) (set @troll :strength 2)
+            (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @troll :attack @sword)
+    (do @troll :attack @sword)
+    (assert (prop? @troll dead true))
+    (assert (loc? @axe @troll-room))
+    (assert (no-flag? @axe invisible)))
+
+  (test "the slain troll no longer blocks the passages"
+    :setup ((move @player @troll-room) (set @troll :dead true) (set @troll :strength 0)
+            (move @lamp @player) (set @lamp :lit true))
+    (go :direction east)
+    (assert (outcome? success))
+    (assert (loc? @player @ew-passage)))
+)

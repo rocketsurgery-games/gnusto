@@ -1497,18 +1497,24 @@ class GrueRuntime:
         self._increment_moves()
 
         # Check for :on-enter behavior in destination room
+        output: list = []
         on_enter_result = self._check_room_on_enter(dest, from_room, actor)
         if on_enter_result is not None:
-            # Merge on-enter effects and context
+            # Merge on-enter effects, context, and player-facing output. The
+            # output stream matters: a room's :on-enter (narrate ...) (e.g. the
+            # cellar trap door slamming shut) would otherwise be silently lost.
             if on_enter_result.effects_applied:
                 effects.extend(on_enter_result.effects_applied)
             if on_enter_result.context:
                 context = context + on_enter_result.context
+            if on_enter_result.output:
+                output.extend(on_enter_result.output)
 
         return ActionResult(
             outcome="success",
             effects_applied=effects,
             context=context,
+            output=output,
         )
 
     def _evaluate_behavior(

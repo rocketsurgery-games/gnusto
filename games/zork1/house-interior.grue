@@ -180,11 +180,13 @@
 (object @trap-door
   :location @living-room
   :description "trap door"
-  :properties (:nodesc true :door true :openable true :invisible true)
+  :properties (:nodesc true :door true :openable true :invisible true :touched false)
   :behaviors (
     :open (fn ()
       (cond
         ((:open ?self) (blocked :message "It's already open."))
+        ; Once you've descended, the door is barred from above (CELLAR-FCN).
+        ((= (loc @player) @cellar) (blocked :message "The door is locked from above."))
         (true
           '((set ?self :open true)
             (narrate "The door reluctantly opens to reveal a rickety staircase descending into darkness.")

@@ -45,6 +45,32 @@ patterns that show up in both are near-universal and belong in the shared
   before the underground slice. For now unlit rooms are marked `:lit false`
   faithfully but behave as lit.
 
+## Slice 3 (cellar + troll room) observations
+
+- **Deterministic combat.** ZIL's troll fight is a random melee (MELEE tables +
+  `PROB`). Converted to a deterministic strength duel (troll `:strength 2`; each
+  armed blow decrements; 0 = dead, drops the axe, opens the passages) — same
+  reasoning as the grue (keep frotz sound). Troll counter-attacks / knockout /
+  give-food mechanics deferred and noted.
+- **An NPC can be its own exit barrier.** The troll is the `:via` object for the
+  troll room's east/west exits; its `:through` fends you off while alive and
+  passes once `:dead`. No separate barrier object needed — the ZIL
+  `IF TROLL-FLAG ELSE "..."` exit collapses onto the actor.
+- **The dungeon is dark** (cellar + troll room have no ONBIT): the grue system
+  gets its real workout here — the lit lantern becomes mandatory, and combat
+  tests must carry one or the grue ends the fight.
+
+## Engine fixes made mid-slice
+
+- **Room `:on-enter` `(narrate …)` output was dropped from the `go` result.**
+  `_do_go` merged on-enter effects + context but not the *output* stream, so
+  arrival narration (the cellar trap door "crashes shut") was silently lost.
+  Fixed to merge on-enter output. Affects any game with arrival narration.
+- **Behavior arity is strict.** A bare `(do @troll :attack)` errors against
+  `:attack (fn (?weapon) …)`; callers must pass `nil` (`(do @troll :attack
+  nil)`), matching the LH convention. Candidate future ergonomic: optional /
+  variadic behavior params so "attack" works with or without a named weapon.
+
 ## Friction / tooling observations
 
 - **Test DSL vs REPL `go` syntax diverge.** Tests use `(go :direction east)`;
