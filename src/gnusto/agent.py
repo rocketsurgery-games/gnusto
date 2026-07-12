@@ -767,6 +767,11 @@ class GameSession:
             # condition keeps going because those turns DO produce engine text
             # (e.g. elevator in-transit narration), so this only stops dead waits.
             idle_wait = False
+            # A bare "wait" (no until/for qualifier) is a single turn even when it
+            # fires incidental event narration; only a qualified wait continues
+            # (gnusto-f0b8).
+            bare_wait = False
+            sustained_wait = self._wait_is_sustained(user_input)
             # "look" re-describes the current room (a free action). We also treat
             # examine/look aimed at the CURRENT ROOM as a look, since the model
             # habitually targets the room entity, which isn't a takeable object
@@ -816,6 +821,8 @@ class GameSession:
 
                         engine_blocks = [render.Narrate(text="Time passes.")]
                         idle_wait = True
+                    if action.tool == "wait" and not sustained_wait:
+                        bare_wait = True
                     if engine_blocks:
                         all_render_blocks.extend(engine_blocks)
                         if on_blocks:
@@ -838,8 +845,9 @@ class GameSession:
                 if response.needs_player_input:
                     break
                 # An idle wait is a single turn; don't auto-repeat it (gnusto-0bf7.2).
-                # A look is a free, self-contained action — end the turn too.
-                if idle_wait or did_look:
+                # A bare wait is also a single turn (gnusto-f0b8). A look is a free,
+                # self-contained action — end the turn too.
+                if idle_wait or bare_wait or did_look:
                     break
                 # Guard: if the same action blocks a second time, stop banging on it.
                 if blocked_key is not None:
@@ -968,6 +976,21 @@ class GameSession:
         self._maybe_summarize()
 
         return final_response_text, all_results
+
+    def _wait_is_sustained(self, user_input: str) -> bool:
+        """Whether the command asks to wait FOR/UNTIL a condition.
+
+        A bare "wait" is a single turn; only a qualified wait ("wait until the
+        doors open", "wait for the elevator") may keep waiting turn after turn.
+        Gating on the command text keeps a bare wait from over-continuing when a
+        turn happens to fire incidental event narration — which otherwise
+        overshoots timed windows like the endgame throw (gnusto-f0b8).
+        """
+        t = f" {user_input.lower()} "
+        return any(
+            q in t
+            for q in (" until ", " till ", " for ", " while ", " keep ", " as long")
+        )
 
     def _is_look_action(self, action: ActionRequest) -> bool:
         """Whether an action is a "look" (re-describe the current room).

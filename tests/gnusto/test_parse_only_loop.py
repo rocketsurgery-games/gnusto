@@ -160,6 +160,19 @@ def test_idle_wait_is_single_turn_with_beat():
     assert any(getattr(b, "text", "") == "Time passes." for b in emitted)
 
 
+def test_bare_wait_stops_even_when_events_fire():
+    # A bare "wait" (no until/for qualifier) is a single turn even when the turn
+    # produces incidental event narration — otherwise it overshoots timed windows
+    # like the endgame throw (gnusto-f0b8).
+    sess, executed = _make_session([_wait_resp() for _ in range(5)])
+    sess._blocks_from_results = lambda raw, action: [
+        types.SimpleNamespace(text="Something dramatic happens.")
+    ]
+    sess.process_input("wait")
+    assert len(executed) == 1
+    assert sess._llm_calls["n"] == 1
+
+
 def test_wait_with_engine_text_keeps_going():
     # Waiting FOR a condition keeps going: those turns DO produce engine text
     # (e.g. elevator in-transit narration), so the idle guard never trips and
