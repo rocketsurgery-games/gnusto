@@ -1,0 +1,159 @@
+; The Thief and the Treasure Room loot.
+;
+; ORIGINAL ZIL BEHAVIOR (ROBBER-FUNCTION / I-THIEF, 1actions.zil): the thief is
+; a *wandering* actor. Each turn I-THIEF may move him between rooms at random,
+; have him randomly snatch a loose treasure (or an item from your hands), engage
+; in *random* melee (he can wound you, knock you out, flee with his bag, or be
+; killed), and he starts in the ROUND-ROOM. Giving him a valuable engrosses him
+; (THIEF-ENGROSSED), leaving him vulnerable. On death he drops his stiletto and
+; his large bag disgorges every treasure he ever stole, and the chalice in his
+; lair becomes safe to take.
+;
+; DETERMINISTIC CONVERSION (this slice): to keep the world statically
+; analyzable (no RNG), the thief is a STATIONARY encounter in his lair (the
+; Treasure Room). He fights a deterministic duel like the troll/cyclops: armed
+; blows lower his strength; giving him a treasure engrosses him so blows land
+; harder (the vestige of the "distract-then-strike" puzzle). Killing him drops
+; the stiletto, opens his bag (with anything you gave him), and frees the
+; chalice. His signature egg puzzle is preserved: hand him the fragile
+; jewel-encrusted egg and his deft fingers open it intact (opening it yourself
+; wrecks the clockwork canary inside).
+;
+; A richer, still-analyzable thief (scripted patrol / state-triggered theft) is
+; tracked in yak gnusto-fa93.9.
+
+(object @thief
+  :location @treasure-room
+  :description "thief"
+  :ldesc "There is a suspicious-looking individual, holding a large bag, leaning against one wall. He is
+  armed with a deadly stiletto."
+  :properties (:person true :dead false :strength 5 :engrossed false)
+  :behaviors (
+    :attack (fn (?weapon)
+      (cond
+        ((:dead ?self)
+          (blocked :message "The thief is already dead."))
+        ((not (some (fn (?o) (:weapon ?o false)) (contents @player)))
+          (blocked :message "Trying to attack the thief with your bare hands is suicidal."))
+        (true
+          ; An engrossed thief is distracted, so blows land harder.
+          (let ((?s (- (:strength ?self) (if (:engrossed ?self) 3 2))))
+            (if (<= ?s 0)
+              '((set @thief :dead true)
+                (move @stiletto @treasure-room) (set @stiletto :invisible false)
+                (move @large-bag @treasure-room) (set @large-bag :open true)
+                (narrate "The thief, forgetting his skill, is finished off by your blow. As the thief dies, the power of his magic decreases, and his treasures reappear. The chalice is now safe to take.")
+                (success))
+              `((set @thief :strength ,?s)
+                (narrate "Your blow lands, and the thief staggers, but recovers and returns to a fighting stance.")
+                (success)))))))
+
+    :give (fn (?item)
+      (cond
+        ((:dead ?self)
+          (blocked :message "The thief is dead."))
+        ; The egg: his deft fingers open it without wrecking the canary.
+        ((= ?item @egg)
+          '((set @egg :open true)
+            (move @egg @large-bag)
+            (set @thief :engrossed true)
+            (narrate "The thief is taken aback by your unexpected generosity. With his usual deftness he opens the delicate egg, leaving its clockwork intact, drops it into his bag, and stops to admire its beauty.")
+            (success)))
+        ; Any other treasure: he pockets it and is engrossed (and vulnerable).
+        ((:treasure ?item false)
+          `((move ?item @large-bag)
+            (set @thief :engrossed true)
+            (narrate ,(str "The thief is taken aback by your unexpected generosity, but accepts the "
+                           (desc ?item) " and stops to admire its beauty."))
+            (success)))
+        (true
+          `((move ?item @large-bag)
+            (narrate ,(str "The thief places the " (desc ?item) " in his bag and thanks you politely."))
+            (success)))))
+
+    :tell (fn ()
+      '((narrate "The thief is a strong, silent type.") (success)))
+    :examine (fn ()
+      (cond
+        ((:dead ?self)
+          '((focus @thief "The thief lies dead, his magic spent.") (success)))
+        (true
+          '((focus @thief "The thief is a slippery character with beady eyes that flit back and forth. He carries a large bag over his shoulder and a vicious stiletto, whose blade is aimed menacingly in your direction. I'd watch out if I were you.") (success)))))
+    :take (fn ()
+      (blocked :message "Once you got him, what would you do with him?"))))
+
+; The thief's loot bag (contains treasures you give him, disgorged on his death).
+(object @large-bag
+  :location @thief
+  :description "large bag"
+  :properties (:nodesc true :container true :openable true)
+  :behaviors (
+    :take (fn ()
+      (cond
+        ((:dead @thief)
+          '((move @large-bag @player) (narrate "Taken.") (success)))
+        (true
+          (blocked :message "The thief snatches his bag away from you."))))))
+
+; The thief's weapon (hidden until he dies, then it drops).
+(object @stiletto
+  :location @thief
+  :description "stiletto"
+  :properties (:weapon true :takeable true :invisible true)
+  :behaviors (
+    :examine (fn () '((focus @stiletto "It's a vicious stiletto.") (success)))))
+
+; The chalice — a treasure, guarded by the thief until he is slain (CHALICE-FCN).
+(object @chalice
+  :location @treasure-room
+  :description "chalice"
+  :properties (:takeable true :container true :treasure true :value 10 :tvalue 5)
+  :behaviors (
+    :examine (fn ()
+      '((focus @chalice "There is a silver chalice, intricately engraved, here.") (success)))
+    :take (fn ()
+      (cond
+        ((:dead @thief)
+          '((move @chalice @player) (narrate "Taken.") (success)))
+        (true
+          (blocked :message "The thief, who is remarkably quick, comes up behind you and takes the chalice away."))))))
+
+; === The jewel-encrusted egg + clockwork canary ===
+; The egg starts up a tree in the forest (@nest is defined by the forest slice);
+; it is placed here with the thief because its whole puzzle is about *him*.
+
+(object @egg
+  :location @nest
+  :description "jewel-encrusted egg"
+  :properties (:takeable true :container true :searchable true :treasure true
+               :value 5 :tvalue 5 :open false :broken false)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:broken @egg)
+          '((focus @egg "There is a somewhat ruined egg here.") (success)))
+        (true
+          '((focus @egg "A large egg encrusted with precious jewels, hinged and closed with a delicate-looking clasp. It appears extremely fragile.") (success)))))
+    ; Opening it yourself shatters the delicate clockwork inside (EGG-OBJECT).
+    :open (fn ()
+      (cond
+        ((:open @egg) (blocked :message "The egg is already open."))
+        (true
+          '((set @egg :open true)
+            (set @egg :broken true)
+            (set @egg :tvalue 2)
+            (set @canary :broken true)
+            (narrate "You have managed to open the egg, but you have also managed to destroy its delicate machinery: the golden clockwork canary within is broken.")
+            (success)))))))
+
+(object @canary
+  :location @egg
+  :description "golden clockwork canary"
+  :properties (:takeable true :treasure true :value 6 :tvalue 4 :broken false)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:broken @canary)
+          '((focus @canary "There is a golden clockwork canary here. Its mainspring is broken and it will not sing.") (success)))
+        (true
+          '((focus @canary "A golden clockwork canary with ruby eyes and a silver beak; through a crystal window you can see its intricate machinery.") (success)))))))

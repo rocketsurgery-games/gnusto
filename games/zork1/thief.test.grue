@@ -1,0 +1,97 @@
+; Tests for the thief + Treasure Room loot.
+; The Treasure Room is dark, so setups carry a lit lantern.
+
+(test-group "the thief"
+  :setup ((move @player @treasure-room)
+          (set @thief :dead false) (set @thief :strength 5) (set @thief :engrossed false)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "attacking bare-handed is suicidal"
+    (do @thief :attack nil)
+    (assert (outcome? blocked))
+    (assert (context? message "Trying to attack the thief with your bare hands is suicidal.")))
+
+  (test "a single blow only staggers him"
+    :setup ((move @player @treasure-room) (set @thief :dead false) (set @thief :strength 5)
+            (set @thief :engrossed false) (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @thief :attack @sword)
+    (assert (outcome? success))
+    (assert (prop? @thief dead false))
+    (assert (prop? @thief strength 3)))
+
+  (test "three blows finish him and disgorge the loot"
+    :setup ((move @player @treasure-room) (set @thief :dead false) (set @thief :strength 5)
+            (set @thief :engrossed false) (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @thief :attack @sword)
+    (do @thief :attack @sword)
+    (do @thief :attack @sword)
+    (assert (prop? @thief dead true))
+    (assert (loc? @stiletto @treasure-room))
+    (assert (no-flag? @stiletto invisible))
+    (assert (loc? @large-bag @treasure-room)))
+)
+
+(test-group "the guarded chalice"
+  :setup ((move @player @treasure-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "the thief guards the chalice while alive"
+    :setup ((move @player @treasure-room) (set @thief :dead false) (move @lamp @player) (set @lamp :lit true))
+    (do @chalice :take)
+    (assert (outcome? blocked))
+    (assert (context? message "The thief, who is remarkably quick, comes up behind you and takes the chalice away.")))
+
+  (test "the chalice is safe to take once he is dead"
+    :setup ((move @player @treasure-room) (set @thief :dead true) (move @lamp @player) (set @lamp :lit true))
+    (do @chalice :take)
+    (assert (outcome? success))
+    (assert (held? @chalice)))
+
+  (test "his bag is snatched away while he lives"
+    :setup ((move @player @treasure-room) (set @thief :dead false) (move @lamp @player) (set @lamp :lit true))
+    (do @large-bag :take)
+    (assert (outcome? blocked)))
+)
+
+(test-group "engrossing the thief"
+  :setup ((move @player @treasure-room)
+          (set @thief :dead false) (set @thief :strength 5) (set @thief :engrossed false)
+          (move @bag-of-coins @player) (move @sword @player)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "giving him a treasure engrosses him"
+    (do @thief :give @bag-of-coins)
+    (assert (outcome? success))
+    (assert (prop? @thief engrossed true))
+    (assert (in? @bag-of-coins @large-bag)))
+
+  (test "an engrossed thief falls in two blows"
+    :setup ((move @player @treasure-room) (set @thief :dead false) (set @thief :strength 5)
+            (set @thief :engrossed true) (move @sword @player) (move @lamp @player) (set @lamp :lit true))
+    (do @thief :attack @sword)
+    (do @thief :attack @sword)
+    (assert (prop? @thief dead true)))
+)
+
+; === The egg puzzle ===
+
+(test-group "the jewel-encrusted egg"
+  :setup ((move @player @treasure-room)
+          (set @thief :dead false) (set @egg :open false) (set @egg :broken false) (set @canary :broken false)
+          (move @egg @player) (move @lamp @player) (set @lamp :lit true))
+
+  (test "the thief opens the egg intact"
+    (do @thief :give @egg)
+    (assert (outcome? success))
+    (assert (prop? @egg open true))
+    (assert (prop? @egg broken false))
+    (assert (prop? @canary broken false))
+    (assert (in? @egg @large-bag)))
+
+  (test "opening the egg yourself wrecks the canary"
+    :setup ((set @egg :open false) (set @egg :broken false) (set @canary :broken false) (move @egg @player))
+    (do @egg :open)
+    (assert (outcome? success))
+    (assert (prop? @egg broken true))
+    (assert (prop? @egg tvalue 2))
+    (assert (prop? @canary broken true)))
+)

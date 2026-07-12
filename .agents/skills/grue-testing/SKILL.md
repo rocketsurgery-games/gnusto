@@ -42,7 +42,7 @@ assert around it; intended refusals are `blocked`, not `error`. (yak gnusto-160b
 (test-group "name"
   :setup ((move @player @room) (set @obj :prop val) (queue evt 0))  ; run as effects
   (test "does the thing"
-    :setup (...)                 ; optional per-test setup, overrides group
+    :setup (...)                 ; per-test setup: runs AFTER the group :setup (additive, NOT a replacement)
     (do @obj :verb)              ; actions: (do @o :verb [@arg]), (go :direction south), (wait)
     (advance 5)                  ; (wait N)/(advance N): pass N turns at once
     (until PRED (wait))          ; loop BODY until PRED is true (max 100 iterations)

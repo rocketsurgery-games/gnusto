@@ -74,6 +74,27 @@ patterns that show up in both are near-universal and belong in the shared
   TVALUE = trophy-case points). The painting is the first; scoring will consume
   these when treasures land in the trophy case.
 
+## Slice 6 (the thief) observations
+
+- **Deterministic stationary thief.** ZIL's thief wanders, steals, and fights on
+  random rolls (I-THIEF / ROBBER-FUNCTION). Converted to a fixed lair encounter
+  in the (dark) Treasure Room with a deterministic duel, matching the
+  troll/cyclops treatment. The full original behavior is documented in a header
+  comment in `thief.grue`, and a richer still-analyzable version is tracked in
+  **gnusto-fa93.9** (low-pri).
+- **The "distract-then-strike" puzzle survives as a deterministic hook:** giving
+  the thief a treasure sets `:engrossed`, and an engrossed thief takes 3 damage
+  per blow instead of 2 (falls in 2 hits, not 3). The signature **egg puzzle is
+  intact**: hand him the fragile egg and he opens it without wrecking the
+  clockwork canary; open it yourself and the canary breaks (`:tvalue` 5->2).
+- **Treasure Room is dark** — corrected from an earlier `:lit true`; ZIL's
+  `RLANDBIT`-only (`CANT-HAVE-ONBIT`) den needs the lantern.
+- **Testing gotcha:** a `test`'s `:setup` **merges after** (does not replace) the
+  enclosing `test-group`'s `:setup`, so a bindings/items placed by the group
+  setup persist into a child test. A bare-handed-attack test failed because the
+  group setup had already armed the player. Fix: keep shared state minimal at the
+  group level and put mutually-exclusive setup on the individual tests.
+
 ## Engine fixes made mid-slice
 
 - **Room `:on-enter` `(narrate …)` output was dropped from the `go` result.**

@@ -260,7 +260,7 @@
   :description "Treasure Room"
   :ldesc "This is a large room, whose east wall is solid granite. A number of discarded bags, which
   crumble at your touch, are scattered about on the floor. There is an exit down a staircase."
-  :rdesc "A cramped robber's den of solid granite, the floor littered with crumbling discarded bags, a staircase leading down; its own dim light. Empty of people."
-  :properties (:lit true)
+  :rdesc "A cramped robber's den of solid granite, the floor littered with crumbling discarded bags, a staircase leading down; heavy shadow. Empty of people."
+  :properties (:lit false)   ; ZIL: RLANDBIT only (CANT-HAVE-ONBIT) — the thief's den is dark
   :exits
     ((down :to @cyclops-room)))
