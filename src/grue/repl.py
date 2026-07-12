@@ -228,6 +228,7 @@ class EventResult:
     outcome: str
     context: list[tuple[str, Any]]
     effects: list[str]
+    error: str | None = None
 
 
 @dataclass
@@ -720,6 +721,11 @@ def print_result(result: Any) -> bool:
         return True
 
     if isinstance(result, EventResult):
+        if result.outcome == "error":
+            # A fired event that threw must be loud, not a silent no-op
+            # (gnusto-160b).
+            print(f"[EVENT ERROR: {result.event_name}] {result.error or 'engine error'}")
+            return True
         print(f"[EVENT: {result.event_name}]")
         for k, v in result.context:
             print(f"  {k}: {v}")
@@ -809,6 +815,7 @@ def main():
                             if event_result.context
                             else [],
                             effects=[str(e) for e in event_result.effects_applied],
+                            error=event_result.error,
                         )
                     )
 

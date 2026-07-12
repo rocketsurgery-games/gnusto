@@ -1103,14 +1103,26 @@ class GameSession:
                     blocks.append(prose(text))
 
         for result in raw_results:
+            # Engine error — a do/event that threw (undeclared property, uncaught
+            # exception, redirect loop). Surface it loudly as an error block
+            # rather than dropping the beat silently (gnusto-160b).
+            if isinstance(result, ActionError):
+                blocks.append(
+                    render.SystemMessage(
+                        text=f"[game error] {result.message or 'internal error'}",
+                        level="error",
+                    )
+                )
+                continue
+            if getattr(result, "outcome", None) == "error":
+                err = getattr(result, "error", None) or "internal error"
+                blocks.append(
+                    render.SystemMessage(text=f"[game error] {err}", level="error")
+                )
+                continue
             # Blocked: the player-facing text is the blocked message (+ any speech).
             if isinstance(result, ActionBlocked):
                 emit_output(result)
-                if result.message:
-                    blocks.append(render.Narrate(text=result.message))
-                continue
-            # Error.
-            if isinstance(result, ActionError):
                 if result.message:
                     blocks.append(render.Narrate(text=result.message))
                 continue

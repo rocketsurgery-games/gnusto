@@ -237,7 +237,7 @@ class TestRunner:
         elif form_type in ("wait", "advance"):
             try:
                 self._last_result = self._execute_action(runtime, form)
-                return []
+                return self._fail_on_engine_error(form_idx)
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
         elif form_type == "run":
@@ -246,7 +246,7 @@ class TestRunner:
             # Allow (go :direction X) as shorthand
             try:
                 self._last_result = self._execute_action(runtime, form)
-                return []
+                return self._fail_on_engine_error(form_idx)
             except Exception as e:
                 return [f"Form {form_idx}: {e}"]
         elif form_type in ("move", "set", "inc", "queue", "dequeue", "take"):
@@ -266,9 +266,22 @@ class TestRunner:
         """Run a bare (do ...) form. Stores result for subsequent assertions."""
         try:
             self._last_result = self._execute_action(runtime, form)
-            return []
+            return self._fail_on_engine_error(form_idx)
         except Exception as e:
             return [f"Form {form_idx}: {e}"]
+
+    def _fail_on_engine_error(self, form_idx: int) -> list[str]:
+        """Fail the test if the last result is an engine error (outcome=error).
+
+        Engine errors (undeclared property write, uncaught exception, redirect
+        loop) are bugs, never intended game outcomes — so they must fail the
+        test loudly rather than be silently swallowed (gnusto-160b).
+        """
+        r = self._last_result
+        if r is not None and getattr(r, "outcome", None) == "error":
+            detail = getattr(r, "error", None) or "engine error"
+            return [f"Form {form_idx}: engine error: {detail}"]
+        return []
 
 
 
@@ -317,7 +330,8 @@ class TestRunner:
                 failures.append(f"Run {form_idx}.{i}: Invalid action (not a list)")
                 continue
             try:
-                self._execute_action(runtime, action)
+                self._last_result = self._execute_action(runtime, action)
+                failures.extend(self._fail_on_engine_error(f"{form_idx}.{i}"))
             except Exception as e:
                 failures.append(f"Run {form_idx}.{i}: {e}")
 
@@ -515,6 +529,11 @@ class TestRunner:
             last: ActionResult | None = None
             for _ in range(count):
                 results = runtime.process_events()
+                for r in results:
+                    # Surface the FIRST event error across all turns so a fired
+                    # event that throws can't be silently swallowed (gnusto-160b).
+                    if r.outcome == "error":
+                        return r
                 if results:
                     last = results[-1]
             return last or ActionResult(outcome="success", context=[("waited", True)])

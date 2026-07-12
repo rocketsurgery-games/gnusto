@@ -609,12 +609,18 @@ class GrueRuntime:
         return results
 
     def _evaluate_event(self, event: "GrueEvent") -> ActionResult:
-        """Evaluate an event's body and return the result."""
+        """Evaluate an event's body atomically and return the result.
+
+        Like actions, an event that errors (mid-effect-list, inline mutation, or
+        uncaught exception) rolls back to leave NO partial state (gnusto-160b).
+        """
         if event.body is None:
             return ActionResult(
                 outcome="error",
                 error=f"Event {event.name} has no body"
             )
+
+        snapshot = self.state.copy()
 
         # Build entity scope from nested forms (def, defn)
         entity_scope = None
@@ -642,9 +648,12 @@ class GrueRuntime:
             try:
                 result = evaluator.eval(event.body)
             except Exception as e:
-                return ActionResult(
-                    outcome="error",
-                    error=f"Error evaluating event {event.name}: {e}"
+                return self._rollback_if_error(
+                    snapshot,
+                    ActionResult(
+                        outcome="error",
+                        error=f"Error evaluating event {event.name}: {e}",
+                    ),
                 )
 
             # Convert behavior result to ActionResult (same as behaviors)
@@ -653,7 +662,7 @@ class GrueRuntime:
             # Check for death in context
             self._check_death_context(action_result)
 
-            return action_result
+            return self._rollback_if_error(snapshot, action_result)
         finally:
             self.bindings = old_bindings
 
@@ -942,7 +951,47 @@ class GrueRuntime:
 
         return target, verb, args
 
+    def _rollback_if_error(self, snapshot: "GameState", result: ActionResult) -> ActionResult:
+        """Restore ``snapshot`` if ``result`` is an error, so a failed action or
+        event leaves NO partial state (gnusto-160b). A mid-list effect error would
+        otherwise commit the effects that ran before it (e.g. the hacker-returns
+        bug advanced :lair-cnt before the undeclared :invisible write aborted)."""
+        if result.outcome == "error":
+            self.state = snapshot
+        return result
+
     def do(
+        self,
+        target: str,
+        verb: str,
+        *args,
+        _redirects: list[SExpr] | None = None,
+        _max_redirects: int = 10,
+    ) -> ActionResult:
+        """Execute a player action atomically (all-or-nothing).
+
+        Only the outermost call is a transaction boundary; nested redirect calls
+        share it, so a redirect chain that errors part-way rolls back entirely.
+        On an uncaught exception or an error outcome, state is restored to the
+        pre-action snapshot (gnusto-160b).
+        """
+        if _redirects is not None:
+            return self._do_impl(
+                target, verb, *args, _redirects=_redirects, _max_redirects=_max_redirects
+            )
+        snapshot = self.state.copy()
+        try:
+            result = self._do_impl(
+                target, verb, *args, _redirects=[], _max_redirects=_max_redirects
+            )
+        except Exception as e:
+            self.state = snapshot
+            return ActionResult(
+                outcome="error", error=f"Uncaught error in ({verb} {target}): {e}"
+            )
+        return self._rollback_if_error(snapshot, result)
+
+    def _do_impl(
         self,
         target: str,
         verb: str,

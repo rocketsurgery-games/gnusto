@@ -524,7 +524,7 @@ The world model:
         :reason locked
         :context ((lock-type electronic)))
 
-; Error (unknown object, etc.)
+; Error (unknown object, undeclared property write, uncaught exception, etc.)
 (result :outcome error
         :error "Unknown object: foo")
 
@@ -534,6 +534,21 @@ The world model:
 ```
 
 The LLM interprets these responses and generates natural language for the user.
+
+**`error` is distinct from `blocked`.** `blocked` is an *intended* refusal the
+game authored ("It's locked."); `error` means the engine hit a **bug** — an
+undeclared property read/write, an uncaught exception, a redirect loop. Two
+guarantees hold for errors (yak gnusto-160b):
+
+- **Atomic** — an action or event that errors leaves **no partial state**. The
+  engine snapshots state at the action/event boundary and rolls back on error,
+  so a multi-effect list that throws part-way (e.g. `(set @x :a 1)` succeeds,
+  then `(set @x :undeclared 2)` throws) commits *neither* write.
+- **Non-ignorable** — errors are surfaced everywhere, never silently dropped: a
+  test fails (`grue-test`), the REPL prints `[ERROR]`/`[EVENT ERROR]`, and the
+  play harness emits a visible error block. Combined with strict property
+  declaration and the `frotz lint` undeclared-write check, this makes engine
+  bugs loud instead of latent.
 
 ### Event Queues
 

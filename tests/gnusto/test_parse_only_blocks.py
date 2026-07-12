@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import gnusto.agent as agent
 from gnusto.agent import GameSession
 from gnusto.llm import ActionRequest
-from gnusto.render import Focus, Narrate, Reveal, Sfx, Speak, Splash
+from gnusto.render import Focus, Narrate, Reveal, Sfx, Speak, Splash, SystemMessage
 from grue.repl import ActionBlocked, ActionDone, ActionError
 
 
@@ -106,11 +106,27 @@ def test_blocked_message_is_relayed_not_fabricated(monkeypatch):
     assert blocks[0].text == "It would help if you turned on the computer first."
 
 
-def test_error_is_relayed(monkeypatch):
+def test_error_is_surfaced_as_error_block(monkeypatch):
+    # Engine errors must be loud and unmissable, not relayed as ordinary prose
+    # (gnusto-160b).
     sess = _session(monkeypatch, {})
     blocks = sess._blocks_from_results([ActionError(message="boom")], None)
-    assert [type(b) for b in blocks] == [Narrate]
-    assert blocks[0].text == "boom"
+    assert [type(b) for b in blocks] == [SystemMessage]
+    assert blocks[0].level == "error"
+    assert "boom" in blocks[0].text
+
+
+def test_errored_event_is_surfaced(monkeypatch):
+    # A fired event that threw (runtime ActionResult outcome=error) surfaces as
+    # an error block instead of silently producing nothing (gnusto-160b).
+    from grue.runtime import ActionResult as RuntimeActionResult
+
+    sess = _session(monkeypatch, {})
+    result = RuntimeActionResult(outcome="error", error="undeclared property write")
+    blocks = sess._blocks_from_results([result], None)
+    assert [type(b) for b in blocks] == [SystemMessage]
+    assert blocks[0].level == "error"
+    assert "undeclared property write" in blocks[0].text
 
 
 def test_focus_applied_once_across_prose(monkeypatch):
