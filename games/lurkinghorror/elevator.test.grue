@@ -136,6 +136,18 @@
     (assert (prop? @cs-elevator-room stopped true))
     (assert (not-queued? elevator-moves))))         ; one-shot chain settled, idle
 
+; Regression for gnusto-f95a.2: waiting on a floor used to be silent while the
+; car scanned past. It now narrates the pass (which also explains why a DOWN
+; call sends the car UP first).
+(test-group "elevator in-transit feedback"
+  :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true) (set @cs-elevator-room :direction 1))
+
+  (test "passing the player's floor is narrated, not silent"
+    (do @down-button :push)
+    (wait)   ; car begins to move
+    (wait)   ; car reaches floor 2, passing the player while heading up
+    (assert (context? description "The elevator passes your floor, still heading up."))))
+
 (test-group "elevator full ride"
   :setup ((move @player @cs-2nd) (set @cs-elevator-room :floor 1) (set @cs-elevator-room :stopped true))
 

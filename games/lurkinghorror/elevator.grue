@@ -532,6 +532,9 @@
       ; Elevator is moving
       (true
         (let ((?new-loc (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)))
+              ; True direction of THIS move, captured before pick-direction's
+              ; lookahead can flip :direction for the next leg.
+              (?moving-up (> (:direction @cs-elevator-room) 0))
               (?new-go-buttons (list-set (:go-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false))
               (?new-up-buttons (list-set (:up-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false))
               (?new-down-buttons (list-set (:down-buttons @cs-elevator-room) (+ (:floor @cs-elevator-room) (:direction @cs-elevator-room)) false)))
@@ -558,9 +561,16 @@
                                                          "You no longer hear the elevator moving."
                                                          nil))))))))
             (true
-              ; Keep moving
-              `((set @cs-elevator-room :floor ,?new-loc)
-                (queue elevator-moves 1)
-                (success :context ((description ,(if (here? @cs-elevator-room)
-                                                     (str "The elevator continues to move " (if (> (:direction @cs-elevator-room) 0) "upward" "downward") ".")
-                                                     nil)))))))))))
+              ; Keep moving. Give the player feedback even when they're waiting
+              ; on a floor -- especially when the car passes their floor without
+              ; stopping (the elevator scan can send it the "wrong" way first).
+              (let ((?player-floor (prop (loc @player) floor)))
+                `((set @cs-elevator-room :floor ,?new-loc)
+                  (queue elevator-moves 1)
+                  (success :context ((description ,(cond
+                                                     ((here? @cs-elevator-room)
+                                                       (str "The elevator continues to move " (if ?moving-up "upward" "downward") "."))
+                                                     ((nil? ?player-floor) nil)
+                                                     ((= ?new-loc ?player-floor)
+                                                       (str "The elevator passes your floor, still heading " (if ?moving-up "up" "down") "."))
+                                                     (true "You hear the elevator moving.")))))))))))))
