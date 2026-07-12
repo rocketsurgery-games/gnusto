@@ -4,7 +4,7 @@ title: Never emit a fully empty turn (idle wait shows nothing)
 type: bug
 priority: 2
 created: '2026-07-11T14:37:31Z'
-updated: '2026-07-11T14:37:31Z'
+updated: '2026-07-12T00:33:37Z'
 labels:
 - harness
 ---

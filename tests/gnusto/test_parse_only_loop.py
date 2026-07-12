@@ -137,3 +137,38 @@ def test_max_iterations_bounds_the_loop():
     sess.process_input("wait around", max_iterations=3)
     assert executed == ["wait", "wait", "wait"]
     assert sess._llm_calls["n"] == 3
+
+
+def _wait_resp(needs_player_input=False):
+    # A real wait TOOL (not a do_action verb'd "wait").
+    return AgentResponse(
+        actions=[ActionRequest(tool="wait", verb="wait")],
+        blocks=[],
+        needs_player_input=needs_player_input,
+    )
+
+
+def test_idle_wait_is_single_turn_with_beat():
+    # A wait the engine says nothing about stops after ONE turn (gnusto-0bf7.2)
+    # even though the model left needs_player_input=False, and still emits a
+    # minimal beat so the turn isn't blank (gnusto-0bf7.1).
+    sess, executed = _make_session([_wait_resp() for _ in range(5)])
+    emitted: list = []
+    sess.process_input("wait", on_blocks=lambda bs: emitted.extend(bs))
+    assert len(executed) == 1  # did not auto-repeat
+    assert sess._llm_calls["n"] == 1
+    assert any(getattr(b, "text", "") == "Time passes." for b in emitted)
+
+
+def test_wait_with_engine_text_keeps_going():
+    # Waiting FOR a condition keeps going: those turns DO produce engine text
+    # (e.g. elevator in-transit narration), so the idle guard never trips and
+    # the loop runs until the model yields (gnusto-0bf7.2).
+    sess, executed = _make_session(
+        [_wait_resp(), _wait_resp(), _wait_resp(needs_player_input=True)]
+    )
+    sess._blocks_from_results = lambda raw, action: [
+        types.SimpleNamespace(text="The elevator descends.")
+    ]
+    sess.process_input("wait for the elevator")
+    assert len(executed) == 3

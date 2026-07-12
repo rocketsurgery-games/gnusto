@@ -244,7 +244,9 @@ out — then set `needs_player_input: true`.
 ## Action types
 - **do_action**: Interact with an object. `target` = entity ID, `verb` = one of the object's behaviors, optional `args`.
 - **move**: Navigate. `direction` must match an available exit.
-- **wait**: Pass time.
+- **wait**: Pass a single turn. A bare "wait" is ONE turn — do not auto-repeat it.
+  Only keep waiting turn after turn when the player asked to wait FOR/UNTIL some
+  condition (e.g. "wait for the elevator"), and stop as soon as it happens.
 
 ## Rules
 1. Match the player's intent to available objects/behaviors and exits. Entity IDs start with @ (resolve "the hacker" → @hacker).
@@ -748,6 +750,12 @@ class GameSession:
             # instead of plowing through speculative later actions (gnusto-ntr.31).
             action_results: list[str] = []
             blocked_key: tuple[Any, ...] | None = None
+            # An idle wait (a wait turn the engine had nothing to say about) still
+            # shows a beat (gnusto-0bf7.1) and ends the turn rather than letting the
+            # model auto-repeat it into many turns (gnusto-0bf7.2). Waiting FOR a
+            # condition keeps going because those turns DO produce engine text
+            # (e.g. elevator in-transit narration), so this only stops dead waits.
+            idle_wait = False
             for action in response.actions:
                 action_summary = self._summarize_action(action)
                 raw_results, formatted_result = self._execute_action(action)
@@ -768,6 +776,14 @@ class GameSession:
                 # In parsing-only mode, generate content blocks from engine results
                 if self.parsing_only:
                     engine_blocks = self._blocks_from_results(raw_results, action)
+                    # A wait the engine said nothing about is a dead/idle wait: show
+                    # a minimal beat so the player and history aren't blank, and mark
+                    # the turn so the loop stops here (gnusto-0bf7.1 / .2).
+                    if action.tool == "wait" and not engine_blocks:
+                        from . import render
+
+                        engine_blocks = [render.Narrate(text="Time passes.")]
+                        idle_wait = True
                     if engine_blocks:
                         all_render_blocks.extend(engine_blocks)
                         if on_blocks:
@@ -788,6 +804,9 @@ class GameSession:
             if self.parsing_only:
                 # The model signalled the request is done / needs the player.
                 if response.needs_player_input:
+                    break
+                # An idle wait is a single turn; don't auto-repeat it (gnusto-0bf7.2).
+                if idle_wait:
                     break
                 # Guard: if the same action blocks a second time, stop banging on it.
                 if blocked_key is not None:

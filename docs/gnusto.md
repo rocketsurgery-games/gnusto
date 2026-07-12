@@ -152,6 +152,23 @@ gnusto games/lurkinghorror/ --llm-narration # LLM writes the prose
 (A future per-beat `:generate` hook will let a game request LLM-generated text for specific
 moments while keeping everything else engine-authored.)
 
+### The parse-only action loop
+
+In the default (engine-authoritative) mode the agent runs a text-free sense-act loop: it emits
+an action, the engine executes it and feeds the results + updated state back, and the model
+chooses the next action toward the player's request. The loop is bounded so it can neither
+plow ahead speculatively nor run away:
+
+- **Short-circuit on block/error** — a speculative batch stops at the first `blocked`/`error`
+  result, so the model re-plans from the real post-block state.
+- **Repeated-block guard** — if the same action blocks twice, the loop stops rather than
+  banging on it.
+- **Idle wait = a single turn** — a bare `wait` the engine has nothing to say about advances
+  exactly one turn and emits a minimal `Time passes.` beat (so the turn is never blank). Only
+  waiting *for/until* a condition keeps repeating, because those turns produce real engine text
+  (e.g. elevator in-transit narration); the loop ends as soon as a wait stops making progress.
+- **`max_iterations`** — a hard cap on LLM calls per request as a final backstop.
+
 ## Narrative Generation
 
 The agent's primary job is to **interpret Grue output faithfully** while **stitching it together coherently**. The game's Grue code provides the narrative soul -- room descriptions, action results, character dialogue -- and the agent provides the glue that makes it flow naturally.

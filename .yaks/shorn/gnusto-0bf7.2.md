@@ -4,7 +4,7 @@ title: Bare 'wait' over-expands into many turns
 type: task
 priority: 3
 created: '2026-07-11T14:37:34Z'
-updated: '2026-07-11T14:37:34Z'
+updated: '2026-07-12T00:33:37Z'
 labels:
 - harness
 ---
