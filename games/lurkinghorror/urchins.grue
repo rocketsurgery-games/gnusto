@@ -192,7 +192,7 @@
 (object @urchin
   :location @aero-lobby  ; Starts in aero lobby
   :description "urchin"
-  :properties (:person true :searchable true :open true :container true)
+  :properties (:person true :searchable true :open true :container true :rmung false)
   :behaviors (
     :describe (fn ()
       (success :context

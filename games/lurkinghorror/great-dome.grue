@@ -290,7 +290,7 @@
 (object @note
   :location @secret-hole
   :description "piece of paper"
-  :properties (:takeable true :readable true)
+  :properties (:takeable true :readable true :rmung false)
   :behaviors (
     :examine (fn ()
       (redirect :action (do ?self :read)))

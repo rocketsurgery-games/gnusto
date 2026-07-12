@@ -33,7 +33,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-2
   :description "Wet Tunnel"
@@ -48,7 +48,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-3
   :description "Wet Tunnel"
@@ -63,7 +63,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-4
   :description "Wet Tunnel"
@@ -79,7 +79,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-5
   :description "Wet Tunnel"
@@ -95,7 +95,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-6
   :description "Wet Tunnel"
@@ -110,7 +110,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-7
   :description "Wet Tunnel"
@@ -126,7 +126,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-8
   :description "Wet Tunnel"
@@ -140,7 +140,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-9
   :description "Wet Tunnel"
@@ -155,7 +155,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-10
   :description "Wet Tunnel"
@@ -169,7 +169,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 (room @lair-11
   :description "Wet Tunnel"
@@ -183,7 +183,7 @@
   :behaviors (
     :describe (fn () (lair-describe))
     :on-exit (fn (?to)
-      '((set @mummified-hand :last-pointed-room nil) (set ?self :touched false) (success)))))
+      '((set @mummified-hand :last-pointed-room nil) (success)))))
 
 ; Shared description function for lair maze rooms
 (defn lair-describe ()
@@ -626,7 +626,7 @@
 (object @input-cable
   :location @input-socket
   :description "coaxial cable"
-  :properties (:nodesc true)
+  :properties (:nodesc true :rmung false)
   :behaviors (
     :examine (fn ()
       `((focus @input-cable
