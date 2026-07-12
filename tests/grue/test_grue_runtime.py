@@ -95,6 +95,29 @@ class TestSimpleMovement:
         assert result.outcome == "blocked"
         # Reason codes deprecated
 
+    def test_blocked_message_exit(self):
+        """A message-only :blocked exit refuses movement with its message."""
+        source = """
+        (world :player PLAYER)
+        (room LOBBY :description "A lobby"
+          :exits ((north :to HALLWAY)
+                  (west :blocked "You would need a machete to go further west.")))
+        (room HALLWAY :description "A hallway")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        result = runtime.do("_movement", "go", "west")
+        assert result.outcome == "blocked"
+        assert runtime.get_player_location() == "LOBBY"
+        ctx = dict(result.context)
+        assert ctx["message"] == "You would need a machete to go further west."
+
+        # A message-only blocked exit is not a traversable exit.
+        assert "west" not in runtime.get_exits()
+        assert "north" in runtime.get_exits()
+
 
 class TestBehaviorExecution:
     """Test behavior execution."""

@@ -95,7 +95,8 @@ When the text is built from bindings or `(str ...)`, use quasiquote/unquote:
 
 ```grue
 (room @foo :description "Name" :ldesc "Long desc..."
-  :exits ((north :to @bar :via @door))
+  :exits ((north :to @bar :via @door)
+          (west :blocked "Storm-tossed trees block your way."))  ; ZIL string exit
   :behaviors (:on-enter (fn (?from) ...) :before-action (fn (?verb ?target) ...)))
 
 (object @thing :location @foo :description "thing"
@@ -163,6 +164,13 @@ compares (`(= x 0)`, `(> x 0)`) or `(empty? x)` / `(nil? x)` when you mean them.
   `(IN GLOBAL-OBJECTS)`, don't start in a room. Give them `:location nil` and
   reveal via effects (`(move @x @dest)`), or — for scenery visible from many
   rooms (walls, forest, water) — a room `:visible` entry. See `zil-flags.md`.
+- **String/`SORRY` exits → `:blocked`.** ZIL rooms constantly use message-only
+  exits — a direction whose only effect is a refusal message, with no room
+  behind it: `(WEST "You would need a machete to go further west.")`,
+  `(NORTH SORRY "...")`. Map these to a first-class blocked exit
+  `(west :blocked "...")` (mutually exclusive with `:to`) — *not* a synthesized
+  barrier object. Reserve a `:via` barrier object for boundaries the player can
+  actually examine or manipulate (doors, boarded windows). See `docs/grue.md`.
 - **Physical parts vs conceptual contents.** `NDESCBIT` objects inside a
   container are usually *part of* it (a PC's mouse/help-key), not transient
   contents. Don't `(first (contents ?self))` blindly — check the specific

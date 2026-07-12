@@ -65,9 +65,10 @@ class GrueExit:
     """An exit from a room."""
 
     direction: str
-    to: str
+    to: str | None = None  # Destination room (None for a message-only blocked exit)
     via: str | None = None  # Door/boundary object
     when: SExpr | None = None  # Optional condition
+    blocked: str | None = None  # Message-only blocked exit (ZIL string/SORRY exit)
 
 
 @dataclass
@@ -526,6 +527,23 @@ def parse_exits(expr: SExpr) -> list[GrueExit]:
 
         direction = expect_symbol(item[0], "exit direction")
         kwargs = parse_kwargs(list(item.items[1:]))
+
+        # A message-only blocked exit (ZIL string/SORRY exit) carries a message
+        # and no destination; :blocked and :to are mutually exclusive.
+        if "blocked" in kwargs:
+            if "to" in kwargs:
+                raise FormParseError(
+                    f"Exit {direction} cannot have both :to and :blocked"
+                )
+            exit = GrueExit(
+                direction=direction,
+                to=None,
+                via=expect_symbol(kwargs["via"], "exit via") if "via" in kwargs else None,
+                when=kwargs.get("when"),
+                blocked=expect_string(kwargs["blocked"], "exit blocked message"),
+            )
+            exits.append(exit)
+            continue
 
         if "to" not in kwargs:
             raise FormParseError(f"Exit {direction} missing :to destination")

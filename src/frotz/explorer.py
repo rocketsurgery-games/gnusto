@@ -1171,6 +1171,8 @@ class StateExplorer:
         if player_room and player_room in self.world.rooms:
             room_def = self.world.rooms[player_room]
             for exit_info in room_def.exits:
+                if exit_info.to is None:
+                    continue  # Message-only blocked exit: not traversable
                 actions.append(Action(
                     target=exit_info.to,  # Destination room, not source
                     verb="go",

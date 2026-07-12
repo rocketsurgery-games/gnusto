@@ -69,6 +69,30 @@ class TestBasicParsing:
         assert out_exit.to == "STREET"
         assert out_exit.via == "FRONT-DOOR"
 
+    def test_blocked_message_exit(self):
+        """Parse a message-only :blocked exit (ZIL string/SORRY exit)."""
+        source = """
+        (room LOBBY
+          :exits ((north :to HALLWAY)
+                  (west :blocked "You would need a machete to go further west.")))
+        """
+        world = parse_grue(source)
+
+        west_exit = next(e for e in world.rooms["LOBBY"].exits if e.direction == "west")
+        assert west_exit.to is None
+        assert west_exit.via is None
+        assert west_exit.blocked == "You would need a machete to go further west."
+
+    def test_exit_to_and_blocked_conflict(self):
+        """:to and :blocked are mutually exclusive."""
+        source = """
+        (room LOBBY
+          :exits ((west :to HALLWAY :blocked "nope")))
+        """
+        with pytest.raises(Exception) as exc:
+            parse_grue(source)
+        assert "both :to and :blocked" in str(exc.value)
+
     def test_simple_object(self):
         """Parse a simple object."""
         source = """

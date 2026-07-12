@@ -35,14 +35,15 @@ patterns that show up in both are near-universal and belong in the shared
   scans the narrate/focus/say output stream. `context?` is an *exact* match (no
   substring). Worth an explicit line in the `grue-testing` skill.
 
-## Open language-design question (raised with user)
+## Language improvements made
 
-- **Message-only exits.** ZIL rooms very frequently use string-exits like
-  `(EAST "The rank undergrowth prevents eastward movement.")` — a blocked
-  direction whose only effect is a custom message, with *no* associated object.
-  Zork's forest/mountain/house rooms are full of these. Grue currently has no
-  first-class form; you must synthesize an invisible `:via` barrier object per
-  message. That's heavy boilerplate when there's no real object behind it.
-  Proposed: a first-class blocked-exit form, e.g.
-  `(east :blocked "The ... prevents eastward movement.")` (ZIL's `SORRY`/string
-  exit). Pending user decision before the forest slice.
+- **Message-only exits → `:blocked` (gnusto-fa93.2).** ZIL rooms very frequently
+  use string-exits like `(EAST "The rank undergrowth prevents eastward
+  movement.")` — a blocked direction whose only effect is a custom message, with
+  *no* associated object. Zork's forest/mountain/house rooms are full of these.
+  Added a first-class `(direction :blocked "message")` exit form (mutually
+  exclusive with `:to`): parses into `GrueExit.blocked`, `_do_go` returns
+  `(blocked :message ...)`, the direction is omitted from the traversable exits
+  map, and frotz's explorer skips it. Documented in `docs/grue.md` and the
+  `translate-zil` skill. Reserve `:via` barrier objects for boundaries the
+  player can actually examine/manipulate (doors, boarded windows).

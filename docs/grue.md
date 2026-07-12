@@ -250,12 +250,33 @@ Rooms are objects with exits. The player's location is always a room.
 ```
 
 **Exit structure:**
-- `:to` - destination room (required)
+- `:to` - destination room (required, unless `:blocked` is given)
 - `:via` - object that mediates passage (optional)
 - `:when` - condition for availability (optional, for simple cases)
+- `:blocked` - a message-only blocked exit (optional; mutually exclusive with `:to`)
 
 When `:via` is specified, the referenced object's `through` behavior is consulted.
 Most exits have no `:via` and allow free passage.
+
+**Message-only blocked exits (`:blocked`):** A direction whose only effect is to
+refuse movement with a custom message, with no destination and no object behind
+it. This is the Grue form of ZIL's ubiquitous string/`SORRY` exits
+(`(WEST "You would need a machete to go further west.")`). Traversing it returns
+`(blocked :message "...")`; the direction is *not* listed as a traversable exit
+and frotz's explorer skips it.
+
+```scheme
+(room @forest-1
+  :description "Forest"
+  :exits ((east :to @path)
+          (west :blocked "You would need a machete to go further west.")
+          (up :blocked "There is no tree here suitable for climbing.")))
+```
+
+Prefer `:blocked` when there is no real scenery object to attach the refusal to.
+When the boundary *is* a thing the player examines or manipulates (a door, a
+boarded window), model it as a `:via` barrier object instead so the same object
+carries both the `through` refusal and its `:examine`/`:open` behaviors.
 
 **Doors and boundaries:** A door (or other boundary object) is typically referenced
 by exits in exactly two rooms - one on each side. The door's `:location` is cosmetic

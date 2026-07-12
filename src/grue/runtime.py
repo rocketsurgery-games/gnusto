@@ -504,16 +504,24 @@ class GrueRuntime:
     def get_exit(self, actor: str, direction: str) -> tuple[str, str | None] | None:
         """Get exit info for direction from actor's room. Returns (destination, via) or None."""
         actor_loc = self.get_object_location(actor)
-        return self._get_exit_from_room(actor_loc, direction)
+        res = self._get_exit_from_room(actor_loc, direction)
+        return (res[0], res[1]) if res else None
 
-    def _get_exit_from_room(self, room_name: str | None, direction: str) -> tuple[str, str | None] | None:
-        """Get exit info for direction from a specific room. Returns (destination, via) or None."""
+    def _get_exit_from_room(
+        self, room_name: str | None, direction: str
+    ) -> tuple[str | None, str | None, str | None] | None:
+        """Get exit info for direction from a specific room.
+
+        Returns (destination, via, blocked_message) or None. For a message-only
+        blocked exit (ZIL string/SORRY exit) destination is None and
+        blocked_message carries the refusal text.
+        """
         room = self.world.rooms.get(room_name) if room_name else None
         if not room:
             return None
         for exit_def in room.exits:
             if exit_def.direction == direction:
-                return (exit_def.to, exit_def.via)
+                return (exit_def.to, exit_def.via, exit_def.blocked)
         return None
 
     def set_object_property(self, obj: str, prop: str, value: Any) -> None:
@@ -869,7 +877,8 @@ class GrueRuntime:
         room = self.world.rooms.get(self.get_player_room())  # Use room, not immediate location
         if not room:
             return {}
-        return {exit.direction: exit.to for exit in room.exits}
+        # Message-only blocked exits (no destination) aren't traversable exits.
+        return {exit.direction: exit.to for exit in room.exits if exit.to}
 
     def _resolve_symbol(self, sym: Symbol) -> str:
         """Resolve a symbol, looking up ?-prefixed names in bindings."""
@@ -1389,7 +1398,16 @@ class GrueRuntime:
                 context=[("direction", direction)]
             )
 
-        dest, via = exit_info
+        dest, via, blocked_msg = exit_info
+
+        # Message-only blocked exit (ZIL string/SORRY exit): refuse with the
+        # authored message and no destination.
+        if dest is None and blocked_msg is not None:
+            return ActionResult(
+                outcome="blocked",
+                reason="no-exit",
+                context=[("direction", direction), ("message", blocked_msg)],
+            )
 
         # Check if exit has a :via door
         if via:
