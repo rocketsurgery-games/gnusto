@@ -265,6 +265,36 @@ class TestGameState:
 
         assert "Known references" not in context
 
+    def test_player_not_listed_as_vehicle_contents(self):
+        """Riding a vehicle must not surface the player as a visible object
+        (gnusto-f16b)."""
+        from grue import GrueRuntime, parse_grue
+        from gnusto.state import get_game_state
+
+        world = parse_grue(
+            """
+            (world :player PLAYER)
+            (room GARAGE :description "A garage" :properties (:lit true))
+            (object PLAYER :location CART :properties (:person true))
+            (object CART :location GARAGE
+              :properties (:vehicle true :container true :open true))
+            (object CRATE :location GARAGE :properties (:takeable true))
+            """
+        )
+        rt = GrueRuntime(world)
+        state = get_game_state(rt)
+
+        def ids(objs):
+            out = []
+            for o in objs:
+                out.append(o.id)
+                out.extend(ids(o.contents))
+            return out
+
+        shown = ids(state.visible_objects)
+        assert "PLAYER" not in shown
+        assert "CART" in shown
+
 
 class TestFormatBehavior:
     """Test behavior formatting helper."""

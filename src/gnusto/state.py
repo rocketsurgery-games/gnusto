@@ -273,6 +273,10 @@ def _get_object_info_with_contents(
     # is about room listings, not about whether the agent can see/interact with them
     contents = []
     for name, obj_state in runtime.state.objects.items():
+        # The player rides vehicles and stands in rooms; never list them as the
+        # "contents" of a container/vehicle (gnusto-f16b).
+        if name == runtime.player_name:
+            continue
         if obj_state.location == obj_name and runtime.is_visible(name):
             child_info = _get_object_info_with_contents(runtime, name, visible_set)
             contents.append(child_info)
