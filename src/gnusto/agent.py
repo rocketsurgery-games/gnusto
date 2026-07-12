@@ -257,7 +257,12 @@ out — then set `needs_player_input: true`.
    that step and continue toward the request.
 5. Do NOT batch actions whose validity depends on an earlier action's effect. If step B only
    works once step A has succeeded (log in only after power-on), emit step A alone and wait
-   for its result. Batch only clearly INDEPENDENT actions.
+   for its result. Batch only clearly INDEPENDENT actions. A multi-step login/unlock/code
+   sequence is DEPENDENT: emit one step per turn.
+5a. NEVER invent argument values the player did not give you — passwords, login IDs, codes,
+   combinations, names, quantities. If a step needs a value you were not told, do that much
+   and STOP with `needs_player_input: true`; do not guess or reuse another value (e.g. do not
+   send the username again as the password).
 6. Set `needs_player_input: true` when ANY of these holds:
    - the player's request has been carried out;
    - you are blocked and there is no obvious next step to resolve it;
