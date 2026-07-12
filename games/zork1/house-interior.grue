@@ -1,0 +1,272 @@
+; The White House interior — Kitchen, Attic, Living Room — plus the window,
+; the rug/trap-door mechanic, the trophy case, and the key portable items
+; (brass lantern, sword, knife, rope, sack/bottle/food).
+;
+; ZIL: 1dungeon.zil (KITCHEN, ATTIC, LIVING-ROOM rooms; KITCHEN-WINDOW,
+; KITCHEN-TABLE, SANDWICH-BAG, LUNCH, GARLIC, BOTTLE, WATER, TROPHY-CASE, RUG,
+; TRAP-DOOR, WOODEN-DOOR, LAMP, SWORD, ATTIC-TABLE, KNIFE, ROPE, CHIMNEY,
+; STAIRS); 1actions.zil (KITCHEN-FCN, KITCHEN-WINDOW-F, LIVING-ROOM-FCN,
+; RUG-FCN, TRAP-DOOR-FCN/TRAP-DOOR-EXIT, TROPHY-CASE-FCN, LANTERN, FRONT-DOOR-FCN
+; for the wooden door).
+;
+; Deferred (later slices): the lantern battery drain (I-LANTERN), sword glow
+; near enemies, treasure scoring on `put in trophy case`, the west wooden-door
+; opening after MAGIC-FLAG, and true darkness enforcement in the unlit attic.
+
+; === Rooms ===
+
+(room @kitchen
+  :description "Kitchen"
+  :ldesc "You are in the kitchen of the white house. A table seems to have been used recently for the
+  preparation of food. A passage leads to the west and a dark staircase can be seen leading upward. A
+  dark chimney leads down and to the east is a small window which is slightly ajar."
+  :rdesc "The kitchen of an abandoned white house: a wooden table littered with the remains of food preparation, a passage west, a dark staircase leading up, a sooty chimney, and a small window ajar to the east. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((west :to @living-room)
+     (up :to @attic)
+     (east :to @east-of-house :via @kitchen-window)
+     (out :to @east-of-house :via @kitchen-window)
+     (down :blocked "Only Santa Claus climbs down chimneys."))
+  :visible (@kitchen-window @chimney @stairs))
+
+(room @attic
+  :description "Attic"
+  :ldesc "This is the attic. The only exit is a stairway leading down."
+  :rdesc "A cramped, cluttered attic under a bare wooden roof, a single stairway leading down; deep shadow, only faint light. Empty of people."
+  ; No ONBIT in ZIL: the attic is dark. (Darkness/grue enforcement is a later slice.)
+  :properties (:lit false)
+  :exits
+    ((down :to @kitchen))
+  :visible (@stairs @attic-table))
+
+(room @living-room
+  :description "Living Room"
+  :ldesc "You are in the living room. There is a doorway to the east, a wooden door with strange gothic
+  lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the
+  center of the room."
+  :rdesc "The living room of a white house: a doorway east, a heavy wooden door carved with gothic lettering to the west, a glass trophy case on the wall, and a large oriental rug in the center of a wooden floor. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((east :to @kitchen)
+     (west :to @living-room :via @wooden-door)     ; nailed shut (MAGIC-FLAG later)
+     (down :to @cellar :via @trap-door))           ; @cellar: underground slice
+  :visible (@stairs))
+
+; === Scenery ===
+
+(object @chimney
+  :description "chimney"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @chimney "The chimney leads downward, and looks climbable.") (success)))))
+
+(object @stairs
+  :description "staircase"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @stairs "The staircase leads both up and down.") (success)))))
+
+; === Kitchen window ===
+; ZIL KITCHEN-WINDOW-F: openable, and the barrier for the Kitchen<->Behind House
+; passage (east/out from the kitchen, west/in from behind the house).
+
+(object @kitchen-window
+  :description "kitchen window"
+  :location nil
+  :properties (:nodesc true :door true :openable true)
+  :behaviors (
+    :open (fn ()
+      (cond
+        ((:open ?self) (blocked :message "The window is already open."))
+        (true
+          '((set ?self :open true)
+            (narrate "With great effort, you open the window far enough to allow entry.")
+            (success)))))
+    :close (fn ()
+      (cond
+        ((not (:open ?self)) (blocked :message "The window is already closed."))
+        (true
+          '((set ?self :open false)
+            (narrate "The window closes (more easily than it opened).")
+            (success)))))
+    :examine (fn ()
+      (cond
+        ((:open ?self) '((focus ?self "The window is open.") (success)))
+        (true '((focus ?self "The window is slightly ajar, but not enough to allow entry.") (success)))))
+    :through (fn ()
+      (cond
+        ((:open ?self) (success))
+        (true (blocked :message "The window is closed."))))))
+
+; === Kitchen table + its contents ===
+
+(object @kitchen-table
+  :description "kitchen table"
+  :location @kitchen
+  :properties (:nodesc true :container true :open true :searchable true :surface true))
+
+(object @sandwich-bag
+  :location @kitchen-table
+  :description "brown sack"
+  :properties (:takeable true :container true :openable true :searchable true :burnable true)
+  :behaviors (
+    :smell (fn () '((narrate "It smells of hot peppers.") (success)))))
+
+(object @lunch
+  :location @sandwich-bag
+  :description "lunch"
+  :properties (:takeable true :food true)
+  :behaviors (
+    :examine (fn () '((focus @lunch "It's a hot pepper sandwich.") (success)))))
+
+(object @garlic
+  :location @sandwich-bag
+  :description "clove of garlic"
+  :properties (:takeable true :food true))
+
+(object @bottle
+  :location @kitchen-table
+  :description "glass bottle"
+  :properties (:takeable true :container true :openable true :searchable true :transparent true))
+
+(object @water
+  :location @bottle
+  :description "quantity of water"
+  :properties (:takeable true :drinkable true))
+
+; === Living room fixtures ===
+
+(object @trophy-case
+  :location @living-room
+  :description "trophy case"
+  :properties (:container true :openable true :searchable true :transparent true)
+  :behaviors (
+    :take (fn ()
+      (blocked :message "The trophy case is securely fastened to the wall."))))
+
+; The oriental rug hides the trap door. ZIL RUG-FCN + RUG-MOVED global (here the
+; :moved property on the rug). Moving/pushing it reveals the (closed) trap door.
+(object @rug
+  :location @living-room
+  :description "carpet"
+  :properties (:nodesc true :moved false)
+  :behaviors (
+    :move (fn ()
+      (cond
+        ((:moved ?self)
+          (blocked :message "Having moved the carpet previously, you find it impossible to move it again."))
+        (true
+          '((set @rug :moved true)
+            (set @trap-door :invisible false)
+            (narrate "With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.")
+            (success)))))
+    :push (fn () (redirect :action (do @rug :move)))
+    :raise (fn ()
+      (cond
+        ((:moved ?self)
+          (blocked :message "The rug is too heavy to lift."))
+        (true
+          (blocked :message "The rug is too heavy to lift, but in trying to take it you have noticed an irregularity beneath it."))))
+    :take (fn ()
+      (blocked :message "The rug is extremely heavy and cannot be carried."))))
+
+; ZIL TRAP-DOOR: starts INVISIBLE (hidden under the rug) and closed. It is the
+; :via barrier for the Living Room -> Cellar descent (TRAP-DOOR-EXIT).
+(object @trap-door
+  :location @living-room
+  :description "trap door"
+  :properties (:nodesc true :door true :openable true :invisible true)
+  :behaviors (
+    :open (fn ()
+      (cond
+        ((:open ?self) (blocked :message "It's already open."))
+        (true
+          '((set ?self :open true)
+            (narrate "The door reluctantly opens to reveal a rickety staircase descending into darkness.")
+            (success)))))
+    :close (fn ()
+      (cond
+        ((not (:open ?self)) (blocked :message "It's already closed."))
+        (true
+          '((set ?self :open false)
+            (narrate "The door swings shut and closes.")
+            (success)))))
+    :raise (fn () (redirect :action (do @trap-door :open)))
+    :look-under (fn ()
+      (cond
+        ((:open ?self) '((narrate "You see a rickety staircase descending into darkness.") (success)))
+        (true '((narrate "It's closed.") (success)))))
+    :through (fn ()
+      (cond
+        ((not (:moved @rug)) (blocked :message "You can't go that way."))
+        ((not (:open ?self)) (blocked :message "The trap door is closed."))
+        (true (success))))))
+
+; The nailed-shut wooden door to the west (ZIL WOODEN-DOOR, action FRONT-DOOR-FCN).
+; Opens onto the Strange Passage only after MAGIC-FLAG (temple slice).
+(object @wooden-door
+  :location @living-room
+  :description "wooden door"
+  :properties (:nodesc true :door true :transparent true :readable true)
+  :behaviors (
+    :read (fn ()
+      '((narrate "The engravings translate to \"This space intentionally left blank.\"") (success)))
+    :examine (fn () (redirect :action (do @wooden-door :read)))
+    :open (fn () (blocked :message "The door cannot be opened."))
+    :through (fn () (blocked :message "The door is nailed shut."))))
+
+; The brass lantern — the primary light source (ZIL LAMP, action LANTERN).
+; Battery drain (I-LANTERN) deferred to the darkness slice.
+(object @lamp
+  :location @living-room
+  :description "brass lantern"
+  :properties (:takeable true :lightable true)
+  :behaviors (
+    :turn-on (fn ()
+      (cond
+        ((:lit ?self) (blocked :message "It is already on."))
+        (true '((set ?self :lit true) (narrate "The brass lantern is now on.") (success)))))
+    :turn-off (fn ()
+      (cond
+        ((not (:lit ?self)) (blocked :message "It is already off."))
+        (true '((set ?self :lit false) (narrate "The brass lantern is now off.") (success)))))
+    :examine (fn ()
+      (cond
+        ((:lit ?self) '((focus ?self "The lamp is on.") (success)))
+        (true '((focus ?self "The lamp is turned off.") (success)))))))
+
+(object @sword
+  :location @living-room
+  :description "sword"
+  :properties (:takeable true :weapon true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @sword "It's an elvish sword of great antiquity.") (success)))))
+
+; === Attic ===
+
+(object @attic-table
+  :description "table"
+  :location @attic
+  :properties (:nodesc true :container true :open true :searchable true :surface true))
+
+(object @knife
+  :location @attic-table
+  :description "nasty knife"
+  :properties (:takeable true :weapon true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @knife "It's a nasty-looking knife.") (success)))))
+
+(object @rope
+  :location @attic
+  :description "rope"
+  :properties (:takeable true)
+  :behaviors (
+    :examine (fn ()
+      '((focus @rope "It's a large coil of rope.") (success)))))

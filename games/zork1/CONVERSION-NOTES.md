@@ -24,6 +24,27 @@ patterns that show up in both are near-universal and belong in the shared
   the "blocked exit" and "examinable scenery" collapse into one object with no
   waste.
 
+## Slice 2 (house interior) observations
+
+- **Two flavors of conditional exit.** ZIL's `(DIR TO ROOM IF FLAG IS OPEN)`
+  (window, trap door) maps to a `:via` barrier object whose `:through` gates on
+  state; ZIL's `(DIR TO ROOM IF FLAG ELSE "msg")` (nailed door, chimney) also
+  becomes a `:via` barrier `:through` returning `(blocked :message ...)` on the
+  else branch. Only *unconditional* message exits use the new `:blocked` form.
+  The barrier's `:through` cleanly reproduces ZIL PER-exits like
+  `TRAP-DOOR-EXIT` (rug-not-moved → "You can't go that way"; closed → "The trap
+  door is closed"; open → pass).
+- **Reveal-by-uncovering** (rug hides trap door) = a `:moved` flag on the rug +
+  `(set @trap-door :invisible false)`; the trap door starts `:invisible true`.
+  Cross-object writes are fine as long as the *target* declares the property.
+- **Darkness is not enforced by the engine yet.** The attic has no ONBIT (it's
+  dark), and the brass lantern is the canonical light source, but nothing in the
+  runtime blocks seeing/acting in an unlit room or introduces the grue. This is
+  the next major cross-cutting mechanic (Zork's whole underground depends on it)
+  and almost certainly needs engine support — to be designed with the user
+  before the underground slice. For now unlit rooms are marked `:lit false`
+  faithfully but behave as lit.
+
 ## Friction / tooling observations
 
 - **Test DSL vs REPL `go` syntax diverge.** Tests use `(go :direction east)`;

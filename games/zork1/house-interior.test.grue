@@ -1,0 +1,166 @@
+; Tests for the house interior slice.
+
+; === Kitchen window + entering the house ===
+
+(test-group "kitchen window"
+  :setup ((move @player @east-of-house) (set @kitchen-window :open false))
+
+  (test "window starts closed; cannot enter"
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (loc? @player @east-of-house)))
+
+  (test "can open the window"
+    (do @kitchen-window :open)
+    (assert (outcome? success))
+    (assert (:open @kitchen-window)))
+
+  (test "can enter the kitchen through the open window"
+    :setup ((move @player @east-of-house) (set @kitchen-window :open true))
+    (go :direction west)
+    (assert (loc? @player @kitchen)))
+
+  (test "can climb back out through the open window"
+    :setup ((move @player @kitchen) (set @kitchen-window :open true))
+    (go :direction east)
+    (assert (loc? @player @east-of-house)))
+)
+
+; === Interior navigation ===
+
+(test-group "kitchen navigation"
+  :setup ((move @player @kitchen))
+
+  (test "west to living room"
+    (go :direction west)
+    (assert (loc? @player @living-room)))
+
+  (test "up to attic"
+    (go :direction up)
+    (assert (loc? @player @attic)))
+
+  (test "down the chimney is refused"
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "Only Santa Claus climbs down chimneys."))
+    (assert (loc? @player @kitchen)))
+)
+
+(test-group "attic navigation"
+  :setup ((move @player @attic))
+
+  (test "down to kitchen"
+    (go :direction down)
+    (assert (loc? @player @kitchen)))
+)
+
+(test-group "living room navigation"
+  :setup ((move @player @living-room))
+
+  (test "east to kitchen"
+    (go :direction east)
+    (assert (loc? @player @kitchen)))
+
+  (test "west is nailed shut"
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (context? message "The door is nailed shut."))
+    (assert (loc? @player @living-room)))
+)
+
+; === Rug + trap door ===
+
+(test-group "rug and trap door"
+  :setup ((move @player @living-room) (set @rug :moved false) (set @trap-door :invisible true) (set @trap-door :open false))
+
+  (test "moving the rug reveals the trap door"
+    (do @rug :move)
+    (assert (outcome? success))
+    (assert (prop? @rug moved true))
+    (assert (no-flag? @trap-door invisible)))
+
+  (test "cannot move the rug twice"
+    :setup ((move @player @living-room) (set @rug :moved true))
+    (do @rug :move)
+    (assert (outcome? blocked))
+    (assert (context? message "Having moved the carpet previously, you find it impossible to move it again.")))
+
+  (test "down is refused while the rug still covers the trap door"
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't go that way.")))
+
+  (test "down is refused while the trap door is closed"
+    :setup ((move @player @living-room) (set @rug :moved true) (set @trap-door :invisible false) (set @trap-door :open false))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "The trap door is closed.")))
+
+  (test "the trap door opens onto the staircase"
+    :setup ((move @player @living-room) (set @rug :moved true) (set @trap-door :invisible false) (set @trap-door :open false))
+    (do @trap-door :open)
+    (assert (outcome? success))
+    (assert (:open @trap-door)))
+)
+
+; === Portable items ===
+
+(test-group "items"
+  :setup ((move @player @living-room))
+
+  (test "take the brass lantern"
+    (do @lamp :take)
+    (assert (outcome? success))
+    (assert (held? @lamp)))
+
+  (test "the lantern turns on and off"
+    :setup ((move @lamp @player) (set @lamp :lit false))
+    (do @lamp :turn-on)
+    (assert (outcome? success))
+    (assert (:lit @lamp))
+    (do @lamp :turn-off)
+    (assert (outcome? success))
+    (assert (no-flag? @lamp lit)))
+
+  (test "take the sword"
+    (do @sword :take)
+    (assert (outcome? success))
+    (assert (held? @sword)))
+
+  (test "the trophy case is fastened to the wall"
+    (do @trophy-case :take)
+    (assert (outcome? blocked))
+    (assert (context? message "The trophy case is securely fastened to the wall.")))
+
+  (test "read the gothic wooden door"
+    (do @wooden-door :read)
+    (assert (outcome? success))
+    (assert (output? "This space intentionally left blank")))
+)
+
+(test-group "kitchen items"
+  :setup ((move @player @kitchen))
+
+  (test "open the sack and take the lunch"
+    :setup ((move @player @kitchen) (set @sandwich-bag :open true))
+    (do @lunch :take)
+    (assert (outcome? success))
+    (assert (held? @lunch)))
+
+  (test "the bottle holds water"
+    (assert (in? @water @bottle)))
+)
+
+(test-group "attic items"
+  :setup ((move @player @attic))
+
+  (test "take the nasty knife"
+    (do @knife :take)
+    (assert (outcome? success))
+    (assert (held? @knife)))
+
+  (test "take the rope"
+    (do @rope :take)
+    (assert (outcome? success))
+    (assert (held? @rope)))
+)

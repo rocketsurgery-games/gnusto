@@ -64,9 +64,10 @@
      (south :to @south-of-house)
      (sw :to @south-of-house)
      (nw :to @north-of-house)
-     (east :to @clearing))            ; forest ring — later slice
-     ; west/in -> @kitchen via @kitchen-window: house-interior slice
-  :visible (@white-house @forest))
+     (east :to @clearing)             ; forest ring — later slice
+     (west :to @kitchen :via @kitchen-window)
+     (in :to @kitchen :via @kitchen-window))
+  :visible (@white-house @forest @kitchen-window))
 
 ; === Scenery (ZIL LOCAL-GLOBALS / GLOBAL-OBJECTS) ===
 ; No physical location; surfaced in the rooms that reference them via :visible.
