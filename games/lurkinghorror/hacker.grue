@@ -15,6 +15,10 @@
     :help-stage 0
     :food-hint 0
     :comp-cnt 0
+    ; Set during the endgame hacker-returns sequence (lair.grue): the hacker
+    ; is briefly absorbed by the mass (:invisible) and mangled (:rmung).
+    :invisible false
+    :rmung false
   )
 
   (def hacker-desc "The hacker sits comfortably on an office chair facing a terminal table,
