@@ -27,7 +27,7 @@ from .llm import (
     LLMConfig,
     content_block_data_to_render,
 )
-from .render import ContentBlock, build_scene_context
+from .render import ContentBlock, build_room_block, build_scene_context
 from .state import GameState, ObjectInfo, get_game_state
 
 # Examine-style verbs: in parse-only mode, one of these on an entity that has
@@ -231,7 +231,7 @@ any narrative, description, or dialogue — the game engine produces all text ou
 Respond with JSON only:
 ```json
 {
-  "actions": [{"tool": "do_action|move|wait", "target": "@entity-id", "verb": "action-verb", "args": ["@arg"], "direction": "dir"}],
+  "actions": [{"tool": "do_action|move|wait|look", "target": "@entity-id", "verb": "action-verb", "args": ["@arg"], "direction": "dir"}],
   "needs_player_input": false
 }
 ```
@@ -251,6 +251,8 @@ out — then set `needs_player_input: true`.
 - **wait**: Pass a single turn. A bare "wait" is ONE turn — do not auto-repeat it.
   Only keep waiting turn after turn when the player asked to wait FOR/UNTIL some
   condition (e.g. "wait for the elevator"), and stop as soon as it happens.
+- **look**: Re-describe the CURRENT room (for "look"/"look around"). A free,
+  single action — use this tool rather than examining the room as an object.
 
 ## Rules
 1. Match the player's intent to available objects/behaviors and exits. Entity IDs start with @ (resolve "the hacker" → @hacker).
@@ -765,9 +767,18 @@ class GameSession:
             # condition keeps going because those turns DO produce engine text
             # (e.g. elevator in-transit narration), so this only stops dead waits.
             idle_wait = False
+            # "look" re-describes the current room (a free action). We also treat
+            # examine/look aimed at the CURRENT ROOM as a look, since the model
+            # habitually targets the room entity, which isn't a takeable object
+            # and would otherwise fail not-here (gnusto-6fe0).
+            did_look = False
             for action in response.actions:
-                action_summary = self._summarize_action(action)
-                raw_results, formatted_result = self._execute_action(action)
+                is_look = self._is_look_action(action)
+                action_summary = "look" if is_look else self._summarize_action(action)
+                if is_look:
+                    raw_results, formatted_result = [], "You look around."
+                else:
+                    raw_results, formatted_result = self._execute_action(action)
 
                 action_results.append(formatted_result)
                 all_results.append(formatted_result)
@@ -784,6 +795,18 @@ class GameSession:
 
                 # In parsing-only mode, generate content blocks from engine results
                 if self.parsing_only:
+                    if is_look:
+                        # Emit the current room as ground truth, then end the turn.
+                        engine_blocks = [
+                            build_room_block(
+                                self.get_state(), self.runtime, self.game_dir
+                            )
+                        ]
+                        did_look = True
+                        if on_blocks:
+                            on_blocks(engine_blocks)
+                        all_render_blocks.extend(engine_blocks)
+                        continue
                     engine_blocks = self._blocks_from_results(raw_results, action)
                     # A wait the engine said nothing about is a dead/idle wait: show
                     # a minimal beat so the player and history aren't blank, and mark
@@ -815,7 +838,8 @@ class GameSession:
                 if response.needs_player_input:
                     break
                 # An idle wait is a single turn; don't auto-repeat it (gnusto-0bf7.2).
-                if idle_wait:
+                # A look is a free, self-contained action — end the turn too.
+                if idle_wait or did_look:
                     break
                 # Guard: if the same action blocks a second time, stop banging on it.
                 if blocked_key is not None:
@@ -945,6 +969,28 @@ class GameSession:
 
         return final_response_text, all_results
 
+    def _is_look_action(self, action: ActionRequest) -> bool:
+        """Whether an action is a "look" (re-describe the current room).
+
+        True for the dedicated look tool, or an examine/look verb aimed at the
+        current room (or with no target). The model habitually targets the room
+        entity, which isn't a takeable object and would otherwise fail not-here
+        (gnusto-6fe0).
+        """
+        if action.tool == "look":
+            return True
+        if action.tool == "do_action" and (action.verb or "").lower() in (
+            "look",
+            "look-at",
+            "lookat",
+            "look-around",
+            "examine",
+            "x",
+        ):
+            target = action.target
+            return not target or target == self.get_state().room
+        return False
+
     def _execute_action(self, action: ActionRequest) -> tuple[list[Any], str]:
         """Execute a single action and return (raw_results, formatted_string)."""
         if action.tool == "do_action":
@@ -957,6 +1003,10 @@ class GameSession:
             return self._move(action.direction or "")
         elif action.tool == "wait":
             return self._wait()
+        elif action.tool == "look":
+            # A free action (no turn / no events); the room block is emitted by
+            # the caller. This just supplies LLM-facing text (gnusto-6fe0).
+            return ([], "You look around.")
         elif action.tool == "recall":
             return ([], self.knowledge.recall(action.target or ""))
         elif action.tool == "map":

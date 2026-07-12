@@ -70,7 +70,7 @@ class LLMConfig:
 class ActionRequest:
     """A game action or knowledge query to execute."""
 
-    tool: Literal["do_action", "move", "wait", "recall", "map", "history", "search"]
+    tool: Literal["do_action", "move", "wait", "look", "recall", "map", "history", "search"]
     target: str | None = (
         None  # For do_action (entity ID), recall/history/search (scope/keyword)
     )
