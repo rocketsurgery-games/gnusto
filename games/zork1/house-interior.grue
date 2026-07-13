@@ -282,7 +282,26 @@
 (object @rope
   :location @attic
   :description "rope"
-  :properties (:takeable true)
+  ; :tied is set when the rope is fastened to the dome railing (ZIL DOME-FLAG),
+  ; enabling the descent from the Dome Room to the Torch Room (see temple.grue).
+  :properties (:takeable true :tied false)
   :behaviors (
     :examine (fn ()
-      '((focus @rope "It's a large coil of rope.") (success)))))
+      '((focus @rope "It's a large coil of rope.") (success)))
+    :tie (fn (?to)
+      (cond
+        ((not (= (loc @player) @dome-room))
+          (blocked :message "You can't tie the rope to that."))
+        ((not (= ?to @railing))
+          (blocked :message "You can't tie the rope to that."))
+        ((:tied @rope)
+          (blocked :message "The rope is already tied to it."))
+        (true
+          '((set @rope :tied true)
+            (narrate "The rope drops over the side and comes within ten feet of the floor.")
+            (success)))))
+    :untie (fn ()
+      (cond
+        ((:tied @rope)
+          '((set @rope :tied false) (narrate "The rope is now untied.") (success)))
+        (true (blocked :message "It is not tied to anything."))))))

@@ -1,0 +1,152 @@
+; The Dome, the Temple, and the Egyptian Room.
+;
+; From the Round Room (SE) the Engravings Cave leads to the Dome Room. Tie the
+; attic rope to the dome railing and climb down into the Torch Room (a one-way
+; drop — you can't climb back up the rope), which holds the flaming ivory torch
+; (a treasure that is also a permanent light source). South lies the Temple and
+; the Altar; east/down is the Egyptian Room with the gold coffin (which holds the
+; sceptre used later on the rainbow).
+;
+; ZIL: 1dungeon.zil (ENGRAVINGS-CAVE, DOME-ROOM, TORCH-ROOM, NORTH-TEMPLE,
+; SOUTH-TEMPLE, EGYPT-ROOM; RAILING, PEDESTAL, TORCH, COFFIN, SCEPTRE, ALTAR,
+; PRAYER); 1actions.zil (DOME-ROOM-FCN, ROPE-FUNCTION, SOUTH-TEMPLE-FCN).
+;
+; Deferred: the altar `pray` teleport to the forest (needs the forest slice); the
+; Altar's down-hole to Hades + the bell/book/candle exorcism (Hades slice).
+
+; === Rooms ===
+
+(room @engravings-cave
+  :description "Engravings Cave"
+  :ldesc "You have entered a low cave with passages leading northwest and east."
+  :rdesc "A low rough-hewn cave, ancient engravings covering the walls, passages leading northwest and east; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((nw :to @round-room)
+     (east :to @dome-room)))
+
+(room @dome-room
+  :description "Dome Room"
+  :ldesc "You are at the periphery of a large dome, which forms the ceiling of another room below you.
+  Protecting you from a precipitous drop is a wooden railing which circles the dome."
+  :rdesc "A ledge around the rim of a great domed cavern, a wooden safety railing circling a sheer drop into the dim room far below; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((west :to @engravings-cave)
+     (down :to @torch-room :via @railing))   ; only with the rope tied
+  :visible (@railing))
+
+(room @torch-room
+  :description "Torch Room"
+  :ldesc "This is a large room with a prominent doorway leading to a down staircase. Above you is a large
+  dome painted with scenes depicting the underground world. In the center of the room sits a white marble
+  pedestal."
+  :rdesc "A domed chamber whose ceiling is painted with scenes of the underground world, a white marble pedestal at its center, a doorway to a descending staircase; its own light. Empty of people."
+  :properties (:lit true)   ; the torch (and painted dome) keep it lit
+  :exits
+    ((up :blocked "You cannot reach the rope.")
+     (south :to @north-temple)
+     (down :to @north-temple))
+  :visible (@pedestal))
+
+(room @north-temple
+  :description "Temple"
+  :ldesc "This is the north end of a large temple. On the east wall is an ancient inscription, probably a
+  prayer in a long-forgotten language. Below the prayer is a staircase leading down. The west wall is
+  solid granite. The exit to the north end of the room is through huge marble pillars."
+  :rdesc "The north end of a vast stone temple, huge marble pillars framing the north exit, an ancient prayer inscribed on the east wall above a descending stair; its own solemn light. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((down :to @egypt-room)
+     (east :to @egypt-room)
+     (north :to @torch-room)
+     (out :to @torch-room)
+     (up :to @torch-room)
+     (south :to @south-temple))
+  :visible (@prayer))
+
+(room @south-temple
+  :description "Altar"
+  :ldesc "This is the south end of a large temple. In front of you is what appears to be an altar. In one
+  corner is a small hole in the floor which leads into darkness. You probably could not get back up it."
+  :rdesc "The south end of a great temple, a low stone altar before you and a small dark hole in the floor in one corner; its own light. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((north :to @north-temple)
+     ; The hole descends to Hades — needs the prayer/coffin-cure (Hades slice).
+     (down :blocked "You haven't a prayer of getting down there."))
+  :visible (@altar))
+
+(room @egypt-room
+  :description "Egyptian Room"
+  :ldesc "This is a room which looks like an Egyptian tomb. There is an ascending staircase to the west."
+  :rdesc "A cramped chamber like an Egyptian tomb, hieroglyphs on the walls, an ascending staircase to the west; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((west :to @north-temple)
+     (up :to @north-temple))
+  :visible (@coffin))
+
+; === The dome descent ===
+
+; The railing is both what you tie the rope to and the barrier for the drop.
+(object @railing
+  :location @dome-room
+  :description "wooden railing"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @railing "It's a sturdy wooden railing circling the dome.") (success)))
+    :through (fn ()
+      (cond
+        ((:tied @rope) (success))
+        (true (blocked :message "You cannot go down without fracturing many bones."))))))
+
+(object @pedestal
+  :location @torch-room
+  :description "white marble pedestal"
+  :properties (:nodesc true :container true :open true :searchable true :surface true))
+
+; === Treasures ===
+
+; The flaming ivory torch: a treasure that is also a permanent light source
+; (ZIL FLAMEBIT ONBIT LIGHTBIT — always lit).
+(object @torch
+  :location @pedestal
+  :description "torch"
+  :properties (:takeable true :treasure true :lightable true :lit true :flame true :value 14 :tvalue 6)
+  :behaviors (
+    :examine (fn () '((focus @torch "It's a flaming torch, made of ivory. It burns with a clear, steady light.") (success)))))
+
+(object @coffin
+  :location @egypt-room
+  :description "gold coffin"
+  :ldesc "The solid-gold coffin used for the burial of Ramses II is here."
+  :properties (:takeable true :treasure true :container true :searchable true :open true :value 10 :tvalue 15)
+  :behaviors (
+    :examine (fn () '((focus @coffin "It's the solid-gold coffin used for the burial of Ramses II. It is extremely heavy.") (success)))))
+
+(object @sceptre
+  :location @coffin
+  :description "sceptre"
+  :properties (:takeable true :treasure true :value 4 :tvalue 6)
+  :behaviors (
+    :examine (fn () '((focus @sceptre "It's an ornamented sceptre, tapering to a sharp point.") (success)))))
+
+; === Scenery ===
+
+(object @prayer
+  :location @north-temple
+  :description "prayer"
+  :properties (:nodesc true :readable true)
+  :behaviors (
+    :examine (fn () (redirect :action (do @prayer :read)))
+    :read (fn ()
+      '((narrate "The prayer is inscribed in an ancient script, barely legible. It seems to be an exhortation to \"pray\" in this temple.")
+        (success)))))
+
+(object @altar
+  :location @south-temple
+  :description "altar"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @altar "It's a large stone altar, worn smooth by ages of use.") (success)))))

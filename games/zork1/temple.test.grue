@@ -1,0 +1,110 @@
+; Tests for the Dome / Temple / Egypt slice.
+; The cave/dome/egypt rooms are dark; the torch room and temple are lit.
+
+; === Reaching the dome ===
+
+(test-group "engravings cave to the dome"
+  :setup ((move @player @round-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "round room SE reaches the engravings cave"
+    (go :direction se)
+    (assert (loc? @player @engravings-cave)))
+
+  (test "the engravings cave leads east to the dome"
+    :setup ((move @player @engravings-cave) (move @lamp @player) (set @lamp :lit true))
+    (go :direction east)
+    (assert (loc? @player @dome-room)))
+)
+
+; === The rope descent ===
+
+(test-group "the dome descent"
+  :setup ((move @player @dome-room) (move @rope @player) (set @rope :tied false)
+          (move @lamp @player) (set @lamp :lit true))
+
+  (test "you can't climb down before tying the rope"
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "You cannot go down without fracturing many bones.")))
+
+  (test "tying the rope to the railing drops it over the side"
+    (do @rope :tie @railing)
+    (assert (outcome? success))
+    (assert (prop? @rope tied true))
+    (assert (output? "comes within ten feet of the floor")))
+
+  (test "with the rope tied you descend to the torch room"
+    :setup ((move @player @dome-room) (move @rope @player) (set @rope :tied true)
+            (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (loc? @player @torch-room)))
+
+  (test "you can't tie the rope anywhere but the railing"
+    :setup ((move @player @dome-room) (move @rope @player) (set @rope :tied false)
+            (move @lamp @player) (set @lamp :lit true))
+    (do @rope :tie @pedestal)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't tie the rope to that.")))
+
+  (test "untie the rope"
+    :setup ((move @player @dome-room) (move @rope @player) (set @rope :tied true)
+            (move @lamp @player) (set @lamp :lit true))
+    (do @rope :untie)
+    (assert (outcome? success))
+    (assert (prop? @rope tied false)))
+)
+
+(test-group "the torch room"
+  :setup ((move @player @torch-room))
+
+  (test "you can't climb back up the rope"
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "You cannot reach the rope.")))
+
+  (test "take the flaming torch (a light source)"
+    (do @torch :take)
+    (assert (outcome? success))
+    (assert (held? @torch))
+    (assert (:lit @torch)))
+)
+
+; === Temple + Egypt ===
+
+(test-group "temple navigation"
+  :setup ((move @player @north-temple))
+
+  (test "north temple south to the altar"
+    (go :direction south)
+    (assert (loc? @player @south-temple)))
+
+  (test "north temple east to the egyptian room"
+    (go :direction east)
+    (assert (loc? @player @egypt-room)))
+
+  (test "torch room down to the temple"
+    :setup ((move @player @torch-room))
+    (go :direction down)
+    (assert (loc? @player @north-temple)))
+
+  (test "the altar hole is impassable for now"
+    :setup ((move @player @south-temple))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "You haven't a prayer of getting down there.")))
+)
+
+(test-group "the coffin and sceptre"
+  :setup ((move @player @egypt-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "take the gold coffin"
+    (do @coffin :take)
+    (assert (outcome? success))
+    (assert (held? @coffin)))
+
+  (test "the sceptre is inside the coffin"
+    (assert (in? @sceptre @coffin))
+    (do @sceptre :take)
+    (assert (outcome? success))
+    (assert (held? @sceptre)))
+)

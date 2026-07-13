@@ -95,6 +95,23 @@ patterns that show up in both are near-universal and belong in the shared
   group setup had already armed the player. Fix: keep shared state minimal at the
   group level and put mutually-exclusive setup on the individual tests.
 
+## Slice 8 (temple / dome / Egypt) observations
+
+- **Rope/dome descent** models ZIL DOME-FLAG as `:tied` on the attic rope: tie it
+  to the dome railing (the railing is both the tie-target and the `:via` barrier
+  for the drop), then climb down one-way into the Torch Room (`up` is blocked —
+  "You cannot reach the rope").
+- **A second light source.** The flaming torch is a treasure that is also a
+  permanent light (`:lightable :lit true`, always on). REPL-confirmed it lights
+  the dark Egyptian Room with the lantern switched off — validating that `lit?`
+  works with any carried source, not just the lamp.
+- **Treasures banked:** torch (14/6), gold coffin (10/15, heavy, holds the
+  sceptre), sceptre (4/6, for the rainbow later).
+- **Deferred:** the altar `pray` teleport (needs the forest); the altar's
+  down-hole to Hades + the bell/book/candle exorcism (Hades slice); the
+  sceptre->rainbow (river slice). `frotz map`: `@engravings-cave` resolved;
+  frontier now `@atlantis-room`/`@dam-base`/`@tiny-cave`/forest+surface.
+
 ## Engine fixes made mid-slice
 
 - **Room `:on-enter` `(narrate …)` output was dropped from the `go` result.**
