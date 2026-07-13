@@ -1,0 +1,262 @@
+; The Frigid River (part 1): the boat, the river run, and the two beach
+; treasures. The rainbow / pot of gold / canyon climb to the surface are the
+; next slice (fa93.16); this slice ends at the Shore / Aragain Falls.
+;
+; The boat puzzle: the inflatable boat lies deflated at the Dam Base; inflate it
+; with the air pump (from Reservoir North), board it (sharp objects would
+; puncture it), and launch onto the river. Drift downstream (`go down`), grabbing
+; the buoy (which holds the emerald) and landing at the beaches. On the Sandy
+; Beach the shovel digs up the scarab in the Sandy Cave.
+;
+; ZIL: 1dungeon.zil (DAM-BASE, RIVER-1..5, WHITE-CLIFFS-N/S, SHORE, SANDY-BEACH,
+; SANDY-CAVE, DAMP-CAVE; INFLATABLE/INFLATED-BOAT, PUMP, BUOY, EMERALD, SHOVEL,
+; SCARAB, SAND); 1actions.zil (IBOAT-FUNCTION, RBOAT-FUNCTION, SAND-FUNCTION).
+;
+; DETERMINISTIC CONVERSION: the river current (RBOAT-FUNCTION auto-drift each
+; turn) is dropped — you steer downstream with `go down`. The boat is one object
+; with an :inflated flag (ZIL swaps two objects). Sharp objects are refused at
+; boarding. The white-cliffs DEFLATE nuance is simplified (you reach them on
+; foot). Digging is a deterministic count (scarab at the 3rd dig, cave-in death
+; on the 4th).
+
+; === Dam Base + the river ===
+
+(room @dam-base
+  :description "Dam Base"
+  :ldesc "You are at the base of Flood Control Dam #3, which looms above you and to the north. The river
+  Frigid is flowing by here."
+  :rdesc "The foot of a massive concrete dam looming to the north, the cold Frigid River sliding past between sheer white cliffs; its own daylit glow. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((north :to @dam-room)
+     (up :to @dam-room)
+     (down :to @river-1 :via @river-launch))   ; launch onto the river (needs the boat)
+  :visible (@boat))
+
+(room @river-1
+  :description "Frigid River"
+  :ldesc "You are on the Frigid River in the vicinity of the Dam. The river flows quietly here. There is
+  a landing on the west shore."
+  :rdesc "A cold broad river gliding between white cliffs, a landing on the west shore, the dam receding upstream; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :blocked "You cannot go upstream due to strong currents.")
+     (west :to @dam-base)
+     (down :to @river-2)
+     (east :blocked "The White Cliffs prevent your landing here.")))
+
+(room @river-2
+  :description "Frigid River"
+  :ldesc "The river turns a corner here making it impossible to see the Dam. The White Cliffs loom on
+  the east bank and large rocks prevent landing on the west."
+  :rdesc "The river bending between towering white cliffs, jagged rocks along the west bank; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :blocked "You cannot go upstream due to strong currents.")
+     (down :to @river-3)))
+
+(room @river-3
+  :description "Frigid River"
+  :ldesc "The river descends here into a valley. There is a narrow beach on the west shore below the
+  cliffs. In the distance a faint rumbling can be heard."
+  :rdesc "The river descending into a valley, a narrow beach on the west shore, a faint roar of falls downstream; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :blocked "You cannot go upstream due to strong currents.")
+     (down :to @river-4)
+     (west :to @white-cliffs-north)
+     (land :to @white-cliffs-north)))
+
+(room @river-4
+  :description "Frigid River"
+  :ldesc "The river is running faster here and the sound ahead appears to be that of rushing water. On
+  the east shore is a sandy beach. A small area of beach can also be seen below the cliffs on the west
+  shore."
+  :rdesc "The river running fast, a sandy beach on the east shore and a strip of beach below the cliffs west, the roar of falls close ahead; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :blocked "You cannot go upstream due to strong currents.")
+     (down :to @river-5)
+     (west :to @white-cliffs-south)
+     (east :to @sandy-beach)))
+
+(room @river-5
+  :description "Frigid River"
+  :ldesc "The sound of rushing water is nearly unbearable here. On the east shore is a large landing
+  area."
+  :rdesc "The river near the brink of the falls, deafening white water, a large landing area on the east shore; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :blocked "You cannot go upstream due to strong currents.")
+     (east :to @shore)
+     (land :to @shore)))
+
+; === Shore + beaches ===
+
+(room @shore
+  :description "Shore"
+  :ldesc "You are on the east shore of the river. The water here seems somewhat treacherous. A path
+  travels from north to south here, the south end quickly turning around a sharp corner."
+  :rdesc "The treacherous east shore of the river, a path running north-south, the falls thundering just downstream to the south; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((north :to @sandy-beach)
+     (south :to @aragain-falls)))   ; the falls / rainbow — next slice
+
+(room @sandy-beach
+  :description "Sandy Beach"
+  :ldesc "You are on a large sandy beach on the east shore of the river, which is flowing quickly by. A
+  path runs beside the river to the south here, and a passage is partially buried in sand to the
+  northeast."
+  :rdesc "A wide sandy beach on the east shore, the river sliding past, a path south and a sand-choked passage northeast; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((ne :to @sandy-cave)
+     (south :to @shore))
+  :visible (@shovel))
+
+(room @sandy-cave
+  :description "Sandy Cave"
+  :ldesc "This is a sand-filled cave whose exit is to the southwest."
+  :rdesc "A cramped sand-filled cave, a low exit to the southwest, loose sand heaped across the floor; dim daylight from the beach. Empty of people."
+  :properties (:lit true)
+  :exits ((sw :to @sandy-beach))
+  :visible (@sand))
+
+(room @white-cliffs-north
+  :description "White Cliffs Beach"
+  :ldesc "You are on a narrow strip of beach which runs along the base of the White Cliffs. There is a
+  narrow path heading south along the Cliffs and a tight passage leading west into the cliffs themselves."
+  :rdesc "A narrow strip of beach at the foot of sheer white cliffs, a path south and a tight passage west into the rock; daylit. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((south :to @white-cliffs-south)
+     (west :to @damp-cave)))
+
+(room @white-cliffs-south
+  :description "White Cliffs Beach"
+  :ldesc "You are on a rocky, narrow strip of beach beside the Cliffs. A narrow path leads north along
+  the shore."
+  :rdesc "A rocky narrow strip of beach beside the white cliffs, a path leading north; daylit. Empty of people."
+  :properties (:lit true)
+  :exits ((north :to @white-cliffs-north)))
+
+(room @damp-cave
+  :description "Damp Cave"
+  :ldesc "This cave has exits to the west and east, and narrows to a crack toward the south. The earth
+  is particularly damp here."
+  :rdesc "A damp earthen cave, exits west and east, narrowing to a crack in the south wall; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((west :to @loud-room)
+     (east :to @white-cliffs-north)
+     (south :blocked "It is too narrow for most insects."))
+  :visible (@crack))
+
+; === The boat ===
+
+(object @boat
+  :location @dam-base
+  :description "boat"
+  ; One object with an :inflated flag (ZIL swaps INFLATABLE/INFLATED-BOAT). It's
+  ; a vehicle only once inflated.
+  :properties (:vehicle true :container true :open true :inflated false)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:inflated @boat) '((focus @boat "It's a magic plastic boat, inflated and seaworthy.") (success)))
+        (true '((focus @boat "It's a pile of plastic which appears to be a folded boat, with a valve for inflating it.") (success)))))
+    :inflate (fn (?with)
+      (cond
+        ((:inflated @boat) (blocked :message "The boat is already inflated."))
+        ((not (= ?with @pump)) (blocked :message "With that? Surely you jest!"))
+        (true
+          '((set @boat :inflated true)
+            (narrate "The boat inflates and appears seaworthy.")
+            (success)))))
+    :enter (fn ()
+      (cond
+        ((not (:inflated @boat)) (blocked :message "You can't board a boat that hasn't been inflated."))
+        ((some (fn (?o) (:weapon ?o false)) (contents @player))
+          (blocked :message "A sharp object in your possession would puncture the boat; better leave it behind."))
+        (true '((move @player @boat) (narrate "You are now in the magic boat.") (success)))))
+    :exit (fn ()
+      '((move @player (loc @boat)) (narrate "You are on your own feet again.") (success)))))
+
+; Launch barrier: you can only take to the river in the (boarded) boat.
+(object @river-launch
+  :description "river"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((= (loc @player) @boat) (success))
+        (true (blocked :message "You can't go into the river without a boat."))))))
+
+; The air pump (Reservoir North).
+(object @pump
+  :location @reservoir-north
+  :description "air pump"
+  :properties (:takeable true :tool true)
+  :behaviors (
+    :examine (fn () '((focus @pump "It's a small hand-held air pump.") (success)))))
+
+; === Treasures ===
+
+(object @buoy
+  :location @river-4
+  :description "red buoy"
+  :properties (:takeable true :container true :openable true :searchable true)
+  :behaviors (
+    :examine (fn () '((focus @buoy "It's a red buoy; it feels oddly heavy, as though something is inside it.") (success)))))
+
+(object @emerald
+  :location @buoy
+  :description "large emerald"
+  :properties (:takeable true :treasure true :value 5 :tvalue 10)
+  :behaviors (
+    :examine (fn () '((focus @emerald "It's a large, flawless emerald.") (success)))))
+
+(object @shovel
+  :location @sandy-beach
+  :description "shovel"
+  :properties (:takeable true :tool true)
+  :behaviors (
+    :examine (fn () '((focus @shovel "It's an ordinary digging shovel.") (success)))))
+
+(object @scarab
+  :location @sandy-cave
+  :description "beautiful jeweled scarab"
+  :properties (:takeable true :treasure true :invisible true :value 5 :tvalue 5)
+  :behaviors (
+    :examine (fn () '((focus @scarab "It's a beautiful jeweled scarab.") (success)))))
+
+; The sand in the Sandy Cave: dig with the shovel to uncover the scarab, but dig
+; once too often and the hole collapses on you (SAND-FUNCTION).
+(object @sand
+  :location @sandy-cave
+  :description "sand"
+  :properties (:nodesc true :dig-count 0)
+  :behaviors (
+    :examine (fn () '((focus @sand "It's just heaped sand.") (success)))
+    :dig (fn (?with)
+      (cond
+        ((not (= ?with @shovel))
+          (blocked :message "Digging with your hands is slow and ineffective."))
+        (true
+          (let ((?n (+ (:dig-count @sand) 1)))
+            (cond
+              ((>= ?n 4)
+                (blocked :reason death
+                         :context ((death true)
+                                   (description "The hole collapses, smothering you in sand."))))
+              ((= ?n 3)
+                `((set @sand :dig-count ,?n)
+                  (set @scarab :invisible false)
+                  (narrate "You can see a scarab here in the sand.")
+                  (success)))
+              (true
+                `((set @sand :dig-count ,?n)
+                  (narrate "You dig deeper into the sand, but find nothing yet.")
+                  (success))))))))))

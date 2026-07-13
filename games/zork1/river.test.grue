@@ -1,0 +1,97 @@
+; Tests for the Frigid River (part 1): the boat + beach treasures.
+
+; === The boat ===
+
+(test-group "the boat"
+  :setup ((move @player @dam-base) (set @boat :inflated false) (move @boat @dam-base))
+
+  (test "you can't launch onto the river without a boat"
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't go into the river without a boat.")))
+
+  (test "inflate the boat with the pump"
+    :setup ((move @player @dam-base) (set @boat :inflated false) (move @boat @dam-base) (move @pump @player))
+    (do @boat :inflate @pump)
+    (assert (outcome? success))
+    (assert (prop? @boat inflated true)))
+
+  (test "you can't inflate it with the wrong thing"
+    :setup ((move @player @dam-base) (set @boat :inflated false) (move @boat @dam-base))
+    (do @boat :inflate @shovel)
+    (assert (outcome? blocked)))
+
+  (test "a sharp object is refused at boarding"
+    :setup ((move @player @dam-base) (set @boat :inflated true) (move @boat @dam-base) (move @sword @player))
+    (do @boat :enter)
+    (assert (outcome? blocked))
+    (assert (context? message "A sharp object in your possession would puncture the boat; better leave it behind.")))
+
+  (test "board and launch onto the river"
+    :setup ((move @player @dam-base) (set @boat :inflated true) (move @boat @dam-base))
+    (do @boat :enter)
+    (assert (loc? @player @boat))
+    (go :direction down)
+    (assert (loc? @boat @river-1)))
+)
+
+(test-group "drifting downstream"
+  :setup ((set @boat :inflated true) (move @boat @river-1) (move @player @boat))
+
+  (test "downstream from river 1 to river 2"
+    (go :direction down)
+    (assert (loc? @boat @river-2)))
+
+  (test "you cannot paddle back upstream"
+    (go :direction up)
+    (assert (outcome? blocked))
+    (assert (context? message "You cannot go upstream due to strong currents.")))
+
+  (test "land the boat at the white cliffs"
+    :setup ((set @boat :inflated true) (move @boat @river-3) (move @player @boat))
+    (go :direction west)
+    (assert (loc? @boat @white-cliffs-north)))
+)
+
+; === The buoy / emerald ===
+
+(test-group "the buoy"
+  :setup ((move @player @river-4))
+
+  (test "take the buoy, open it, and get the emerald"
+    (do @buoy :take)
+    (assert (held? @buoy))
+    (do @buoy :open)
+    (assert (in? @emerald @buoy))
+    (do @emerald :take)
+    (assert (held? @emerald)))
+)
+
+; === Digging up the scarab ===
+
+(test-group "digging the sand"
+  :setup ((move @player @sandy-cave) (move @shovel @player) (set @sand :dig-count 0) (set @scarab :invisible true))
+
+  (test "the third dig uncovers the scarab"
+    (do @sand :dig @shovel)
+    (do @sand :dig @shovel)
+    (do @sand :dig @shovel)
+    (assert (no-flag? @scarab invisible))
+    (do @scarab :take)
+    (assert (held? @scarab)))
+
+  (test "digging once too often collapses the hole on you"
+    :setup ((move @player @sandy-cave) (move @shovel @player) (set @sand :dig-count 3))
+    (do @sand :dig @shovel)
+    (assert (prop? @player dead true)))
+)
+
+; === Damp cave (resolves the loud-room / white-cliffs frontier) ===
+
+(test-group "the damp cave"
+  :setup ((move @player @loud-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "loud room east reaches the damp cave"
+    (go :direction east)
+    (assert (loc? @player @damp-cave)))
+)

@@ -162,6 +162,22 @@ patterns that show up in both are near-universal and belong in the shared
   machine-room, the dumbwaiter basket, the empty-handed squeeze, and the diamond
   (which wants a light-in-open-container tweak to `lit?`).
 
+## Slice 12 (Frigid River pt 1 — boat) observations
+
+- **The boat** is a vehicle with an `:inflated` flag (ZIL swaps two objects; we
+  use one). Inflate with the pump, board (sharp `:weapon` objects are refused —
+  they'd puncture it), and launch via a `:via @river-launch` barrier that checks
+  you're in the boat. The engine's portable-vehicle movement (from the LH
+  forklift) carries the boat + you downstream on `go down` and ashore on a land
+  exit — no new engine work needed. ZIL's per-turn current auto-drift is dropped
+  (you steer with `go down`); noted.
+- Buoy→emerald (open the buoy) and the shovel→scarab dig (deterministic count:
+  scarab on the 3rd dig, fatal cave-in on the 4th) both convert cleanly.
+- `@damp-cave` added here resolves the loud-room and white-cliffs frontier.
+  `frotz map`: 94 rooms, frontier down to 6 (`@aragain-falls` + the five surface
+  rooms). Deferred to fa93.16: the rainbow (sceptre payoff), the pot of gold, and
+  the canyon climb that bridges up to the surface.
+
 ## Friction / tooling observations
 
 - **Test DSL vs REPL `go` syntax diverge.** Tests use `(go :direction east)`;
