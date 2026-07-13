@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T04:59:04Z'
+updated: '2026-07-13T05:02:10Z'
 labels:
 - conversion
 ---
@@ -40,3 +40,7 @@ Grue-death run (attic, no lamp): grue mechanic works (dark tick -> pitch-black w
 ---
 ▸ 2026-07-13T04:59:04Z
 Maze + cyclops run (LLM harness): kill troll (2 blows -> W passage opens) -> navigate the dark maze through 8 identical 'twisty little passages' rooms via explicit directions (W,S,E,up,SW,E,S,SE) -> Cyclops Room -> examine cyclops -> 'say Odysseus to the cyclops' correctly mapped to (do @cyclops :odysseus) -> he flees and knocks down the east wall. NO BUGS. Confirms: full combat completion, robust navigation through indistinguishable dark rooms, direction synonyms in play (go southwest->sw, southeast->se), maze loot surfacing, and NL->named-verb mapping for the magic word.
+
+---
+▸ 2026-07-13T05:02:10Z
+Save/restore + thief run: (1) /save then /load round-trips through the harness (tree perch restored w/ 3 turns history; take egg + go down continued cleanly). (2) A PROGRAMMATIC save (grue.save.save_game from a repl-built state) loads in the gnusto harness -- cheap deep-region checkpointing for testing. (3) Thief encounter from a loaded checkpoint: go up (past subdued cyclops) -> 'give the egg to the thief' -> (do @thief :give @egg) [correct two-object target/arg], egg deft-opened (canary intact) + engrossed -> 2 sword blows (engrossed -3: 5->2->dead) -> stiletto/bag disgorge -> take chalice. NO BUGS. Validated: harness save/restore, externally-built saves, :give two-object verb, engross combat modifier, egg-fix, NPC death payoff.
