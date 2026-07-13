@@ -709,8 +709,9 @@ class GrueRuntime:
             # Convert behavior result to ActionResult (same as behaviors)
             action_result = self._behavior_result_to_action_result(result, evaluator)
 
-            # Check for death in context
+            # Check for death / victory in context
             self._check_death_context(action_result)
+            self._check_victory_context(action_result)
 
             return self._rollback_if_error(snapshot, action_result)
         finally:
@@ -1155,8 +1156,9 @@ class GrueRuntime:
         # Not a redirect - return result with any accumulated redirects
         result.redirects = _redirects
 
-        # Check for death in context and set player:dead automatically
+        # Check for death / victory in context and record player:dead / :won
         self._check_death_context(result)
+        self._check_victory_context(result)
 
         return result
 
@@ -1753,6 +1755,24 @@ class GrueRuntime:
                 player = self.player_name
                 if player and player in self.state.objects:
                     self.state.objects[player].properties["dead"] = True
+                return
+
+    def _check_victory_context(self, result: ActionResult):
+        """Check if result context contains (victory true) and set player:won.
+
+        Mirrors _check_death_context: a game signals victory via a (victory
+        true) context (e.g. the Stone Barrow :on-enter) and the engine records
+        it as the player :won flag, so any front-end can detect the win and
+        present the ending without re-deriving the victory condition.
+        """
+        if not result.context:
+            return
+
+        for key, value in result.context:
+            if key == "victory" and value in (True, "True", "true"):
+                player = self.player_name
+                if player and player in self.state.objects:
+                    self.state.objects[player].properties["won"] = True
                 return
 
     def check_victory(self) -> bool:

@@ -156,6 +156,31 @@ persistent hazard from turn 1 with the world's `:start-events (evt …)`. ZIL's
 other environmental death timers (freezing, drowning, suffocation) convert to the
 same pattern.
 
+## Death, victory, and JIGS-UP (end-state handling)
+
+Signal an end-state from game code with a **result-context flag**; the engine
+records it on the player. A `(death true)` context sets `@player :dead`
+(`_check_death_context`); a `(victory true)` context sets `@player :won`
+(`_check_victory_context`). A hazard/death emits `(blocked :context ((death
+true) (description "…")))`; a win emits `(success :context ((victory true)))`
+(e.g. a sentinel end-room's `:on-enter`). Keep the declarative `(victory :when
+…)` world clause too — it's the analyzable mirror frotz reads.
+
+**We deliberately differ from the original on what happens next.** Infocom's
+`JIGS-UP` (`gverbs.zil`) *resurrects* the player: it prints the death text, then
+a deity voice, scatters the carried objects to random/aboveground spots, drops
+the player at a fixed/again-random location, and only ends for good after a
+death cap. Our conversions make **death — and victory — terminal**: the harness
+prints an out-of-world banner (`*** You have died ***` / `*** You have won ***`)
+and refuses further commands until `/reset`. No resurrection, item-scattering,
+score penalty, or death counter.
+
+Why: resurrection reintroduces exactly the nondeterminism (random re-placement)
+and hidden state (a death counter) we strip elsewhere to keep frotz's
+state-space analysis sound, and a clean terminal state is simpler for the LLM
+harness. If a game genuinely needs resurrection, model it explicitly and
+deterministically as game code — don't revive ZIL's RNG. (harness: gnusto-0bf7.9)
+
 ## Truthiness (Grue matches ZIL/Clojure)
 
 In ZIL/MDL only `<>` is false — `0`, strings, and objects are truthy, which is

@@ -51,6 +51,14 @@ def _make_session(responses, blocked_verbs=()):
     sess.turn_history = []
     sess.summaries = []
     sess.knowledge = types.SimpleNamespace(observe_turn=lambda **kw: None)
+    # A live (not-ended) game: the player carries no dead/won flag, so the
+    # end-state guard (gnusto-0bf7.9) reads clean and the loop runs normally.
+    sess.runtime = types.SimpleNamespace(
+        player_name="@player",
+        state=types.SimpleNamespace(
+            objects={"@player": types.SimpleNamespace(properties={})}
+        ),
+    )
     sess._maybe_summarize = lambda: None
     sess._build_messages = lambda state, ui: [{"role": "system", "content": "x"}]
     fake_state = types.SimpleNamespace(room="@room", to_context_string=lambda: "STATE")
@@ -80,6 +88,43 @@ def _make_session(responses, blocked_verbs=()):
     )
     sess._llm_calls = calls
     return sess, executed
+
+
+def _player_props(sess):
+    return sess.runtime.state.objects["@player"].properties
+
+
+def test_death_midturn_ends_the_game():
+    # A fatal event leaves the player dead; the loop must stop and present the
+    # game-over banner rather than letting a corpse keep acting (gnusto-0bf7.9).
+    sess, executed = _make_session([_resp(["wait"]), _resp(["look"])])
+    blocks = []
+
+    def deadly_exec(action):
+        executed.append(action.verb)
+        _player_props(sess)["dead"] = True  # simulate the grue's fatal event
+        r = _ok(action.verb)
+        return ([r], r.message)
+
+    sess._execute_action = deadly_exec
+    sess.process_input("wait", on_blocks=lambda bs: blocks.extend(bs))
+
+    assert executed == ["wait"]          # the fatal action ran, nothing after
+    assert sess._llm_calls["n"] == 1     # the loop did not continue
+    assert any("You have died" in getattr(b, "text", "") for b in blocks)
+
+
+def test_commands_refused_after_game_over():
+    # Once the game has ended (here: already won), further commands are refused
+    # without an LLM call or any action (gnusto-0bf7.9).
+    sess, executed = _make_session([_resp(["look"])])
+    _player_props(sess)["won"] = True
+    blocks = []
+    sess.process_input("look", on_blocks=lambda bs: blocks.extend(bs))
+
+    assert executed == []
+    assert sess._llm_calls["n"] == 0
+    assert any("You have won" in getattr(b, "text", "") for b in blocks)
 
 
 def test_short_circuit_stops_batch_at_first_block():

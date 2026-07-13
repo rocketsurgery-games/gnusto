@@ -699,6 +699,18 @@ class GameSession:
         Returns:
             Tuple of (final narrative, raw action results list)
         """
+        # If the game already ended (the player died or won on an earlier turn),
+        # refuse further play until /reset rather than letting a corpse keep
+        # acting or play continue past victory (gnusto-0bf7.9).
+        ended = self._end_state()
+        if ended:
+            from . import render
+
+            text = self._end_state_message(ended)
+            if on_blocks:
+                on_blocks([render.SystemMessage(text=text)])
+            return text, []
+
         # Get initial state and build base messages from history
         initial_state = self.get_state()
         initial_room = initial_state.room
@@ -778,6 +790,10 @@ class GameSession:
             # and would otherwise fail not-here (gnusto-6fe0).
             did_look = False
             for action in response.actions:
+                # A prior action (or its events) this batch ended the game; don't
+                # let a corpse keep acting through the rest of the batch.
+                if self._end_state():
+                    break
                 is_look = self._is_look_action(action)
                 action_summary = "look" if is_look else self._summarize_action(action)
                 if is_look:
@@ -836,6 +852,21 @@ class GameSession:
                     ):
                         blocked_key = self._action_key(action)
                         break
+
+            # End-state: the player died or won this turn (from the action or a
+            # fired event, e.g. the grue). The in-world ending text has already
+            # been emitted by the engine; add the out-of-world banner and stop
+            # the loop so play doesn't continue past the end (gnusto-0bf7.9).
+            ended = self._end_state()
+            if ended:
+                from . import render
+
+                banner = render.SystemMessage(text=self._end_state_message(ended))
+                all_render_blocks.append(banner)
+                all_narratives.append(self._end_state_message(ended))
+                if on_blocks:
+                    on_blocks([banner])
+                break
 
             # Parse-only: a text-free sense-act loop. Feed engine results + updated state
             # back and let the model choose the next action toward the player's request,
@@ -976,6 +1007,38 @@ class GameSession:
         self._maybe_summarize()
 
         return final_response_text, all_results
+
+    def _end_state(self) -> str | None:
+        """Return 'dead' or 'won' if the game has reached an end state, else None.
+
+        The runtime records these as player flags: @player :dead on any
+        (death true) outcome and :won on any (victory true) outcome (see
+        GrueRuntime._check_death_context / _check_victory_context). Reading the
+        flags keeps end-state detection in one place for every front-end
+        (gnusto-0bf7.9).
+        """
+        runtime = getattr(self, "runtime", None)
+        player = getattr(runtime, "player_name", None)
+        state = getattr(runtime, "state", None)
+        objects = getattr(state, "objects", None)
+        obj = objects.get(player) if (objects is not None and player) else None
+        props = getattr(obj, "properties", None) or {}
+        if props.get("won"):
+            return "won"
+        if props.get("dead"):
+            return "dead"
+        return None
+
+    def _end_state_message(self, end: str) -> str:
+        """The terminal banner for a finished game.
+
+        The in-world ending/death text is emitted by the game itself (the
+        room :on-enter narration, the grue's death description, etc.); this is
+        only the harness's out-of-world 'the game is over' marker.
+        """
+        if end == "won":
+            return "*** You have won ***\n\nThe game is over. Type /reset to play again."
+        return "*** You have died ***\n\nThe game is over. Type /reset to play again."
 
     def _wait_is_sustained(self, user_input: str) -> bool:
         """Whether the command asks to wait FOR/UNTIL a condition.

@@ -29,7 +29,11 @@
         (let ((?n (+ (:dark-turns @player) 1)))
           `((set @player :dark-turns ,?n) (success))))
 
-      ; In the dark past the grace: the grue strikes.
+      ; In the dark past the grace: the grue strikes. The (death true) context
+      ; sets @player :dead and the harness ends the game (banner + /reset).
+      ; NOTE: unlike ZIL's JIGS-UP, death is TERMINAL here -- no resurrection,
+      ; item-scattering, or death counter (deterministic-conversion policy; see
+      ; the translate-zil skill, "Death, victory, and JIGS-UP").
       (true
         (blocked :reason death
                  :context ((death true)
