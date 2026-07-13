@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T03:33:24Z'
+updated: '2026-07-13T03:39:47Z'
 labels:
 - conversion
 ---
@@ -26,3 +26,7 @@ Playthrough validated through the dam puzzle; harness solid modulo the above.
 ---
 ▸ 2026-07-13T03:33:24Z
 Deposit-loop playthrough (LLM harness): start -> Gallery painting (troll avoided via Cellar->S->East-of-Chasm->E->Gallery) -> drop sword -> chimney carry-limit climb to Kitchen -> Living Room -> open trophy case -> deposit painting ('Done.'). All correct. Surfaced a P1: 'look' collapsed to 'wait' because the 'look' tool was missing from AGENT_RESPONSE_SCHEMA's enum -- FIXED in gnusto-0bf7.7. Note (by design): deterministic conversion dropped the 350-pt score, so depositing gives no score feedback (endgame gate is all-treasures-deposited?).
+
+---
+▸ 2026-07-13T03:39:47Z
+Precondition-chaining probe (kitchen): agent correctly opened containers, but 'eat the lunch'/'drink the water' both mapped to 'take' -- no eat/drink verb existed. FIXED as gnusto-036d (default eat/drink in builtins.grue). Re-verified via harness: eat/drink now dispatch. Session tally of playthrough findings: gnusto-0bf7.5 (direction synonyms, fixed), gnusto-0bf7.7 (look->wait enum, fixed), gnusto-036d (eat/drink defaults, fixed), gnusto-0bf7.6 (parse-only narrative summarization leak, filed/deferred pending user).
