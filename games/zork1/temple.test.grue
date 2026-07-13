@@ -87,11 +87,10 @@
     (go :direction down)
     (assert (loc? @player @north-temple)))
 
-  (test "the altar hole is impassable for now"
-    :setup ((move @player @south-temple))
+  (test "the altar hole drops toward the cave (empty-handed)"
+    :setup ((move @player @south-temple) (move @lamp @player) (set @lamp :lit true))
     (go :direction down)
-    (assert (outcome? blocked))
-    (assert (context? message "You haven't a prayer of getting down there.")))
+    (assert (loc? @player @tiny-cave)))
 )
 
 (test-group "the coffin and sceptre"

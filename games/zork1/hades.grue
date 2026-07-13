@@ -1,0 +1,178 @@
+; Hades — the Entrance to Hades and the Land of the Living Dead.
+;
+; The altar's hole (South Temple) drops to the Tiny Cave and down to the
+; Entrance to Hades, where evil spirits bar the gate. The bell-book-candle
+; exorcism banishes them, opening the way to the Land of the Living Dead and the
+; crystal skull. The ritual items live in the temple (bell, book, candles) and
+; the dam lobby (matches, to light the candles).
+;
+; ZIL: 1dungeon.zil (TINY-CAVE, ENTRANCE-TO-HADES, LAND-OF-LIVING-DEAD; GHOSTS,
+; BELL, BOOK, CANDLES, MATCH, SKULL); 1actions.zil (LLD-ROOM, GHOSTS-F).
+;
+; DETERMINISTIC CONVERSION: ZIL's exorcism is a *timed* ritual (ring the bell ->
+; I-XB/I-XBH timers; light candles -> I-XC which can gutter out; read the book
+; before the tension breaks). We keep the three ritual steps but drop the timers
+; and RNG: ring the bell (paralyzes the wraiths), light the candles, then read
+; the book to banish them. Also: ZIL gates the altar hole on COFFIN-CURE (set by
+; praying); since the altar `pray`->forest teleport needs the forest slice, we
+; gate the hole directly on not carrying the coffin (its functional purpose).
+
+; === Rooms ===
+
+(room @tiny-cave
+  :description "Cave"
+  :ldesc "This is a tiny cave with entrances west and north, and a dark, forbidding staircase leading
+  down."
+  :rdesc "A cramped low cave, passages west and north and a dark forbidding staircase dropping away below; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @mirror-room-2)        ; coal-mine / mirror area — later slice
+     (west :to @winding-passage)       ; later slice
+     (down :to @entrance-to-hades)))
+
+(room @entrance-to-hades
+  :description "Entrance to Hades"
+  :ldesc "You are outside a large gateway, on which is inscribed \"Abandon every hope all ye who enter
+  here!\" The gate is open; through it you can see a desolation, with a pile of mangled bodies in one
+  corner. Thousands of voices, lamenting some hideous fate, can be heard."
+  :rdesc "A vast hellish gateway inscribed with a dire warning, a desolate red-lit waste beyond it heaped with mangled bodies; sulfurous gloom, its own lurid light. Empty of the living."
+  :properties (:lit true)   ; ENTRANCE-TO-HADES has ONBIT
+  :exits
+    ((up :to @tiny-cave)
+     (in :to @land-of-living-dead :via @ghosts)
+     (south :to @land-of-living-dead :via @ghosts))
+  :visible (@ghosts))
+
+(room @land-of-living-dead
+  :description "Land of the Dead"
+  :ldesc "You have entered the Land of the Living Dead. Thousands of lost souls can be heard weeping and
+  moaning. In the corner are stacked the remains of dozens of previous adventurers less fortunate than
+  yourself. A passage exits to the north."
+  :rdesc "A desolate cavern of the dead, drifts of skeletal remains stacked in the corners, a single passage north; a wan spectral light. Empty of the living."
+  :properties (:lit true)   ; LAND-OF-LIVING-DEAD has ONBIT
+  :exits
+    ((out :to @entrance-to-hades)
+     (north :to @entrance-to-hades))
+  :visible (@skull))
+
+; === The spirits + the exorcism ===
+; :paralyzed = the bell has been rung; :banished = the ritual is complete
+; (ZIL LLD-FLAG). The gate opens once banished.
+(object @ghosts
+  :location @entrance-to-hades
+  :description "evil spirits"
+  :properties (:person true :paralyzed false :banished false)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((:banished @ghosts) (success))
+        (true (blocked :message "Some invisible force prevents you from passing through the gate."))))
+    :examine (fn ()
+      (cond
+        ((:paralyzed @ghosts)
+          '((focus @ghosts "The spirits are frozen, an ancient terror on their ashen faces.") (success)))
+        (true
+          '((focus @ghosts "The spirits are lost souls, barring the way through the gate and jeering at you.") (success)))))
+    :tell (fn () '((narrate "The spirits jeer loudly and ignore you.") (success)))
+    :attack (fn (?weapon)
+      '((narrate "The spirits laugh at your puny gesture; you cannot hurt them.") (success)))
+    ; The hint verb (ZIL EXORCISE just says "perform the ceremony").
+    :exorcise (fn ()
+      (cond
+        ((:banished @ghosts) '((narrate "The spirits are already gone.") (success)))
+        ((and (held? @bell) (held? @book) (held? @candles))
+          '((narrate "You must perform the ceremony: ring the bell, light the candles, and read from the book.") (success)))
+        (true
+          (blocked :message "You aren't equipped for an exorcism."))))))
+
+; === Ritual items ===
+
+(object @bell
+  :location @north-temple
+  :description "brass bell"
+  :properties (:takeable true)
+  :behaviors (
+    :examine (fn () '((focus @bell "It's a small brass bell.") (success)))
+    :ring (fn ()
+      (cond
+        ((not (= (loc @player) @entrance-to-hades))
+          '((narrate "The bell makes a hollow, unremarkable sound.") (success)))
+        ((:banished @ghosts)
+          '((narrate "The bell rings hollowly.") (success)))
+        (true
+          '((set @ghosts :paralyzed true)
+            (narrate "The bell suddenly becomes red hot and falls ringing to the ground. The wraiths, as if paralyzed, stop their jeering and slowly turn to face you. On their ashen faces, the expression of a long-forgotten terror takes shape.")
+            (success)))))))
+
+(object @book
+  :location @south-temple
+  :description "black book"
+  :properties (:takeable true :readable true)
+  :behaviors (
+    :examine (fn () '((focus @book "It's a large black book, closed with a heavy iron clasp.") (success)))
+    :read (fn ()
+      (cond
+        ; The exorcism-completing read: at the gate, bell rung, candles lit.
+        ((and (= (loc @player) @entrance-to-hades)
+              (:paralyzed @ghosts)
+              (:lit @candles)
+              (not (:banished @ghosts)))
+          '((set @ghosts :banished true)
+            (move @ghosts nil)
+            (narrate "Each word of the prayer reverberates through the hall in a deafening confusion. As the last word fades, a voice, loud and commanding, speaks: \"Begone, fiends!\" A heart-stopping scream fills the cavern, and the spirits, sensing a greater power, flee through the walls.")
+            (success)))
+        (true
+          '((narrate "Commandment #12592: \"Oh ye who go about saying unto each: Hello sailor: Dost thou know the magnitude of thy sin before the gods?\"")
+            (success)))))))
+
+(object @candles
+  :location @south-temple
+  :description "pair of candles"
+  :properties (:takeable true :lightable true)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:lit @candles) '((focus @candles "The pair of candles are burning.") (success)))
+        (true '((focus @candles "There is a pair of candles here (unlit).") (success)))))
+    :light (fn ()
+      (cond
+        ((:lit @candles) (blocked :message "The candles are already lit."))
+        ((not (held? @matches))
+          (blocked :message "You have nothing to light them with."))
+        (true
+          '((set @candles :lit true) (narrate "The candles are now lit.") (success)))))
+    :turn-off (fn ()
+      (cond
+        ((:lit @candles) '((set @candles :lit false) (narrate "The candles are extinguished.") (success)))
+        (true (blocked :message "They aren't lit."))))))
+
+(object @matches
+  :location @dam-lobby
+  :description "matchbook"
+  :properties (:takeable true :readable true)
+  :behaviors (
+    :examine (fn () '((focus @matches "It's a book of matches from the Borphee Grill.") (success)))
+    :read (fn () '((narrate "\"Visit beautiful FCD#3.\" (Advertising blurb from the Frobozz Magic Match Company.)") (success)))))
+
+; === The crystal skull (treasure) ===
+
+(object @skull
+  :location @land-of-living-dead
+  :description "crystal skull"
+  :properties (:takeable true :treasure true :value 10 :tvalue 10)
+  :behaviors (
+    :examine (fn () '((focus @skull "It's a beautifully carved crystal skull, grinning at you rather nastily.") (success)))))
+
+; === The altar hole (South Temple -> Tiny Cave) ===
+; ZIL gates this on COFFIN-CURE (set by praying without the coffin). We gate it
+; directly on not carrying the coffin (the functional constraint).
+(object @altar-hole
+  :description "hole"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((held? @coffin)
+          (blocked :message "You haven't a prayer of getting the coffin down there."))
+        (true (success))))))

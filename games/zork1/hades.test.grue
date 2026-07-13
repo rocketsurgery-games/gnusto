@@ -1,0 +1,91 @@
+; Tests for the Hades / exorcism slice.
+; Entrance to Hades and the Land of the Dead are lit; the tiny cave is dark.
+
+; === The altar hole ===
+
+(test-group "the altar hole to the cave"
+  :setup ((move @player @south-temple))
+
+  (test "you can't take the coffin down the hole"
+    :setup ((move @player @south-temple) (move @coffin @player))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (context? message "You haven't a prayer of getting the coffin down there.")))
+
+  (test "without the coffin you drop into the cave"
+    :setup ((move @player @south-temple) (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (loc? @player @tiny-cave)))
+
+  (test "the cave descends to the entrance to Hades"
+    :setup ((move @player @tiny-cave) (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (loc? @player @entrance-to-hades)))
+)
+
+; === The spirits bar the gate ===
+
+(test-group "the barred gate"
+  :setup ((move @player @entrance-to-hades) (set @ghosts :banished false) (set @ghosts :paralyzed false)
+          (move @ghosts @entrance-to-hades))
+
+  (test "the spirits bar the way in"
+    (go :direction in)
+    (assert (outcome? blocked))
+    (assert (context? message "Some invisible force prevents you from passing through the gate.")))
+
+  (test "exorcise without the items fails"
+    (do @ghosts :exorcise)
+    (assert (outcome? blocked))
+    (assert (context? message "You aren't equipped for an exorcism.")))
+)
+
+; === The exorcism ritual ===
+
+(test-group "the exorcism"
+  :setup ((move @player @entrance-to-hades)
+          (set @ghosts :banished false) (set @ghosts :paralyzed false) (move @ghosts @entrance-to-hades)
+          (set @candles :lit false)
+          (move @bell @player) (move @book @player) (move @candles @player))
+
+  (test "candles won't light without matches"
+    :setup ((move @player @entrance-to-hades) (set @candles :lit false) (move @candles @player))
+    (do @candles :light)
+    (assert (outcome? blocked))
+    (assert (context? message "You have nothing to light them with.")))
+
+  (test "ringing the bell paralyzes the wraiths"
+    (do @bell :ring)
+    (assert (outcome? success))
+    (assert (prop? @ghosts paralyzed true))
+    (assert (output? "red hot")))
+
+  (test "reading the book too early does not banish them"
+    (do @book :read)
+    (assert (outcome? success))
+    (assert (prop? @ghosts banished false)))
+
+  (test "the full ritual banishes the spirits and opens the gate"
+    :setup ((move @player @entrance-to-hades)
+            (set @ghosts :banished false) (set @ghosts :paralyzed false) (move @ghosts @entrance-to-hades)
+            (set @candles :lit false)
+            (move @bell @player) (move @book @player) (move @candles @player) (move @matches @player))
+    (do @bell :ring)
+    (do @candles :light)
+    (assert (:lit @candles))
+    (do @book :read)
+    (assert (prop? @ghosts banished true))
+    (go :direction in)
+    (assert (loc? @player @land-of-living-dead)))
+)
+
+; === The skull ===
+
+(test-group "the crystal skull"
+  :setup ((move @player @land-of-living-dead))
+
+  (test "take the crystal skull"
+    (do @skull :take)
+    (assert (outcome? success))
+    (assert (held? @skull)))
+)

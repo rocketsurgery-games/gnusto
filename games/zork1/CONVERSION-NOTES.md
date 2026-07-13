@@ -123,6 +123,26 @@ patterns that show up in both are near-universal and belong in the shared
   nil)`), matching the LH convention. Candidate future ergonomic: optional /
   variadic behavior params so "attack" works with or without a named weapon.
 
+## Slice 9 (Hades / exorcism) observations
+
+- **Bell-book-candle exorcism** converted to a deterministic 3-step ritual (ring
+  the bell -> paralyze the wraiths; light the candles [needs matches]; read the
+  book -> banish), dropping ZIL's I-XB/I-XC timers and candle-guttering RNG. The
+  ghosts are a barrier object carrying the ritual state (`:paralyzed`,
+  `:banished` == LLD-FLAG). It's a nice multi-region fetch quest: bell/book/
+  candles from the temple, matches from the dam lobby.
+- **Altar hole** gated directly on *not carrying the coffin* (its functional
+  purpose); ZIL's pray->COFFIN-CURE and the pray->forest teleport are deferred
+  to the forest slice.
+- **Two test breakages, both instructive:** (1) the setup-merge gotcha bit again
+  — matches leaked from a group `:setup` into the "won't light without matches"
+  test (fix: keep exclusive items on the per-test setup). (2) Wiring this slice's
+  altar hole *invalidated* slice 8's "the hole is impassable for now" test — a
+  reminder that when a later slice fills a deferred `:blocked`/stub exit, its
+  earlier placeholder test must be updated. Both are cheap once you know to look.
+- Skull banked (10/10). `frotz map`: tiny-cave/entrance/LLD resolved; the
+  tiny-cave's north/west (mirror/coal-mine) join the frontier.
+
 ## Friction / tooling observations
 
 - **Test DSL vs REPL `go` syntax diverge.** Tests use `(go :direction east)`;

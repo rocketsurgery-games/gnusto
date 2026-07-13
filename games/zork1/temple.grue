@@ -73,9 +73,9 @@
   :properties (:lit true)
   :exits
     ((north :to @north-temple)
-     ; The hole descends to Hades — needs the prayer/coffin-cure (Hades slice).
-     (down :blocked "You haven't a prayer of getting down there."))
-  :visible (@altar))
+     ; The hole descends toward Hades; you can't fit down it with the coffin.
+     (down :to @tiny-cave :via @altar-hole))
+  :visible (@altar @altar-hole))
 
 (room @egypt-room
   :description "Egyptian Room"
