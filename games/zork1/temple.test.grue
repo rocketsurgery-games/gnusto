@@ -93,6 +93,28 @@
     (assert (loc? @player @tiny-cave)))
 )
 
+; The gold coffin can only leave the Temple by praying at the altar (the hole
+; refuses it and the rope is one-way). gnusto-163b.
+(test-group "praying at the altar"
+  :setup ((move @player @south-temple))
+
+  (test "the altar hole refuses the coffin"
+    :setup ((move @player @south-temple) (move @coffin @player)
+            (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (outcome? blocked))
+    (assert (loc? @player @south-temple))
+    (assert (context? message "You haven't a prayer of getting the coffin down there.")))
+
+  (test "praying whisks you (and the coffin) up to the forest"
+    :setup ((move @player @south-temple) (move @coffin @player))
+    (do @altar :pray)
+    (assert (outcome? success))
+    (assert (loc? @player @forest-1))
+    (assert (held? @coffin))          ; the coffin rode along
+    (assert (output? "deep in the woods")))
+)
+
 (test-group "the coffin and sceptre"
   :setup ((move @player @egypt-room) (move @lamp @player) (set @lamp :lit true))
 

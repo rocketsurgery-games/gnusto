@@ -14,8 +14,9 @@
 ; before the tension breaks). We keep the three ritual steps but drop the timers
 ; and RNG: ring the bell (paralyzes the wraiths), light the candles, then read
 ; the book to banish them. Also: ZIL gates the altar hole on COFFIN-CURE (set by
-; praying); since the altar `pray`->forest teleport needs the forest slice, we
-; gate the hole directly on not carrying the coffin (its functional purpose).
+; praying); we gate the hole directly on not carrying the coffin (its functional
+; purpose). The coffin leaves the Temple the intended way: pray at the altar to
+; teleport to the forest (see @altar :pray in temple.grue).
 
 ; === Rooms ===
 
@@ -166,7 +167,8 @@
 
 ; === The altar hole (South Temple -> Tiny Cave) ===
 ; ZIL gates this on COFFIN-CURE (set by praying without the coffin). We gate it
-; directly on not carrying the coffin (the functional constraint).
+; directly on not carrying the coffin (the functional constraint) -- to get the
+; coffin out of the Temple you pray at the altar (@altar :pray) instead.
 (object @altar-hole
   :description "hole"
   :location nil

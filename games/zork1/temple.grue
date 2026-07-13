@@ -9,10 +9,11 @@
 ;
 ; ZIL: 1dungeon.zil (ENGRAVINGS-CAVE, DOME-ROOM, TORCH-ROOM, NORTH-TEMPLE,
 ; SOUTH-TEMPLE, EGYPT-ROOM; RAILING, PEDESTAL, TORCH, COFFIN, SCEPTRE, ALTAR,
-; PRAYER); 1actions.zil (DOME-ROOM-FCN, ROPE-FUNCTION, SOUTH-TEMPLE-FCN).
+; PRAYER); 1actions.zil (DOME-ROOM-FCN, ROPE-FUNCTION, SOUTH-TEMPLE-FCN); V-PRAY.
 ;
-; Deferred: the altar `pray` teleport to the forest (needs the forest slice); the
-; Altar's down-hole to Hades + the bell/book/candle exorcism (Hades slice).
+; Praying at the Altar teleports you (with everything you carry) up to the forest
+; — the intended way to get the gold coffin out of the Temple, since the altar
+; hole refuses it and the rope descent is one-way (ZIL V-PRAY -> GOTO FOREST-1).
 
 ; === Rooms ===
 
@@ -171,4 +172,12 @@
   :description "altar"
   :properties (:nodesc true)
   :behaviors (
-    :examine (fn () '((focus @altar "It's a large stone altar, worn smooth by ages of use.") (success)))))
+    :examine (fn () '((focus @altar "It's a large stone altar, worn smooth by ages of use.") (success)))
+    ; Praying at the altar whisks you (and all you carry, incl. the coffin) up
+    ; to the forest — the intended coffin-extraction route (ZIL V-PRAY at
+    ; SOUTH-TEMPLE -> GOTO FOREST-1). Held items ride along (their location is
+    ; the player, not the room), so the coffin comes with you.
+    :pray (fn ()
+      '((move @player @forest-1)
+        (narrate "From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.")
+        (success)))))
