@@ -25,8 +25,30 @@ from gnusto.render import (
     Splash,
     Think,
 )
+from gnusto.commands import render_blocks_to_text
 from gnusto.tui import SimpleTUI
 from gnusto.web import block_to_dict
+
+
+def test_render_blocks_to_text_projects_room_enter():
+    """The CLI text renderer (used by the agent slash-command path for /look,
+    /load) must read EntityInfo/ExitDetail display fields, not join the
+    dataclasses as strings (gnusto-0bf7.11).
+    """
+    block = RoomEnter(
+        room_id="@kitchen",
+        name="Kitchen",
+        description="A tidy kitchen.",
+        exits=[ExitDetail(direction="west", destination="Living Room")],
+        objects=[EntityInfo(id="@sack", name="brown sack")],
+        inventory=[EntityInfo(id="@lamp", name="brass lantern")],
+    )
+    text = render_blocks_to_text([block])
+    assert "Kitchen" in text
+    assert "A tidy kitchen." in text
+    assert "Exits: Living Room" in text
+    assert "You see: brown sack" in text
+    assert "Carrying: brass lantern" in text
 
 
 def _tui_with_capture():

@@ -41,15 +41,15 @@ def render_block_to_text(block: ContentBlock) -> str:
             prefix = "Error: "
         return f"{prefix}{block.text}"
     elif isinstance(block, RoomEnter):
+        # objects/exits/inventory are EntityInfo/ExitDetail dataclasses, not
+        # strings; read their display fields (gnusto-0bf7.11).
         lines = [f"\n=== {block.name} ===\n", block.description]
-        if block.objects:
-            lines.append("")
-            for obj in block.objects:
-                lines.append(obj)
         if block.exits:
-            lines.append(f"\nNearby: {', '.join(block.exits)}")
+            lines.append(f"\nExits: {', '.join(e.destination for e in block.exits)}")
+        if block.objects:
+            lines.append(f"You see: {', '.join(o.name for o in block.objects)}")
         if block.inventory:
-            lines.append(f"Carrying: {', '.join(block.inventory)}")
+            lines.append(f"Carrying: {', '.join(i.name for i in block.inventory)}")
         return "\n".join(lines)
     elif isinstance(block, DebugInfo):
         return f"  [{block.label}] {block.content}"
