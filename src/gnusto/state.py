@@ -26,6 +26,7 @@ class ObjectInfo:
     behaviors: list[str] = field(default_factory=list)  # Available verbs
     properties: dict[str, Any] = field(default_factory=dict)  # Visible properties
     contents: list["ObjectInfo"] = field(default_factory=list)  # Nested objects
+    nodesc: bool = False  # :nodesc scenery - interactable but not listed in prose
 
 
 @dataclass
@@ -164,6 +165,14 @@ def get_game_state(runtime: "GrueRuntime") -> GameState:
 
     if room_def:
         for exit in room_def.exits:
+            # Skip message-only blocked exits (ZIL string/SORRY exits, e.g. the
+            # kitchen chimney "Only Santa Claus climbs down chimneys."): they
+            # carry no destination and are refusals, not navigable ways out.
+            # Listing them misleads the agent and yields a None destination name
+            # (which crashes format_room_enter's join).
+            if exit.to is None:
+                continue
+
             # Get destination room info
             dest_room_def = runtime.world.rooms.get(exit.to)
             dest_name = dest_room_def.description if dest_room_def else exit.to
@@ -281,10 +290,17 @@ def _get_object_info_with_contents(
             child_info = _get_object_info_with_contents(runtime, name, visible_set)
             contents.append(child_info)
 
+    # Read :nodesc from the raw props dict (NOT get_object_property, which is
+    # strict and raises on undeclared reads). Drives room-listing suppression
+    # while leaving the object interactable for NL resolution.
+    obj_state = runtime.state.objects.get(obj_name)
+    nodesc = bool(obj_state.properties.get("nodesc", False)) if obj_state else False
+
     return ObjectInfo(
         id=obj_name,
         description=desc,
         ldesc=ldesc,
         behaviors=sorted(behavior_map.values()),
         contents=contents,
+        nodesc=nodesc,
     )

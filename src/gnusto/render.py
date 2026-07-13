@@ -27,6 +27,7 @@ class EntityInfo:
     id: str
     name: str
     behaviors: list[str] = field(default_factory=list)
+    nodesc: bool = False  # :nodesc scenery - interactable but not listed in prose
 
 
 @dataclass
@@ -254,19 +255,27 @@ def build_room_block(
         for obj in obj_list:
             result.append(
                 EntityInfo(
-                    id=obj.id, name=obj.description or obj.id, behaviors=obj.behaviors
+                    id=obj.id,
+                    name=obj.description or obj.id,
+                    behaviors=obj.behaviors,
+                    nodesc=getattr(obj, "nodesc", False),
                 )
             )
             if obj.contents:
                 result.extend(_flatten_objects(obj.contents))
         return result
 
+    # Filter :nodesc scenery AFTER flattening so a nodesc container (e.g. the
+    # kitchen table) is hidden from the listing while its real contents (sack,
+    # bottle) - flattened as siblings - still show.
+    room_objects = [o for o in _flatten_objects(state.visible_objects) if not o.nodesc]
+
     return RoomEnter(
         room_id=state.room,
         name=state.room_name,
         description=state.room_description,
         exits=exits,
-        objects=_flatten_objects(state.visible_objects),
+        objects=room_objects,
         inventory=_flatten_objects(state.inventory),
         image=image_url,
     )
