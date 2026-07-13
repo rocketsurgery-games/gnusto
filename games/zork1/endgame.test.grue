@@ -1,0 +1,42 @@
+; Tests for the endgame: trophy-case completion, the map, and the Stone Barrow
+; victory.
+
+; All nineteen treasures, deposited in the trophy case.
+(test-group "the completed collection"
+  :setup ((set @player :endgame-announced false)
+          (move @painting @trophy-case) (move @bag-of-coins @trophy-case) (move @chalice @trophy-case)
+          (move @egg @trophy-case) (move @canary @trophy-case) (move @trident @trophy-case)
+          (move @jade @trophy-case) (move @bracelet @trophy-case) (move @diamond @trophy-case)
+          (move @torch @trophy-case) (move @coffin @trophy-case) (move @sceptre @trophy-case)
+          (move @skull @trophy-case) (move @trunk @trophy-case) (move @bar @trophy-case)
+          (move @emerald @trophy-case) (move @scarab @trophy-case) (move @pot-of-gold @trophy-case)
+          (move @bauble @trophy-case)
+          (move @player @west-of-house))
+
+  (test "the endgame watcher reveals the map and whispers the secret"
+    (wait)
+    (assert (no-flag? @map invisible))
+    (assert (output? "final secret")))
+
+  (test "the secret path opens and entering the barrow wins"
+    (go :direction sw)
+    (assert (loc? @player @stone-barrow))
+    (go :direction in)
+    (assert (loc? @player @stone-barrow-interior))
+    (assert (victory? true)))
+)
+
+; Before the collection is complete, the endgame stays locked.
+(test-group "before completion"
+  :setup ((move @player @west-of-house) (move @painting @trophy-case))   ; only one treasure
+
+  (test "the secret path is not yet open"
+    (go :direction sw)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't go that way."))
+    (assert (loc? @player @west-of-house)))
+
+  (test "the map is still hidden"
+    (wait)
+    (assert (has-flag? @map invisible)))
+)

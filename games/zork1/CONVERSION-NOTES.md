@@ -1,5 +1,13 @@
 # Zork I → Grue conversion notes
 
+> **STATUS: conversion complete & winnable.** All 110 rooms convert with zero
+> dangling references (`frotz map`), 208 Zork `grue-test`s + 688 across all games
+> + 840 pytest pass, `frotz lint` clean. A full deposit-all-treasures →
+> Stone-Barrow victory is REPL-verified (`*** VICTORY! ***`). Remaining: an
+> end-to-end LLM-harness playthrough (as done for LH) and folding Zork's lessons
+> into the `translate-zil` skill. The one deferred enhancement is the richer
+> analyzable thief (gnusto-fa93.9, low-pri).
+
 A running log of what went well, what created friction, and concrete
 skill/tooling improvements surfaced while converting Zork I. Zork (1980) is the
 *earliest* Infocom game; The Lurking Horror (1987) is one of the latest, so
@@ -287,6 +295,22 @@ patterns that show up in both are near-universal and belong in the shared
   rooms. REPL-verified the whole run (wave -> cross -> pot of gold -> climb).
 - `frotz map`: 100 rooms, frontier of 5 (all surface). Two slices left: the
   forest/surface, then scoring + endgame.
+
+## Slice 15 (endgame) observations
+
+- **Win condition = every treasure in the trophy case.** Rather than track an
+  exact 350-point score, `all-treasures-deposited?` (a `defn`) checks the 19
+  named treasures via the recursive `inside?` builtin (so a treasure nested in
+  the coffin/egg still counts). A `:start-events` watcher (`endgame-watch`)
+  reveals the map + whispers the "final secret" the turn the case completes; the
+  `@barrow-path` barrier opens on the same predicate; entering the barrow wins.
+- **`victory?` in the DSL is a *result* predicate** (looks for a `victory` key in
+  the last action's context, like `death`), and the runtime does NOT auto-inject
+  it from the declarative `(victory :when ...)`. So the winning move must emit
+  `(success :context ((victory true)))` — done in the barrow interior's
+  `:on-enter`. Also: `(victory? false)` is unusable (a missing key reads as
+  `None`, never `False`); assert game state instead. Kept the declarative
+  `(victory :when ...)` for the real harness + frotz.
 
 ## Engine improvements made
 

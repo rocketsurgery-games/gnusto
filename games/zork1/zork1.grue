@@ -11,8 +11,9 @@
   ; the grue warning; the death itself comes from the grue-lurks hazard event.
   :dark-message "It is pitch black. You are likely to be eaten by a grue."
 
-  ; The grue is always lurking, descended or not: queue its hazard from turn 1.
-  :start-events (grue-lurks)
+  ; Always-on background events: the ever-lurking grue, and the endgame watcher
+  ; that reveals the final secret once every treasure is in the trophy case.
+  :start-events (grue-lurks endgame-watch)
 
   ; Visual style for generated illustrations: vintage fantasy-adventure line art.
   :visual-style (
@@ -34,10 +35,13 @@
               :object (:prompt "A single subject, centered, isolated on a flat pure-black background; no scene, no props, no floor, even studio lighting."))))
 
 
-; Victory: place all treasures in the trophy case and enter the Stone Barrow.
-; ZIL tracks this with WON-FLAG; modeled here as a player property, set by the
-; endgame (deferred until the treasure/scoring slice).
-(victory :when (:won @player))
+; Victory: deposit every treasure in the trophy case (which opens the secret
+; path to the Stone Barrow) and enter the barrow. The barrow is only reachable
+; once all treasures are deposited (see @barrow-path / endgame.grue), so simply
+; standing in it is the win.
+(victory
+  :when (= (loc @player) @stone-barrow-interior)
+  :context ((ending "You have conquered the Great Underground Empire. Your quest is complete.")))
 
 ; Defeat: player dies (grue, combat, misadventure). Marked by :dead.
 (defeat death
@@ -56,4 +60,6 @@
     :dark-turns 0
     :grue-grace 1
     ; Dam flood hazard bookkeeping (see reservoir.grue).
-    :flood-level 0))
+    :flood-level 0
+    ; Endgame: set once the "final secret" whisper has been delivered.
+    :endgame-announced false))

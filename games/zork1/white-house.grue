@@ -19,8 +19,12 @@
      (south :to @south-of-house)
      (ne :to @north-of-house)
      (se :to @south-of-house)
-     (west :to @forest-1)             ; forest ring — later slice
-     (east :to @west-of-house :via @front-door))  ; boarded, blocked
+     (west :to @forest-1)
+     (east :to @west-of-house :via @front-door)   ; boarded, blocked
+     ; The secret path to the Stone Barrow, open only once every treasure is
+     ; safely in the trophy case (see endgame.grue).
+     (sw :to @stone-barrow :via @barrow-path)
+     (in :to @stone-barrow :via @barrow-path))
   :visible (@white-house @front-door @board @forest))
 
 (room @north-of-house
