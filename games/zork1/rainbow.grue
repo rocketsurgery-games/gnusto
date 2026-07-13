@@ -1,0 +1,108 @@
+; The Rainbow and the Canyon — the bridge from the underground river up to the
+; surface.
+;
+; At Aragain Falls, waving the sceptre (from the Egyptian coffin) makes the
+; rainbow solid and walkable, revealing a pot of gold at its far end. Cross the
+; rainbow to the End of Rainbow, then climb the river canyon (Canyon Bottom ->
+; Rocky Ledge -> Canyon View) out into the forest above.
+;
+; ZIL: 1dungeon.zil (ARAGAIN-FALLS, ON-RAINBOW, END-OF-RAINBOW, CANYON-BOTTOM,
+; CLIFF-MIDDLE, CANYON-VIEW; POT-OF-GOLD); 1actions.zil (SCEPTRE-FUNCTION,
+; FALLS-ROOM). :solid on @rainbow == ZIL RAINBOW-FLAG.
+
+; === Rooms ===
+
+(room @aragain-falls
+  :description "Aragain Falls"
+  :ldesc "You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The
+  only path here is on the north end."
+  :rdesc "The brink of an enormous 450-foot waterfall thundering into the canyon, a shimmering rainbow arcing west over the falls, a path north; daylit spray. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((north :to @shore)
+     (west :to @on-rainbow :via @rainbow)
+     (up :to @on-rainbow :via @rainbow)
+     (down :blocked "It's a long way, and you don't have a barrel."))
+  :visible (@rainbow))
+
+(room @on-rainbow
+  :description "On the Rainbow"
+  :ldesc "You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a
+  magnificent view of the Falls. The rainbow travels east-west here."
+  :rdesc "The arched top of a solid, shimmering rainbow high over Aragain Falls, a magnificent view of the thundering water below, the rainbow running east-west; brilliant daylight. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((west :to @end-of-rainbow)
+     (east :to @aragain-falls)))
+
+(room @end-of-rainbow
+  :description "End of Rainbow"
+  :ldesc "You are on a small, rocky beach on the continuation of the Frigid River past the Falls. The
+  beach is narrow due to the presence of the White Cliffs. The river canyon opens here and sunlight
+  shines in from above. A rainbow crosses over the falls to the east and a narrow path continues to the
+  southwest."
+  :rdesc "A small rocky beach below the White Cliffs where the canyon opens to the sky, a rainbow arcing east over the falls, a narrow path leading southwest; bright daylight. Empty of people."
+  :properties (:lit true)
+  :exits
+    ((up :to @on-rainbow :via @rainbow)
+     (ne :to @on-rainbow :via @rainbow)
+     (east :to @on-rainbow :via @rainbow)
+     (sw :to @canyon-bottom))
+  :visible (@pot-of-gold))
+
+(room @canyon-bottom
+  :description "Canyon Bottom"
+  :ldesc "You are beneath the walls of the river canyon which may be climbable here. The lesser part of
+  the runoff of Aragain Falls flows by below. To the north is a narrow path."
+  :rdesc "The floor of a deep river canyon, climbable walls rising on both sides, a lesser runoff of the falls flowing past, a narrow path north; daylit. Empty of people."
+  :properties (:lit true)
+  :exits ((up :to @cliff-middle) (north :to @end-of-rainbow)))
+
+(room @cliff-middle
+  :description "Rocky Ledge"
+  :ldesc "You are on a ledge about halfway up the wall of the river canyon. You can see from here that
+  the main flow from Aragain Falls twists along a passage which it is impossible for you to enter. Below
+  you is the canyon bottom. Above you is more cliff, which appears climbable."
+  :rdesc "A rocky ledge halfway up a river-canyon wall, the falls' main flow twisting through an impassable passage, more climbable cliff above and the canyon floor below; daylit. Empty of people."
+  :properties (:lit true)
+  :exits ((up :to @canyon-view) (down :to @canyon-bottom)))
+
+(room @canyon-view
+  :description "Canyon View"
+  :ldesc "You are at the top of the Great Canyon on its west wall. From here there is a marvelous view of
+  the canyon and parts of the Frigid River upstream. To the west and south can be seen an immense forest,
+  stretching for miles around. A path leads northwest. It is possible to climb down into the canyon from
+  here."
+  :rdesc "The top of the west wall of a great canyon at sunset, the Frigid River winding far below and an immense forest stretching west and south, a path leading northwest; golden daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((east :to @cliff-middle)
+     (down :to @cliff-middle)
+     (nw :to @clearing)              ; the forest — next slice
+     (west :to @forest-3)            ; the forest — next slice
+     (south :blocked "Storm-tossed trees block your way.")))
+
+; === The rainbow ===
+; :solid (ZIL RAINBOW-FLAG) is toggled by waving the sceptre (see @sceptre in
+; temple.grue). While solid it is a walkable bridge across the falls.
+(object @rainbow
+  :description "rainbow"
+  :location nil
+  :properties (:nodesc true :solid false)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:solid @rainbow) '((focus @rainbow "The rainbow has become solid, with stairs and a bannister \u2014 quite walkable.") (success)))
+        (true '((focus @rainbow "It's a shimmering rainbow arcing over the falls. It hardly looks solid enough to walk on.") (success)))))
+    :through (fn ()
+      (cond
+        ((:solid @rainbow) (success))
+        (true (blocked :message "You cannot walk on a rainbow that isn't solid."))))))
+
+(object @pot-of-gold
+  :location @end-of-rainbow
+  :description "pot of gold"
+  ; Appears only once the rainbow is made solid.
+  :properties (:takeable true :treasure true :invisible true :value 10 :tvalue 10)
+  :behaviors (
+    :examine (fn () '((focus @pot-of-gold "It's a shimmering pot of gold, right where the legends said it would be.") (success)))))

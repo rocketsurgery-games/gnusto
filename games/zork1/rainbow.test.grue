@@ -1,0 +1,67 @@
+; Tests for the Rainbow + Canyon slice.
+
+(test-group "solidifying the rainbow"
+  :setup ((move @player @aragain-falls) (set @rainbow :solid false) (set @pot-of-gold :invisible true)
+          (move @sceptre @player))
+
+  (test "you can't cross the rainbow until it's solid"
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (context? message "You cannot walk on a rainbow that isn't solid.")))
+
+  (test "waving the sceptre at the falls solidifies the rainbow"
+    (do @sceptre :wave)
+    (assert (outcome? success))
+    (assert (prop? @rainbow solid true))
+    (assert (no-flag? @pot-of-gold invisible))
+    (assert (output? "become solid")))
+
+  (test "once solid you can cross to the end of the rainbow"
+    :setup ((move @player @aragain-falls) (set @rainbow :solid true))
+    (go :direction west)
+    (assert (loc? @player @on-rainbow))
+    (go :direction west)
+    (assert (loc? @player @end-of-rainbow)))
+)
+
+(test-group "the pot of gold"
+  :setup ((move @player @end-of-rainbow) (set @rainbow :solid true) (set @pot-of-gold :invisible false))
+
+  (test "take the pot of gold"
+    (do @pot-of-gold :take)
+    (assert (outcome? success))
+    (assert (held? @pot-of-gold)))
+)
+
+(test-group "waving the sceptre in the wrong place"
+  :setup ((move @sceptre @player))
+
+  (test "on the rainbow itself it is fatal"
+    :setup ((move @player @on-rainbow) (set @rainbow :solid true) (move @sceptre @player))
+    (do @sceptre :wave)
+    (assert (prop? @player dead true)))
+
+  (test "elsewhere it just sparkles"
+    :setup ((move @player @canyon-bottom) (move @sceptre @player))
+    (do @sceptre :wave)
+    (assert (outcome? success))
+    (assert (output? "dazzling display")))
+)
+
+(test-group "climbing the canyon to the surface"
+  :setup ((move @player @canyon-bottom))
+
+  (test "canyon bottom up to the rocky ledge"
+    (go :direction up)
+    (assert (loc? @player @cliff-middle)))
+
+  (test "the ledge up to canyon view"
+    :setup ((move @player @cliff-middle))
+    (go :direction up)
+    (assert (loc? @player @canyon-view)))
+
+  (test "end of rainbow southwest to the canyon bottom"
+    :setup ((move @player @end-of-rainbow) (set @rainbow :solid true))
+    (go :direction sw)
+    (assert (loc? @player @canyon-bottom)))
+)

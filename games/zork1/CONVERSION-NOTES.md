@@ -260,6 +260,19 @@ patterns that show up in both are near-universal and belong in the shared
 - The coal mine is now complete; `frotz map` frontier is down to 7 — all surface
   (forest/path/clearing/grating-clearing) plus the river (`@dam-base`).
 
+## Slice 13 (rainbow + canyon) observations
+
+- **The sceptre pays off** three slices after we banked it in the temple: waving
+  it at Aragain Falls flips `@rainbow :solid` (ZIL RAINBOW-FLAG), turning the
+  rainbow into a `:via` bridge and revealing the pot of gold; waving it *on* the
+  rainbow is fatal. Clean, deterministic, no new engine work.
+- **This slice bridges underground to surface.** Cross the rainbow, climb the
+  canyon (Canyon Bottom -> Rocky Ledge -> Canyon View), and Canyon View's
+  NW/W exits open onto the forest — so the frontier is now exactly the 5 surface
+  rooms. REPL-verified the whole run (wave -> cross -> pot of gold -> climb).
+- `frotz map`: 100 rooms, frontier of 5 (all surface). Two slices left: the
+  forest/surface, then scoring + endgame.
+
 ## Engine improvements made
 
 - **Deterministic darkness/light + persistent start-events (gnusto-fa93.4).**

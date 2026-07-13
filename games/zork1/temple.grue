@@ -130,7 +130,29 @@
   :description "sceptre"
   :properties (:takeable true :treasure true :value 4 :tvalue 6)
   :behaviors (
-    :examine (fn () '((focus @sceptre "It's an ornamented sceptre, tapering to a sharp point.") (success)))))
+    :examine (fn () '((focus @sceptre "It's an ornamented sceptre, tapering to a sharp point.") (success)))
+    :wave (fn () (redirect :action (do @sceptre :raise)))
+    ; Waving the sceptre at the falls solidifies the rainbow (ZIL
+    ; SCEPTRE-FUNCTION). On the rainbow itself it's fatal; elsewhere, mere sparkle.
+    :raise (fn ()
+      (cond
+        ((= (loc @player) @on-rainbow)
+          (blocked :reason death
+                   :context ((death true)
+                             (description "The structural integrity of the rainbow is severely compromised, leaving you hanging in midair, supported only by water vapor. Bye."))))
+        ((or (= (loc @player) @aragain-falls) (= (loc @player) @end-of-rainbow))
+          (cond
+            ((not (:solid @rainbow))
+              '((set @rainbow :solid true)
+                (set @pot-of-gold :invisible false)
+                (narrate "Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister). Off in the distance, a pot of gold appears at the end of the rainbow.")
+                (success)))
+            (true
+              '((set @rainbow :solid false)
+                (narrate "The rainbow seems to have become somewhat run-of-the-mill.")
+                (success)))))
+        (true
+          '((narrate "A dazzling display of color briefly emanates from the sceptre.") (success)))))))
 
 ; === Scenery ===
 
