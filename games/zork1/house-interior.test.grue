@@ -46,6 +46,30 @@
     (assert (loc? @player @kitchen)))
 )
 
+; === Eating and drinking (default eat/drink behaviors) ===
+
+(test-group "eating and drinking"
+  (test "eat the lunch: consumed, with the canonical message"
+    :setup ((move @player @kitchen) (move @lunch @player))
+    (do @lunch :eat)
+    (assert (outcome? success))
+    (assert (output? "hit the spot"))
+    (assert (not (in? @lunch @player))))
+
+  (test "drink the water: consumed, with the canonical message"
+    :setup ((move @player @kitchen) (move @water @player))
+    (do @water :drink)
+    (assert (outcome? success))
+    (assert (output? "rather thirsty"))
+    (assert (not (in? @water @player))))
+
+  (test "cannot eat a non-food object"
+    :setup ((move @player @kitchen) (move @bottle @player))
+    (do @bottle :eat)
+    (assert (outcome? blocked))
+    (assert (context? message "I don't think that the glass bottle would agree with you.")))
+)
+
 (test-group "attic navigation"
   :setup ((move @player @attic))
 

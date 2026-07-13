@@ -217,6 +217,39 @@
       (narrate "You throw it. It clatters to the ground nearby.")
       (success)))))
 
+; === eat ===
+; Default eat behavior for FOOD objects (ZIL V-EAT). Consumes the item.
+; Games may define their own :eat for special handling (flavor text, effects).
+
+(default eat (cond
+  ((not (:food ?self false))
+    (blocked :reason not-edible
+             :message (str "I don't think that the " (desc ?self) " would agree with you.")))
+
+  ((not (visible? ?self))
+    (blocked :reason not-here :message "You don't see that here."))
+
+  (true
+    '((move ?self nil)
+      (narrate "Thank you very much. It really hit the spot.")
+      (success)))))
+
+; === drink ===
+; Default drink behavior for DRINKABLE objects (ZIL V-DRINK). Consumes the item.
+
+(default drink (cond
+  ((not (:drinkable ?self false))
+    (blocked :reason not-drinkable
+             :message (str "I don't think that the " (desc ?self) " would agree with you.")))
+
+  ((not (visible? ?self))
+    (blocked :reason not-here :message "You don't see that here."))
+
+  (true
+    '((move ?self nil)
+      (narrate "Thank you very much. I was rather thirsty.")
+      (success)))))
+
 ; === examine ===
 ; Default examine behavior - returns generic message when object has no :examine handler
 

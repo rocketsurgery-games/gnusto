@@ -1012,6 +1012,23 @@ Lose condition. Named for narrative purposes.
 #### `(default VERB (cond ...))`
 Default behavior for a verb, applied when an object lacks its own handler.
 
+The engine ships default behaviors (in `builtins.grue`) for the common verbs,
+each gated on the relevant property so an object opts in simply by declaring the
+flag:
+
+| Verb | Opt-in flag | Effect |
+|------|-------------|--------|
+| `take` / `drop` | `:takeable` | move to/from the actor |
+| `open` / `close` | `:openable` | toggle `:open` |
+| `put` | `:container` (target) | move item into container (bidirectional phrasing) |
+| `throw` | `:takeable` | thrown *at* a target redirects to `attack` |
+| `eat` | `:food` | consume the item (removed); non-food is refused |
+| `drink` | `:drinkable` | consume the item (removed); non-drinkable is refused |
+| `examine` | — | generic "nothing special" fallback |
+
+A game overrides any of these by defining its own behavior for that verb on the
+object (e.g. a custom `:eat` with flavor text or a side effect).
+
 #### `(event NAME :location ROOM :on-turn (cond ...))`
 Turn-based event handler. Events fire each turn while queued.
 - `:location` - Optional room constraint (event only fires when player is here)
