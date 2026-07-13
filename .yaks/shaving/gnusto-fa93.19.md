@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T15:25:21Z'
+updated: '2026-07-13T15:27:27Z'
 labels:
 - conversion
 ---
@@ -50,3 +50,7 @@ Save/restore + thief run: (1) /save then /load round-trips through the harness (
 Exorcism ritual (checkpointed at Entrance to Hades): ring the bell (paralyze) -> light the candles (needs matches) -> read the book (banish, gate opens) -> go in -> take crystal skull. Correct 3-step sequencing/preconditions, clean NL mapping. NO BUGS.
 
 Gas-room torch death (checkpointed at Coal Mine holding lit candles): go north -> gas-room :on-enter detects the open flame -> BOOM death -> terminal (subsequent commands refused). Confirms terminal death via the player-MOVEMENT path (distinct from the grue event path). Minor cosmetic (fixed as gnusto-0bf7.10): TUI was re-rendering the room you died in after the banner.
+
+---
+▸ 2026-07-13T15:27:27Z
+Boat/vehicle run (checkpointed at Dam Base with pump+sword): 'inflate the boat with the pump' -> (do @boat :inflate @pump) seaworthy; 'get in the boat' REFUSED while holding the sword (sharp/puncture guard); drop sword -> aboard; go down launches (via @river-launch, requires in-boat) and floats river-1->2->3 as a portable vehicle carrying the player. Clean two-object NL mapping, no bugs. Distinct-mechanic validation now covers: nav/synonyms/dark/maze, containers/eat/drink, combat/give/engross/magic-word, multi-step puzzles (dam, exorcism, chimney, boat), deposit, terminal death (grue event + gas movement), vehicle, save/restore (harness + programmatic), look/examine/end-state. Considered comprehensively validated.
