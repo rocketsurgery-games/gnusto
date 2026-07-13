@@ -141,12 +141,25 @@
 (object @grate
   :description "grating"
   :location nil
-  :properties (:nodesc true :openable true)
+  ; :revealed is set from above by moving the leaves in the Grating Clearing
+  ; (forest.grue). It can only be unlatched from below (the Grating Room).
+  :properties (:nodesc true :openable true :revealed false)
   :behaviors (
     :examine (fn ()
       (cond
         ((:open @grate) '((focus @grate "The grating is open.") (success)))
-        (true '((focus @grate "It's a grating in the ceiling, closed.") (success)))))
+        (true '((focus @grate "It's a grating set into the rock, closed.") (success)))))
+    :open (fn ()
+      (cond
+        ((:open @grate) (blocked :message "The grating is already open."))
+        ((= (loc @player) @grating-room)
+          '((set @grate :open true) (set @grate :revealed true)
+            (narrate "The grating opens to reveal trees above you.") (success)))
+        (true (blocked :message "You can't reach the latch from this side."))))
+    :close (fn ()
+      (cond
+        ((not (:open @grate)) (blocked :message "The grating is already closed."))
+        (true '((set @grate :open false) (narrate "The grating is closed.") (success)))))
     :through (fn ()
       (cond
         ((:open @grate) (success))

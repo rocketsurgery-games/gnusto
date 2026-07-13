@@ -1,0 +1,117 @@
+; Tests for the Forest / surface slice.
+
+; === Surface connects to the white house (resolves the frontier) ===
+
+(test-group "the house meets the forest"
+  :setup ((move @player @west-of-house))
+
+  (test "west of house west into the forest"
+    (go :direction west)
+    (assert (loc? @player @forest-1)))
+
+  (test "north of house north onto the path"
+    :setup ((move @player @north-of-house))
+    (go :direction north)
+    (assert (loc? @player @path)))
+
+  (test "east of house east to the clearing"
+    :setup ((move @player @east-of-house))
+    (go :direction east)
+    (assert (loc? @player @clearing)))
+
+  (test "canyon view northwest to the clearing (river meets surface)"
+    :setup ((move @player @canyon-view))
+    (go :direction nw)
+    (assert (loc? @player @clearing)))
+)
+
+; === Forest navigation + blocked exits ===
+
+(test-group "forest navigation"
+  :setup ((move @player @forest-1))
+
+  (test "you need a machete to go west"
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (context? message "You would need a machete to go further west.")))
+
+  (test "the path climbs the tree"
+    :setup ((move @player @path))
+    (go :direction up)
+    (assert (loc? @player @up-a-tree))
+    (go :direction down)
+    (assert (loc? @player @path)))
+
+  (test "storm-tossed trees block the south of forest 3"
+    :setup ((move @player @forest-3))
+    (go :direction south)
+    (assert (outcome? blocked))
+    (assert (context? message "Storm-tossed trees block your way.")))
+)
+
+; === The egg in the nest ===
+
+(test-group "the bird's nest"
+  :setup ((move @player @up-a-tree) (move @egg @nest))
+
+  (test "the egg is in the nest, up the tree"
+    (assert (in? @egg @nest))
+    (do @egg :take)
+    (assert (outcome? success))
+    (assert (held? @egg)))
+)
+
+; === The canary and the bauble ===
+
+(test-group "winding the canary"
+  :setup ((move @player @forest-1) (set @canary :broken false) (set @canary :wound false)
+          (move @canary @player) (move @bauble nil))
+
+  (test "winding the intact canary in the forest summons the bauble"
+    (do @canary :wind)
+    (assert (outcome? success))
+    (assert (loc? @bauble @forest-1))
+    (assert (output? "brass bauble"))
+    (do @bauble :take)
+    (assert (held? @bauble)))
+
+  (test "a broken canary won't sing"
+    :setup ((move @player @forest-1) (set @canary :broken true) (move @canary @player))
+    (do @canary :wind)
+    (assert (outcome? blocked)))
+
+  (test "winding it underground does nothing"
+    :setup ((move @player @cellar) (set @canary :broken false) (set @canary :wound false)
+            (move @canary @player) (move @lamp @player) (set @lamp :lit true) (move @bauble nil))
+    (do @canary :wind)
+    (assert (outcome? success))
+    (assert (loc? @bauble nil)))
+)
+
+; === The grating (surface <-> maze loop) ===
+
+(test-group "the grating"
+  :setup ((move @player @grating-clearing) (set @grate :revealed false) (set @grate :open false))
+
+  (test "moving the leaves reveals the grating"
+    (do @leaves :move)
+    (assert (outcome? success))
+    (assert (prop? @grate revealed true))
+    (assert (output? "grating is revealed")))
+
+  (test "you can't unlatch the grating from above"
+    (do @grate :open)
+    (assert (outcome? blocked))
+    (assert (context? message "You can't reach the latch from this side.")))
+
+  (test "it opens from below, in the grating room"
+    :setup ((move @player @grating-room) (set @grate :open false) (move @lamp @player) (set @lamp :lit true))
+    (do @grate :open)
+    (assert (outcome? success))
+    (assert (:open @grate)))
+
+  (test "an open grating connects the clearing down into the maze"
+    :setup ((move @player @grating-clearing) (set @grate :open true))
+    (go :direction down)
+    (assert (loc? @player @grating-room)))
+)

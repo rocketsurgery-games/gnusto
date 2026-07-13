@@ -149,11 +149,26 @@
 (object @canary
   :location @egg
   :description "golden clockwork canary"
-  :properties (:takeable true :treasure true :value 6 :tvalue 4 :broken false)
+  :properties (:takeable true :treasure true :value 6 :tvalue 4 :broken false :wound false)
   :behaviors (
     :examine (fn ()
       (cond
         ((:broken @canary)
           '((focus @canary "There is a golden clockwork canary here. Its mainspring is broken and it will not sing.") (success)))
         (true
-          '((focus @canary "A golden clockwork canary with ruby eyes and a silver beak; through a crystal window you can see its intricate machinery.") (success)))))))
+          '((focus @canary "A golden clockwork canary with ruby eyes and a silver beak; through a crystal window you can see its intricate machinery.") (success)))))
+    ; Winding the intact canary in the forest coaxes the songbird into dropping
+    ; the brass bauble (ZIL CANARY-OBJECT).
+    :wind (fn ()
+      (cond
+        ((:broken @canary)
+          (blocked :message "The canary's mainspring is broken; it will not sing."))
+        ((not (:outside (loc @player)))
+          '((narrate "The canary chirps a pretty tune, but nothing else happens.") (success)))
+        ((:wound @canary)
+          '((narrate "The canary sings again, but the songbird does not return.") (success)))
+        (true
+          '((set @canary :wound true)
+            (move @bauble (loc @player))
+            (narrate "The canary chirps a delightful melody. In response, a songbird flies down, listens a moment, and — apparently in tribute — drops a beautiful brass bauble at your feet before flying off.")
+            (success)))))))

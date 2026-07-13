@@ -112,6 +112,21 @@ patterns that show up in both are near-universal and belong in the shared
   sceptre->rainbow (river slice). `frotz map`: `@engravings-cave` resolved;
   frontier now `@atlantis-room`/`@dam-base`/`@tiny-cave`/forest+surface.
 
+## Slice 14 (forest / surface) — MAP COMPLETE
+
+- The above-ground forest ring, the tree/nest (which finally homes `@egg`), the
+  songbird→bauble (wind the thief-opened canary in the forest), and the grating
+  that reconnects the surface Clearing down into the maze (unlatched from below,
+  climbed from above). The forest's many message exits (machete/impenetrable/
+  storm-tossed) are all the first-class `:blocked` form — the slice-2 feature
+  earning its keep at scale (29 blocked-message exits game-wide now).
+- **Milestone: `frotz map` reports NO dangling references** — all 108 rooms and
+  every exit/`:via`/`:visible`/`:location` resolve. The entire Zork I geography
+  is converted and fully connected (REPL-verified the surface↔maze grating loop).
+  684 grue-test / 840 pytest / lint clean.
+- Only the **endgame** remains: 350-point trophy-case scoring, the map, and the
+  Stone Barrow victory (wiring the `(victory ...)` placeholder from slice 1).
+
 ## Engine fixes made mid-slice
 
 - **Room `:on-enter` `(narrate …)` output was dropped from the `go` result.**

@@ -1,0 +1,164 @@
+; The Forest and the surface paths — the above-ground area that finally closes
+; the loop with the white house and, via the grating, back down into the maze.
+;
+; Highlights: the many message-only `:blocked` exits (machete, impenetrable
+; forest, storm-tossed trees) are exactly the ZIL string-exits the `:blocked`
+; form was built for. Up the tree from the Forest Path is a bird's nest holding
+; the jewel-encrusted egg (the thief's puzzle). Winding the (thief-opened)
+; clockwork canary in the forest coaxes a songbird into dropping the brass
+; bauble. The Grating Clearing's grating drops back into the maze once it's
+; been unlatched from below.
+;
+; ZIL: 1dungeon.zil (FOREST-1/2/3, MOUNTAINS, PATH, UP-A-TREE, GRATING-CLEARING,
+; CLEARING; NEST, SONGBIRD, BAUBLE); 1actions.zil (GRATING-EXIT, CLEARING-FCN).
+
+; === Forest ===
+
+(room @forest-1
+  :description "Forest"
+  :ldesc "This is a forest, with trees in all directions. To the east, there appears to be sunlight."
+  :rdesc "A dense forest of tall pines and hemlocks in all directions, a hint of daylight filtering through to the east; dappled sun. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((north :to @grating-clearing)
+     (east :to @path)
+     (south :to @forest-3)
+     (west :blocked "You would need a machete to go further west.")
+     (up :blocked "There is no tree here suitable for climbing."))
+  :visible (@songbird @forest))
+
+(room @forest-2
+  :description "Forest"
+  :ldesc "This is a dimly lit forest, with large trees all around."
+  :rdesc "A dimly lit forest of huge trees crowding close on every side; deep green shade. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((east :to @mountains)
+     (south :to @clearing)
+     (west :to @path)
+     (north :blocked "The forest becomes impenetrable to the north.")
+     (up :blocked "There is no tree here suitable for climbing."))
+  :visible (@songbird @forest))
+
+(room @mountains
+  :description "Forest"
+  :ldesc "The forest thins out, revealing impassable mountains."
+  :rdesc "The forest thinning at the foot of vast impassable mountains rising into cloud; hazy daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((north :to @forest-2)
+     (south :to @forest-2)
+     (west :to @forest-2)
+     (up :blocked "The mountains are impassable.")
+     (east :blocked "The mountains are impassable."))
+  :visible (@forest))
+
+(room @forest-3
+  :description "Forest"
+  :ldesc "This is a dimly lit forest, with large trees all around."
+  :rdesc "A dimly lit forest of large trees, rank undergrowth to the east and storm-tossed trees to the south; green gloom. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((north :to @clearing)
+     (west :to @forest-1)
+     (nw :to @south-of-house)
+     (east :blocked "The rank undergrowth prevents eastward movement.")
+     (south :blocked "Storm-tossed trees block your way.")
+     (up :blocked "There is no tree here suitable for climbing."))
+  :visible (@songbird @forest))
+
+(room @path
+  :description "Forest Path"
+  :ldesc "This is a path winding through a dimly lit forest. The path heads north-south here. One
+  particularly large tree with some low branches stands at the edge of the path."
+  :rdesc "A winding forest path running north-south, one large tree with low climbable branches at its edge; dim green light. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((up :to @up-a-tree)
+     (north :to @grating-clearing)
+     (east :to @forest-2)
+     (south :to @north-of-house)
+     (west :to @forest-1))
+  :visible (@songbird @forest))
+
+(room @up-a-tree
+  :description "Up a Tree"
+  :ldesc "You are about ten feet above the ground nestled among some large branches. The nearest branch
+  above you is above your reach. Beside you on the branch is a small bird's nest."
+  :rdesc "A perch ten feet up among the thick branches of a great tree, a small bird's nest resting on the branch beside you, the forest floor below; dappled sun. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((down :to @path)
+     (up :blocked "You cannot climb any higher."))
+  :visible (@nest @songbird))
+
+(room @grating-clearing
+  :description "Clearing"
+  :ldesc "You are in a clearing, with a forest surrounding you on all sides. A path leads south."
+  :rdesc "A small forest clearing ringed by trees, a scatter of leaves on the ground, a path leading south; open daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((east :to @forest-2)
+     (west :to @forest-1)
+     (south :to @path)
+     (down :to @grating-room :via @grate)
+     (north :blocked "The forest becomes impenetrable to the north."))
+  :visible (@leaves @grate))
+
+(room @clearing
+  :description "Clearing"
+  :ldesc "You are in a small clearing in a well marked forest path that extends to the east and west."
+  :rdesc "A small clearing on a well-worn forest path running east and west, sunlight breaking through overhead; open daylight. Empty of people."
+  :properties (:lit true :outside true)
+  :exits
+    ((east :to @canyon-view)
+     (north :to @forest-2)
+     (south :to @forest-3)
+     (west :to @east-of-house)
+     (up :blocked "There is no tree here suitable for climbing."))
+  :visible (@songbird @forest))
+
+; === The bird's nest + songbird + bauble ===
+
+(object @nest
+  :location @up-a-tree
+  :description "bird's nest"
+  :properties (:takeable true :container true :open true :searchable true)
+  :behaviors (
+    :examine (fn () '((focus @nest "It's a small bird's nest woven of twigs.") (success)))))
+
+; The songbird: forest scenery. It's what fetches the bauble when the canary sings.
+(object @songbird
+  :description "songbird"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @songbird "You can't see any songbird, but you can hear it nearby.") (success)))
+    :listen (fn () '((narrate "The songbird's melody is sweet and clear.") (success)))
+    :take (fn () (blocked :message "The songbird is not here but is probably nearby."))))
+
+; The brass bauble: appears when the clockwork canary is wound in the forest
+; (see @canary :wind in thief.grue). Starts in limbo.
+(object @bauble
+  :location nil
+  :description "brass bauble"
+  :properties (:takeable true :treasure true :value 1 :tvalue 1)
+  :behaviors (
+    :examine (fn () '((focus @bauble "It's a beautiful brass bauble.") (success)))))
+
+; === The grating (from above) ===
+; The pile of leaves hides the grating until moved (CLEARING-FCN).
+(object @leaves
+  :location @grating-clearing
+  :description "pile of leaves"
+  :properties (:takeable true :burnable true)
+  :behaviors (
+    :examine (fn () '((focus @leaves "It's a large pile of leaves.") (success)))
+    :move (fn ()
+      (cond
+        ((:revealed @grate) '((narrate "There is nothing but leaves and a grating here.") (success)))
+        (true
+          '((set @grate :revealed true)
+            (narrate "In disturbing the pile of leaves, a grating is revealed.")
+            (success)))))
+    :take (fn () (redirect :action (do @leaves :move)))))
