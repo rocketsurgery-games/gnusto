@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T03:39:47Z'
+updated: '2026-07-13T04:26:58Z'
 labels:
 - conversion
 ---
@@ -30,3 +30,9 @@ Deposit-loop playthrough (LLM harness): start -> Gallery painting (troll avoided
 ---
 ▸ 2026-07-13T03:39:47Z
 Precondition-chaining probe (kitchen): agent correctly opened containers, but 'eat the lunch'/'drink the water' both mapped to 'take' -- no eat/drink verb existed. FIXED as gnusto-036d (default eat/drink in builtins.grue). Re-verified via harness: eat/drink now dispatch. Session tally of playthrough findings: gnusto-0bf7.5 (direction synonyms, fixed), gnusto-0bf7.7 (look->wait enum, fixed), gnusto-036d (eat/drink defaults, fixed), gnusto-0bf7.6 (parse-only narrative summarization leak, filed/deferred pending user).
+
+---
+▸ 2026-07-13T04:26:58Z
+Egg region (climb tree, take egg, destructive self-open breaks canary, wind broken canary blocked): all clean, no bugs. Multi-action 'take the canary and wind it' decomposed correctly.
+
+Grue-death run (attic, no lamp): grue mechanic works (dark tick -> pitch-black warning -> strike at grace exhaustion). Surfaced two issues: gnusto-0bf7.8 ('unknown' reason sentinel leaked into death output -- FIXED) and gnusto-0bf7.9 (P1: death/victory not terminal in the harness -- runtime sets :dead but the loop plays on as a corpse; filed, awaiting design call).
