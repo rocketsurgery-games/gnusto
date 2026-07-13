@@ -328,9 +328,11 @@ class SimpleTUI:
                 on_debug=on_debug if self.session.debug else None,
             )
 
-            # Check if room changed and show new room
+            # Check if room changed and show new room. Once the game has ended
+            # (death/victory), skip this: the ending was already presented, and
+            # re-rendering the room the player died in reads oddly (gnusto-0bf7.10).
             state = get_game_state(self.session.runtime)
-            if state.room != previous_room:
+            if not self.session._end_state() and state.room != previous_room:
                 room_block = build_room_block(
                     state, self.session.runtime, self.game_dir
                 )
