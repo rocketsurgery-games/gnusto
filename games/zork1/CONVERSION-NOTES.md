@@ -228,6 +228,22 @@ patterns that show up in both are near-universal and belong in the shared
   following `(wait)` (matches the LH freezing tests). Worth verifying whether the
   harness should process events on movement turns too.
 
+## Slice 11 (coal mine pt 2 — machine/dumbwaiter) observations
+
+- **The dumbwaiter puzzle** works end to end: load the basket (coal, screwdriver,
+  lit torch), `:lower` it down the shaft, squeeze through the empty-handed narrow
+  passage, then in the Machine Room put the coal in the machine, close the lid,
+  and `(do @machine-switch :turn @screwdriver)` → diamond. The empty-handed gate
+  is a simple `(empty? (inventory))` `:through` (ZIL's weight<=4 nuance dropped).
+- **Engine enhancement: `lit?` now sees light in OPEN containers.** Added
+  `accessible-in` to `builtins.grue` (recurses through open containers). This is
+  what makes the intended solution work — you arrive empty-handed (no lamp), and
+  the lit torch *inside the open basket* lights the otherwise-dark Lower
+  Shaft/Machine Room. A closed container hides its light. General, and
+  REPL+pytest verified. Documented in `docs/grue.md`.
+- The coal mine is now complete; `frotz map` frontier is down to 7 — all surface
+  (forest/path/clearing/grating-clearing) plus the river (`@dam-base`).
+
 ## Engine improvements made
 
 - **Deterministic darkness/light + persistent start-events (gnusto-fa93.4).**

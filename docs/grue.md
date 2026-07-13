@@ -711,7 +711,9 @@ Darkness is **opt-in** and computed by the built-in Grue predicate `(lit? ROOM)`
 
 A room's own `:lit` **defaults to `true`**, so only a room declared `:lit false`
 can go dark — and it becomes lit again if an accessible object is a light source
-(a `:lightable` object currently switched `:lit true`, e.g. a lantern).
+(a `:lightable` object currently switched `:lit true`, e.g. a lantern). "Accessible"
+looks through **open** containers (`accessible-in`), so a lit torch inside an open
+basket lights the room the basket sits in; a closed container hides its light.
 
 The engine consults `lit?` in its perception layer (`GrueRuntime.is_room_lit`):
 when the player's room is unlit, the room description is replaced by the world's

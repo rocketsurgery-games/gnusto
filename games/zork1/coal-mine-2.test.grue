@@ -1,0 +1,72 @@
+; Tests for the Coal Mine (part 2): the machine + dumbwaiter.
+
+; === The empty-handed squeeze ===
+
+(test-group "the narrow squeeze"
+  :setup ((move @player @timber-room))
+
+  (test "you can't fit through carrying anything"
+    :setup ((move @player @timber-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction west)
+    (assert (outcome? blocked))
+    (assert (context? message "You cannot fit through this passage with that load.")))
+
+  (test "empty-handed you squeeze through to the lower shaft"
+    (go :direction west)
+    (assert (loc? @player @lower-shaft)))
+)
+
+; === The dumbwaiter basket ===
+
+(test-group "the basket"
+  :setup ((move @player @shaft-room) (set @basket :lowered false) (move @basket @shaft-room)
+          (move @coal @player) (move @lamp @player) (set @lamp :lit true))
+
+  (test "lowering the basket sends it (and its contents) down the shaft"
+    (do @coal :put @basket)
+    (assert (in? @coal @basket))
+    (do @basket :lower)
+    (assert (outcome? success))
+    (assert (loc? @basket @lower-shaft))
+    (assert (in? @coal @basket)))    ; the coal rode down inside it
+
+  (test "you can't carry the basket off"
+    (do @basket :take)
+    (assert (outcome? blocked))
+    (assert (context? message "The basket is securely fastened to the iron chain.")))
+)
+
+; === The machine ===
+
+(test-group "the coal machine"
+  :setup ((move @player @machine-room) (set @machine :open false) (move @diamond nil)
+          (move @coal @player) (move @screwdriver @player))
+
+  (test "the switch needs the screwdriver, not bare hands"
+    (do @machine-switch :turn nil)
+    (assert (outcome? blocked))
+    (assert (context? message "The switch is too small and delicate to turn with that.")))
+
+  (test "running it open does nothing"
+    :setup ((move @player @machine-room) (set @machine :open true) (move @screwdriver @player))
+    (do @machine-switch :turn @screwdriver)
+    (assert (outcome? blocked))
+    (assert (context? message "The machine doesn't seem to want to do anything.")))
+
+  (test "coal in, lid closed, turn with screwdriver -> diamond"
+    (do @machine :open)
+    (do @coal :put @machine)
+    (assert (in? @coal @machine))
+    (do @machine :close)
+    (do @machine-switch :turn @screwdriver)
+    (assert (outcome? success))
+    (assert (in? @diamond @machine))
+    (assert (output? "huge diamond")))
+
+  (test "running it empty produces only worthless slag"
+    :setup ((move @player @machine-room) (set @machine :open false) (move @diamond nil) (move @screwdriver @player))
+    (do @machine-switch :turn @screwdriver)
+    (assert (outcome? success))
+    (assert (loc? @diamond nil))
+    (assert (output? "worthless slag")))
+)

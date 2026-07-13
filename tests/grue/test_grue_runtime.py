@@ -1491,6 +1491,23 @@ class TestDarkness:
         rt.set_object_property("@lamp", "lit", True)
         assert rt.is_room_lit("CAVE") is True     # lamp on
 
+    def test_light_source_in_open_container_illuminates(self):
+        """A lit source inside an OPEN container (in the room) lights the room;
+        a CLOSED container hides its light."""
+        source = """
+        (world :player @player)
+        (room CAVE :description "A cave" :properties (:lit false))
+        (object @player :location CAVE)
+        (object @basket :location CAVE
+          :properties (:container true :openable true :open true))
+        (object @torch :location @basket
+          :properties (:takeable true :lightable true :lit true))
+        """
+        rt = GrueRuntime(parse_grue(source))
+        assert rt.is_room_lit("CAVE") is True      # open basket -> torch seen
+        rt.set_object_property("@basket", "open", False)
+        assert rt.is_room_lit("CAVE") is False     # closed -> torch hidden
+
     def test_dark_hides_listing_but_not_accessibility(self):
         """Darkness suppresses the room listing only; objects stay accessible."""
         source = """

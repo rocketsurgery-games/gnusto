@@ -1,0 +1,135 @@
+; The Coal Mine (part 2): the machine and the dumbwaiter.
+;
+; The classic Zork puzzle. West of Ladder Bottom, a narrow passage you can only
+; squeeze through EMPTY-HANDED connects the Timber Room to the drafty Lower Shaft
+; and the Machine Room. Since you can't carry anything through, you use the
+; dumbwaiter basket in the Shaft Room: load it (with the coal, the screwdriver,
+; and the lit torch for light) and lower it down the shaft, then squeeze through
+; empty-handed to retrieve it below. Put the coal in the machine, close the lid,
+; and turn the switch with the screwdriver — the coal is pressed into a diamond.
+;
+; ZIL: 1dungeon.zil (TIMBER-ROOM, LOWER-SHAFT, MACHINE-ROOM; MACHINE,
+; MACHINE-SWITCH, RAISED/LOWERED-BASKET, DIAMOND); 1actions.zil (MACHINE-F,
+; MSWITCH-FUNCTION, BASKET-F, NO-OBJS / EMPTY-HANDED).
+;
+; Engine note: this slice relies on the `lit?` enhancement that sees a light
+; source inside an OPEN container (builtins.grue `accessible-in`), so the lit
+; torch lowered in the open basket lights the otherwise-dark Lower Shaft / Machine
+; Room even though you arrive empty-handed. Deterministic: the empty-handed gate
+; is a simple "inventory must be empty" check (ZIL's weight<=4 nuance dropped).
+
+; === Rooms ===
+
+(room @timber-room
+  :description "Timber Room"
+  :ldesc "This is a long and narrow passage, which is cluttered with broken timbers. A wide passage comes
+  from the east and turns at the west end of the room into a very narrow passageway. From the west comes
+  a strong draft."
+  :rdesc "A long narrow mine passage cluttered with broken timbers, a wide way east pinching to a very narrow squeeze west, a cold draft blowing through; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @ladder-bottom)
+     (west :to @lower-shaft :via @narrow-squeeze)))
+
+(room @lower-shaft
+  :description "Drafty Room"
+  :ldesc "This is a small drafty room in which is the bottom of a long shaft. To the south is a
+  passageway and to the east a very narrow passage. In the shaft can be seen a heavy iron chain."
+  :rdesc "A small drafty room at the foot of a long shaft, a heavy iron chain hanging down it, a passage south and a very narrow squeeze east; deep shadow. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((south :to @machine-room)
+     (out :to @timber-room :via @narrow-squeeze)
+     (east :to @timber-room :via @narrow-squeeze)))
+
+(room @machine-room
+  :description "Machine Room"
+  :ldesc "This is a large, cold room whose sole exit is to the north. In one corner there is a machine
+  which is reminiscent of a clothes dryer. On its face is a switch which is labelled \"START\", and which
+  is protected from casual use by a large lid."
+  :rdesc "A large cold stone room, a bulky machine like a clothes dryer in one corner with a lidded START switch on its face, a single exit north; deep shadow. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @lower-shaft))
+  :visible (@machine @machine-switch))
+
+; The empty-handed squeeze (ZIL EMPTY-HANDED). Deterministic: you must carry
+; nothing to fit through.
+(object @narrow-squeeze
+  :description "narrow passage"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :through (fn ()
+      (cond
+        ((empty? (inventory)) (success))
+        (true (blocked :message "You cannot fit through this passage with that load."))))))
+
+; === The dumbwaiter basket ===
+
+(object @basket
+  :location @shaft-room
+  :description "basket"
+  ; An always-open cage on the iron chain; can't be removed. :lowered tracks
+  ; which end of the shaft it sits at.
+  :properties (:nodesc true :container true :open true :lowered false)
+  :behaviors (
+    :examine (fn () '((focus @basket "It's a large basket, attached to the iron chain, used to raise and lower things in the shaft.") (success)))
+    :take (fn () (blocked :message "The basket is securely fastened to the iron chain."))
+    :lower (fn ()
+      (cond
+        ((:lowered @basket) (blocked :message "The basket is already at the bottom of the shaft."))
+        (true
+          '((move @basket @lower-shaft) (set @basket :lowered true)
+            (narrate "The basket is lowered to the bottom of the shaft.") (success)))))
+    :raise (fn ()
+      (cond
+        ((not (:lowered @basket)) (blocked :message "The basket is already at the top of the shaft."))
+        (true
+          '((move @basket @shaft-room) (set @basket :lowered false)
+            (narrate "The basket is raised to the top of the shaft.") (success)))))))
+
+; === The machine ===
+
+(object @machine
+  :location @machine-room
+  :description "machine"
+  ; A lidded container. Closed by default; open the lid to load it.
+  :properties (:nodesc true :container true :openable true :searchable true)
+  :behaviors (
+    :examine (fn ()
+      (cond
+        ((:open @machine) '((focus @machine "The machine is like a clothes dryer; its lid is open.") (success)))
+        (true '((focus @machine "The machine is like a clothes dryer; its lid is closed.") (success)))))
+    :take (fn () (blocked :message "It is far too large to carry."))))
+
+(object @machine-switch
+  :location @machine-room
+  :description "switch"
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @machine-switch "It's a switch labelled \"START\", too fine to work by hand.") (success)))
+    ; Turn with the screwdriver, lid closed: coal -> diamond (else worthless slag).
+    :turn (fn (?with)
+      (cond
+        ((not (= ?with @screwdriver))
+          (blocked :message "The switch is too small and delicate to turn with that."))
+        ((:open @machine)
+          (blocked :message "The machine doesn't seem to want to do anything."))
+        ((in? @coal @machine)
+          '((move @coal nil)
+            (move @diamond @machine)
+            (narrate "The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates. Inside the machine, where the coal had been, is a huge diamond!")
+            (success)))
+        (true
+          '((narrate "The machine comes to life with a dazzling display of colored lights and bizarre noises, but when it stops, it has produced only a small pile of worthless slag.")
+            (success)))))))
+
+; === The diamond (treasure — starts in limbo, produced by the machine) ===
+
+(object @diamond
+  :location nil
+  :description "huge diamond"
+  :properties (:takeable true :treasure true :value 10 :tvalue 10)
+  :behaviors (
+    :examine (fn () '((focus @diamond "It's an enormous diamond, perfectly cut.") (success)))))

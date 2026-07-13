@@ -77,10 +77,23 @@
 (defn light-source? (?o)
   (and (:lightable ?o false) (:lit ?o false)))
 
+; (accessible-in CONTAINER) - CONTAINER's direct contents, plus (recursively)
+; the contents of any OPEN container among them. Lets light (and other
+; "reachable" queries) see through an open sack/basket without requiring the
+; item to be loose in the room.
+(defn accessible-in (?container)
+  (reduce
+    (fn (?acc ?x)
+      (concat (concat ?acc (list ?x))
+              (if (:open ?x false) (accessible-in ?x) (list))))
+    (list)
+    (contents ?container)))
+
 ; (accessible ROOM) - objects the player could draw light from: everything in
-; the room plus everything the player is carrying.
+; the room and everything the player carries, seen through open containers
+; (e.g. a lit torch inside an open basket lights the room it sits in).
 (defn accessible (?room)
-  (concat (contents ?room) (contents (player))))
+  (concat (accessible-in ?room) (accessible-in (player))))
 
 ; (lit? ROOM) - is ROOM lit? Either inherently lit (its :lit, default true) or
 ; an accessible light source is on.
