@@ -1,0 +1,278 @@
+; The Coal Mine region (part 1): the mirror-teleport cluster, Atlantis, and the
+; mine proper up to the ladder. The machine / dumbwaiter / diamond puzzle (west
+; of Ladder Bottom) is the next slice (fa93.14).
+;
+; Highlights: the two Mirror Rooms are joined by touching the mirror (teleport);
+; the Bat Room's vampire bat flings you deep into the mine unless you carry the
+; garlic; and the Gas Room explodes if you bring an open flame (the torch or lit
+; candles) into it — so you must light your way here with the electric lamp, not
+; the torch (the puzzle foil for the two light sources).
+;
+; ZIL: 1dungeon.zil (MIRROR-ROOM-1/2, SMALL-CAVE, TWISTING/WINDING/COLD/NARROW
+; passages, ATLANTIS-ROOM, SLIDE-ROOM, MINE-ENTRANCE, SQUEEKY/BAT/SHAFT/SMELLY/
+; GAS rooms, MINE-1..4, LADDER-TOP/BOTTOM, DEAD-END-5; TRIDENT, JADE, BRACELET,
+; COAL); 1actions.zil (MIRROR-MIRROR, BATS-ROOM/BAT-D, BOOM-ROOM).
+;
+; DETERMINISTIC CONVERSION: the bat drops you in a *fixed* mine room (ZIL picks
+; one at random); the gas explosion is a deterministic on-enter check.
+
+; === Mirror-teleport cluster ===
+
+(room @mirror-room-1
+  :description "Mirror Room"
+  :ldesc "You are in a large square room with tall ceilings. On the south wall is an enormous mirror
+  which fills the entire wall. There are exits on the other three walls of the room."
+  :rdesc "A tall square stone chamber, an enormous mirror filling the south wall, dark exits on the other three walls; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @cold-passage)
+     (west :to @twisting-passage)
+     (east :to @small-cave))
+  :visible (@mirror))
+
+(room @mirror-room-2
+  :description "Mirror Room"
+  :ldesc "You are in a large square room with tall ceilings. On the south wall is an enormous mirror
+  which fills the entire wall. There are exits on the other three walls of the room."
+  :rdesc "A tall square stone chamber, an enormous mirror filling the south wall, dark exits on the other three walls; its own faint light. Empty of people."
+  :properties (:lit true)   ; MIRROR-ROOM-2 has ONBIT
+  :exits
+    ((west :to @winding-passage)
+     (north :to @narrow-passage)
+     (east :to @tiny-cave))
+  :visible (@mirror))
+
+(room @small-cave
+  :description "Cave"
+  :ldesc "This is a tiny cave with entrances west and north, and a staircase leading down."
+  :rdesc "A tiny rough cave, passages west and north and a staircase descending; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((north :to @mirror-room-1)
+     (down :to @atlantis-room)
+     (south :to @atlantis-room)
+     (west :to @twisting-passage)))
+
+(room @twisting-passage
+  :description "Twisting Passage"
+  :ldesc "This is a winding passage. It seems that there are only exits on the east and north."
+  :rdesc "A winding rock passage with exits east and north; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((north :to @mirror-room-1) (east :to @small-cave)))
+
+(room @winding-passage
+  :description "Winding Passage"
+  :ldesc "This is a winding passage. It seems that there are only exits on the east and north."
+  :rdesc "A winding rock passage with exits east and north; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((north :to @mirror-room-2) (east :to @tiny-cave)))
+
+(room @cold-passage
+  :description "Cold Passage"
+  :ldesc "This is a cold and damp corridor where a long east-west passageway turns into a southward path."
+  :rdesc "A cold damp stone corridor bending from east-west into a southward path; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((south :to @mirror-room-1) (west :to @slide-room)))
+
+(room @narrow-passage
+  :description "Narrow Passage"
+  :ldesc "This is a long and narrow corridor where a long north-south passageway briefly narrows even
+  further."
+  :rdesc "A long north-south corridor pinching to a narrow squeeze; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((north :to @round-room) (south :to @mirror-room-2)))
+
+(room @atlantis-room
+  :description "Atlantis Room"
+  :ldesc "This is an ancient room, long under water. There is an exit to the south and a staircase
+  leading up."
+  :rdesc "An ancient drowned stone room, waterlines high on the walls, an exit south and a staircase up; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((up :to @small-cave) (south :to @reservoir-north))
+  :visible (@trident))
+
+; The mirror: touching either mirror swaps you between the two Mirror Rooms.
+(object @mirror
+  :description "mirror"
+  :location nil
+  :properties (:nodesc true)
+  :behaviors (
+    :examine (fn () '((focus @mirror "It's an enormous mirror that fills the entire south wall.") (success)))
+    :rub (fn () (redirect :action (do @mirror :touch)))
+    :touch (fn ()
+      (cond
+        ((= (loc @player) @mirror-room-1)
+          '((move @player @mirror-room-2)
+            (narrate "There is a rumbling sound and the room shakes; your vision is obscured for a moment. When it clears, you are in a room that looks much the same, but subtly different.")
+            (success)))
+        ((= (loc @player) @mirror-room-2)
+          '((move @player @mirror-room-1)
+            (narrate "There is a rumbling sound and the room shakes; your vision is obscured for a moment. When it clears, you are in a room that looks much the same, but subtly different.")
+            (success)))
+        (true (blocked :message "You can't see any mirror here."))))))
+
+; === The mine ===
+
+(room @slide-room
+  :description "Slide Room"
+  :ldesc "This is a small chamber, which appears to have been part of a coal mine. On the south wall of
+  the chamber the letters \"Granite Wall\" are etched in the rock. To the east is a long passage, and
+  there is a steep metal slide twisting downward. To the north is a small opening."
+  :rdesc "A small coal-mine chamber, \"Granite Wall\" crudely etched on the south wall, a passage east, a small opening north, and a steep metal slide twisting down into the dark. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((east :to @cold-passage)
+     (north :to @mine-entrance)
+     (down :to @cellar)))   ; the one-way slide back to the cellar
+
+(room @mine-entrance
+  :description "Mine Entrance"
+  :ldesc "You are standing at the entrance of what might have been a coal mine. The shaft enters the
+  west wall, and there is another exit on the south end of the room."
+  :rdesc "The timbered mouth of an old coal mine, a shaft entering the west wall and another exit south; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((south :to @slide-room) (in :to @squeeky-room) (west :to @squeeky-room)))
+
+(room @squeeky-room
+  :description "Squeaky Room"
+  :ldesc "You are in a small room. Strange squeaky sounds may be heard coming from the passage at the
+  north end. You may also escape to the east."
+  :rdesc "A cramped mine room, unsettling squeaks drifting from the passage north, an escape east; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((north :to @bat-room) (east :to @mine-entrance)))
+
+(room @bat-room
+  :description "Bat Room"
+  :ldesc "You are in a small room which has doors only to the east and south."
+  :rdesc "A small mine room with doors east and south, a large shape hanging in the shadows of the ceiling; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((south :to @squeeky-room) (east :to @shaft-room))
+  :visible (@jade)
+  :behaviors (
+    ; The vampire bat flings you deep into the mine unless the garlic wards it off.
+    :on-enter (fn (?from)
+      (cond
+        ((held? @garlic) (success))
+        (true
+          '((narrate "A large vampire bat, hanging from the ceiling, swoops down at you! Fweep! Fweep! The bat grabs you by the scruff of your neck and carries you deep into the coal mine, finally dropping you in a heap.")
+            (move @player @mine-1)
+            (success)))))))
+
+(room @shaft-room
+  :description "Shaft Room"
+  :ldesc "This is a large room, in the middle of which is a small shaft descending through the floor into
+  darkness below. To the west and the north are exits from this room. Constructed over the top of the
+  shaft is a metal framework to which a heavy iron chain is attached."
+  :rdesc "A large mine room, a black shaft plunging through the floor at its center, a metal framework and heavy iron chain rigged over it, exits west and north; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((down :blocked "You wouldn't fit and would die if you could.")
+     (west :to @bat-room)
+     (north :to @smelly-room)))
+
+(room @smelly-room
+  :description "Smelly Room"
+  :ldesc "This is a small nondescript room. However, from the direction of a small descending staircase a
+  foul odor can be detected. To the south is a narrow tunnel."
+  :rdesc "A nondescript mine room, a foul coal-gas odor rising from a descending staircase, a narrow tunnel south; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((down :to @gas-room) (south :to @shaft-room)))
+
+(room @gas-room
+  :description "Gas Room"
+  :ldesc "This is a small room which smells strongly of coal gas. There is a short climb up some stairs
+  and a narrow tunnel leading east."
+  :rdesc "A cramped mine room hazy with coal gas, a short stair up and a narrow tunnel east; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((up :to @smelly-room) (east :to @mine-1))
+  :visible (@bracelet)
+  :behaviors (
+    ; Coal gas: an open flame here is instantly fatal (BOOM-ROOM). The electric
+    ; lamp is safe; the torch and lit candles are not.
+    :on-enter (fn (?from)
+      (cond
+        ((some (fn (?o) (and (:flame ?o false) (:lit ?o false))) (contents @player))
+          (blocked :reason death
+                   :context ((death true)
+                             (description "Oh dear. It appears that the smell coming from this room was coal gas. I would have thought twice about carrying flaming objects in here.\n\n     ** BOOOOOOOOOOOM **"))))
+        (true (success))))))
+
+(room @mine-1
+  :description "Coal Mine"
+  :ldesc "This is a nondescript part of a coal mine."
+  :properties (:lit false)
+  :exits ((north :to @gas-room) (east :to @mine-1) (ne :to @mine-2)))
+
+(room @mine-2
+  :description "Coal Mine"
+  :ldesc "This is a nondescript part of a coal mine."
+  :properties (:lit false)
+  :exits ((north :to @mine-2) (south :to @mine-1) (se :to @mine-3)))
+
+(room @mine-3
+  :description "Coal Mine"
+  :ldesc "This is a nondescript part of a coal mine."
+  :properties (:lit false)
+  :exits ((south :to @mine-3) (sw :to @mine-4) (east :to @mine-2)))
+
+(room @mine-4
+  :description "Coal Mine"
+  :ldesc "This is a nondescript part of a coal mine."
+  :properties (:lit false)
+  :exits ((north :to @mine-3) (west :to @mine-4) (down :to @ladder-top)))
+
+(room @ladder-top
+  :description "Ladder Top"
+  :ldesc "This is a very small room. In the corner is a rickety wooden ladder, leading downward. It might
+  be safe to descend. There is also a staircase leading upward."
+  :rdesc "A very small mine room, a rickety wooden ladder descending in the corner and a staircase leading up; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits ((down :to @ladder-bottom) (up :to @mine-4)))
+
+(room @ladder-bottom
+  :description "Ladder Bottom"
+  :ldesc "This is a rather wide room. On one side is the bottom of a narrow wooden ladder. To the west
+  and the south are passages leaving the room."
+  :rdesc "A wide mine room, the foot of a narrow wooden ladder on one side, passages west and south; lantern-lit. Empty of people."
+  :properties (:lit false)
+  :exits
+    ((south :to @dead-end-5)
+     (west :to @timber-room)    ; machine/dumbwaiter cluster — next slice
+     (up :to @ladder-top)))
+
+(room @dead-end-5
+  :description "Dead End"
+  :ldesc "You have come to a dead end in the mine."
+  :properties (:lit false)
+  :exits ((north :to @ladder-bottom))
+  :visible (@coal))
+
+; === Treasures & fuel ===
+
+(object @trident
+  :location @atlantis-room
+  :description "crystal trident"
+  :properties (:takeable true :treasure true :value 4 :tvalue 11)
+  :behaviors (
+    :examine (fn () '((focus @trident "It's Poseidon's own crystal trident.") (success)))))
+
+(object @jade
+  :location @bat-room
+  :description "jade figurine"
+  :properties (:takeable true :treasure true :value 5 :tvalue 5)
+  :behaviors (
+    :examine (fn () '((focus @jade "It's an exquisite jade figurine.") (success)))))
+
+(object @bracelet
+  :location @gas-room
+  :description "sapphire-encrusted bracelet"
+  :properties (:takeable true :treasure true :value 5 :tvalue 5)
+  :behaviors (
+    :examine (fn () '((focus @bracelet "It's a sapphire-encrusted bracelet.") (success)))))
+
+(object @coal
+  :location @dead-end-5
+  :description "small pile of coal"
+  :properties (:takeable true :burnable true)
+  :behaviors (
+    :examine (fn () '((focus @coal "It's a small pile of coal.") (success)))))

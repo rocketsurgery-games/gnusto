@@ -1,0 +1,111 @@
+; Tests for the Coal Mine region (part 1).
+; Nearly everything here is dark; setups carry a lit lantern (the torch would be
+; fatal in the gas room, so it's used only for the explosion test).
+
+; === Mirror teleport ===
+
+(test-group "the mirror"
+  :setup ((move @player @mirror-room-1) (move @lamp @player) (set @lamp :lit true))
+
+  (test "touching the mirror in room 1 warps you to room 2"
+    (do @mirror :touch)
+    (assert (outcome? success))
+    (assert (loc? @player @mirror-room-2)))
+
+  (test "and back again from room 2"
+    :setup ((move @player @mirror-room-2))
+    (do @mirror :rub)
+    (assert (loc? @player @mirror-room-1)))
+)
+
+; === Atlantis (resolves the reservoir-north / round-room frontier) ===
+
+(test-group "atlantis and the passages"
+  :setup ((move @player @reservoir-north) (set @dam :gates-open true) (move @lamp @player) (set @lamp :lit true))
+
+  (test "reservoir north leads up to atlantis"
+    (go :direction north)
+    (assert (loc? @player @atlantis-room)))
+
+  (test "take the crystal trident"
+    :setup ((move @player @atlantis-room) (move @lamp @player) (set @lamp :lit true))
+    (do @trident :take)
+    (assert (outcome? success))
+    (assert (held? @trident)))
+
+  (test "round room south reaches the narrow passage"
+    :setup ((move @player @round-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction south)
+    (assert (loc? @player @narrow-passage)))
+)
+
+; === The bat ===
+
+(test-group "the vampire bat"
+  :setup ((move @player @squeeky-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "without garlic the bat flings you into the mine"
+    (go :direction north)
+    (assert (loc? @player @mine-1)))
+
+  (test "carrying the garlic wards it off"
+    :setup ((move @player @squeeky-room) (move @garlic @player) (move @lamp @player) (set @lamp :lit true))
+    (go :direction north)
+    (assert (loc? @player @bat-room)))
+
+  (test "with the bat warded, take the jade"
+    ; Hold the garlic BEFORE entering, or moving in triggers the bat on-enter.
+    :setup ((move @garlic @player) (move @lamp @player) (set @lamp :lit true) (move @player @bat-room))
+    (do @jade :take)
+    (assert (outcome? success))
+    (assert (held? @jade)))
+)
+
+; === The gas room ===
+
+(test-group "the gas room"
+  :setup ((move @player @smelly-room) (move @lamp @player) (set @lamp :lit true))
+
+  (test "entering with the electric lamp is safe"
+    (go :direction down)
+    (assert (loc? @player @gas-room))
+    (assert (prop? @player dead false)))
+
+  (test "entering with the lit torch is fatal"
+    :setup ((move @player @smelly-room) (move @torch @player) (set @torch :lit true))
+    (go :direction down)
+    (assert (prop? @player dead true)))
+
+  (test "take the sapphire bracelet"
+    :setup ((move @player @gas-room) (move @lamp @player) (set @lamp :lit true))
+    (do @bracelet :take)
+    (assert (outcome? success))
+    (assert (held? @bracelet)))
+)
+
+; === Mine maze + slide ===
+
+(test-group "the mine and the slide"
+  :setup ((move @player @mine-1) (move @lamp @player) (set @lamp :lit true))
+
+  (test "a path through the mine reaches the ladder"
+    (go :direction ne)      ; mine-1 -> mine-2
+    (assert (loc? @player @mine-2))
+    (go :direction se)      ; mine-2 -> mine-3
+    (assert (loc? @player @mine-3))
+    (go :direction sw)      ; mine-3 -> mine-4
+    (assert (loc? @player @mine-4))
+    (go :direction down)    ; mine-4 -> ladder top
+    (assert (loc? @player @ladder-top)))
+
+  (test "take the coal at the dead end"
+    :setup ((move @player @dead-end-5) (move @lamp @player) (set @lamp :lit true))
+    (do @coal :take)
+    (assert (outcome? success))
+    (assert (held? @coal)))
+
+  (test "the slide drops back to the cellar"
+    :setup ((move @player @slide-room) (move @lamp @player) (set @lamp :lit true))
+    (go :direction down)
+    (assert (loc? @player @cellar)))
+)

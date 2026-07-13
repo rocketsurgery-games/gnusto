@@ -128,7 +128,8 @@
 (object @candles
   :location @south-temple
   :description "pair of candles"
-  :properties (:takeable true :lightable true)
+  ; :flame — a lit open flame (deadly in the coal-gas room; see coal-mine.grue).
+  :properties (:takeable true :lightable true :flame true)
   :behaviors (
     :examine (fn ()
       (cond

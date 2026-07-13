@@ -143,6 +143,25 @@ patterns that show up in both are near-universal and belong in the shared
 - Skull banked (10/10). `frotz map`: tiny-cave/entrance/LLD resolved; the
   tiny-cave's north/west (mirror/coal-mine) join the frontier.
 
+## Slice 10 (coal mine, part 1) observations
+
+- **Mirror teleport** (touch either mirror -> swap Mirror Rooms), the **vampire
+  bat** (flings you to a fixed mine room unless you hold the garlic — ZIL picks
+  the room at random; we fix it), and the **gas-room explosion** (an `on-enter`
+  check: any carried `:flame`+`:lit` object = death). The gas room is the
+  intended foil for the two light sources — you must light it with the electric
+  lamp, never the torch/candles.
+- **`(move @player ...)` triggers a room's `:on-enter`, not just `(go)`.** A
+  setup that moved the player into the Bat Room *before* giving them the garlic
+  fired the bat and flung them to the mine. Lesson: in setups, establish
+  inventory/state that an `:on-enter` reads *before* the `(move @player ...)`
+  that lands you there. (Added to the grue-testing skill.)
+- Treasures banked: trident (4/11), jade (5/5), bracelet (5/5), plus the coal
+  (fuel for the diamond machine next slice). `frotz map`: 79 rooms, frontier down
+  to 8 (`@timber-room` + the surface). Deferred to fa93.14: timber/lower-shaft/
+  machine-room, the dumbwaiter basket, the empty-handed squeeze, and the diamond
+  (which wants a light-in-open-container tweak to `lit?`).
+
 ## Friction / tooling observations
 
 - **Test DSL vs REPL `go` syntax diverge.** Tests use `(go :direction east)`;
