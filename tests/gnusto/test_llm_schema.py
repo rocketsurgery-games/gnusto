@@ -7,7 +7,15 @@ Both bit us live when the default model moved to Sonnet 4.5. These tests walk
 AGENT_RESPONSE_SCHEMA so a future edit can't quietly reintroduce either.
 """
 
-from gnusto.llm import AGENT_RESPONSE_SCHEMA
+from typing import get_args
+
+from gnusto.llm import AGENT_RESPONSE_SCHEMA, ActionRequest
+
+
+def _tool_enum():
+    """The `tool` enum from the actions array in AGENT_RESPONSE_SCHEMA."""
+    props = AGENT_RESPONSE_SCHEMA["properties"]["actions"]["items"]["properties"]
+    return props["tool"]["enum"]
 
 
 def _walk(node):
@@ -37,3 +45,23 @@ def test_enums_use_scalar_string_type():
                 f"enum field must declare a scalar string type, got {node.get('type')!r}"
             )
             assert None not in node["enum"], "enum must not include null"
+
+
+def test_tool_enum_matches_action_request_literal():
+    """Every ActionRequest tool must be emittable via the schema enum (gnusto-0bf7.7).
+
+    The structured-output decoder is constrained to the enum, so any tool the
+    code supports but the enum omits is silently unreachable -- e.g. 'look'
+    collapsed to 'wait' ('Time passes.') because it was missing here.
+    """
+    supported = set(get_args(ActionRequest.__annotations__["tool"]))
+    enum = set(_tool_enum())
+    assert supported == enum, (
+        f"tool enum drifted from ActionRequest.tool; "
+        f"missing from enum: {supported - enum}, extra in enum: {enum - supported}"
+    )
+
+
+def test_look_is_emittable():
+    """Explicit guard for the 'look' regression (gnusto-0bf7.7)."""
+    assert "look" in _tool_enum()
