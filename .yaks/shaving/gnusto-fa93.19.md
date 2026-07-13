@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T05:02:10Z'
+updated: '2026-07-13T15:25:21Z'
 labels:
 - conversion
 ---
@@ -44,3 +44,9 @@ Maze + cyclops run (LLM harness): kill troll (2 blows -> W passage opens) -> nav
 ---
 ▸ 2026-07-13T05:02:10Z
 Save/restore + thief run: (1) /save then /load round-trips through the harness (tree perch restored w/ 3 turns history; take egg + go down continued cleanly). (2) A PROGRAMMATIC save (grue.save.save_game from a repl-built state) loads in the gnusto harness -- cheap deep-region checkpointing for testing. (3) Thief encounter from a loaded checkpoint: go up (past subdued cyclops) -> 'give the egg to the thief' -> (do @thief :give @egg) [correct two-object target/arg], egg deft-opened (canary intact) + engrossed -> 2 sword blows (engrossed -3: 5->2->dead) -> stiletto/bag disgorge -> take chalice. NO BUGS. Validated: harness save/restore, externally-built saves, :give two-object verb, engross combat modifier, egg-fix, NPC death payoff.
+
+---
+▸ 2026-07-13T15:25:21Z
+Exorcism ritual (checkpointed at Entrance to Hades): ring the bell (paralyze) -> light the candles (needs matches) -> read the book (banish, gate opens) -> go in -> take crystal skull. Correct 3-step sequencing/preconditions, clean NL mapping. NO BUGS.
+
+Gas-room torch death (checkpointed at Coal Mine holding lit candles): go north -> gas-room :on-enter detects the open flame -> BOOM death -> terminal (subsequent commands refused). Confirms terminal death via the player-MOVEMENT path (distinct from the grue event path). Minor cosmetic (fixed as gnusto-0bf7.10): TUI was re-rendering the room you died in after the banner.
