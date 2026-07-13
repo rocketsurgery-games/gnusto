@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T03:22:27Z'
+updated: '2026-07-13T03:33:24Z'
 labels:
 - conversion
 ---
@@ -22,3 +22,7 @@ Dam-region playthrough (LLM harness, --debug): drove start -> house -> gear up -
   2. Confirmed the :nodesc fix under real play: the yellow button/bolt/bubble are :nodesc so absent from 'You see:', yet the agent still resolved 'push the yellow button' from context. Good.
 Also observed (not a bug, filed gnusto-0bf7.6): parse-only mode still runs LLM narrative summarization + injects an 'I'll continue narrating' priming line -- internal agent memory only, awaiting user input.
 Playthrough validated through the dam puzzle; harness solid modulo the above.
+
+---
+▸ 2026-07-13T03:33:24Z
+Deposit-loop playthrough (LLM harness): start -> Gallery painting (troll avoided via Cellar->S->East-of-Chasm->E->Gallery) -> drop sword -> chimney carry-limit climb to Kitchen -> Living Room -> open trophy case -> deposit painting ('Done.'). All correct. Surfaced a P1: 'look' collapsed to 'wait' because the 'look' tool was missing from AGENT_RESPONSE_SCHEMA's enum -- FIXED in gnusto-0bf7.7. Note (by design): deterministic conversion dropped the 350-pt score, so depositing gives no score feedback (endgame gate is all-treasures-deposited?).
