@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T04:26:58Z'
+updated: '2026-07-13T04:59:04Z'
 labels:
 - conversion
 ---
@@ -36,3 +36,7 @@ Precondition-chaining probe (kitchen): agent correctly opened containers, but 'e
 Egg region (climb tree, take egg, destructive self-open breaks canary, wind broken canary blocked): all clean, no bugs. Multi-action 'take the canary and wind it' decomposed correctly.
 
 Grue-death run (attic, no lamp): grue mechanic works (dark tick -> pitch-black warning -> strike at grace exhaustion). Surfaced two issues: gnusto-0bf7.8 ('unknown' reason sentinel leaked into death output -- FIXED) and gnusto-0bf7.9 (P1: death/victory not terminal in the harness -- runtime sets :dead but the loop plays on as a corpse; filed, awaiting design call).
+
+---
+▸ 2026-07-13T04:59:04Z
+Maze + cyclops run (LLM harness): kill troll (2 blows -> W passage opens) -> navigate the dark maze through 8 identical 'twisty little passages' rooms via explicit directions (W,S,E,up,SW,E,S,SE) -> Cyclops Room -> examine cyclops -> 'say Odysseus to the cyclops' correctly mapped to (do @cyclops :odysseus) -> he flees and knocks down the east wall. NO BUGS. Confirms: full combat completion, robust navigation through indistinguishable dark rooms, direction synonyms in play (go southwest->sw, southeast->se), maze loot surfacing, and NL->named-verb mapping for the magic word.
