@@ -178,6 +178,29 @@ def test_multi_result_renders_every_text_in_order(monkeypatch):
     assert blocks[1].text == "Olde English gibberish."  # no longer dropped
 
 
+def test_blocked_event_reason_sentinel_not_leaked(monkeypatch):
+    """A blocked EVENT (the grue death) arrives as a runtime ActionResult whose
+    reason is the deprecated 'unknown' sentinel (_eval_blocked). Only its context
+    description (the death message) must render -- never the sentinel
+    (gnusto-0bf7.8).
+    """
+    sess = _session(monkeypatch, {})
+    grue = SimpleNamespace(
+        output=[],
+        reason="unknown",
+        context=[
+            ("death", True),
+            ("description", "Oh, no! You have walked into the slavering fangs of a lurking grue!"),
+        ],
+    )
+    blocks = sess._blocks_from_results([grue], None)
+    texts = [getattr(b, "text", "") for b in blocks]
+    assert "unknown" not in texts
+    assert texts == [
+        "Oh, no! You have walked into the slavering fangs of a lurking grue!"
+    ]
+
+
 def test_context_text_keys_render_in_canonical_order(monkeypatch):
     # transition listed before message in the raw context, but message renders first.
     sess = _session(monkeypatch, {})

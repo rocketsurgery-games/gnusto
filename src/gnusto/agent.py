@@ -1130,7 +1130,11 @@ class GameSession:
             # channel in order.
             emit_output(result)
             reason = getattr(result, "reason", None)
-            if reason:
+            # "unknown" is the deprecated-reason sentinel from _eval_blocked (see
+            # grue.expr); it's not player-facing text. A blocked EVENT arrives
+            # here as a runtime.ActionResult (not ActionBlocked), so without this
+            # guard its sentinel reason leaks into the output stream.
+            if reason and reason != "unknown":
                 blocks.append(prose(str(reason)))
             context = getattr(result, "context", None) or []
             ctx = dict(context)
@@ -1336,7 +1340,7 @@ class GameSession:
             if isinstance(result, ActionDone):
                 lines.extend(self._debug_context_lines(result.context))
                 lines.extend(self._debug_output_lines(result.output))
-                if result.reason:
+                if result.reason and result.reason != "unknown":
                     lines.append(f"description: {result.reason}")
                 lines.extend(self._debug_effects_lines(result.effects))
             elif isinstance(result, ActionBlocked):
@@ -1359,8 +1363,9 @@ class GameSession:
                     lines.append(f"error: {result.error}")
                 lines.extend(self._debug_context_lines(result.context))
                 lines.extend(self._debug_output_lines(getattr(result, "output", None)))
-                if getattr(result, "reason", None):
-                    lines.append(f"description: {result.reason}")
+                reason = getattr(result, "reason", None)
+                if reason and reason != "unknown":
+                    lines.append(f"description: {reason}")
                 lines.extend(self._debug_effects_lines(result.effects_applied))
         return "\n".join(lines)
 
