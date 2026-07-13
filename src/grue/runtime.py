@@ -29,6 +29,39 @@ from .expr import (
 from .sexpr import SExpr, Symbol, SList, Keyword, to_string
 
 
+# Canonical movement directions and their accepted synonyms. Exits are authored
+# with the canonical token (left column); players/agents may use any synonym.
+# IF convention (and Zork itself) treats "ne" and "northeast" as the same exit.
+_DIRECTION_SYNONYMS = {
+    "north": "north", "n": "north",
+    "south": "south", "s": "south",
+    "east": "east", "e": "east",
+    "west": "west", "w": "west",
+    "ne": "ne", "northeast": "ne",
+    "nw": "nw", "northwest": "nw",
+    "se": "se", "southeast": "se",
+    "sw": "sw", "southwest": "sw",
+    "up": "up", "u": "up",
+    "down": "down", "d": "down",
+    "in": "in", "inside": "in", "enter": "in",
+    "out": "out", "outside": "out", "exit": "out",
+}
+
+
+def normalize_direction(direction: Any) -> Any:
+    """Map a movement direction to its canonical token.
+
+    Accepts direction synonyms/abbreviations ("northeast" -> "ne", "n" ->
+    "north", "inside" -> "in", ...) so exits authored with the canonical token
+    match however the player or agent phrases the direction. Unknown values
+    (and non-strings) pass through unchanged so callers can still report a
+    clean no-exit for a genuinely bogus direction.
+    """
+    if isinstance(direction, str):
+        return _DIRECTION_SYNONYMS.get(direction.strip().lower(), direction)
+    return direction
+
+
 @dataclass
 class ObjectState:
     """Runtime state for an object.
@@ -525,8 +558,11 @@ class GrueRuntime:
         room = self.world.rooms.get(room_name) if room_name else None
         if not room:
             return None
+        # Normalize both sides so a stored "ne" matches a queried "northeast"
+        # (and vice versa for games authored with the long form).
+        target = normalize_direction(direction)
         for exit_def in room.exits:
-            if exit_def.direction == direction:
+            if normalize_direction(exit_def.direction) == target:
                 return (exit_def.to, exit_def.via, exit_def.blocked)
         return None
 
@@ -1146,7 +1182,10 @@ class GrueRuntime:
                     outcome="error",
                     error="go requires a direction"
                 )
-            direction = args[0]
+            # Normalize synonyms (northeast->ne, n->north, inside->in, ...) up
+            # front so both the room :before-action check and exit resolution
+            # see the canonical token.
+            direction = normalize_direction(args[0])
             # Check room's :before-action for movement (verb="go", target=direction)
             # Only short-circuit if result is blocking (blocked, error, redirect)
             # A 'success' from before-action means "proceed with the movement"
@@ -1386,6 +1425,10 @@ class GrueRuntime:
         """
         if actor is None:
             actor = self.player_name
+
+        # Idempotent for calls routed through _do_single; normalizes synonyms
+        # for any direct caller (REPL, tests).
+        direction = normalize_direction(direction)
 
         # Check if actor is in a vehicle
         vehicle_info = self.get_player_vehicle() if actor == self.player_name else None

@@ -118,6 +118,36 @@ class TestSimpleMovement:
         assert "west" not in runtime.get_exits()
         assert "north" in runtime.get_exits()
 
+    def test_go_accepts_direction_synonyms(self):
+        """Direction synonyms resolve to the canonical exit token (gnusto-0bf7.5).
+
+        A stored diagonal exit "ne" must match the player's/agent's natural
+        "northeast", and a full word "north" must match the abbreviation "n".
+        This is IF convention (and Zork itself); without it the agent's
+        (go northeast) hit no-exit at a room whose exit was authored as "ne".
+        """
+        source = """
+        (world :player PLAYER)
+        (room LOBBY :description "A lobby"
+          :exits ((ne :to VAULT) (north :to HALLWAY)))
+        (room VAULT :description "A vault")
+        (room HALLWAY :description "A hallway")
+        (object PLAYER :location LOBBY)
+        """
+        world = parse_grue(source)
+        runtime = GrueRuntime(world)
+
+        # "northeast" resolves to the exit authored as "ne".
+        result = runtime.do("_movement", "go", "northeast")
+        assert result.outcome == "success"
+        assert runtime.get_player_location() == "VAULT"
+
+        # Reset and confirm the abbreviation "n" resolves to "north".
+        runtime.state.objects["PLAYER"].location = "LOBBY"
+        result = runtime.do("_movement", "go", "n")
+        assert result.outcome == "success"
+        assert runtime.get_player_location() == "HALLWAY"
+
 
 class TestBehaviorExecution:
     """Test behavior execution."""
