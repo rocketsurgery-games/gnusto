@@ -1,0 +1,41 @@
+# Zork I — "recover your first treasure" arc.
+# A runnable natural-language walkthrough for scripts/make_transcript.py:
+#   python scripts/make_transcript.py games/zork1 \
+#       -c .agents/skills/play-grue/zork1-first-treasure.txt -o out.md
+# One natural intent per line; blank lines and #-comments are ignored.
+# Phrasings are deliberately human (multi-action, a dead-end, exploration).
+
+# West of House — get your bearings
+check the mailbox and read the leaflet
+try to open the boarded front door
+# no way in at the front — head around back
+walk around to the north side of the house
+follow the path around to the east, behind the house
+# Behind House — the window is ajar
+force the kitchen window open and climb inside
+# Kitchen — a quick look around
+look inside the brown sack
+head west into the living room
+# Living Room — gear up for the dark
+take the brass lantern and the elvish sword
+switch on the lantern
+shove the oriental rug aside
+pry open the trap door and climb down into the cellar
+# Cellar — press north toward the noise
+go north into the troll room
+# Troll Room — a nasty troll blocks the way
+attack the troll with the sword
+strike the troll with the sword again
+# the way is clear; double back and explore the other passage
+go south back to the cellar
+head south down the crawlway
+go east into the gallery
+# Gallery — a treasure!
+take the painting
+# carry it home up the chimney (drop the sword so you'll fit)
+drop the sword
+go north into the studio
+climb up the chimney to the kitchen
+go west to the living room
+open the trophy case and put the painting inside
+look around

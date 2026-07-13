@@ -55,11 +55,36 @@ WALKTHROUGH = [
 ]
 
 
+def load_commands(path: str) -> list[str]:
+    """Read natural-language commands from a file (one per line).
+
+    Blank lines and ``#`` comment lines are ignored, so the file can carry
+    section headers for readability. This lets a natural-language walkthrough
+    (e.g. from the play-grue skill) drive the transcript directly.
+    """
+    commands = []
+    for raw in Path(path).read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        commands.append(line)
+    return commands
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("game", nargs="?", default="games/zork1/", help="game directory")
     ap.add_argument("-o", "--out", default=None, help="write transcript to this file")
+    ap.add_argument(
+        "-c",
+        "--commands",
+        default=None,
+        help="file of natural-language commands (one per line; # comments ok). "
+        "Defaults to the built-in first-treasure walkthrough.",
+    )
     args = ap.parse_args()
+
+    walkthrough = load_commands(args.commands) if args.commands else WALKTHROUGH
 
     session = GameSession.from_game_file(args.game, parsing_only=True)
     runtime = session.runtime
@@ -80,7 +105,7 @@ def main() -> None:
     emit(render_blocks_to_text([build_room_block(state, runtime, game_dir)]))
 
     prev_room = state.room
-    for command in WALKTHROUGH:
+    for command in walkthrough:
         collected: list = []
         session.process_input(command, on_blocks=collected.extend)
         lines.append(f"\n> {command}\n")

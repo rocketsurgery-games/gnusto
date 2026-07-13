@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T15:27:27Z'
+updated: '2026-07-13T16:07:18Z'
 labels:
 - conversion
 ---
@@ -54,3 +54,7 @@ Gas-room torch death (checkpointed at Coal Mine holding lit candles): go north -
 ---
 ▸ 2026-07-13T15:27:27Z
 Boat/vehicle run (checkpointed at Dam Base with pump+sword): 'inflate the boat with the pump' -> (do @boat :inflate @pump) seaworthy; 'get in the boat' REFUSED while holding the sword (sharp/puncture guard); drop sword -> aboard; go down launches (via @river-launch, requires in-boat) and floats river-1->2->3 as a portable vehicle carrying the player. Clean two-object NL mapping, no bugs. Distinct-mechanic validation now covers: nav/synonyms/dark/maze, containers/eat/drink, combat/give/engross/magic-word, multi-step puzzles (dam, exorcism, chimney, boat), deposit, terminal death (grue event + gas movement), vehicle, save/restore (harness + programmatic), look/examine/end-state. Considered comprehensively validated.
+
+---
+▸ 2026-07-13T16:07:18Z
+Added the play-grue agent skill: guides an agent to play a Grue game in natural language (intents, not micro-commands), embrace stochastic misparses, recover, and produce a player-facing transcript. Contents: SKILL.md (natural-play philosophy + how the parse-only harness reads you + driving via make_transcript.py or interactive gnusto with /save-/load), zork1-walkthrough.md (spoiler-level natural-language guide to all the interesting paths/puzzles), zork1-first-treasure.txt (runnable natural walkthrough), zork1-sample-transcript.md (its generated output). Extended scripts/make_transcript.py with --commands FILE. Demonstrated: the natural, multi-action, human-style walkthrough (incl. a boarded-front-door dead end) parses reliably end-to-end into a clean transcript that banks the painting. Added play-grue to AGENTS.md skills list.

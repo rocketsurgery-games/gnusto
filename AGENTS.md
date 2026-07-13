@@ -94,6 +94,7 @@ Project-local skills live in `.agents/skills/<name>/SKILL.md`. Reach for them by
 
 - **`translate-zil`** — converting ZIL/MDL source to Grue (vocabulary, event-queue contract, truthiness gotchas).
 - **`grue-testing`** — how to test games: `grue-test` vs `pytest` vs `grue-repl`, multi-turn `(until ...)` tests, event-lifecycle assertions, and manual TUI/REPL probing.
+- **`play-grue`** — playing a game as a natural-language agent and producing a human-readable transcript (natural-play philosophy, driving the harness, `scripts/make_transcript.py`, and a Zork I walkthrough).
 
 
 # Converting ZIL to Grue
