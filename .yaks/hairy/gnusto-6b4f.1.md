@@ -1,10 +1,10 @@
 ---
-id: gnusto-fa93.9
+id: gnusto-6b4f.1
 title: 'Richer analyzable thief: scripted wandering/thieving without RNG'
 type: task
 priority: 4
 created: '2026-07-12T18:51:05Z'
-updated: '2026-07-12T18:51:13Z'
+updated: '2026-07-14T02:18:24Z'
 labels:
 - design
 ---
