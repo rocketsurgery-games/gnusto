@@ -558,6 +558,123 @@ def cmd_reach(args: argparse.Namespace) -> int:
 
 
 # =============================================================================
+# requires command - Static precondition (dependency) tree
+# =============================================================================
+
+
+def _render_requires_tree(
+    node: Any,
+    tree: Any,
+    initial_state: dict[str, Any],
+    indent: int = 0,
+    on_path: set | None = None,
+) -> None:
+    """Print a backward constraint node as an indented dependency tree.
+
+    Each node is a constraint that must hold; beneath it are the alternative
+    achievers (ways to make it true) and, under each, the preconditions those
+    achievers need (recursively). Leaves are annotated with why they terminate.
+    """
+    on_path = on_path or set()
+    pad = "  " * indent
+    c = node.constraint
+
+    if node.is_initial:
+        print(f"{pad}{c}  [already true initially]")
+        return
+    if node.is_constant:
+        print(f"{pad}{c}  [UNACHIEVABLE — nothing can set this]")
+        return
+    if not node.achievers:
+        print(f"{pad}{c}  [no achiever found]")
+        return
+
+    # Cycle guard: a precondition that reappears on the current path
+    if c in on_path:
+        print(f"{pad}{c}  [↺ cycle]")
+        return
+    on_path = on_path | {c}
+
+    print(f"{pad}{c}")
+    for achiever in node.achievers:
+        print(f"{pad}  via {achiever.behavior}")
+        if not achiever.preconditions:
+            print(f"{pad}    (no preconditions)")
+            continue
+        for precond in achiever.preconditions:
+            child = node.children.get(precond) or tree.all_nodes.get(precond)
+            if child is not None:
+                _render_requires_tree(
+                    child, tree, initial_state, indent + 2, on_path
+                )
+            else:
+                print(f"{pad}    {precond}  [?]")
+
+
+def cmd_requires(args: argparse.Namespace) -> int:
+    """Execute the requires command (static dependency tree for a goal)."""
+    game_path = Path(args.game)
+    if not game_path.exists():
+        print(f"Error: {game_path} not found", file=sys.stderr)
+        return 1
+
+    try:
+        world = load_grue(str(game_path))
+    except Exception as e:
+        print(f"Error loading game: {e}", file=sys.stderr)
+        return 1
+
+    # Build the goal constraint list: either --victory or a --to target.
+    from .backward import BackwardAnalyzer, Constraint
+
+    effects = analyze_effects(world)
+    analyzer = BackwardAnalyzer(world, effects)
+
+    goals: list[Constraint] = []
+    if args.victory:
+        if world.victory is None:
+            print("Error: game declares no (victory ...) condition", file=sys.stderr)
+            return 1
+        trees = build_victory_constraints(world, effects)
+        if not args.quiet:
+            print(f"Game: {world.name or game_path}")
+            print("Target: victory\n")
+        for tree in trees:
+            _render_requires_tree(tree.root, tree, analyzer._initial_state)
+            print()
+        satisfiable = all(t.is_satisfiable(analyzer._initial_state) for t in trees)
+        print(f"Satisfiable from initial state: {'YES' if satisfiable else 'NO'}")
+        return 0
+
+    if not args.to:
+        print("Error: provide a --to target or --victory", file=sys.stderr)
+        return 1
+
+    try:
+        constraints = parse_constraint_expr(args.to)
+    except ValueError as e:
+        print(f"Error parsing --to constraint: {e}", file=sys.stderr)
+        return 1
+
+    if not args.quiet:
+        print(f"Game: {world.name or game_path}")
+        print(f"Target: {args.to}\n")
+
+    all_satisfiable = True
+    for ref, op, value in constraints:
+        tree = analyzer.build_tree(
+            Constraint(ref=ref, operator=op, value=value), max_depth=args.max_depth
+        )
+        _render_requires_tree(tree.root, tree, analyzer._initial_state)
+        if not tree.is_satisfiable(analyzer._initial_state):
+            all_satisfiable = False
+        print()
+
+    print(f"Satisfiable from initial state: {'YES' if all_satisfiable else 'NO'}")
+    return 0
+
+
+# =============================================================================
 # analyze command - Full state space analysis
 # =============================================================================
 
@@ -937,6 +1054,42 @@ def main(args: list[str] | None = None) -> int:
         help="Output state graph in DOT format",
     )
     reach_parser.set_defaults(func=cmd_reach)
+
+    # requires subcommand
+    requires_parser = subparsers.add_parser(
+        "requires",
+        help="Show the static dependency tree for a goal",
+        description=(
+            "Print the backward precondition (dependency) tree for a goal: what "
+            "must be true to achieve it, and how. Static and sound — no search."
+        ),
+    )
+    requires_parser.add_argument(
+        "--to",
+        help="Goal state constraint (Grue syntax or shorthand)",
+    )
+    requires_parser.add_argument(
+        "--victory",
+        action="store_true",
+        help="Use the game's victory condition as the goal",
+    )
+    requires_parser.add_argument(
+        "game",
+        help="Path to game directory or .grue file",
+    )
+    requires_parser.add_argument(
+        "--max-depth",
+        type=int,
+        default=12,
+        help="Maximum dependency depth (default: 12)",
+    )
+    requires_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Minimal output",
+    )
+    requires_parser.set_defaults(func=cmd_requires)
 
     # analyze subcommand
     analyze_parser = subparsers.add_parser(
