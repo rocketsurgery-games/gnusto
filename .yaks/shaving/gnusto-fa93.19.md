@@ -4,7 +4,7 @@ title: 'Zork I: full LLM-harness playthrough validation'
 type: task
 priority: 2
 created: '2026-07-13T02:52:34Z'
-updated: '2026-07-13T16:07:18Z'
+updated: '2026-07-14T01:41:00Z'
 labels:
 - conversion
 ---
@@ -58,3 +58,7 @@ Boat/vehicle run (checkpointed at Dam Base with pump+sword): 'inflate the boat w
 ---
 ▸ 2026-07-13T16:07:18Z
 Added the play-grue agent skill: guides an agent to play a Grue game in natural language (intents, not micro-commands), embrace stochastic misparses, recover, and produce a player-facing transcript. Contents: SKILL.md (natural-play philosophy + how the parse-only harness reads you + driving via make_transcript.py or interactive gnusto with /save-/load), zork1-walkthrough.md (spoiler-level natural-language guide to all the interesting paths/puzzles), zork1-first-treasure.txt (runnable natural walkthrough), zork1-sample-transcript.md (its generated output). Extended scripts/make_transcript.py with --commands FILE. Demonstrated: the natural, multi-action, human-style walkthrough (incl. a boarded-front-door dead end) parses reliably end-to-end into a clean transcript that banks the painting. Added play-grue to AGENTS.md skills list.
+
+---
+▸ 2026-07-14T01:41:00Z
+FULL END-TO-END PLAYTHROUGH ACHIEVED via the play-grue skill. Drove the whole game in natural language, region by region with save-checkpoints (added --load/--save to scripts/make_transcript.py), observing each segment before continuing. Result: all 19 treasures banked, '*** You have won ***' (284 turns). Saved .agents/skills/play-grue/zork1-full-transcript.md + zork1-full-walkthrough.txt (18 regions). The coal mine (where the prior flat-run died to a grue) cleared cleanly under checkpointing. Bug found + fixed en route: gnusto-163b (coffin trapped -> altar pray-teleport). Parser paper-cut filed: gnusto-0bf7.12 (redundant open-before-put). Approach correction from the earlier sub-agent drift: play from the walkthrough with checkpoints + observation, no parallel raw-action scripts / heavy pre-validation.

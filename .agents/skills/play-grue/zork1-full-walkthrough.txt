@@ -1,0 +1,330 @@
+# Zork I — full end-to-end walkthrough (start -> "You have won"), all 19 treasures.
+#
+# This is the natural-language command record of a complete, verified playthrough.
+# It was played region by region with save-checkpoints (see the play-grue skill:
+# scripts/make_transcript.py --load/--save) so a stochastic misparse or a wrong
+# turn late in the run never wastes the whole thing. Running it as one flat file
+# through the parse-only harness will *mostly* reproduce, but the reliable way to
+# regenerate is the checkpointed, segment-by-segment method the skill describes.
+#
+# One natural intent per line; blank lines and #-comments are ignored.
+
+# === West of House -> fetch the egg -> gear up -> down to the cellar ===
+open the mailbox
+read the leaflet
+go north to the north of the house
+go north to the forest path
+climb the large tree
+take the jewel-encrusted egg from the nest
+climb down
+go south to the north of the house
+go east to behind the house
+open the kitchen window
+climb through the window into the kitchen
+open the brown sack
+take the clove of garlic
+go west into the living room
+take the brass lantern
+take the sword
+turn on the lantern
+open the trophy case
+go east to the kitchen
+go up to the attic
+take the rope
+go down to the kitchen
+go west into the living room
+move the oriental rug aside
+open the trap door
+climb down through the trap door into the cellar
+
+# === kill the troll -> the Gallery painting ===
+go north to the troll room
+attack the troll with the sword
+attack the troll with the sword again
+go south to the cellar
+go south to the east of the chasm
+go east to the gallery
+take the painting
+go west to the east of the chasm
+go north to the cellar
+go north to the troll room
+
+# === the maze -> rout the Cyclops -> the thief (egg, then blade) ===
+go west
+go south
+go east
+go up
+take the leather bag of coins
+take the skeleton key
+go southwest
+go east
+go south
+go southeast
+say the name "Odysseus"
+go up
+give the jewel-encrusted egg to the thief
+attack the thief with the sword
+attack the thief with the sword again
+take the chalice
+take the egg from the large bag
+take the golden canary from the egg
+go down to the cyclops room
+
+# === bank the first six, wind the canary for the bauble ===
+go east to the living room
+put the painting into the trophy case
+put the leather bag of coins into the trophy case
+put the chalice into the trophy case
+go east to the kitchen
+go east to behind the house
+wind the golden canary
+take the brass bauble
+climb through the window into the kitchen
+go west to the living room
+put the egg into the trophy case
+put the golden canary into the trophy case
+put the brass bauble into the trophy case
+drop the sword
+
+# === Flood Control Dam #3 -> drain it -> the platinum bar ===
+open the trap door
+go down to the cellar
+go north to the troll room
+go east to the round room
+go north to the north-south passage
+go northeast to the deep canyon
+go east to the dam
+go north to the dam lobby
+take the matchbook
+go north to the maintenance room
+press the yellow button
+take the wrench
+take the screwdriver
+go west to the dam lobby
+go south to the top of the dam
+turn the bolt with the wrench
+go south to the deep canyon
+go down to the loud room
+take the platinum bar
+go west to the round room
+
+# === the Dome and Temple -> torch, bell, book, candles ===
+go southeast to the engravings cave
+go east to the dome room
+tie the rope to the wooden railing
+climb down the rope to the torch room
+take the torch from the pedestal
+go south to the temple
+take the brass bell
+go south to the altar
+take the black book
+take the pair of candles
+
+# === Hades -> the bell/candle/book exorcism -> the crystal skull ===
+go down
+go down
+ring the brass bell
+light the candles with the matches
+read from the black book
+go south to the land of the dead
+take the crystal skull
+go north
+go up
+
+# === the coffin -> pray at the altar to reach the forest ===
+go north to the round room
+go southeast to the engravings cave
+go east to the dome room
+climb down the rope to the torch room
+go down to the temple
+go east to the Egyptian room
+take the gold coffin
+go up to the temple
+go south to the altar
+pray at the altar
+
+# === home -> extract the sceptre -> bank the second batch ===
+go east to the forest path
+go south to the north of the house
+go east to behind the house
+climb through the window into the kitchen
+go west to the living room
+take the sceptre from the coffin
+put the gold coffin into the trophy case
+put the platinum bar into the trophy case
+put the crystal skull into the trophy case
+drop the candles
+drop the brass bell
+drop the black book
+drop the matchbook
+drop the wrench
+drop the skeleton key
+drop the rope
+
+# === the coal mine -> jade, bracelet, coal (bat warded by garlic) ===
+open the trap door
+go down to the cellar
+go north to the troll room
+go east to the round room
+go south
+go south
+touch the mirror
+go north
+go west
+go north
+go in
+go north
+take the jade figurine
+go east
+drop the torch
+go north
+go down
+take the sapphire bracelet
+go east
+go northeast
+go southeast
+go southwest
+go down
+go down
+go south
+take the pile of coal
+go north
+go up
+go up
+go north
+go east
+go south
+go north
+go up
+go south
+
+# === load and lower the basket -> loop to the Timber Room ===
+put the coal into the basket
+put the screwdriver into the basket
+take the torch
+put the torch into the basket
+lower the basket
+go north
+go down
+go east
+go northeast
+go southeast
+go southwest
+go down
+go down
+go west
+
+# === squeeze through empty-handed -> make the diamond ===
+put down the brass lantern
+put down the garlic
+put down the sceptre
+put down the jade figurine
+put down the sapphire bracelet
+go west
+take the torch from the basket
+take the coal from the basket
+take the screwdriver from the basket
+go south
+open the machine
+put the coal into the machine
+close the machine lid
+turn the switch with the screwdriver
+open the machine
+take the huge diamond
+go north
+put the diamond into the basket
+put the torch into the basket
+put the screwdriver into the basket
+raise the basket
+go east to the timber room
+take the brass lantern
+take the garlic
+take the sceptre
+take the jade figurine
+take the sapphire bracelet
+
+# === climb back and retrieve the diamond and torch ===
+go east
+go up
+go up
+go north
+go east
+go south
+go north
+go up
+go south
+take the diamond from the basket
+take the torch from the basket
+
+# === cross the drained reservoir -> trident, pump, trunk ===
+go west
+go south
+go east
+go south
+go east
+go south
+go east
+go down
+take the crystal trident
+go south
+take the air pump
+go south
+take the trunk of jewels
+go south
+go east to the dam
+go down to the dam base
+
+# === the Frigid River -> buoy/emerald -> dig the scarab ===
+inflate the plastic boat with the air pump
+get into the boat
+go down
+go down
+go down
+go down
+take the red buoy
+go east to the sandy beach
+get out of the boat
+take the shovel
+open the buoy
+take the large emerald
+go northeast to the sandy cave
+dig in the sand with the shovel
+dig in the sand with the shovel
+dig in the sand with the shovel
+take the jeweled scarab
+go southwest to the sandy beach
+
+# === the rainbow -> the pot of gold -> home ===
+go south to the shore
+go south to Aragain Falls
+wave the sceptre
+go west to the rainbow
+go west to the end of the rainbow
+take the pot of gold
+go southwest to the canyon bottom
+go up to the rocky ledge
+go up to the canyon view
+go northwest to the clearing
+go west to behind the house
+climb through the window into the kitchen
+go west to the living room
+
+# === bank the final ten treasures ===
+put the huge diamond into the trophy case
+put the torch into the trophy case
+put the sceptre into the trophy case
+put the large emerald into the trophy case
+put the jeweled scarab into the trophy case
+put the jade figurine into the trophy case
+put the sapphire bracelet into the trophy case
+put the pot of gold into the trophy case
+put the trunk of jewels into the trophy case
+put the crystal trident into the trophy case
+
+# === the secret path to the Stone Barrow -> victory ===
+go east to the kitchen
+go out to behind the house
+go north to the north of the house
+go west to the west of the house
+go southwest to the stone barrow
+go inside the stone barrow

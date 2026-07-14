@@ -82,6 +82,19 @@ def main() -> None:
         help="file of natural-language commands (one per line; # comments ok). "
         "Defaults to the built-in first-treasure walkthrough.",
     )
+    ap.add_argument(
+        "--load",
+        default=None,
+        metavar="SLOT",
+        help="resume from this save slot (a continuation segment; the title/intro "
+        "and opening-room header are omitted so segments stitch cleanly).",
+    )
+    ap.add_argument(
+        "--save",
+        default=None,
+        metavar="SLOT",
+        help="save to this slot after the last command (checkpoint for the next segment).",
+    )
     args = ap.parse_args()
 
     walkthrough = load_commands(args.commands) if args.commands else WALKTHROUGH
@@ -90,19 +103,30 @@ def main() -> None:
     runtime = session.runtime
     game_dir = session.game_dir
 
+    # Resume from a checkpoint (reliable segment-by-segment play): load the saved
+    # state before playing this segment's commands.
+    if args.load:
+        from grue.save import load_game
+
+        load_game(runtime, args.load)  # mutates runtime state to the saved game
+
     lines: list[str] = []
 
     def emit(text: str) -> None:
         if text and text.strip():
             lines.append(text.rstrip())
 
-    # Title + intro + opening room.
-    title = runtime.world.name or "Adventure"
-    lines.append(f"# {title} — sample transcript\n")
-    if runtime.world.intro:
-        emit(runtime.world.intro)
-    state = get_game_state(runtime)
-    emit(render_blocks_to_text([build_room_block(state, runtime, game_dir)]))
+    # Title + intro + opening room — only for a fresh start. A --load continuation
+    # omits them so concatenated segments read as one seamless transcript.
+    if not args.load:
+        title = runtime.world.name or "Adventure"
+        lines.append(f"# {title} — transcript\n")
+        if runtime.world.intro:
+            emit(runtime.world.intro)
+        state = get_game_state(runtime)
+        emit(render_blocks_to_text([build_room_block(state, runtime, game_dir)]))
+    else:
+        state = get_game_state(runtime)
 
     prev_room = state.room
     for command in walkthrough:
@@ -120,10 +144,16 @@ def main() -> None:
         if session._end_state():
             break
 
+    if args.save:
+        from grue.save import save_game
+
+        save_game(runtime, args.save, session.turn_history, session.summaries)
+
+    ended = session._end_state()
     transcript = "\n".join(lines) + "\n"
     if args.out:
         Path(args.out).write_text(transcript)
-        print(f"Wrote transcript to {args.out}")
+        print(f"Wrote transcript to {args.out}" + (f" [END: {ended}]" if ended else ""))
     else:
         print(transcript)
 

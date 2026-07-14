@@ -74,16 +74,50 @@ game's output for each turn — no debug, no invented prose. See
 `zork1-first-treasure.txt` for a worked example and
 `zork1-sample-transcript.md` for its output.
 
-**Interactive / genuinely reactive play.** Run the game and issue commands
-turn by turn, reading each result before deciding the next:
+**Long playthroughs: checkpoint segment-by-segment (this is how you win reliably).**
+A whole game is 200+ turns; running it as one flat command file is fragile —
+a single stochastic misparse or wrong turn late in a dark maze is fatal and
+wastes the run. Instead play one region at a time, resuming from the previous
+region's checkpoint, so a slip only costs *that* region:
+
+```bash
+# region 1 (fresh start) -> save checkpoint cp1
+python scripts/make_transcript.py games/zork1 -c seg1.txt --save cp1 -o t1.md
+# region 2 resumes from cp1 -> cp2  (header omitted so segments stitch cleanly)
+python scripts/make_transcript.py games/zork1 --load cp1 -c seg2.txt --save cp2 -o t2.md
+# ... then concatenate t1.md t2.md ... for the seamless final transcript.
+```
+
+After each region, read the segment's output (and, if useful, check state from a
+tiny `grue` REPL snippet) before continuing; if a region derails, just re-run it
+from the same `--load` checkpoint with a fixed phrasing. `zork1-full-walkthrough.txt`
+(the 18-region command record) and `zork1-full-transcript.md` (the resulting
+start-to-victory transcript) are the worked full example.
+
+**Interactive / genuinely reactive play.** You can also run the game and issue
+commands turn by turn, reading each result before deciding the next:
 
 ```bash
 gnusto games/zork1            # natural-language play; add --debug to see actions
 ```
 
-Because each `gnusto` process starts fresh, use **`/save <slot>` and `/load
-<slot>`** to checkpoint before risky steps and to resume long sessions across
-runs (verified to round-trip). `/look`, `/state`, and `/saves` help you orient.
+Here too each `gnusto` process starts fresh, so use **`/save <slot>` and `/load
+<slot>`** to checkpoint before risky steps and resume across runs. `/look`,
+`/state`, and `/saves` help you orient.
+
+## Phrasing tips learned from real runs
+
+- **Deposit with "put X *into* Y", not "in".** "put the painting in the trophy
+  case" occasionally misfires: the agent adds a redundant "open the (already-open)
+  case" step, which comes back "It's already open" and short-circuits the turn
+  before the put. "into" avoids it; if a deposit ever misfires, just re-issue it.
+- **Name a uniquely-named destination room for multi-room moves** ("go east to
+  the round room"): the harness walks there and stops. Reserve bare compass
+  directions for the look-alike maze and coal mine.
+- **Light discipline is on you:** carry the lit lamp in dark rooms; before the
+  gas room, stash any open flame (drop the torch / lower it in the basket); lower
+  the lit torch in the dumbwaiter so the shaft below is lit for the empty-handed
+  squeeze.
 
 ## Walkthrough content
 
