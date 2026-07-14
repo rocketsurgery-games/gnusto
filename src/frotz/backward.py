@@ -559,6 +559,16 @@ class BackwardAnalyzer:
                 return [preconds] if preconds else []
             return []
 
+        # Special case: runtime:put moves a held object into a container/surface.
+        # The necessary precondition (independent of which destination) is that
+        # the object is held by the player. Destination-specific gates (e.g. the
+        # container being open) are not yet threaded through and are a follow-up.
+        if behavior.object == "runtime" and behavior.verb == "put":
+            if target_ref and isinstance(target_ref, LocationRef):
+                held = Constraint(LocationRef(target_ref.object), "=", "@player")
+                return [[held]]
+            return []
+
         # Special case: runtime:drop needs the object to be held by player first
         # The target_ref tells us which object is being dropped
         if behavior.object == "runtime" and behavior.verb == "drop":

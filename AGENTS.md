@@ -123,6 +123,19 @@ No need to ask permission for obvious stdlib additions.
 **Purity:** Keep functions pure. All side-effects must go through the formal effects system (quoted effect lists).
 This enables future state-space exploration for winnability analysis.
 
+**Effect model is the single source of truth — keep frotz in sync.** The runtime's
+effect vocabulary is the closed set `EffectInterpreter.MUTATIONS` in
+`src/grue/expr.py` (plus the engine default actions take/drop/put/go). The frotz
+static analyzer (`src/frotz/effects.py`) must model *every* one of these — any
+mutation the runtime can apply but the analyzer doesn't see is hidden state that
+silently corrupts every design tool (reach, requires, depgraph, deadends). So
+**whenever you add or change an effect head or a default action, update
+`frotz.effects` in the same change**: add a handler in `_walk_expr` (or
+`_collect_takeable_effects` for engine actions) and update the
+`HANDLED_EFFECT_MUTATIONS` constant. The drift is caught by
+`tests/frotz/test_effects_completeness.py`, which asserts analyzer vocabulary ==
+runtime vocabulary exactly. See `docs/frotz.md`.
+
 **LLM interface:** The game will be played via an LLM, so prefer explicit formal action interfaces like
 `(do @hacker :ask @master-key)` over fiddly parser-dependent constructs. Don't rely on adjectives or other
 parser-level distinctions.

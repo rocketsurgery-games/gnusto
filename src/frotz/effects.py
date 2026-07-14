@@ -17,6 +17,34 @@ from grue.sexpr import SList, Symbol, Keyword
 from grue.reduce import Reducer
 
 
+# The effect-list mutation heads this analyzer models in `_walk_expr`. This must
+# stay in exact sync with the runtime's authoritative vocabulary
+# (grue.expr.EffectInterpreter.MUTATIONS): a mutation the runtime can apply but
+# the analyzer doesn't model is hidden state that silently corrupts every
+# downstream tool (reach, requires, depgraph, deadends). The equality is
+# enforced by tests/test_effects_completeness.py so a new runtime effect can't
+# land without a matching analyzer handler. See docs/frotz.md.
+HANDLED_EFFECT_MUTATIONS = frozenset(
+    {
+        "move",
+        "set",
+        "set-prop",
+        "set-in",
+        "inc",
+        "dec",
+        "queue",
+        "dequeue",
+        "take",
+        "expose",
+    }
+)
+
+# Runtime default (engine-level) actions that mutate location state without an
+# explicit effect-list head. These come from the `_do_*` handlers, not the
+# effect vocabulary, and are modeled in `_collect_takeable_effects`.
+HANDLED_RUNTIME_ACTIONS = frozenset({"take", "drop", "put", "go"})
+
+
 @dataclass
 class PropertyRef:
     """Reference to an object property."""
@@ -429,13 +457,27 @@ class EffectAnalyzer:
                             self._current_self = None
 
     def _collect_takeable_effects(self):
-        """Model runtime default :take and :drop behaviors for takeable objects.
+        """Model the runtime default :take, :drop and :put actions for takeable objects.
 
-        Objects with :takeable true can be taken (moved to @player) and dropped
-        (moved to current room) via the runtime's default behavior. This is
-        equivalent to having implicit behaviors on each takeable object.
+        Objects with :takeable true can be, via the engine's default handlers:
+        - taken (moved to @player),
+        - dropped (moved to the current room), and
+        - put into any container/surface (moved to that destination).
+
+        These are engine-level actions (`_do_*`), not effect-list heads, so they
+        have no game-code body to walk; we model them here as implicit modifiers
+        of each takeable object's location. Omitting `put` was defect A: without
+        it, a deposit goal like `@painting:location = @trophy-case` has no
+        achiever and the backward analyzer marks it constant (empty tree).
         """
         player_name = self.world.player or "@player"
+
+        # All destinations a `put` can target: containers and surfaces.
+        put_destinations = {
+            name
+            for name, o in self.world.objects.items()
+            if o.properties.get("container") or o.properties.get("surface")
+        }
 
         for obj_name, obj in self.world.objects.items():
             # Check if object is takeable
@@ -461,6 +503,16 @@ class EffectAnalyzer:
             # It moves the object to current room (variable destination)
             obj_loc = LocationRef(obj_name)
             self.analysis.add_modify(obj_loc, BehaviorRef("runtime", "drop"), None)  # None = unknown destination
+
+            # Put moves the object into any container/surface (runtime default,
+            # bidirectional with the container's :put). A takeable object can end
+            # up in any such destination except itself.
+            if put_destinations:
+                self.analysis.add_modify_values(
+                    obj_loc,
+                    BehaviorRef("runtime", "put"),
+                    {d for d in put_destinations if d != obj_name},
+                )
 
     def _analyze_object_behaviors(self, obj_name: str, obj: Any):
         """Analyze all behaviors on an object."""
@@ -513,6 +565,30 @@ class EffectAnalyzer:
             if expr.name == "?self" and self._current_self:
                 return self._current_self
         return None
+
+    def _extract_path_keys(self, expr: Any) -> list[str]:
+        """Extract the key names from a (set-in @obj (:a :b) ...) path expression.
+
+        The path may arrive quoted (an SList whose head is 'quote') or as a bare
+        SList of keywords/symbols. Returns the ordered key names, or [] if the
+        path can't be statically resolved.
+        """
+        if isinstance(expr, SList):
+            items = expr.items
+            # Unwrap (quote (:a :b))
+            if items and isinstance(items[0], Symbol) and items[0].name == "quote":
+                if len(items) >= 2 and isinstance(items[1], SList):
+                    items = items[1].items
+                else:
+                    return []
+            keys: list[str] = []
+            for item in items:
+                if isinstance(item, (Keyword, Symbol)):
+                    keys.append(item.name)
+                else:
+                    return []
+            return keys
+        return []
 
     def _extract_literal_value(self, expr: Any) -> Any:
         """Extract a literal value from an expression, or None if not a literal.
@@ -740,6 +816,44 @@ class EffectAnalyzer:
                     event_name = event.name if isinstance(event, Symbol) else str(event)
                     ref = QueueRef(event_name)
                     self.analysis.add_modify(ref, self._current_behavior)
+                    return
+
+                # Effect detection: (inc @obj :prop [amt]) / (dec @obj :prop [amt])
+                # Both read the current numeric value and write a new one. The
+                # resulting value is data-dependent, so we record an untargeted
+                # modify (no specific target value).
+                if name in ("inc", "dec") and len(items) >= 3:
+                    obj_name = self._resolve_object_ref(items[1])
+                    prop = items[2]
+                    if obj_name and isinstance(prop, (Symbol, Keyword)):
+                        ref = PropertyRef(obj_name, prop.name)
+                        self.analysis.add_read(ref, self._current_behavior)
+                        self.analysis.add_modify(ref, self._current_behavior)
+                    # Walk an optional amount expression for reads
+                    for item in items[3:]:
+                        self._walk_expr(item)
+                    return
+
+                # Effect detection: (set-in @obj (:path :keys) value) - nested prop
+                # At the coarse granularity we track, this modifies the object's
+                # top-level property named by the first key of the path.
+                if name == "set-in" and len(items) >= 4:
+                    obj_name = self._resolve_object_ref(items[1])
+                    keys = self._extract_path_keys(items[2])
+                    if obj_name and keys:
+                        ref = PropertyRef(obj_name, keys[0])
+                        self.analysis.add_modify(ref, self._current_behavior)
+                    self._walk_expr(items[3])
+                    return
+
+                # Effect detection: (expose @obj) - sets :known true
+                if name == "expose" and len(items) >= 2:
+                    obj_name = self._resolve_object_ref(items[1])
+                    if obj_name:
+                        ref = PropertyRef(obj_name, "known")
+                        self.analysis.add_modify_values(
+                            ref, self._current_behavior, {True}
+                        )
                     return
 
                 # Read detection: (:prop @obj) or (:prop @obj default)

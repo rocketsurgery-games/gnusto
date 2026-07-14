@@ -87,6 +87,27 @@ Scans all behaviors to build:
 
 This is standard def-use analysis adapted for Grue's effect system.
 
+**Completeness contract (single source of truth).** For this analysis to be
+sound, it must model *every* state mutation the runtime can apply. The runtime's
+authoritative vocabulary is the closed set `EffectInterpreter.MUTATIONS`
+(`src/grue/expr.py`): `move, set, set-prop, set-in, inc, dec, queue, dequeue,
+take, expose`. In addition, the engine applies four *default actions* that mutate
+location without an effect-list head — `take`, `drop`, `put`, `go` — modeled in
+`_collect_takeable_effects` / navigation-ref collection. A mutation the runtime
+can apply but the analyzer doesn't see is **hidden state** that silently
+corrupts every tool downstream (reach, requires, depgraph, deadends). Two
+historical gaps of this kind: `inc`/`dec`/`set-in`/`expose` (property writes the
+walker skipped) and the default `put` (defect A — a deposit goal like
+`@painting:location = @trophy-case` had no achiever, so the backward analyzer
+marked it *constant* and produced an empty dependency tree).
+
+The analyzer's handled vocabulary is pinned in the constant
+`HANDLED_EFFECT_MUTATIONS`, and `tests/frotz/test_effects_completeness.py`
+asserts it equals `EffectInterpreter.MUTATIONS` **exactly**. So whenever you add
+or change an effect head (or a default action), update `frotz.effects` in the
+same change — add a `_walk_expr` handler and update the constant — or the drift
+guard fails CI. (Mirrors the `EffectInterpreter.MUTATIONS` note in `AGENTS.md`.)
+
 ### 2. Constraint Back-Propagation
 
 Works backwards from victory to build a constraint tree:
