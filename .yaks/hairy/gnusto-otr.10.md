@@ -4,7 +4,10 @@ title: Implement whatif tool (design exploration)
 type: task
 priority: 3
 created: '2026-01-25T12:05:16.133109-05:00'
-updated: '2026-02-08T19:07:11.066136Z'
+updated: '2026-07-14T20:52:32Z'
+depends_on:
+- gnusto-otr.14
+- gnusto-otr.15
 ---
 
 Hypothetical design exploration - what if we change something?

@@ -4,7 +4,10 @@ title: Implement statediff tool (debugging tool)
 type: task
 priority: 3
 created: '2026-01-25T12:05:08.995484-05:00'
-updated: '2026-02-08T19:07:11.066389Z'
+updated: '2026-07-14T20:52:32Z'
+depends_on:
+- gnusto-otr.14
+- gnusto-otr.15
 ---
 
 Compare two states to understand what changed - useful for debugging.
