@@ -151,10 +151,39 @@ world `:dark-message` and objects aren't listed. See `docs/grue.md`.
 The *danger* of the dark (ZIL's random grue death) is **game code**, written as a
 normal turn-based **hazard event** — the same shape as LH's `freezing`: reset a
 counter when safe, tick it while in the hazard, deliver a deterministic death
-once a configurable grace is spent (drop ZIL's RNG so frotz stays sound). Queue a
-persistent hazard from turn 1 with the world's `:start-events (evt …)`. ZIL's
-other environmental death timers (freezing, drowning, suffocation) convert to the
-same pattern.
+once a configurable grace is spent (see "Randomness → determinism" below for why
+the RNG goes). Queue a persistent hazard from turn 1 with the world's
+`:start-events (evt …)`. ZIL's other environmental death timers (freezing,
+drowning, suffocation) convert to the same pattern.
+
+## Randomness → determinism (drop the RNG)
+
+Infocom games lean on `<RANDOM>` everywhere, and **we strip or replace all of it**
+so the world stays statically analyzable — RNG makes frotz's state space unsound
+to explore (`reach`/`deadends`/winnability). This is one of the most pervasive
+conversion decisions; it touches nearly every game. Where you'll find it:
+
+- **Combat** — ZIL melee is `MELEE` result tables indexed by a `<RANDOM>`/`PROB`
+  roll (hit/miss, wound, knock-out, flee, kill). Convert a fight to a
+  **deterministic strength-countdown duel**: the monster carries `:strength N`,
+  each *armed* blow decrements it, at `0` it dies (drops its weapon, frees its
+  guarded treasure). Bare-handed or already-dead cases become fixed `(blocked
+  …)` refusals. This is the troll, thief, and cyclops pattern in `games/zork1`.
+- **NPC wandering / theft** — the thief's `I-THIEF` moves him and snatches loot
+  at random. Reduce to a **stationary or scripted** encounter, with theft
+  triggered by *state* (not probability). State-triggered flavor (e.g. giving
+  him a treasure `:engrossed`s him so blows land harder) preserves the puzzle.
+- **Environmental death timers** — the grue, freezing, drowning: a **grace
+  counter then certain death**, not a per-turn roll (see the hazard section).
+- **Fixed counts for `<RANDOM n>` quantities** — dig counts, number of blows,
+  etc. become a constant.
+
+Always leave a conversion comment at the top of the file noting the original
+random behavior and the deterministic substitution (see `games/zork1/thief.grue`
+for the template). The open design question — how to reintroduce *bounded,
+analyzable* variety (scripted patrols, seeded/enumerable RNG, a first-class
+hazard construct) without breaking analysis — is tracked in **`gnusto-6b4f`**
+(and `gnusto-5818` for the `defhazard` idea); don't revive `<RANDOM>` to solve it.
 
 ## Death, victory, and JIGS-UP (end-state handling)
 
