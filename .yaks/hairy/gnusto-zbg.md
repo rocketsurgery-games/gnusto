@@ -4,7 +4,10 @@ title: 'Higher-order functions: analysis implications'
 type: task
 priority: 3
 created: '2026-01-22T16:19:25.316818-05:00'
-updated: '2026-02-08T19:07:11.070348Z'
+updated: '2026-07-12T00:45:33Z'
+labels:
+- lang
+- analysis
 ---
 
 Research and document what higher-order functions (passing functions as values, returning functions) would require from our static analysis.

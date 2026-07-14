@@ -4,7 +4,7 @@ title: Gnusto harness / feedback-loop polish
 type: task
 priority: 2
 created: '2026-07-11T14:36:52Z'
-updated: '2026-07-13T03:24:42Z'
+updated: '2026-07-14T02:31:49Z'
 labels:
 - harness
 - runtime
