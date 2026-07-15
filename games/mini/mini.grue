@@ -1,0 +1,51 @@
+; Mini: the smallest game that exercises the essentials of state-graph analysis
+; — movement, a gated (one-directional-in-effect) edge, object take/put, a
+; boolean gate, and a victory condition. Small enough to enumerate by hand, so
+; it serves as the correctness fixture for the reference kernel (frotz.kernel).
+;
+; Solution: take the key, open the (locked) door, go east to the hall, take the
+; gem. Victory = holding the gem.
+
+(world
+  :name "Mini"
+  :player @player)
+
+(victory
+  :when (held? @gem))
+
+(room @cell
+  :description "Cell"
+  :properties (:lit true)
+  :exits ((east :to @hall :via @door)))
+
+(room @hall
+  :description "Hall"
+  :properties (:lit true)
+  :exits ((west :to @cell :via @door)))
+
+(object @player :location @cell)
+
+(object @key
+  :location @cell
+  :properties (:takeable true))
+
+(object @gem
+  :location @hall
+  :properties (:takeable true))
+
+(object @door
+  :location @cell
+  :properties (:openable true :open false)
+  :behaviors (
+    :through (fn ()
+      (if (:open @door)
+        (success)
+        (blocked :reason closed :message "The door is shut.")))
+    :open (fn ()
+      (cond
+        ((:open @door) (blocked :reason already-open :message "It's already open."))
+        ((held? @key)
+          '((set @door :open true)
+            (narrate "You unlock the door with the key and swing it open.")
+            (success)))
+        (true (blocked :reason locked :message "The door is locked."))))))
