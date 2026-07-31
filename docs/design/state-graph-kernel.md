@@ -34,6 +34,13 @@ A concrete BFS over the reachable graph, states as exact value-tuples. It is the
   *identity*, never a lossy projection.
 - `enumerate_actions(rt)` — a sound *superset* of available actions (completeness
   obligation: never omit an action that could succeed; spurious ones just block).
+  Behavior arguments are the cartesian product of each parameter's candidate pool
+  — in-scope objects for entity params, source-derived literals for value params
+  (passwords, combinations), the union when a param is untyped. This makes
+  multi-arg and value-arg behaviors (the PC login flow) enumerable. The one
+  residual gap is a value known only by *foreknowledge* (never a literal in
+  source — e.g. a doc-check copy-protection password), modelled properly by the
+  hidden-knowledge approach (gnusto-266.5.4).
 - `step(rt, snapshot, action)` — pure successor via `GameState.copy()` +
   `runtime.do`.
 - `explore(world, goal)` — BFS to a fixpoint or `max_states` (`hit_limit` is the
@@ -117,8 +124,15 @@ layers did their job, this residual is small.
 ## 6. Status / next
 
 - Done: the kernel + Mini fixture (this doc, `kernel.py`, `mini/`).
-- Next increment (proposed): the **differential-test harness** (kernel vs. a
-  layer on a corpus of tiny games), then land **4.1 cone-of-influence projection**
-  as the first proven layer, measured against the kernel.
+- Done: **oracle-honesty pass** (gnusto-266.5.1) — `enumerate_actions` now covers
+  multi-argument behaviors (cartesian product) and value arguments (source-
+  literal pool, narrowed by param-type annotations), so the sound-superset claim
+  actually holds for the LH login flow and combination locks. Residual
+  foreknowledge-only values tracked by gnusto-266.5.4.
+- Next increment (proposed): the **differential-test harness** (gnusto-266.5.2:
+  kernel vs. a layer on a corpus of tiny games, comparison mode A = multi-goal
+  reachability), then land **4.1 cone-of-influence projection** as the first
+  proven layer, measured against the kernel. A stronger bisimulation check
+  (mode B) is deferred to gnusto-266.5.3.
 - The old `explorer.py` and `deferred/` stay untouched until the new stack
   reaches parity, then get retired (hard cutover).

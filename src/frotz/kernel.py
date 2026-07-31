@@ -35,10 +35,12 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+from itertools import product
 from typing import Any, Callable
 
 from grue import GrueWorld
 from grue.runtime import GrueRuntime, GameState
+from grue.sexpr import SList
 
 
 # A canonical concrete state: the frozenset of (variable-key, value) pairs over
@@ -95,6 +97,68 @@ class Action:
 # Verbs that never denote a player-invokable action (engine-internal).
 _INTERNAL_VERBS = frozenset({"through", "describe", "fdesc", "on-enter", "on-exit"})
 
+# Param type annotations that admit object arguments vs. literal-value arguments.
+_ENTITY_TYPES = frozenset({"entity"})
+_VALUE_TYPES = frozenset({"string", "number", "symbol"})
+
+
+def _literal_args(body: Any) -> list[Any]:
+    """The string / number / bool literals appearing in a behavior body.
+
+    This is the source-derived pool of candidate *value* arguments — passwords,
+    combinations, boolean flags — for behaviors that consume a value rather than
+    an in-scope object (the PC login's ``(do @pc :login xyzzy)``, a combination
+    lock, a dial). Value args aren't drawn from object scope, so without this the
+    kernel could never generate the winning action and would report a false NO.
+
+    Soundness note: this closes the common case where the accepted value is
+    compared against a literal *in the guard* (so it appears in the body). A
+    value that never appears literally in source — pure foreknowledge, e.g. a
+    doc-check copy-protection password — remains a residual incompleteness,
+    modelled properly by the hidden-knowledge approach in yak gnusto-266.5.4.
+    Bools are checked before ints (``bool`` is an ``int`` subclass).
+    """
+    out: list[Any] = []
+    seen: set[tuple] = set()
+
+    def walk(e: Any) -> None:
+        if isinstance(e, SList):
+            for item in e.items:
+                walk(item)
+            return
+        if isinstance(e, bool):
+            key = ("bool", e)
+        elif isinstance(e, int):
+            key = ("int", e)
+        elif isinstance(e, str):
+            key = ("str", e)
+        else:
+            return  # Symbol / Keyword: not a value literal
+        if key not in seen:
+            seen.add(key)
+            out.append(e)
+
+    walk(body)
+    return out
+
+
+def _arg_pool(
+    beh: Any, param: str, scope: list[str], literals: list[Any]
+) -> list[Any]:
+    """Candidate arguments for one parameter position of a behavior.
+
+    Narrowed by the param's type annotation when present: ``:entity`` params
+    take only in-scope objects; ``:string``/``:number``/``:symbol`` params take
+    only source literals. An unannotated param could be either, so it gets the
+    union — over-approximating is safe (spurious args just block).
+    """
+    t = beh.param_types.get(param)
+    if t in _ENTITY_TYPES:
+        return list(scope)
+    if t in _VALUE_TYPES:
+        return literals
+    return list(scope) + literals
+
 
 def enumerate_actions(rt: GrueRuntime) -> list[Action]:
     """A sound *superset* of the actions available in the current state.
@@ -103,8 +167,14 @@ def enumerate_actions(rt: GrueRuntime) -> list[Action]:
     so BFS misses no reachable state. Over-approximating is safe — spurious
     actions simply come back blocked and add no edge. We therefore enumerate
     generously: every exit direction, every declared behavior verb on every
-    in-scope object (with every in-scope object as a candidate argument), and the
-    runtime defaults take/drop/put.
+    in-scope object, and the runtime defaults take/drop/put.
+
+    Behavior arguments are the cartesian product of each parameter's candidate
+    pool (:func:`_arg_pool`): in-scope objects for entity params, source-derived
+    literals for value params (:func:`_literal_args`), the union when untyped.
+    This makes multi-argument behaviors and value-argument behaviors (the PC
+    login flow) enumerable; the one remaining gap — values known only by
+    foreknowledge — is tracked by gnusto-266.5.4.
     """
     actions: list[Action] = []
     room = rt.get_player_room()
@@ -116,7 +186,8 @@ def enumerate_actions(rt: GrueRuntime) -> list[Action]:
             if ex.to is not None:
                 actions.append(Action(target=ex.to, verb="go", args=(ex.direction,)))
 
-    # Declared behaviors on in-scope objects.
+    # Declared behaviors on in-scope objects. Each parameter draws from its own
+    # candidate pool; a behavior's actions are the cartesian product of those.
     for name in scope:
         obj = rt.world.objects.get(name)
         if obj is None or not getattr(obj, "behaviors", None):
@@ -126,9 +197,11 @@ def enumerate_actions(rt: GrueRuntime) -> list[Action]:
                 continue
             if not beh.params:
                 actions.append(Action(target=name, verb=beh.verb))
-            else:
-                for arg in scope:
-                    actions.append(Action(target=name, verb=beh.verb, args=(arg,)))
+                continue
+            literals = _literal_args(beh.body)
+            pools = [_arg_pool(beh, p, scope, literals) for p in beh.params]
+            for combo in product(*pools):
+                actions.append(Action(target=name, verb=beh.verb, args=tuple(combo)))
 
     # Runtime default actions on takeable objects. `put` targets only genuine
     # containers/surfaces (matching the effect model's put footprint); allowing

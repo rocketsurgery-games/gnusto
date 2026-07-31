@@ -86,3 +86,81 @@ def test_enumerate_actions_is_nonempty_superset(tmp_path):
     assert any(a.startswith("go ") for a in acts)
     assert "take @key" in acts
     assert "open @door" in acts
+
+
+# --- Oracle-honesty: value-argument and multi-argument enumeration ---
+#
+# enumerate_actions claims to be a sound *superset* (never omit an action that
+# could succeed). Two gaps used to violate that: value arguments (drawn from
+# neither scope nor anywhere) and multi-arg behaviors (only one arg supplied).
+# Both would make the oracle report a false NO. See gnusto-266.5.1.
+
+# A safe opened by entering the right combination. The winning value "4271"
+# never appears in object scope; it is only enumerable because it is a literal in
+# the guard. Pre-fix the kernel could not generate `enter-code @safe 4271` and
+# so reported the goal unreachable — a false NO.
+COMBO = """
+(world :name "Combo" :player @player)
+(victory :when (:unlocked @safe))
+(room @vault :description "Vault" :properties (:lit true))
+(object @player :location @vault)
+(object @safe :location @vault :properties (:unlocked false)
+  :behaviors (
+    :enter-code (fn (?code)
+      (if (= ?code "4271")
+        '((set @safe :unlocked true) (success))
+        (blocked :reason wrong :message "nope")))))
+"""
+
+
+def test_value_argument_action_is_enumerated(tmp_path):
+    rt = GrueRuntime(_load(tmp_path, COMBO))
+    rt.reset()
+    acts = {str(a) for a in enumerate_actions(rt)}
+    assert "enter-code @safe 4271" in acts
+
+
+def test_value_argument_goal_is_reachable(tmp_path):
+    # The oracle must find the combination victory now that the guard literal is
+    # in the candidate pool. Pre-fix this was a false NO.
+    graph = explore(_load(tmp_path, COMBO))
+    assert not graph.hit_limit
+    assert graph.goal_reachable()
+
+
+# A two-argument behavior: enumeration must supply the cartesian product of
+# candidate objects, not a single argument.
+TWOARG = """
+(world :name "TwoArg" :player @player)
+(victory :when (:joined @panel))
+(room @lab :description "Lab" :properties (:lit true))
+(object @player :location @lab)
+(object @wire :location @lab :properties (:takeable true))
+(object @bulb :location @lab :properties (:takeable true))
+(object @panel :location @lab :properties (:joined false)
+  :behaviors (
+    :connect (fn (?a ?b)
+      (if (and (= ?a @wire) (= ?b @bulb))
+        '((set @panel :joined true) (success))
+        (blocked :reason bad :message "no")))))
+"""
+
+
+def test_multiarg_action_is_enumerated(tmp_path):
+    rt = GrueRuntime(_load(tmp_path, TWOARG))
+    rt.reset()
+    acts = {str(a) for a in enumerate_actions(rt)}
+    # The specific winning pair must be present...
+    assert "connect @panel @wire @bulb" in acts
+    # ...and it must be a genuine 2-arg action, not a truncated 1-arg one.
+    assert all(
+        len(a.args) == 2
+        for a in enumerate_actions(rt)
+        if a.verb == "connect"
+    )
+
+
+def test_multiarg_goal_is_reachable(tmp_path):
+    graph = explore(_load(tmp_path, TWOARG))
+    assert not graph.hit_limit
+    assert graph.goal_reachable()
