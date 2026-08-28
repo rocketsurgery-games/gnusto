@@ -129,10 +129,20 @@ layers did their job, this residual is small.
   literal pool, narrowed by param-type annotations), so the sound-superset claim
   actually holds for the LH login flow and combination locks. Residual
   foreknowledge-only values tracked by gnusto-266.5.4.
-- Next increment (proposed): the **differential-test harness** (gnusto-266.5.2:
-  kernel vs. a layer on a corpus of tiny games, comparison mode A = multi-goal
-  reachability), then land **4.1 cone-of-influence projection** as the first
-  proven layer, measured against the kernel. A stronger bisimulation check
-  (mode B) is deferred to gnusto-266.5.3.
+- Done: the **differential-test harness + corpus** (gnusto-266.5.2). `frotz.
+  differential` derives a static probe set of goal atoms (`static_atoms`: object
+  locations + boolean-property assignments, containing both reachable and
+  unreachable targets), computes the kernel's **answer key** over them, and
+  `differential(...)` compares any two analyses — flagging a *false NO* as an
+  **unsound** disagreement vs. an over-approximation as merely *imprecise*.
+  `tests/frotz/corpus.py` holds eight tiny games seeded to stress each planned
+  layer (movement/gate, value-arg combo, two-arg, numeric counter, one-way
+  soft-lock, order-independent takes), each with hand-verified anchor facts.
+  `tests/frotz/test_differential.py` anchors the kernel, proves the self-
+  differential agrees everywhere, and proves the harness *detects* a wrong layer.
+- Next increment (proposed): land **4.1 cone-of-influence projection** as the
+  first proven abstraction layer, measured against the kernel with this harness.
+  A stronger bisimulation check (comparison mode B) is deferred to
+  gnusto-266.5.3.
 - The old `explorer.py` and `deferred/` stay untouched until the new stack
   reaches parity, then get retired (hard cutover).
