@@ -1,11 +1,11 @@
 ---
 id: gnusto-otr.13
-title: 'Effect-model completeness: anchor frotz to EffectInterpreter vocab + model
-  put; add drift guard'
+title: '''Effect-model completeness: anchor frotz to EffectInterpreter vocab + model'
 type: task
 priority: 2
 created: '2026-07-14T20:20:32Z'
-updated: '2026-07-14T20:26:05Z'
+updated: '2026-08-28T04:27:49Z'
+parent: gnusto-otr
 labels:
 - tooling
 ---

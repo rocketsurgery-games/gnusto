@@ -1,11 +1,11 @@
 ---
 id: gnusto-0bf7.6
 title: Parse-only mode leaks narrative summarization + 'I'll continue narrating' priming
-  into agent context
 type: task
 priority: 2
 created: '2026-07-13T03:21:50Z'
-updated: '2026-07-13T03:22:03Z'
+updated: '2026-08-28T04:11:58Z'
+parent: gnusto-0bf7
 labels:
 - harness
 ---

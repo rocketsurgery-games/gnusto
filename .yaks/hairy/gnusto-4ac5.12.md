@@ -4,7 +4,8 @@ title: Back comic pages by the persisted turn log (not the in-memory stream)
 type: feature
 priority: 3
 created: '2026-06-21T00:10:00Z'
-updated: '2026-06-21T00:10:00Z'
+updated: '2026-08-28T04:14:32Z'
+parent: gnusto-4ac5
 depends_on:
 - gnusto-dae1
 ---

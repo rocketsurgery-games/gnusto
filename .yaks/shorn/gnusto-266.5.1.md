@@ -1,11 +1,11 @@
 ---
 id: gnusto-266.5.1
-title: 'Kernel oracle-honesty: make enumerate_actions a true sound superset (multi-arg
-  cartesian + in-source constant pool for value args)'
+title: '''Kernel oracle-honesty: make enumerate_actions a true sound superset (multi-arg'
 type: task
 priority: 2
 created: '2026-07-31T03:45:49Z'
-updated: '2026-07-31T03:49:51Z'
+updated: '2026-08-28T04:28:57Z'
+parent: gnusto-266.5
 labels:
 - tooling
 ---

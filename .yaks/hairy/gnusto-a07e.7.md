@@ -4,7 +4,8 @@ title: Event/beat refs to frozen plates (character + room grounding)
 type: feature
 priority: 2
 created: '2026-06-20T21:27:40Z'
-updated: '2026-06-21T20:58:32Z'
+updated: '2026-08-28T04:12:26Z'
+parent: gnusto-a07e
 depends_on:
 - gnusto-819a
 - gnusto-a07e.1

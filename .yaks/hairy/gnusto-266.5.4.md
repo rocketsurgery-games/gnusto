@@ -1,11 +1,11 @@
 ---
 id: gnusto-266.5.4
-title: 'Model open-ended action arguments as hidden knowledge variables (password/copy-protection):
-  arg becomes available once known/produced'
+title: '''Model open-ended action arguments as hidden knowledge variables (password/copy-protection):'
 type: task
 priority: 3
 created: '2026-07-31T03:45:50Z'
-updated: '2026-07-31T03:46:04Z'
+updated: '2026-08-28T04:10:53Z'
+parent: gnusto-266.5
 labels:
 - tooling
 ---

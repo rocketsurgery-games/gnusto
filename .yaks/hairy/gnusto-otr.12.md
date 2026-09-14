@@ -1,16 +1,16 @@
 ---
 id: gnusto-otr.12
 title: frotz reach returns NO after exploring only ~16 states (winnability oracle
-  broken?)
 type: task
 priority: 2
 created: '2026-07-13T20:58:12Z'
-updated: '2026-07-14T20:52:56Z'
-labels:
-- tooling
+updated: '2026-08-28T04:12:57Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.14
 - gnusto-otr.15
+labels:
+- tooling
 ---
 
 ---

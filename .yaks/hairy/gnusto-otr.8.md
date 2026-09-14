@@ -4,7 +4,8 @@ title: Implement complexity tool (puzzle metrics)
 type: task
 priority: 3
 created: '2026-01-25T12:05:02.468976-05:00'
-updated: '2026-07-14T20:52:31Z'
+updated: '2026-08-28T04:14:08Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.13
 ---

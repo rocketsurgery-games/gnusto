@@ -4,7 +4,8 @@ title: Extract actual required values from conditional guards
 type: task
 priority: 3
 created: '2026-01-24T18:32:05.349031-05:00'
-updated: '2026-02-08T19:07:11.067386Z'
+updated: '2026-08-28T04:15:24Z'
+parent: gnusto-3g0
 ---
 
 Currently _preconditions_for() guesses required values based on property names (e.g., 'if behavior reads rmung, assume it needs rmung=True'). This is wrong when the behavior reads a property to BLOCK when it's already in a certain state.

@@ -4,7 +4,8 @@ title: Implement critical tool (required object detection)
 type: task
 priority: 2
 created: '2026-01-25T12:04:43.728778-05:00'
-updated: '2026-07-14T20:52:31Z'
+updated: '2026-08-28T04:13:49Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.13
 ---

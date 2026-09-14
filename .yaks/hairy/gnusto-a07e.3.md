@@ -4,7 +4,8 @@ title: Object state variants as base + deltas (:rdesc)
 type: feature
 priority: 2
 created: '2026-06-21T20:29:59Z'
-updated: '2026-06-21T20:29:59Z'
+updated: '2026-08-28T04:12:18Z'
+parent: gnusto-a07e
 depends_on:
 - gnusto-a07e.1
 - gnusto-a07e.2

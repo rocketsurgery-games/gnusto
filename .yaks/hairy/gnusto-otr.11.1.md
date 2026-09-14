@@ -1,11 +1,11 @@
 ---
 id: gnusto-otr.11.1
 title: Triage LH dangling refs found by frotz map (:visible @outside-door/@outlet;
-  23 objects at undefined @global)
 type: task
 priority: 2
 created: '2026-07-12T19:15:18Z'
-updated: '2026-07-12T19:15:18Z'
+updated: '2026-08-28T04:12:47Z'
+parent: gnusto-otr.11
 labels:
 - bug
 ---

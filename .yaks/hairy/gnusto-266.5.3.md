@@ -1,15 +1,15 @@
 ---
 id: gnusto-266.5.3
-title: 'Stronger differential check mode B: bisimulation verification of the abstraction
-  map (per-corpus-game)'
+title: '''Stronger differential check mode B: bisimulation verification of the abstraction'
 type: task
 priority: 3
 created: '2026-07-31T03:45:50Z'
-updated: '2026-07-31T03:46:04Z'
-labels:
-- tooling
+updated: '2026-08-28T04:10:49Z'
+parent: gnusto-266.5
 depends_on:
 - gnusto-266.5.2
+labels:
+- tooling
 ---
 
 ---

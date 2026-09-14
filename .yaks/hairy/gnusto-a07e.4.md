@@ -4,7 +4,8 @@ title: Locale master plates for cross-visible rooms
 type: feature
 priority: 2
 created: '2026-06-21T20:30:08Z'
-updated: '2026-06-21T20:30:08Z'
+updated: '2026-08-28T04:12:23Z'
+parent: gnusto-a07e
 depends_on:
 - gnusto-a07e.1
 - gnusto-a07e.2

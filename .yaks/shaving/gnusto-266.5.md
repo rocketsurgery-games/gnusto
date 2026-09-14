@@ -4,7 +4,8 @@ title: 'State-graph kernel restart: concrete reference oracle + layered sound ab
 type: task
 priority: 2
 created: '2026-07-15T03:32:22Z'
-updated: '2026-07-15T03:32:33Z'
+updated: '2026-08-28T04:41:15Z'
+parent: gnusto-266
 labels:
 - tooling
 ---

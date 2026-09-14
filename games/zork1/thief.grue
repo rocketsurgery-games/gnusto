@@ -20,7 +20,7 @@
 ; wrecks the clockwork canary inside).
 ;
 ; A richer, still-analyzable thief (scripted patrol / state-triggered theft) is
-; tracked in yak gnusto-fa93.9.
+; tracked in yak gnusto-6b4f.1.
 
 (object @thief
   :location @treasure-room

@@ -4,7 +4,8 @@ title: Implement statediff tool (debugging tool)
 type: task
 priority: 3
 created: '2026-01-25T12:05:08.995484-05:00'
-updated: '2026-07-14T20:52:32Z'
+updated: '2026-08-28T04:14:11Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.14
 - gnusto-otr.15

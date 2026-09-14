@@ -1,15 +1,15 @@
 ---
 id: gnusto-otr.14
-title: 'Explorer defect B: sound ref selection — auto-track the target''s transitive
-  precondition closure'
+title: '''Explorer defect B: sound ref selection — auto-track the target''''s transitive'
 type: task
 priority: 2
 created: '2026-07-14T20:52:06Z'
-updated: '2026-07-14T21:59:06Z'
-labels:
-- tooling
+updated: '2026-08-28T04:27:40Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.13
+labels:
+- tooling
 ---
 
 ---

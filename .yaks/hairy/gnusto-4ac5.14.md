@@ -4,7 +4,8 @@ title: Ship a per-game lettering/SFX display font (Lurking Horror)
 type: feature
 priority: 3
 created: '2026-06-21T00:10:00Z'
-updated: '2026-06-21T00:10:00Z'
+updated: '2026-08-28T04:14:42Z'
+parent: gnusto-4ac5
 ---
 
 Follow-on from gnusto-4ac5.9. The per-game theme.css LOADER and the

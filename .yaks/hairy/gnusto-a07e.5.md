@@ -4,7 +4,8 @@ title: Per-portal seam assets (advanced cycle-break)
 type: idea
 priority: 3
 created: '2026-06-21T20:30:21Z'
-updated: '2026-06-21T20:30:21Z'
+updated: '2026-08-28T04:12:29Z'
+parent: gnusto-a07e
 depends_on:
 - gnusto-a07e.1
 labels:

@@ -4,7 +4,7 @@ title: Abstract interpretation framework for winnability analysis
 type: task
 priority: 1
 created: '2026-01-23T17:55:22.253816-05:00'
-updated: '2026-02-08T19:07:10.956436Z'
+updated: '2026-08-28T04:41:01Z'
 ---
 
 Replace ad-hoc StateRef special cases with principled abstract interpretation framework. See docs/design/abstract-interpretation.md for full design.

@@ -21,3 +21,4 @@ wheels/
 g.dot
 g.pdf
 g.png
+.env

@@ -4,7 +4,8 @@ title: 'frotz map: room-topology dump + dangling-reference lint'
 type: task
 priority: 2
 created: '2026-07-12T19:12:32Z'
-updated: '2026-07-12T19:18:06Z'
+updated: '2026-08-28T04:28:14Z'
+parent: gnusto-otr
 labels:
 - tooling
 ---

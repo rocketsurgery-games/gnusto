@@ -4,7 +4,8 @@ title: Implement reach tool
 type: task
 priority: 1
 created: '2026-01-25T10:58:31.619472-05:00'
-updated: '2026-02-08T19:07:10.954242Z'
+updated: '2026-08-28T04:27:55Z'
+parent: gnusto-otr
 ---
 
 Implement the `reach` reachability query tool.

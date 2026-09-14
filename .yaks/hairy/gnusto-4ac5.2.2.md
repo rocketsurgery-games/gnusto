@@ -4,7 +4,8 @@ title: 'Spatial exits experiment: directional marginalia around the viewport edg
 type: feature
 priority: 4
 created: '2026-06-21T01:40:00Z'
-updated: '2026-06-21T01:40:00Z'
+updated: '2026-08-28T04:15:07Z'
+parent: gnusto-4ac5
 ---
 
 Follow-on/refinement from gnusto-4ac5.2. The live frame currently presents exits

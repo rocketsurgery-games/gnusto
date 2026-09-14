@@ -4,7 +4,8 @@ title: 'filfre: dependency-ordered generation with edit + ref modes'
 type: feature
 priority: 2
 created: '2026-06-21T20:29:49Z'
-updated: '2026-06-21T20:29:49Z'
+updated: '2026-08-28T04:12:16Z'
+parent: gnusto-a07e
 depends_on:
 - gnusto-a07e.1
 labels:

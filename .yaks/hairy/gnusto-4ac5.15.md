@@ -4,7 +4,8 @@ title: Render deploy=background (asset behind panel text)
 type: feature
 priority: 4
 created: '2026-06-21T00:10:00Z'
-updated: '2026-06-21T00:10:00Z'
+updated: '2026-08-28T04:15:05Z'
+parent: gnusto-4ac5
 ---
 
 Follow-on from gnusto-4ac5.5/.6. The asset-deployment field accepts

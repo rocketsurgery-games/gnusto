@@ -4,7 +4,8 @@ title: Render :ref edges + cycle-rejecting lint
 type: feature
 priority: 2
 created: '2026-06-21T20:29:38Z'
-updated: '2026-06-21T20:29:38Z'
+updated: '2026-08-28T04:12:11Z'
+parent: gnusto-a07e
 labels:
 - render
 ---

@@ -4,7 +4,8 @@ title: 'Explorer defect C: snapshot/restore runtime state (replace O(depth) path
 type: task
 priority: 2
 created: '2026-07-14T20:52:07Z'
-updated: '2026-07-14T20:52:20Z'
+updated: '2026-08-28T04:13:14Z'
+parent: gnusto-otr
 labels:
 - tooling
 ---

@@ -4,7 +4,8 @@ title: Brief/style wording fixes from consistency probes
 type: task
 priority: 3
 created: '2026-06-21T20:30:21Z'
-updated: '2026-06-21T20:30:21Z'
+updated: '2026-08-28T04:12:31Z'
+parent: gnusto-a07e
 labels:
 - render
 ---

@@ -1,100 +1,162 @@
 version: 1
 
 components:
-  - name: RoomHeader
-    selector: ".header"
-    source: src/gnusto/webui/src/components/RoomHeader.svelte
-    description: Sticky header showing current room title, description, and image
+  - name: PagedStream
+    selector: ".paged"
+    source: src/gnusto/webui/src/components/PagedStream.svelte
+    description: Reading-area wrapper that paginates the narrative into bounded comic pages
     memory:
-      - Shows room name as heading, room description text, and optional room image
-      - Includes preamble text for room-entry narration
+      - Wraps the pager bar and the NarrativeStream reading column
+      - Pager only renders when there is more than one page
     children:
-      - name: room-title
-        selector: "h2"
-      - name: room-description
-        selector: ".room-desc, .description"
-      - name: room-image
-        selector: ".room-image, img"
+      - name: Pager
+        selector: ".pager"
+      - name: PagerButton
+        selector: ".pg"
+        properties:
+          - name: label
+            extract: text
 
   - name: NarrativeStream
     selector: "main.stream"
     source: src/gnusto/webui/src/components/NarrativeStream.svelte
-    description: Main scrollable area for game narrative blocks
+    description: Main scrollable reading column for game narrative blocks
     memory:
-      - Contains all narrative output blocks (narrate, speak, think, focus, etc.)
-      - Blocks animate in with slide-up entrance
+      - Blocks render inside a .spine column, each wrapped in a generic .block div
+      - Consecutive same-group blocks are bound into a .tier row on desktop
+      - Block-type classes come from the individual block components (blocks/*.svelte)
     children:
-      - name: narrate-block
+      - name: EstablishingPanel
+        selector: ".establishing"
+        properties:
+          - name: room
+            extract: ".locandum"
+      - name: RoomLabel
+        selector: ".locandum"
+      - name: NarrateBlock
         selector: ".block-narrate"
-      - name: speak-block
+      - name: SpeakBlock
         selector: ".block-speak"
-      - name: think-block
+      - name: ThinkBlock
         selector: ".block-think"
-      - name: focus-block
-        selector: ".block-focus"
-      - name: ambient-block
+      - name: AmbientBlock
         selector: ".block-ambient"
-      - name: reveal-block
+      - name: FocusBlock
+        selector: ".block-focus"
+      - name: RevealBlock
         selector: ".block-reveal"
-      - name: action-result-block
-        selector: ".block-action-result"
-      - name: command-block
-        selector: ".block-command"
-      - name: system-block
+      - name: ActionBlock
+        selector: ".block-action"
+      - name: ImageBlock
+        selector: ".block-image"
+      - name: SystemBlock
         selector: ".block-system"
-      - name: debug-block
+      - name: CommandBlock
+        selector: ".block-command"
+      - name: DebugBlock
         selector: ".block-debug"
+      - name: SfxBlock
+        selector: ".block-sfx"
+      - name: CaptionBlock
+        selector: ".block-caption"
+      - name: SplashBlock
+        selector: ".splash"
+      - name: EntityRef
+        selector: ".ref[data-entity]"
+        memory:
+          - Clickable @reference span (role=button) woven into narrative text
+          - Only present when the current narrative mentions an entity; dynamic
+        properties:
+          - name: entity
+            extract: attr=data-entity
+          - name: label
+            extract: text
 
-  - name: Sidebar
-    selector: "[role='complementary']"
+  - name: RightSidebar
+    selector: "aside.frame-rail"
     source: src/gnusto/webui/src/components/RightSidebar.svelte
-    description: Right sidebar showing exits, nearby objects, and player inventory
+    description: Right rail showing the current room, its exits, and objects present
     memory:
-      - Three panels: EXITS, HERE (objects in room), INVENTORY
-      - Entity buttons are clickable to open action popovers
-      - Entity thumbnails are 32x32 circles
+      - "Two sections: WAYS OUT (exits) and HERE (objects in room)"
+      - Clicking an exit prefills "go <dir>"; clicking an object prefills its name
+      - Live-only; hidden while viewing a history page
+      - Slides in as a mobile drawer (.mobile-open) below 768px
     children:
-      - name: exits-panel
-        selector: ".panel:has(.exit-btn), div:has(> h3:first-child)"
-      - name: exit-button
-        selector: ".exit-btn, button:has(> .entity-initial)"
-      - name: entity-button
-        selector: ".entity-btn"
-      - name: entity-thumbnail
-        selector: ".entity-thumb"
+      - name: Locator
+        selector: ".locator"
+      - name: SectionHeader
+        selector: ".block-header"
+        properties:
+          - name: label
+            extract: text
+      - name: ExitButton
+        selector: ".exit"
+        properties:
+          - name: direction
+            extract: ".dir"
+          - name: destination
+            extract: ".dest"
+      - name: ObjectButton
+        selector: ".prop"
+        properties:
+          - name: name
+            extract: ".prop-name"
+      - name: ObjectThumbnail
+        selector: ".prop-thumb"
 
   - name: InputBar
-    selector: "[role='contentinfo'], .input-bar"
+    selector: "footer.input-bar"
     source: src/gnusto/webui/src/components/InputBar.svelte
-    description: Fixed footer with command input field
+    description: Fixed footer with the command input field
     memory:
-      - Green ">" prompt symbol followed by text input
-      - Shows "Waiting..." placeholder when processing
-      - Supports targeting mode with pulsing prompt
+      - Green ">" prompt symbol followed by a text input
+      - Placeholder is "What do you want to do?" when enabled, "Waiting..." while processing
     children:
-      - name: prompt-symbol
+      - name: PromptSymbol
         selector: ".prompt"
-      - name: command-input
-        selector: "input[type='text'], input"
+      - name: CommandInput
+        selector: "input[type='text']"
 
-  - name: EntityPopover
-    selector: ".popover"
-    source: src/gnusto/webui/src/components/EntityPopover.svelte
-    description: Context menu popup showing available actions for an entity
+  - name: SatchelButton
+    selector: ".journal-fab"
+    source: src/gnusto/webui/src/App.svelte
+    description: Live-only summon that opens the satchel (inventory) overlay
     memory:
-      - Appears when clicking entity buttons in sidebar or entity refs in narrative
-      - Lists available behavior actions as buttons
-    children:
-      - name: action-button
-        selector: ".action-btn, button"
+      - Shows a count badge (.journal-count) when the player is carrying items
+    properties:
+      - name: label
+        extract: ".journal-label"
+
+  - name: PeekTab
+    selector: ".peek-tab"
+    source: src/gnusto/webui/src/components/PeekTab.svelte
+    description: Mobile-only edge tab that toggles the right sidebar drawer
+    memory:
+      - display:none on desktop; only visible below 768px
 
   - name: OverlayPanel
     selector: ".overlay-panel"
     source: src/gnusto/webui/src/components/OverlayPanel.svelte
-    description: Modal overlay for help, settings, save/load, state inspection
+    description: Modal side panel for help, settings, save/load, state, knowledge, and satchel
+    memory:
+      - Only present while an overlay is open (App.svelte activeOverlay)
+      - role=dialog, aria-label is the overlay title
     children:
-      - name: overlay-backdrop
-        selector: ".overlay-backdrop"
+      - name: OverlayTitle
+        selector: ".overlay-header h2"
+        properties:
+          - name: title
+            extract: text
+      - name: OverlayClose
+        selector: ".overlay-header .close-btn"
+        properties:
+          - name: label
+            extract: attr=aria-label
+
+  - name: OverlayBackdrop
+    selector: ".overlay-backdrop"
+    source: src/gnusto/webui/src/components/OverlayPanel.svelte
+    description: Dimmed backdrop behind an open overlay; clicking it dismisses the overlay
 
 views:
   - name: Game

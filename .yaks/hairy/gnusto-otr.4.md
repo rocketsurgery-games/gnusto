@@ -4,7 +4,8 @@ title: Implement deadends tool (unwinnable state detection)
 type: task
 priority: 2
 created: '2026-01-25T12:04:37.48706-05:00'
-updated: '2026-07-14T20:52:31Z'
+updated: '2026-08-28T04:13:45Z'
+parent: gnusto-otr
 depends_on:
 - gnusto-otr.14
 - gnusto-otr.15

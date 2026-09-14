@@ -4,7 +4,8 @@ title: 'Input parsing: NL → structured actions (no generation)'
 type: task
 priority: 1
 created: '2026-03-22T17:31:47Z'
-updated: '2026-06-14T19:38:42Z'
+updated: '2026-08-28T04:11:26Z'
+parent: gnusto-c0d3
 ---
 
 Focus the local model solely on input interpretation: given game state + player text,

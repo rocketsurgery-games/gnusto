@@ -1,11 +1,11 @@
 ---
 id: gnusto-0bf7.12
-title: 'Parse-only: redundant ''open (already-open) container'' before ''put'' short-circuits
-  the deposit'
+title: '''Parse-only: redundant ''''open (already-open) container'''' before ''''put'''' short-circuits'
 type: task
 priority: 3
 created: '2026-07-14T01:40:51Z'
-updated: '2026-07-14T01:40:51Z'
+updated: '2026-08-28T04:12:03Z'
+parent: gnusto-0bf7
 labels:
 - bug
 ---

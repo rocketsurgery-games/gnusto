@@ -4,7 +4,8 @@ title: Summonable inked map page (+ floating locator)
 type: feature
 priority: 3
 created: '2026-06-21T00:55:00Z'
-updated: '2026-06-21T00:55:00Z'
+updated: '2026-08-28T04:15:00Z'
+parent: gnusto-4ac5
 depends_on:
 - gnusto-8c77
 ---
