@@ -4,7 +4,7 @@ title: frotz reach returns NO after exploring only ~16 states (winnability oracl
 type: task
 priority: 2
 created: '2026-07-13T20:58:12Z'
-updated: '2026-08-28T04:12:57Z'
+updated: '2026-09-28T16:35:42Z'
 parent: gnusto-otr
 depends_on:
 - gnusto-otr.14
@@ -28,3 +28,7 @@ B. FORWARD FINGERPRINTING UNSOUND unless tracked refs are the full transitive pr
 C. FORWARD RESTORE IS O(depth) REPLAY. explore() replays the whole path from scratch for every action trial (num_actions+1 replays per node, each O(path length)). Measured ~0.19s/state at depth 30, ballooning at depth 80; cap=200 did not finish in 400s. Intractable for the many-ref sound queries B needs. Fix: snapshot/restore runtime state per node instead of replay.
 
 BOUNDS: the rigorous DESIGN-TOOL answers the user wants (dependency chart) live on the STATIC backward path, blocked mainly by A (contained). Sound forward reach additionally needs B+C; C is a real perf refactor. Recommend fixing A first (unblocks rigorous depgraph/requires), then decide whether to invest in B+C for forward reach.
+
+---
+▸ 2026-09-28T16:35:42Z [Joel Webber]
+STRATEGIC CONTEXT (cross-ref gnusto-266.5). The forward tools tangled on this cluster (otr.12 reach, otr.4 deadends, otr.7 solutions, otr.9 statediff, otr.10 whatif) currently depend on otr.14 + otr.15, which are defects of the OLD explorer.py. The kernel restart (266.5) is a ground-up replacement intended to SUPERSEDE explorer.py + deferred/ (hard cutover at parity, per the design doc). Mapping: otr.15 (snapshot vs replay) is already solved by kernel.step; otr.14 (sound ref selection / region quotient) continues as kernel layers 4.1 (gnusto-5c82) + 4.3. RECOMMENDATION for whoever picks these up: do NOT invest in the old explorer -- once the kernel stack + layers reach parity, re-root these forward tools on kernel + differential harness and re-point their deps off otr.14/otr.15. Not restructuring deps now; recording so the plan is legible.
