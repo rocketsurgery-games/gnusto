@@ -1,0 +1,6 @@
+# Obvious repo policy — auto-detected from GitHub settings on 2026-10-01.
+# Default branch and merge methods read from rocketsurgery-games/gnusto repo settings
+# (merge/squash/rebase all enabled; squash chosen as the default merge method).
+defaultBranch: main
+mergeMethod: squash
+requireHumanMerge: true
