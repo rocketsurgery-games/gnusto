@@ -4,12 +4,13 @@ title: '''Explorer defect B: sound ref selection — auto-track the target''''s 
 type: task
 priority: 2
 created: '2026-07-14T20:52:06Z'
-updated: '2026-08-28T04:27:40Z'
+updated: '2026-09-14T03:44:25Z'
 parent: gnusto-otr
 depends_on:
 - gnusto-otr.13
 labels:
 - tooling
+needs: human
 ---
 
 ---
@@ -39,3 +40,19 @@ Built the shared core (src/frotz/reachability.py: build_room_graph, reachable_ro
 KEY EMPIRICAL FINDING on Zork (predicted by design-doc conditions 1/2/4): pure STATIC topology is an unsound input for the backward query. Zork's 110-room / 315-edge map collapses to a SINGLE all-open SCC, and required_barriers under-reports badly (returns [] for @kitchen, @cellar, @gallery; only finds @cyclops). Cause: the map is full of DYNAMICALLY ASYMMETRIC links declared as ordinary bidirectional exits -- the trap-door slams shut on descent, the grate only unlocks from below, the chimney/river are one-way -- so spurious reverse edges create cycles that route the cut test AROUND physically-unavoidable barriers (even the kitchen window you must open to enter). Forward reachable_rooms (over-approx) is unaffected and stays sound for deadend claims.
 
 CONSEQUENCE: to be rigorously sound for backward required-barriers AND for the region quotient, the movement model must carry DIRECTIONAL / gate-state honesty, not naive static exits. Two candidate fixes to decide with the user: (A) game-authoritative annotation of one-way/asymmetric exits (drop the spurious free reverse edge; model return via the gate) -- fits the deterministic/explicit philosophy; or (B) derive directional traversability from initial gate state + barrier :through side + room :on-enter slam analysis (monotone forward reachability treating barrier-opening as progress). Did NOT wire requires to the core yet, to avoid shipping the under-approximation. Paused here to discuss (per user's stop-and-test cadence).
+
+---
+▸ 2026-09-14T03:44:25Z [claude]
+DECISION NEEDED before the region quotient (layer 4.3) or backward requires can be trusted on a real game. Re-stating the 2026-07-14 finding for a fresh read:
+
+Zork's 110-room / 315-edge map collapses to a SINGLE all-open SCC, because one-way links -- the trap door slamming shut, the grate that only unlocks from below, the chimney, the river -- are declared as ordinary bidirectional exits. The spurious reverse edges route the min-cut AROUND physically unavoidable barriers, so required_barriers under-reports badly: it returns [] for @kitchen, @cellar and @gallery, and finds only @cyclops. Forward reachable_rooms is an over-approximation and stays sound, so deadend claims are unaffected. It is the BACKWARD query and the SCC quotient that are broken.
+
+Which fix?
+
+(A) GAME-AUTHORITATIVE ANNOTATION. The author declares asymmetric exits: drop the free reverse edge, model the return trip through the gate. Fits the project's deterministic/explicit philosophy and the 'make the language express it' instinct. Costs: a Grue language change, a pass over every converted game, and it trusts the author -- an un-annotated one-way exit is silently unsound again (though frotz lint could plausibly flag suspicious asymmetry).
+
+(B) DERIVED DIRECTIONALITY. Infer traversability from initial gate state + the barrier's :through side + room :on-enter slam analysis, treating barrier-opening as monotone progress. No language change, nothing to re-annotate. Costs: it is inference over author intent -- more machinery, more ways to be subtly wrong, and it may still need per-game escape hatches.
+
+MY READ: (A) is more in keeping with the rest of the design -- explicit formal interfaces over inference cleverness -- and it converts the unsoundness from an analyzer limitation into an author error a linter can catch. But this is a language call, and (B) is the only option that fixes the already-converted games without editing them. A defensible hybrid: (A) as the source of truth, (B) as a lint heuristic that flags exits it believes are asymmetric but undeclared.
+
+Not blocking everything: gnusto-otr.2 (requires) and the other backward-analyzer tools, plus the new gnusto-de89 (cone-of-influence layer), can all proceed while this sits.
