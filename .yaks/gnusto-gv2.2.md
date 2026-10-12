@@ -1,0 +1,11 @@
+---
+id: gnusto-gv2.2
+title: Greedy best-first search
+status: shorn
+type: task
+priority: 1
+created: '2026-01-21T00:06:51.822707-05:00'
+updated: '2026-02-08T19:07:10.9581Z'
+---
+
+Replace BFS with best-first search using distance metric. Add patience parameter for plateau detection.

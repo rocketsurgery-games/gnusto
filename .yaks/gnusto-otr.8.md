@@ -1,0 +1,27 @@
+---
+id: gnusto-otr.8
+title: Implement complexity tool (puzzle metrics)
+status: hairy
+type: task
+priority: 3
+created: '2026-01-25T12:05:02.468976-05:00'
+updated: '2026-08-28T04:14:08Z'
+parent: gnusto-otr
+depends_on:
+- gnusto-otr.13
+---
+
+Compute metrics to quantify puzzle complexity for design comparison.
+
+Usage:
+```bash
+frotz complexity --goal "(= (:rmung @emergency-cabinet) true)"
+```
+
+Metrics:
+- Depth: minimum steps required
+- Breadth: number of alternative paths
+- Dependencies: prerequisite count
+- Branching factor: average choices per step
+
+Use to compare complexity across puzzles in a game.

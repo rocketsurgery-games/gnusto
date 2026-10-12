@@ -1,0 +1,11 @@
+---
+id: gnusto-bl0
+title: Add behaviors to @chinese-food, @carton, @snack, @coke
+status: shorn
+type: task
+priority: 1
+created: '2026-01-15T11:56:42.394866-05:00'
+updated: '2026-02-08T19:07:10.964445Z'
+labels:
+- lh
+---
