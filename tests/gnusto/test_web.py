@@ -8,6 +8,7 @@ HTTP routes, and that StaticFiles does not interfere with WebSocket routing.
 import json
 import pathlib
 import tempfile
+from contextlib import contextmanager
 
 import pytest
 from starlette.testclient import TestClient
@@ -36,6 +37,29 @@ def client(app):
     return TestClient(app)
 
 
+@contextmanager
+def game_app(tmp_path, visual_style):
+    """TestClient app over a temp game dir whose world declares the given
+    :visual-style expression (webui dist stubbed, as in the app fixture)."""
+    game = tmp_path / "game"
+    game.mkdir()
+    (game / "game.grue").write_text(
+        f'(world :name "Font Game" :player @player :visual-style {visual_style})\n'
+        '(room @r :description "R" :ldesc "A plain room." :properties (:lit true))\n'
+        '(object @player :location @r :description "yourself" '
+        ':properties (:person true :dead false))\n'
+    )
+    fake_webui = tmp_path / "dist"
+    fake_webui.mkdir()
+    (fake_webui / "index.html").write_text("<html><body>Gnusto</body></html>")
+    old_webui = web.WEBUI_DIR
+    web.WEBUI_DIR = fake_webui
+    try:
+        yield TestClient(web.create_app(str(game)))
+    finally:
+        web.WEBUI_DIR = old_webui
+
+
 class TestWebSocketEndpoint:
     def test_websocket_connects_and_sends_initial_state(self, client):
         """WebSocket at /ws must connect successfully and send initial game state."""
@@ -60,6 +84,36 @@ class TestWebSocketEndpoint:
                     break
             types = [m["type"] for m in messages]
             assert "turn_complete" in types
+
+    def test_theme_first_when_visual_style_declared(self, tmp_path):
+        """A :visual-style game's FIRST ws message is the theme, carrying both
+        swatches and the uiFont token (an order the swatch-less default
+        fixture can't exercise)."""
+        with game_app(
+            tmp_path, '(:swatches (:bg "#080d10") :ui-font "comic-neue")'
+        ) as client:
+            with client.websocket_connect("/ws") as ws:
+                theme = json.loads(ws.receive_text())
+                assert theme["type"] == "theme"
+                assert theme["swatches"] == {"bg": "#080d10"}
+                assert theme["uiFont"] == "comic-neue"
+
+    def test_theme_shape_unchanged_for_swatch_only_games(self, tmp_path):
+        """A swatch-only game (no :ui-font) sends exactly today's payload —
+        swatches present, no uiFont key (regression guard for games like
+        zork1)."""
+        with game_app(tmp_path, '(:swatches (:bg "#080d10"))') as client:
+            with client.websocket_connect("/ws") as ws:
+                theme = json.loads(ws.receive_text())
+                assert theme == {"type": "theme", "swatches": {"bg": "#080d10"}}
+
+    def test_theme_sent_for_font_only_games(self, tmp_path):
+        """A game declaring only :ui-font still gets a theme message — the
+        font rides alone, swatches absent."""
+        with game_app(tmp_path, '(:ui-font "comic-neue")') as client:
+            with client.websocket_connect("/ws") as ws:
+                theme = json.loads(ws.receive_text())
+                assert theme == {"type": "theme", "uiFont": "comic-neue"}
 
     def test_websocket_does_not_interfere_with_http(self, client):
         """HTTP GET to / must work alongside the WebSocket route."""
