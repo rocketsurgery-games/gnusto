@@ -405,10 +405,20 @@ async def send_initial_state(
     """Send initial game state to the client."""
     # Per-game theme: inject the declared palette swatches as CSS --game-* vars.
     # This is the single source (world :visual-style :swatches) that also keys
-    # the generated art, so chrome and art can't drift (gnusto-4ac5.9).
-    swatches = (session.runtime.world.visual_style or {}).get("swatches")
-    if isinstance(swatches, dict) and swatches:
-        await websocket.send_text(json.dumps({"type": "theme", "swatches": swatches}))
+    # the generated art, so chrome and art can't drift (gnusto-4ac5.9). An
+    # optional :ui-font token rides the same message — the client owns the
+    # token -> font-family mapping, so game data never carries raw CSS. Games
+    # declaring neither key still send no theme message at all.
+    style = session.runtime.world.visual_style or {}
+    swatches = style.get("swatches")
+    ui_font = style.get("ui-font")
+    if (isinstance(swatches, dict) and swatches) or ui_font:
+        payload: dict[str, Any] = {"type": "theme"}
+        if isinstance(swatches, dict) and swatches:
+            payload["swatches"] = swatches
+        if ui_font:
+            payload["uiFont"] = ui_font
+        await websocket.send_text(json.dumps(payload))
 
     blocks: list[ContentBlock] = []
 
