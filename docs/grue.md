@@ -868,6 +868,12 @@ Game metadata and player declaration.
     models render a literal colour-swatch chart). The art's palette comes from
     the prose `:palette`; both live in `:visual-style`, so chrome and art share
     one authored identity.
+  - `:ui-font` - Token naming the game's web UI reading font (optional). Sent
+    to the browser in the `theme` websocket message; the client maps known
+    tokens to bundled font families (e.g. `"comic-neue"` -> Comic Neue with a
+    Georgia fallback) and ignores unknown tokens. The value is a token, never a
+    raw CSS family string — game data stays free of CSS. Omitting the key (or
+    naming an unknown token) renders the stock UI typography.
   - `:aspect-ratio` - Default aspect ratio (e.g. `"16:9"`)
   - `:kinds` - Per-entity-kind style specialization (optional). A nested
     keyword-map keyed by entity kind (`:room`, `:object`, `:event`), each a
