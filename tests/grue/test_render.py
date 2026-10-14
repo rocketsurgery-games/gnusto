@@ -229,6 +229,19 @@ class TestVisualStyle:
             "accent-glow": "#c4ff8a",
         }
 
+    def test_ui_font_parsed_as_plain_string(self):
+        # :ui-font is a flat string token, not a nested map — parse_properties
+        # stores it with zero parser change. The client owns the token ->
+        # font-family mapping; the Grue file stays data-only.
+        source = """
+        (world :name "Test" :player @player
+          :visual-style (:prompt "Inked."
+                         :swatches (:bg "#080d10")
+                         :ui-font "comic-neue"))
+        """
+        world = parse_grue(source)
+        assert world.visual_style["ui-font"] == "comic-neue"
+
     def test_kinds_parsed_as_nested_per_kind_maps(self):
         source = """
         (world :name "Test" :player @player

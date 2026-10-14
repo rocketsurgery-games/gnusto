@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import type { RoomEnterBlock, ContentBlock, RenderableBlock, ServerMessage } from './lib/types'
+  import type { RoomEnterBlock, ContentBlock, RenderableBlock, ServerMessage, ThemeMessage } from './lib/types'
   import { connect, onMessage, send } from './lib/websocket.svelte'
   import { updateEntities, resolveEntityName } from './lib/entities.svelte'
 
@@ -74,7 +74,7 @@
 
   function handleMessage(message: ServerMessage) {
     if (message.type === 'theme') {
-      applyTheme(message.swatches)
+      applyTheme(message)
     } else if (message.type === 'scene_context') {
       updateEntities(message.entities)
     } else if (message.type === 'blocks') {
@@ -121,13 +121,26 @@
     }
   }
 
-  // Apply the game's declared palette swatches as --game-* CSS vars. This is the
-  // single source (world :visual-style :swatches) that also keys the art, so the
-  // chrome and the generated art can't drift (gnusto-4ac5.9).
-  function applyTheme(swatches: Record<string, string>) {
+  // Known per-game UI fonts: token -> CSS stack. The server sends a token,
+  // never raw CSS — families stay client-owned, like --game-<token> names.
+  // The fallback lives inside the stack: before the webfont loads (or if it
+  // fails entirely), text renders in the stock Georgia serif.
+  const GAME_FONTS: Record<string, string> = {
+    'comic-neue': '"Comic Neue", Georgia, "Times New Roman", serif',
+  }
+
+  // Apply the game's declared theme: palette swatches as --game-* CSS vars,
+  // plus an optional :ui-font token for the reading typeface (--font-body).
+  // Single source (world :visual-style) that also keys the art, so the chrome
+  // and the generated art can't drift (gnusto-4ac5.9). Unknown font tokens are
+  // ignored — no var is set, stock typography wins.
+  function applyTheme(theme: ThemeMessage) {
     const root = document.documentElement
-    for (const [token, hex] of Object.entries(swatches)) {
+    for (const [token, hex] of Object.entries(theme.swatches ?? {})) {
       root.style.setProperty(`--game-${token}`, hex)
+    }
+    if (theme.uiFont && GAME_FONTS[theme.uiFont]) {
+      root.style.setProperty('--font-body', GAME_FONTS[theme.uiFont])
     }
   }
 
