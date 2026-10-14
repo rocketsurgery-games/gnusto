@@ -194,8 +194,12 @@ export interface KgContextMessage {
 
 export interface ThemeMessage {
   type: "theme";
-  // token name (e.g. "bg", "accent-glow") -> hex; applied as --game-<token>
-  swatches: Record<string, string>;
+  // token name (e.g. "bg", "accent-glow") -> hex; applied as --game-<token>.
+  // Absent when the game declares a font but no swatches.
+  swatches?: Record<string, string>;
+  // per-game UI font token (e.g. "comic-neue"); the client maps it to a
+  // bundled CSS stack. Unknown tokens are ignored.
+  uiFont?: string;
 }
 
 export type ServerMessage =
