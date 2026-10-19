@@ -15,4 +15,5 @@ Herd for gameplay/logic bugs discovered in the converted Lurking Horror game (as
 
 ---
 ▸ 2026-07-12T00:09:29Z
+
 All children shorn: .1 elevator soft-lock (fixed via queue contract gnusto-aab0), .2 in-transit narration, .3 basement floor-0 narration (fixed via truthiness gnusto-be0a). LH elevator now fully functional end-to-end with clear feedback.

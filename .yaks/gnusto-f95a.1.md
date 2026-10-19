@@ -21,4 +21,5 @@ FIX (local): add terminal (dequeue ...) to the three events when work is done --
 
 ---
 ▸ 2026-07-11T14:58:54Z
+
 DONE. Root cause was the queue contract (gnusto-aab0), not elevator.grue -- the ZIL-faithful one-shot-dequeue fix makes the elevator work end-to-end with NO change to elevator.grue: doors open at the called floor, auto-close after the 2-turn window, car descends 2->1->0 and stops at the basement, player disembarks into @cs-basement. Validated in grue-repl. Replaced the stale pytest test_can_call_elevator (which only passed BECAUSE the soft-lock held the doors open forever) with test_can_ride_elevator_to_basement (full call->board->ride->disembark, bounded loops). Added grue-native 'elevator full ride' test to elevator.test.grue using the (until ...) DSL loop for timing-robustness. Spawned f95a.3 (floor-0-falsy narration sub-bug).

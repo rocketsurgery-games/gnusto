@@ -24,6 +24,7 @@ NON-goal: no Svelte, no build, no backend wiring — pure static mock for visual
 
 ---
 ▸ 2026-06-20T15:30:16Z
+
 Mock built + iterated (experiments/webtoon-mock/, uncommitted throwaway). Two TLH scenes, all panel roles + both fallbacks, desktop + mobile verified by screenshot. Full findings in that dir's README.md.
 
 CONFIRMED: webtoon vertical spine is a solid responsive base; establishing-as-stream-block works (full-bleed crop + embedded location label/exits + caption overlay, no pinned header needed); scene break needs no state plumbing (CSS air+divider+page-turn); tier = display:contents -> grid@900px (mobile stack / desktop row, zero DOM dup); typographic + caption-inset fallbacks are first-class; palette single-source (~10 vars) is plainly enough.

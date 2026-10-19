@@ -20,4 +20,5 @@ Depends on gnusto-4ac5.1.
 
 ---
 ▸ 2026-06-20T20:50:16Z
+
 SHORN. CommandBlock.svelte restyled as an in-world player CAPTION panel: right-aligned mono box, panel-ink bg, --game-accent left border + '› ' prefix, accent-glow text. Commands already land in the stream client-side (App.svelte), so this was pure styling. Verified live: 'examine the hacker' renders as a right-aligned caption above the LLM's response. Right-aligned 'you' voice vs left narrator gives the call-and-response cadence from the spike.

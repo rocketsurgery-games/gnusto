@@ -15,4 +15,5 @@ INVESTIGATION (done): Grue's truthiness is Python host-language leakage -- condi
 
 ---
 ▸ 2026-07-12T00:01:23Z
+
 Done (145995d). Added is_truthy() (only None/False falsy) and routed all truthiness decisions through it: expr.py control flow (and/or/not/if/when/cond/condp/cond->/cond->>, some/every?/filter/remove), runtime victory/defeat, eval_predicate, test DSL assert/until/expectation. Audit found NO code relying on 0/''/[] falsy (all flags boolean; counters use condp=; :username uses false sentinel; ?msg non-empty-or-nil), so change only fixes behavior. Docs/AGENTS/translate-zil updated. Spawned gnusto-294d (and/or should return the deciding value, not a bool). 774 pytest + 479 grue-test pass.

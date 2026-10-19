@@ -15,4 +15,5 @@ Collapse the two drifting formatters into ONE 'raw engine results -> List[Conten
 
 ---
 ▸ 2026-07-07T21:58:44Z
+
 Done. _blocks_from_results is now THE single construction path (raw results -> ordered player-facing block stream); _blocks_to_text flattens it for the LLM. _eval_and_format derives LLM text from that flatten + a (blocked)/(error) status marker the player never sees; deleted the parallel _format_action_result. Fixed the ordered-stream bug: every text channel (output narrate/say, reason, ordered TEXT_CONTEXT_KEYS = message/description/response/hint/transition) renders in order across ALL results, no 'if not blocks' fallback. Fixes the compulsion page drop + never-rendered :transition/:hint. Verified: live parse-only examine renders once and in order; 757 passed, 6 skipped. New tests: multi-result ordering (compulsion repro), canonical context-key order, hint rendering, blocks_to_text flatten.

@@ -14,6 +14,7 @@ Design improvements to the Grue language and runtime before continuing LH conver
 
 ---
 ▸ 2026-06-20T14:53:30Z
+
 LANGUAGE/RUNTIME note from Epic B page-break design (see gnusto-4ac5.4). Two potential Grue additions surfaced — capturing here, not yet committed:
 1. SCENE-BREAK HINTS on (success ...): extend the existing terminator-kwarg channel (_parse_terminator_kwargs -> context['render'], same path as :render :tag) with :scene / :beat markers AND a SUPPRESS form so authored set-pieces (e.g. the alchemy ritual cutscene) can force a scene/page break, and contiguous-space moves can suppress the default room-change break. Keeps scene authority with the game author, deterministic + persisted in the effect stream.
 2. DECLARED ROOM REGIONS/ZONES: group rooms into a zone so intra-zone movement does NOT trigger a scene break (contiguous space), with zero per-turn authoring and no LLM. Dovetails with the earlier 'room-global axes' note (rooms reading off-room state). A purely-programmatic alternative to LLM pacing for the common case.
@@ -21,10 +22,12 @@ Both feed gnusto-4ac5.4 (bounded comic pages). Promote to child yaks when we mov
 
 ---
 ▸ 2026-06-20T15:30:24Z
+
 RENDER-MANIFEST note from the webtoon spike (gnusto-4ac5.11). The UI needs to know whether an asset is SCENE art (full-bleed, edge-to-edge, baked inked border) or SUBJECT art (single-subject on an opaque/inconsistent bg — many LH objects are on WHITE). They get opposite treatments (full-bleed vs framed 'specimen plate' with multiply). This scene-vs-subject distinction should be ENGINE-derivable, not authored per panel — cleanest is from entity kind (room -> scene, object/character -> subject), or an explicit render-kind hint on :render if kind is insufficient. Relates to eaec render manifest (resolve_asset_key / render_variants) and to gnusto-4ac5.1/.6. Promote to a child yak when .1 implementation starts.
 
 ---
 ▸ 2026-06-20T22:38:00Z
+
 IDEAS spawned during gnusto-4ac5.5 (presentation-intent vocabulary). Captured for later, not yet promoted to child yaks:
 1. PRESENTATION-INTENT MIXIN. The LLM presentation fields (`beat`, `group`, `deploy`) are accreting as per-dataclass boilerplate across the render blocks (Narrate/Speak/Think/Ambient/Reveal/Focus/Caption/Splash/Sfx) — each new intent field means ~9 dataclass edits + ~9 block_to_dict edits + parser/converter/types.ts churn. An experienced Scheme/Clojure dev would factor the shared shape out. Consider a small `PresentationIntent` base dataclass (or a single `presentation: {...}` sub-map) carrying beat/group/deploy, so adding the next intent is one edit. Touches render.py + web.block_to_dict + llm converter; mechanical but worth doing before the 4th intent field lands.
 2. CONSOLIDATED BLOCK-VOCAB REFERENCE. The canonical spec for the LLM block vocabulary currently lives only in the agent.py SYSTEM_PROMPT. As the vocabulary grew (beat/sfx/caption/splash/deploy/group) there's no single human-facing reference doc; docs/render.md covers the art pipeline, not the block grammar. Consider a short docs section (gnusto.md or a new blocks.md) enumerating block types + their fields + the LLM/engine boundary, kept in sync with the schema.

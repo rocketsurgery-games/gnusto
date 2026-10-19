@@ -13,6 +13,7 @@ labels:
 
 ---
 ▸ 2026-07-13T03:22:03Z
+
 Found during Zork playthrough validation (gnusto-fa93.19), debug mode. When the action buffer exceeds ~25 actions, GameSession._maybe_summarize() drops the oldest turns and compresses them into an LLM-generated NARRATIVE (SUMMARIZE_PROMPT: 'Summarize these game turns into a brief narrative paragraph'), stored in self.summaries. _build_messages injects that as a '[Story so far:]' user turn FOLLOWED BY a canned assistant line: '(Acknowledged - I'll continue narrating from here.)'.
 
 Problem: the system prompt and the renderable-asset catalog are correctly gated by self.parsing_only, but the summarization + story-so-far block are NOT. So in parse-only / engine-authoritative mode (the mode explicitly chosen for Infocom conversions to STOP the model fabricating):

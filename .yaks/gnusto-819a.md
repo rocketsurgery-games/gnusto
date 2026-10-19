@@ -29,6 +29,7 @@ Deliverable: experiments/consistency/ harness that runs each case x mechanism, l
 
 ---
 ▸ 2026-06-21T15:14:58Z
+
 Built experiments/consistency/ harness (probe.py + README). Mechanisms M1 prompt / M2 frozen-ref / M3 in-place edit / M4 model-sheet grid / M5 master-plate crop+reframe, run as a topo-sorted DAG (frozen roots -> dependents, cycle-checked). Real briefs lifted from the game. --dry-run prints DAG+prompts+call counts with no spend; --sheet builds per-case contact sheets.
 
 SDK gotcha fixed: a fresh google-genai Client() per call hits 'client has been closed' (httpx transport); cache one module-level client.
@@ -39,6 +40,7 @@ Model implication: object state variants want a 'base + deltas' :rdesc model (on
 
 ---
 ▸ 2026-06-21T20:12:03Z
+
 Ran rooms (6) + professor (24) cases. Full findings in experiments/consistency/README.md.
 
 CASE 2 rooms: master-plate DAG works. cluster-master root baked in cross-visibility (elevators+stairs+kitchen-through-doorway). kitchen-ref inherited master palette+layout (microwave/fridge arrangement) vs kitchen-prompt = different warmer kitchen. hallway-crop = exact free seam but subset-only. => crop where room is a literal sub-view, ref where it needs its own framing.
@@ -53,4 +55,5 @@ FOLLOW-UPS to spin out: closed-microwave brief wording ('opaque closed door'); e
 
 ---
 ▸ 2026-06-21T20:28:07Z
+
 SHORN: experiment complete across all 3 cases. Mechanism is picked by requirement shape; common thread is a frozen ROOT that dependents reference (never each other) -> acyclic. M1 prompt-only fails on identity; M4 grid dead; M5 crop demoted to opportunistic optimization (NOT a cycle-breaker) per discussion. Findings + recommended Grue model in experiments/consistency/README.md. Next: sketch the modeling design as a yak herd (base+deltas rdesc, :ref edges + cycle lint, locale plates/portal seams, wording fixes) feeding gnusto-a07e.7.

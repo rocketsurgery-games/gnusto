@@ -16,4 +16,5 @@ The threading macros (-> and ->>) are currently implemented as special forms in 
 
 ---
 ▸ 2026-07-12T19:47:28Z
+
 Concrete motivating use case beyond ->/->>: (defhazard ...) — see docs/design/defhazard.md and gnusto-5818. It requires the macro system to support DEFINITIONAL macros (expand to top-level (event ...) forms), a macroexpand PRE-PASS that feeds both the runtime and frotz/lint (so expanded events are analyzed like hand-written ones — the key reason to prefer macros over HOFs/gnusto-zbg here), multi-form output, quasiquote + unquote-splice templates, keyword-arg macro params, and gensym/hygiene. Building 2q9 to satisfy defhazard lands it as a real Lisp macro system rather than defmacro-sugar over threading.

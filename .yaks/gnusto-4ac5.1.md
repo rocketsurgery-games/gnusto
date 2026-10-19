@@ -17,6 +17,7 @@ Convert the pinned room header into a frozen, point-in-time ESTABLISHING PANEL t
 
 ---
 ▸ 2026-06-20T20:12:31Z
+
 SHORN. Un-pinned the room render into a frozen establishing panel in the stream, verified end-to-end against games/lurkinghorror (server smoke test: intro prose above, establishing panel with stage art + location label + description, no pinned header, sidebar live affordances intact).
 
 Backend (web.py): deleted _build_preamble + _SENTENCE_END/_PREAMBLE_MAX + the re import + streamed_blocks accumulation; on room change just emit the room_enter block (frozen establishing) instead of a header-swap-with-preamble. (This also completes the DELETE half of 4ac5.3's transition machinery on the backend.)

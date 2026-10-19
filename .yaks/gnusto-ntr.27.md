@@ -27,4 +27,5 @@ Plan:
 
 ---
 ▸ 2026-06-21T00:05:00Z
+
 SHORN. Introduced a NarrativeBlock base dataclass carrying the shared presentation-intent fields (beat, group) as keyword-only (so concrete blocks keep positional content fields without default-ordering conflicts); the 9 LLM-emitted narrative blocks now inherit it (deploy stays on reveal/focus). DRY'd web.block_to_dict via an _intent(block) helper spread into each branch, and llm.content_block_data_to_render via a shared `intent` kwargs dict. JSON contract stable; group WIDENED from the 4 small-panel blocks to all narrative blocks (uniform — tiers still guided to small panels in the prompt). Adding the next universal intent field is now ~1 edit (base) + the helper already spreads it. System blocks (RoomEnter/Image/…) are correctly NOT NarrativeBlock. Tests: TestNarrativeBlockBase (3). Verified: pytest 765, svelte-check clean on touched files, build OK.

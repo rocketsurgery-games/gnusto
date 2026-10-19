@@ -12,4 +12,5 @@ Regression from ntr.23. assemble_style appended 'Anchor the palette to these col
 
 ---
 ▸ 2026-06-20T21:33:59Z
+
 SHORN. Removed the hex-anchoring block from assemble_style; swatches -> CSS chrome only (web theme message unchanged). Verified: filfre briefs contain 0 hex occurrences; pytest green. Lesson: never inject raw hex codes into image-gen prompts.

@@ -16,4 +16,5 @@ Author .agents/skills/grue-testing/SKILL.md: when to use grue-test (game .test.g
 
 ---
 ▸ 2026-07-11T23:01:34Z
+
 Done in 2803f4a: .agents/skills/grue-testing/SKILL.md -- harness selection table, (until PRED (wait)) multi-turn idiom, event-lifecycle assertions (not-queued? after one-shot), DSL predicate catalog, until-vs-assert-predicate gotcha, deterministic repl/TUI probing.

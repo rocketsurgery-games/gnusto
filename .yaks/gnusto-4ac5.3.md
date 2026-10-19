@@ -19,4 +19,5 @@ Depends on gnusto-4ac5.1.
 
 ---
 ▸ 2026-06-20T21:34:23Z
+
 SHORN. Added the scene-break VISUAL treatment to EstablishingBlock (the delete-half of the transition machinery already landed in .1). Pure CSS, no state plumbing: extra top air (2.25rem) before the panel, a faded chapter divider with a small green accent diamond, and a soft 'page-turn' fold-shadow across the top of the stage art (locandum lifted above it via z-index). Verified live against lurkinghorror \u2014 a new establishing panel reads clearly as a beat change. Continuity remains automatic (the panels that got you here sit directly above).

@@ -21,6 +21,7 @@ Depends on gnusto-4ac5.1 (stream) and gnusto-8c77 (auto-map backbone).
 
 ---
 ▸ 2026-06-20T23:45:00Z
+
 HERD STATUS — this is the ONLY un-shorn child of Epic B; everything else (.1 .3 .4 .5 .6 .7 .8 .9 .10 .11) is shorn. BLOCKED: the defining deliverable (summonable inked MAP PAGE + locator) depends on the auto-map (gnusto-8c77 -> gnusto-6ba8), a separate track not in this herd.
 CARVE-OUT OPPORTUNITY (for when we revisit): the three parts split cleanly by dependency —
   (a) SATCHEL — summonable inventory comic SPREAD reusing movable-object assets. INDEPENDENT of 8c77, and now cheap: it can reuse the EntityInset 'specimen plate' from .6 (resolveEntityImage) as the per-item panel. Could be a ready child today.
@@ -30,6 +31,7 @@ DEFERRED (design judgement, wants a human): (a)/(c) introduce SUMMON-AFFORDANCE 
 
 ---
 ▸ 2026-06-21T00:30:00Z
+
 DESIGN DISCUSSION (exits / visible objects / inventory, holistically). Treat them by cadence/scope, NOT as one widget.
 
 SETTLED:
@@ -48,6 +50,7 @@ LIKELY RESHAPE of .2 once confirmed: children for (a) satchel [ready, independen
 
 ---
 ▸ 2026-06-21T00:55:00Z
+
 SHAVING. User confirmed the column-vs-frame model + decisions (history pages hide ALL frame affordances — show only on the live/most-recent page; add a current-room-name locator we currently lack; keep mobile simple for now; delete the old action-menu code). Carved the BLOCKED map page to gnusto-4ac5.2.1 (depends 8c77) so .2 covers the READY parts. Build order in slices:
   SLICE 1 (this) — click->prefill + delete the action-menu experiment.
   SLICE 2 — summonable journal: satchel spread (map tab deferred to .2.1).
@@ -57,10 +60,12 @@ SLICE 1 done (pending commit): clicking any entity now just PREFILLS its name in
 
 ---
 ▸ 2026-06-21T01:10:00Z
+
 SLICE 2 done (satchel). New SatchelOverlay.svelte: the summonable inventory as a comic SPREAD of EntityInset specimen plates (reuses the .6 primitive; art when available, name-card fallback otherwise), empty-state caption when carrying nothing. Clicking an item prefills its name and closes (slice-1 convention). Opened via a persistent "journal" FAB (small inked stamp, bottom-left, carried-count badge) — the unified journal affordance; the MAP joins as a tab once gnusto-4ac5.2.1 lands. Wired into App's overlay chain (activeOverlay='satchel'), items = currentRoom.inventory. Verified: svelte-check 0/0, build OK. NOTE: no visual smoke (local servers down; inventory is empty at start anyway) — populated spread to be eyeballed on next run. The FAB is always-visible for now; slice 3 gates frame/affordance visibility to the live page.
 
 ---
 ▸ 2026-06-21T01:40:00Z
+
 SLICE 3 done (the live frame) — and .2 SHORN for its ready scope. Replaced the desktop sidebar with the "column vs frame" live ground-truth rail: a persistent LOCATOR (room-name inked stamp — the affordance we lacked), WAYS OUT (exits; click prefills "go <dir>"), and HERE (visible objects as small inked specimen cards matching the satchel's language; click prefills the name). Dropped the Inventory section (now the satchel). The WHOLE frame + the journal FAB + the mobile peek tab are LIVE-PAGE-ONLY: PagedStream now surfaces follow/history via onfollowingchange -> App viewingLive -> gates the frame, so history pages show pure frozen prose with no current-state mixing. Clicks are prefill-only throughout (slice-1 convention). LIVE-VERIFIED on a fresh :8000 server against lurkinghorror: frame renders on the live page; paging Older hides the entire frame + FAB; Newer/Now restores it; exit click -> input "go south"; object click -> "hacker"; satchel opens (empty-state). No console errors; /game/theme.css 200 (fresh backend has the .9 route). svelte-check 0/0, build OK. Screenshot: experiments/webtoon-mock/_shot-frame-live.png.
 
 .2 SHORN. Delivered the holistic exits/objects/inventory restructure: satchel (slice 2), click->prefill + deleted the action-menu experiment (slice 1), and the live-only frame with locator/exits/objects (slice 3). Carved off: the summonable MAP page (gnusto-4ac5.2.1, blocked on auto-map 8c77) and the SPATIAL edge-exits experiment (gnusto-4ac5.2.2, held for visual iteration). The right rail is the robust baseline; edge-marginalia is the next thing to try together with the user.

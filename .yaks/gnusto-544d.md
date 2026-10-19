@@ -15,4 +15,5 @@ We no longer use Claude Code. Move to the standard agent layout: AGENTS.md for p
 
 ---
 ▸ 2026-07-11T23:17:33Z
+
 Done (commit 2803f4a). CLAUDE.md->AGENTS.md + skills pointer/gotchas; new translate-zil and grue-testing skills; stale .claude command removed. .4 (tunnel migration) slaughtered -- user tossed the tunnel skill instead. All children resolved.

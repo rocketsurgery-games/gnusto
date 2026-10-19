@@ -15,4 +15,5 @@ git mv CLAUDE.md AGENTS.md; scan for self-references. Delete the stale .claude/c
 
 ---
 ▸ 2026-07-11T23:01:34Z
+
 Done in 2803f4a: git mv CLAUDE.md->AGENTS.md; updated 2 README refs; added Skills pointer + event-queue/0-falsy gotchas; de-referenced retired gnusto-ntr and Claude-Code slash commands. Removed .claude/commands/translate-zil.md.

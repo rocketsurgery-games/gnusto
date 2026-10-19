@@ -15,4 +15,5 @@ At the basement (floor 0), the elevator door open/close narration is missing. el
 
 ---
 ▸ 2026-07-12T00:01:23Z
+
 Fixed by gnusto-be0a (145995d): elevator-here? does (and ?floor ...); with 0 now truthy, the basement (floor 0) narration ('doors slide open/closed') appears. Verified via grue-repl ride to basement.

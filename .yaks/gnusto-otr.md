@@ -98,6 +98,7 @@ All tools share common flags:
 
 ---
 ▸ 2026-09-14T03:44:31Z [claude]
+
 SEQUENCING DECISION, surfaced while surveying the herd.
 
 Shearing gnusto-otr.13 (effect-model completeness) silently unblocked five tool yaks whose only dependency was it: gnusto-otr.2 (requires), gnusto-otr.3 (blockers), gnusto-otr.5 (critical), gnusto-otr.6 (depgraph), gnusto-otr.8 (complexity). All five are still hairy at P2/P3 and now surface in 'yaks next', but nothing has been done with them.

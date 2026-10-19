@@ -14,4 +14,5 @@ Make multi-turn/event behavior easy to assert. (1) Encourage/scaffold the (until
 
 ---
 ▸ 2026-07-11T23:45:04Z
+
 Done (473235b). Added (wait N)/(advance N) to the test DSL and (queue-countdown? EVENT N) assertion (N=nil => indefinite). Routed wait/advance through _execute_action (removed count-ignoring _run_wait). Added elevator queue-lifecycle test. The (until PRED (wait)) idiom + lifecycle assertions were already documented in the grue-testing skill; extended it with the new helpers.

@@ -15,6 +15,7 @@ Root/design yak for the open question about the event-queue countdown semantics 
 
 ---
 ▸ 2026-07-11T14:48:01Z
+
 DECISION (ZIL-faithful): adopt the interrupt contract from The Lurking Horror's own CLOCKER/QUEUE/DEQUEUE (games/lurkinghorror/source/misc.zil L773-878).
 
 ZIL ground truth (CLOCKER L843-875):
@@ -35,4 +36,5 @@ FOLLOW-UP NOTE: frotz/domains.py abstracts queue as None/missing=NOT_PENDING, 0=
 
 ---
 ▸ 2026-07-11T14:58:54Z
+
 DONE. Implemented ZIL-faithful contract in runtime.process_events (src/grue/runtime.py): on fire, if countdown is a finite non-negative int, del it from state.queues BEFORE _evaluate_event (so a body's self-re-queue survives; mirrors ZIL PUT C-RTN 0 before APPLY). None/negative = indefinite (unchanged). Collateral migration: compulsion (terminal-room.grue) had DROPPED its ZIL self-re-queue (I-COMPULSION does <QUEUE I-COMPULSION 1> each page) and relied on the old fire-forever bug; added (queue compulsion 1) to the 3 non-terminal page branches. Audited all ~30 LH events: only compulsion actually relied on the bug; delayed one-shots self-dequeue, chains re-queue (freezing 4, waxer-moves 5, item-cooling 2, food-hint 2, elevator-moves 1), yuggoth-advance is re-queued externally by bowl-room :on-enter, indefinite events use None/-1. Docs updated (docs/grue.md queue-contract table + lifecycle). Tests: 770 pytest + 478 grue all green. FOLLOW-UP (not filed): frotz/domains.py queue abstraction (None=NOT_PENDING) is inconsistent with runtime None=indefinite; worth a frotz-alignment yak if state-space analysis is revisited.

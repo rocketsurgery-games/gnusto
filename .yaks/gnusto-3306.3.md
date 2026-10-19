@@ -16,4 +16,5 @@ Semi-automated manual probing. Diagnosing the elevator required reading source t
 
 ---
 ▸ 2026-07-11T23:45:04Z
+
 Done (473235b). REPL: (queues) dumps the live event queue with countdowns; (wait N)/(advance N) advances N turns running the event loop each turn (WaitResult carries turns). Docstrings + grue-testing skill updated. NOTE: the REPL still labels fired events '[EVENT: event]' (hardcoded event_name) -- that's gnusto-0bf7.3 (event names in debug), left for that yak.

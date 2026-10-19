@@ -15,4 +15,5 @@ Pressing DOWN at floor 2 with the car at floor 1 sends it UP to floor 3 first, t
 
 ---
 ▸ 2026-07-12T00:09:29Z
+
 Done (0f6cd33). elevator-moves keep-moving branch now narrates for floor-waiting players: 'The elevator passes your floor, still heading up/down.' on a non-stopping pass, else 'You hear the elevator moving.' Fixed latent direction bug (narration read :direction after pick-direction lookahead flip; now captures ?moving-up before). Regression test added. Filed gnusto-b1f2 for the broader event description->narrate straggler.

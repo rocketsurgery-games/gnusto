@@ -12,4 +12,5 @@ labels:
 
 ---
 ▸ 2026-07-13T02:19:41Z
+
 Done. Added rainbow.grue (Aragain-Falls, On-Rainbow, End-of-Rainbow, Canyon-Bottom, Cliff-Middle, Canyon-View; @rainbow :via barrier + :solid state; @pot-of-gold treasure invisible-until-solid) + rainbow.test.grue (10). Added @sceptre :wave/:raise to temple.grue (solidify rainbow at falls; fatal on rainbow; sparkle elsewhere). Bridges underground->surface (canyon-view -> forest). 189 Zork/lint clean. REPL-verified wave->cross->pot->climb. 100 rooms, frontier=5 (all surface).

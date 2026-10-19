@@ -12,4 +12,5 @@ Add an optional :swatches keyword-map (token -> hex) to (world :visual-style), s
 
 ---
 ▸ 2026-06-20T20:45:13Z
+
 SHORN. Added :visual-style :swatches (nested keyword-map token->hex). Parser: _parse_world parses swatches as a dict explicitly (generic parse_properties flattens nested maps to lists). filfre: assemble_style appends 'Anchor the palette to these colors: <hexes>' so art is keyed to the same swatches. Backend: send_initial_state emits a 'theme' websocket message with the swatches. Frontend: App.svelte applyTheme sets --game-<token> on :root; tokens.css derives all semantic tokens from --game-*. TLH: added :swatches to lurkinghorror.grue. Tests: swatches parse-as-dict + assemble_style anchoring (tests/grue/test_render.py). Docs: grue.md + render.md. Verified end-to-end via server smoke (inline --game-* props confirmed set from the theme message). 734 pytest pass. NOTE: nested-keyword-map-as-dict remains a local handling; generalizing parse_properties is still an open ntr idea (kept on the gnusto-ntr note).

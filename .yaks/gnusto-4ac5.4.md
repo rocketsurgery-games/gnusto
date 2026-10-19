@@ -22,6 +22,7 @@ Depends on gnusto-4ac5.1.
 
 ---
 ▸ 2026-06-20T14:53:09Z
+
 DESIGN EXPLORATION (page-break determination). Key reframe: pagination is a NON-DESTRUCTIVE VIEW over the fully-persisted turn log — a break never drops content (unlike the old header-swap that discarded bridging narration and needed the _build_preamble salvage hack). Invariant: a break only chooses where to draw a chunk line over an already-continuous stream. Consequence: a wrong break is UGLY, not BROKEN — it is a pacing choice, not a correctness one. So start simple/programmatic, add smarter authority only if it looks bad.
 
 TWO KINDS OF BREAK:
@@ -41,6 +42,7 @@ LEAN: ship .1/.7 as a single unbounded live stream; implement .4 with programmat
 
 ---
 ▸ 2026-06-20T23:35:00Z
+
 SHORN (LEAN client-side slice). Bounded comic PAGES now sit over the panel stream. Implemented exactly the design note's lean path: programmatic candidates only (room-change + budget/snap), Grue scene hints + LLM promotion deferred.
 - lib/pagination.ts: pure paginate(blocks, budget=8) -> Page[]. SCENE break (hard): a room_enter always opens a fresh page. CONTINUATION break (soft): once a same-scene page exceeds the budget, snap to the next TURN boundary (a `command` caption) — never mid-beat; tiers stay atomic for free (tier members are never command/room_enter). Non-destructive view: deterministically re-derivable from the stream order, a break never drops content (a wrong break is UGLY not BROKEN — pacing, not correctness).
 - PagedStream.svelte: shows ONE page; pageIndex=null = LIVE/follow (tracks the latest page + new panels), paging back pins until "Now". Slim sticky pager (chrome-less): ‹ Older / position (+ 'cont.' on continuation pages) / ● live | Newer › + Now ⤓. FAIL-SAFE: degenerate pagination falls back to the full unbounded stream, never blank.

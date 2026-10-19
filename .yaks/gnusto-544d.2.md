@@ -16,4 +16,5 @@ Rewrite ZIL->Grue translation guidance aligned to the CURRENT language: engine-a
 
 ---
 ▸ 2026-07-11T23:01:34Z
+
 Done in 2803f4a: .agents/skills/translate-zil/SKILL.md rewritten for current language -- engine-authoritative output vocabulary (emit real text via narrate/say/focus/reveal/emphasize/splash/sfx, NOT 'the why'), CLOCKER-faithful queue contract, 0-truthy ZIL gotcha, blocked/redirect/default, remove-comments + tests + P1 workflow.

@@ -15,4 +15,5 @@ Highest-value check: statically flag any (event X) that can be (queue X N) with 
 
 ---
 ▸ 2026-07-11T23:29:17Z
+
 Done (ba31666). grue.lint.lint_world + 'frotz lint' command flag dropped event chains: (condp = (:prop @ent)) counter machines that mutate that prop, are queued only finitely, and never self-requeue. Calibrated on all LH events -> flags exactly pre-fix compulsion, 0 false positives. pytest keeps LH lint-clean (CI regression gate). Docs (frotz.md) + translate-zil/grue-testing skills updated. NOTE: v1 targets the condp-counter idiom; a cond-based counter machine would slip -- broaden later if needed.

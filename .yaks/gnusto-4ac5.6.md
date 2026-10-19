@@ -21,6 +21,7 @@ Relates to the expanded vocabulary (gnusto-4ac5.5) and the keyed-asset pipeline 
 
 ---
 ▸ 2026-06-20T22:55:00Z
+
 SHORN. Graceful degradation completed; the "wants art but has none" path never breaks.
 - NEW EntityInset.svelte: the framed 'specimen plate' for deploy=inset (object/character single-subject art on a light plate). DEGRADES to a CAPTION INSET (italic placeholder card, same footprint) when the asset key resolves to no file OR the URL 404s (onerror -> failed state). This is the mock's .inset--noart, now live.
 - Focus + Reveal now HONOR deploy=inset, routing through EntityInset (default/feature modes keep the avatar/overhang layout). So the .5 deploy field renders, and its no-art case is safe.

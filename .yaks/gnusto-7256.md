@@ -16,4 +16,5 @@ Reframe the block vocabulary (narrate/say/describe/focus/reveal/emphasize/splash
 
 ---
 ▸ 2026-07-12T00:10:36Z
+
 Epic complete. P1-P3 (unified block construction, output-effect vocabulary, full LH migration) + P4 (renderer de-drift, engine-authoritative default) all shorn. P5 (:generate) promoted to root gnusto-9f40; deferred vocab-registry/Svelte reconciliation to root gnusto-26e7; event description->narrate straggler tracked as gnusto-b1f2. Engine is now the author of record; the LLM parses input and does not write prose by default.
